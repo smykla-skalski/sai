@@ -1,0 +1,12 @@
+{
+  "marketplaceId": "sai-skills",
+  "displayName": "SAI Skills",
+  "description": "Skills for Agentic Intelligence - specialized capabilities for development workflows",
+  "plugins": [
+    {
+      "name": "sai",
+      "repository": "https://github.com/smykla-skalski/skills",
+      "branch": "main"
+    }
+  ]
+}

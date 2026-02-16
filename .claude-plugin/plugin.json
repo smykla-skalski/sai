@@ -1,0 +1,8 @@
+{
+  "name": "sai",
+  "description": "Skills for Agentic Intelligence - a collection of specialized capabilities for development workflows, automation, and productivity",
+  "version": "1.0.0",
+  "author": "Bart Smykla & Piotr Skalski",
+  "repository": "https://github.com/smykla-skalski/skills",
+  "license": "MIT"
+}

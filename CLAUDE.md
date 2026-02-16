@@ -4,22 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This repository contains a collection of **skills** for agentic programming workflows. Skills are specialized capabilities that agents (like Claude Code) can invoke to perform complex, multi-step tasks such as code review automation, documentation generation, PR management, project maintenance, and development workflow optimization.
+This repository is a **Claude Code plugin** called **SAI (Skills for Agentic Intelligence)**. It contains a collection of skills for agentic programming workflows. Skills are specialized capabilities that agents (like Claude Code) can invoke to perform complex, multi-step tasks such as code review automation, documentation generation, PR management, project maintenance, and development workflow optimization.
+
+## Plugin Architecture
+
+SAI follows the Claude Code plugin structure:
+
+- **Plugin metadata**: `.claude-plugin/plugin.json` defines name, version, and description
+- **Marketplace config**: `.claude-plugin/marketplace.json` enables distribution
+- **Skills directory**: `skills/` contains all skill definitions
+- **Namespacing**: Skills are invoked as `/sai:skill-name` or `/skill-name`
 
 ## Repository Structure
 
 ```
-skills/
-├── {skill-name}/           # Each skill in its own directory
-│   ├── SKILL.md           # Skill definition with YAML frontmatter
-│   ├── sources.md         # Optional: Data sources, search patterns
-│   ├── output-template.md # Optional: Output format template
-│   └── ...                # Other skill-specific files
+.
+├── .claude-plugin/
+│   ├── plugin.json        # Plugin metadata (name, version, description)
+│   └── marketplace.json   # Marketplace distribution config
+├── skills/
+│   └── {skill-name}/      # Each skill in its own directory
+│       ├── SKILL.md       # Skill definition with YAML frontmatter
+│       ├── sources.md     # Optional: Data sources, search patterns
+│       ├── output-template.md # Optional: Output format template
+│       └── ...            # Other skill-specific files
 ├── findings/              # Runtime state and output files (gitignored)
 │   └── {skill-name}/
 │       ├── .last-run      # State tracking files
 │       ├── .covered-stories
 │       └── {outputs}      # Generated artifacts
+├── CLAUDE.md             # This file
 └── README.md
 ```
 
@@ -94,14 +108,15 @@ When integrating with external services (Notion, Slack, etc.):
 
 ## Creating New Skills
 
-When adding a new skill:
+When adding a new skill to the SAI plugin:
 
-1. Create directory: `mkdir {skill-name}/`
+1. Create directory: `mkdir skills/{skill-name}/`
 2. Create `SKILL.md` with required frontmatter
 3. Add supporting files if needed (sources, templates)
-4. Test skill invocation: `/skill-name [args]`
-5. Update root `README.md` if skill represents a new category
+4. Test skill invocation: `/sai:skill-name [args]` or `/skill-name [args]`
+5. Update root `README.md` to list the new skill
 6. Add to `.gitignore` if skill generates runtime artifacts
+7. Increment plugin version in `.claude-plugin/plugin.json` if publishing
 
 ## Conventions from Existing Skills
 
@@ -139,14 +154,17 @@ Skills commonly use these tool patterns:
 
 ## Integration Points
 
-### Claude Code Skills System
+### Claude Code Plugin System
 
-Skills in this repo integrate with Claude Code via:
+This plugin integrates with Claude Code via:
 
-- Skill invocation: `/skill-name [args]`
-- Argument parsing from `$ARGUMENTS` environment variable
-- Tool restrictions via `allowed-tools` frontmatter
-- User invocability via `user-invocable: true`
+- **Plugin installation**: `/plugin install sai@sai-skills` or `claude --plugin-dir .`
+- **Namespaced invocation**: `/sai:skill-name [args]`
+- **Direct invocation**: `/skill-name [args]` (if no conflicts)
+- **Argument parsing**: From `$ARGUMENTS` environment variable
+- **Tool restrictions**: Via `allowed-tools` frontmatter
+- **User invocability**: Via `user-invocable: true`
+- **Version management**: Semantic versioning in `plugin.json`
 
 ### MCP (Model Context Protocol) Tools
 

@@ -1,0 +1,13 @@
+# Runtime state and output files
+findings/
+
+# IDE files
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
