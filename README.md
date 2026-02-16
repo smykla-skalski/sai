@@ -62,6 +62,12 @@ Audit, score, and fix CLAUDE.md files against a 100-point rubric based on offici
 
 **Usage**: `/sai:review-claude-md [path/to/repo] [--score-only] [--strict] [--target 95|A+]`
 
+### review-skill
+
+Audit, score, and fix Claude Code skill definitions (SKILL.md) against a 100-point rubric based on the official Agent Skills specification, Anthropic's skill-creator, and community guidelines. Iterates until the target grade is achieved.
+
+**Usage**: `/sai:review-skill [path/to/skill] [--score-only] [--strict] [--target 95|A+]`
+
 ## Plugin Structure
 
 ```
@@ -74,7 +80,9 @@ Audit, score, and fix CLAUDE.md files against a 100-point rubric based on offici
 │   │   ├── SKILL.md
 │   │   ├── sources.md
 │   │   └── output-template.md
-│   └── review-claude-md/   # CLAUDE.md review & fix skill
+│   ├── review-claude-md/   # CLAUDE.md review & fix skill
+│   │   └── SKILL.md
+│   └── review-skill/       # Skill definition review & fix
 │       └── SKILL.md
 └── findings/               # Runtime state (gitignored)
 ```
