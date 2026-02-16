@@ -4,8 +4,7 @@
     "name": "Smykla Skalski Labs"
   },
   "metadata": {
-    "description": "Skills for Agentic Intelligence - specialized capabilities for development workflows",
-    "version": "1.0.0"
+    "description": "Skills for Agentic Intelligence - specialized capabilities for development workflows"
   },
   "plugins": [
     {
@@ -16,7 +15,6 @@
         "ref": "main"
       },
       "description": "Skills for Agentic Intelligence - a collection of specialized capabilities for development workflows, automation, and productivity",
-      "version": "1.0.0",
       "author": {
         "name": "Smykla Skalski Labs"
       },
