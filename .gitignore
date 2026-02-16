@@ -11,3 +11,6 @@ findings/
 # Temporary files
 *.tmp
 *.swp
+
+# Claude Code local settings
+.claude/settings.local.json
