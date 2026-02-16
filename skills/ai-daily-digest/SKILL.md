@@ -52,7 +52,7 @@ Example:
 
 ### Phases 2-15: Research
 
-Execute each phase using search patterns from `references/search-patterns.md`. Skip phases excluded by `--focus`.
+**CRITICAL: Before starting Phase 2, read `references/search-patterns.md` in full.** Execute every phase listed below using the search patterns, collect lists, and quality signals from that file. Each phase has a dedicated section in the reference. Do not skip phases — missing a phase means missing an entire digest section.
 
 | Phase | Topic | Skip unless focus includes |
 |-------|-------|---------------------------|
