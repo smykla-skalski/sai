@@ -80,6 +80,7 @@ If `--score-only` was NOT passed:
    - **Pointers over copies**: Reference files, don't embed large blocks
    - **Appropriate freedom**: Match specificity to task fragility
    - **One default, one escape hatch**: Don't offer five options when one default + one alternative suffices
+   - **Explicit read directives**: When moving workflow-critical content to references/, add explicit "Read X before starting phase Y" instructions in SKILL.md. Passive pointers ("see references/foo.md") are insufficient — agents may skip them
 3. Move detailed content to `references/` if SKILL.md exceeds 500 lines
 4. Fix or create missing bundled resources as needed
 5. Ensure all file references actually resolve
@@ -135,16 +136,19 @@ Output the post-fix scorecard showing:
 
 | Criterion | Points | Deduction trigger |
 |---|---|---|
-| Detailed content in references/ (not all in SKILL.md) | 5 | SKILL.md contains everything, no references for a complex skill |
+| Detailed content in references/ (not all in SKILL.md) | 4 | SKILL.md contains everything, no references for a complex skill |
 | All file references resolve (no broken links) | 4 | Referenced file doesn't exist |
 | References one level deep (no nested chains) | 3 | references/a.md → references/b.md → references/c.md |
 | Long references (>100 lines) have table of contents | 2 | Large reference file with no navigation |
 | No duplication between SKILL.md and references | 3 | Same content in both SKILL.md and a reference file |
-| SKILL.md mentions all bundled resources | 3 | Files in references/ or scripts/ never referenced from SKILL.md |
+| SKILL.md mentions all bundled resources | 2 | Files in references/ or scripts/ never referenced from SKILL.md |
+| Explicit read directives for workflow-critical references | 2 | Reference file contains essential execution data (search patterns, steps, configs) but SKILL.md only passively mentions it without an explicit "Read this file before phase X" instruction. Passive pointers like "see references/foo.md" are insufficient — agents may skip them, causing incomplete execution. |
 
 **Ref**: [Agent Skills Spec](https://agentskills.io/specification) — "Keep file references one level deep from SKILL.md. Avoid deeply nested reference chains."
 
 **Ref**: [Anthropic skill-creator](https://github.com/anthropics/skills) — "Avoid duplication: Information should live in either SKILL.md or references files, not both."
+
+**Ref**: Empirical finding — When workflow-critical content is moved to references/ without explicit read directives, agents produce incomplete output (e.g., skipping 10 of 14 research phases because search patterns were in a reference file the agent never fully read).
 
 ### 4. Instructions & Workflow Quality (20 points)
 
@@ -210,6 +214,7 @@ These are NOT scored by default. Only scored when `--strict` is passed. When act
 | "When to Use" in body | -2 | Trigger info belongs in description field only |
 | Second-person writing | -2 each | "You should..." / "Claude should..." |
 | User-facing docs in skill dir | -3 | README.md, CHANGELOG.md in skill directory |
+| Passive reference to workflow-critical file | -3 each | Reference file drives execution (search patterns, steps, configs) but SKILL.md uses only passive phrasing like "see references/foo.md" or "patterns from references/foo.md" without explicit read instruction |
 
 ---
 
@@ -312,6 +317,7 @@ These principles guide both scoring and fixing:
 - **No user docs**: Only include what Claude needs to execute — no README, CHANGELOG (Anthropic skill-creator)
 - **Feedback loops**: Validate → fix → repeat for quality-critical operations (Anthropic Best Practices)
 - **Evaluate before documenting**: Create test scenarios BEFORE writing extensive docs (Anthropic Best Practices)
+- **Explicit read directives**: When content moves to references/, SKILL.md must use explicit "Read X in full before starting phase Y" — not passive "see X" or "patterns from X". Passive references cause agents to skip workflow-critical content. (Empirical finding)
 
 ## Example Invocations
 
