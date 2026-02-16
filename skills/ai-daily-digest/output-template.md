@@ -2,6 +2,13 @@
 
 Use this template for generating AI daily digests.
 
+## Table of Contents
+
+- [Template](#template)
+- [Section Guidelines](#section-guidelines)
+- [Formatting Rules](#formatting-rules)
+- [Length Guidelines](#length-guidelines)
+
 ---
 
 ```markdown

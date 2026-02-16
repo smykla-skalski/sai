@@ -1,5 +1,24 @@
 # AI Digest Sources
 
+## Table of Contents
+
+- [Research & Papers](#research--papers)
+- [Tech News](#tech-news)
+- [Blogs & Newsletters](#blogs--newsletters)
+- [Indie & Smaller Bloggers](#indie--smaller-bloggers)
+- [YouTube AI Channels](#youtube-ai-channels)
+- [Community](#community)
+- [Engineering & Dev](#engineering--dev)
+- [GitHub Trending AI](#github-trending-ai)
+- [AI Tools for Software Engineers](#ai-tools-for-software-engineers)
+- [AI Tools for Photo/Video](#ai-tools-for-photovideo)
+- [Business & Funding](#business--funding)
+- [Leadership & Strategy](#leadership--strategy)
+- [Source Tiers](#source-tiers)
+- [Fetch Priority](#fetch-priority)
+
+---
+
 ## Research & Papers
 
 | Source | URL | Search Pattern |
@@ -152,117 +171,7 @@
 
 ---
 
-## Search Query Templates
-
-### Daily Technical
-
-```text
-AI LLM model release {YYYY-MM-DD}
-"large language model" OR "foundation model" new
-AI benchmark OR evaluation results
-transformer architecture improvement
-```text
-
-### Daily Business
-
-```text
-AI startup funding round {YYYY-MM-DD}
-AI company acquisition merger
-AI valuation investment
-OpenAI Anthropic Google Microsoft AI partnership
-```text
-
-### Daily Engineering
-
-```text
-AI coding assistant tool developer
-AI workflow automation productivity
-AI developer experience integration
-"AI pair programming" OR "AI code review"
-```text
-
-### Daily Leadership
-
-```text
-AI leadership engineering management
-AI strategy CTO "VP engineering"
-AI transformation organizational change
-"engineering leadership" AI adoption
-AI team structure skills
-```text
-
-### AI Tools for Developers
-
-```text
-AI developer tool new release {YYYY-MM-DD}
-AI coding assistant launch
-"AI for developers" tool app
-site:producthunt.com AI developer coding
-AI IDE plugin extension new
-AI terminal CLI tool
-AI code review debugging tool
-```
-
-### AI Tools for Photo/Video
-
-```text
-AI photo editing tool new {YYYY-MM-DD}
-AI video editing software launch
-"AI for photographers" tool app
-"AI for videographers" tool app
-site:producthunt.com AI photo video
-AI color grading tool new
-AI video upscaling enhancement
-site:petapixel.com AI
-site:nofilmschool.com AI
-```
-
-### Indie Bloggers
-
-```text
-site:lilianweng.github.io
-site:jalammar.github.io
-site:eugeneyan.com
-site:huyenchip.com
-site:vickiboykis.com
-site:hamel.dev
-site:swyx.io
-site:ruder.io
-```
-
-### YouTube AI Videos
-
-```text
-AI tutorial OR explanation site:youtube.com {YYYY-MM-DD}
-LLM "large language model" site:youtube.com {YYYY-MM-DD}
-AI news update site:youtube.com {YYYY-MM-DD}
-"AI paper" review breakdown site:youtube.com {YYYY-MM-DD}
-machine learning explained site:youtube.com {YYYY-MM-DD}
-AI coding assistant demo site:youtube.com {YYYY-MM-DD}
-"Andrej Karpathy" OR "Yannic Kilcher" new video
-"Two Minute Papers" OR "AI Explained" new
-```
-
-### GitHub Trending AI
-
-```text
-site:github.com AI LLM "stars" trending {YYYY-MM-DD}
-github trending AI machine learning new
-"Show HN" github AI tool
-site:github.com "released" AI framework {YYYY-MM-DD}
-github.com/trending python AI
-```
-
-### Weekly Roundup (Friday Mode)
-
-```text
-"this week in AI" OR "AI weekly"
-AI news roundup summary
-top AI stories week
-"weekly recap" AI machine learning
-AI highlights week {YYYY-MM-DD}
-most important AI news this week
-```text
+*Search query templates are in `references/search-patterns.md`.*
 
 ---
 
