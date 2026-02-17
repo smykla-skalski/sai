@@ -74,51 +74,6 @@ Review and fix Claude Code skill definitions (SKILL.md) using a tiered binary ch
 
 **Usage**: `/sai:review-skill [path/to/skill] [--score-only] [--fix] [--verbose] [--thorough]`
 
-## Plugin Structure
-
-```
-.
-├── .claude-plugin/
-│   ├── plugin.json              # Plugin metadata
-│   └── marketplace.json         # Marketplace configuration
-├── skills/
-│   ├── ai-daily-digest/         # AI news digest skill
-│   │   ├── SKILL.md
-│   │   ├── sources.md
-│   │   ├── output-template.md
-│   │   └── references/
-│   │       └── search-patterns.md
-│   ├── gh-review-comments/      # GitHub PR review comments
-│   │   ├── SKILL.md
-│   │   ├── references/
-│   │   │   └── gh-api-guide.md
-│   │   └── scripts/
-│   │       ├── create-review.sh
-│   │       ├── list-threads.sh
-│   │       ├── reply-thread.sh
-│   │       ├── resolve-thread.sh
-│   │       └── unresolve-thread.sh
-│   ├── review-claude-md/        # CLAUDE.md review & fix skill
-│   │   ├── SKILL.md
-│   │   ├── references/
-│   │   │   ├── examples.md
-│   │   │   ├── output-format.md
-│   │   │   ├── rubric.md
-│   │   │   └── sources.md
-│   │   └── scripts/
-│   │       ├── validate-claudemd.sh
-│   │       └── validate-commands.sh
-│   └── review-skill/            # Skill definition review & fix
-│       ├── SKILL.md
-│       ├── references/
-│       │   ├── checklist.md
-│       │   └── examples.md
-│       └── scripts/
-│           ├── validate-frontmatter.sh
-│           └── validate-structure.sh
-└── findings/                    # Runtime state (gitignored)
-```
-
 ## Development
 
 See [CLAUDE.md](./CLAUDE.md) for detailed documentation on:
@@ -131,7 +86,7 @@ See [CLAUDE.md](./CLAUDE.md) for detailed documentation on:
 
 ## Repository
 
-- **GitHub**: git@github.com:smykla-skalski/sai.git
+- **GitHub**: `git@github.com:smykla-skalski/sai.git`
 - **Marketplace ID**: `skills`
 - **Plugin Name**: `sai`
 
