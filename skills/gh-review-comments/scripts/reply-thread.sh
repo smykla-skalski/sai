@@ -16,7 +16,7 @@
 # IMPORTANT: comment_id must be a top-level comment (where in_reply_to_id is null).
 #            Use list-threads.sh to get the correct comment_id for each thread.
 #
-# Dependencies: gh (GitHub CLI)
+# Dependencies: gh (GitHub CLI), python3 (for JSON encoding)
 set -euo pipefail
 
 if [[ $# -lt 5 ]]; then

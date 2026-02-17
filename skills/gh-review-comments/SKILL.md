@@ -8,7 +8,7 @@ user-invocable: true
 
 # GH Review Comments
 
-Manage GitHub PR review comment threads: list, reply, resolve, unresolve, and create reviews with line-level comments.
+Wraps `gh api` (REST and GraphQL) via bash scripts to operate on PR review threads. Each action maps to a script in `scripts/`.
 
 ## Arguments
 
