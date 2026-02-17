@@ -164,16 +164,19 @@ Output the post-fix scorecard showing:
 
 ### 5. Scripts & Code Quality (10 points)
 
-| Criterion | Points | Deduction trigger |
-|---|---|---|
-| Scripts are executable and documented | 3 | Scripts without shebangs, docs, or error handling |
-| Scripts solve problems (don't punt to Claude) | 3 | Scripts that just `raise` or `exit(1)` on edge cases |
-| Dependencies explicitly listed | 2 | `import pdfplumber` with no install instruction |
-| No hardcoded paths or magic constants | 2 | Unexplained values, absolute paths, platform-specific assumptions |
+| Criterion                                           | Points | Deduction trigger                                                                   |
+|:----------------------------------------------------|:-------|:------------------------------------------------------------------------------------|
+| Scripts are executable and documented               | 3      | Scripts without shebangs, docs, or error handling                                   |
+| Scripts solve problems (don't punt to Claude)       | 3      | Scripts that just `raise` or `exit(1)` on edge cases                                |
+| Scripts invoked via `bash "$SKILL_DIR/scripts/..."` | 2      | Direct execution (`./scripts/...`) — execute bits are not preserved in plugin cache |
+| Dependencies explicitly listed                      | 1      | `import pdfplumber` with no install instruction                                     |
+| No hardcoded paths or magic constants               | 1      | Unexplained values, absolute paths, platform-specific assumptions                   |
 
 *If skill has no scripts, award full 10 points — scripts are optional.*
 
 **Ref**: [Anthropic Best Practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) — "Scripts solve problems rather than punt to Claude" and "No 'voodoo constants'."
+
+**Ref**: Empirical finding — Plugin cache distribution strips execute bits from scripts. Skills that invoke scripts directly (`./scripts/foo.sh`) fail with exit code 127 when installed as a plugin. Always use `bash "$SKILL_DIR/scripts/foo.sh"` where `SKILL_DIR` is the skill's base directory.
 
 ### 6. Content Anti-Patterns (10 points)
 
@@ -215,6 +218,7 @@ These are NOT scored by default. Only scored when `--strict` is passed. When act
 | Second-person writing | -2 each | "You should..." / "Claude should..." |
 | User-facing docs in skill dir | -3 | README.md, CHANGELOG.md in skill directory |
 | Passive reference to workflow-critical file | -3 each | Reference file drives execution (search patterns, steps, configs) but SKILL.md uses only passive phrasing like "see references/foo.md" or "patterns from references/foo.md" without explicit read instruction |
+| Direct script execution | -5 each | `./scripts/foo.sh` instead of `bash "$SKILL_DIR/scripts/foo.sh"` — breaks in plugin cache where execute bits are stripped |
 
 ---
 
@@ -318,6 +322,7 @@ These principles guide both scoring and fixing:
 - **Feedback loops**: Validate → fix → repeat for quality-critical operations (Anthropic Best Practices)
 - **Evaluate before documenting**: Create test scenarios BEFORE writing extensive docs (Anthropic Best Practices)
 - **Explicit read directives**: When content moves to references/, SKILL.md must use explicit "Read X in full before starting phase Y" — not passive "see X" or "patterns from X". Passive references cause agents to skip workflow-critical content. (Empirical finding)
+- **`bash` over direct execution**: Plugin cache strips execute bits. Always invoke scripts with `bash "$SKILL_DIR/scripts/foo.sh"`, never `./scripts/foo.sh`. (Empirical finding)
 
 ## Example Invocations
 
