@@ -1,5 +1,5 @@
-# Runtime state and output files
-findings/
+# Runtime state and output files (per-plugin)
+*/findings/
 
 # IDE files
 .idea/

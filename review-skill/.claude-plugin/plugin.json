@@ -1,0 +1,10 @@
+{
+  "name": "review-skill",
+  "description": "Review and fix Claude Code skill definitions using tiered binary checklist",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT"
+}
