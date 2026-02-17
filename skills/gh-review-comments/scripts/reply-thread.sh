@@ -5,8 +5,8 @@
 #   ./reply-thread.sh <owner> <repo> <pr_number> <comment_id> <body>
 #
 # Arguments:
-#   owner       — Repository owner (e.g., "kumahq")
-#   repo        — Repository name (e.g., "kuma")
+#   owner       — Repository owner (e.g., "smykla-skalski")
+#   repo        — Repository name (e.g., "skills")
 #   pr_number   — Pull request number
 #   comment_id  — Integer database ID of the TOP-LEVEL comment in the thread
 #   body        — Reply text (supports Markdown)

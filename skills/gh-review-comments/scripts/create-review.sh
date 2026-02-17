@@ -5,8 +5,8 @@
 #   ./create-review.sh <owner> <repo> <pr_number> <event> <body> [<comments_json>]
 #
 # Arguments:
-#   owner         — Repository owner (e.g., "kumahq")
-#   repo          — Repository name (e.g., "kuma")
+#   owner         — Repository owner (e.g., "smykla-skalski")
+#   repo          — Repository name (e.g., "skills")
 #   pr_number     — Pull request number
 #   event         — Review event: COMMENT, APPROVE, or REQUEST_CHANGES
 #   body          — Review body text (use "" for no body)
