@@ -1,6 +1,6 @@
 # AI Digest Sources
 
-## Table of Contents
+## Contents
 
 - [Research & Papers](#research--papers)
 - [Tech News](#tech-news)

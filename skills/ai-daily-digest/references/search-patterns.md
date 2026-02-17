@@ -1,6 +1,6 @@
 # Search Patterns Reference
 
-## Table of Contents
+## Contents
 
 - [Core Research (Phases 2-5)](#core-research-phases-2-5)
 - [GitHub Trending (Phase 6)](#github-trending-phase-6)

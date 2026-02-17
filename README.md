@@ -52,39 +52,71 @@ Or without namespace if no conflicts:
 
 ### ai-daily-digest
 
-Generate curated AI news digests from multiple sources with intelligent deduplication and Notion integration.
+Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
 
-**Usage**: `/sai:ai-daily-digest [--date YYYY-MM-DD] [--skip-notion]`
+**Usage**: `/sai:ai-daily-digest [--focus technical|business|engineering|leadership] [--notion-page-id ID] [--no-notion]`
+
+### gh-review-comments
+
+List, reply to, resolve, and create GitHub PR review comment threads using gh CLI scripts. Use when managing code review feedback, replying to reviewer remarks, resolving review conversations, creating reviews with line-level comments, or bulk-processing threads by author.
+
+**Usage**: `/sai:gh-review-comments <owner/repo> <pr-number> [--author <login>] [--reply <message>] [--resolve] [--unresolve] [--create-review] [--thread-id <id>] [--unresolved-only]`
 
 ### review-claude-md
 
-Audit, score, and fix CLAUDE.md files against a 100-point rubric based on official Anthropic best practices and community guidelines. Iterates until the target grade is achieved.
+Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
 
-**Usage**: `/sai:review-claude-md [path/to/repo] [--score-only] [--strict] [--target 95|A+]`
+**Usage**: `/sai:review-claude-md [path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]`
 
 ### review-skill
 
-Audit, score, and fix Claude Code skill definitions (SKILL.md) against a 100-point rubric based on the official Agent Skills specification, Anthropic's skill-creator, and community guidelines. Iterates until the target grade is achieved.
+Review and fix Claude Code skill definitions (SKILL.md) using a tiered binary checklist based on the Agent Skills specification, Anthropic best practices, and community guidelines. Use when auditing, improving, or validating any skill before publishing.
 
-**Usage**: `/sai:review-skill [path/to/skill] [--score-only] [--strict] [--target 95|A+]`
+**Usage**: `/sai:review-skill [path/to/skill] [--score-only] [--fix] [--verbose] [--thorough]`
 
 ## Plugin Structure
 
 ```
 .
 ├── .claude-plugin/
-│   ├── plugin.json         # Plugin metadata
-│   └── marketplace.json    # Marketplace configuration
+│   ├── plugin.json              # Plugin metadata
+│   └── marketplace.json         # Marketplace configuration
 ├── skills/
-│   ├── ai-daily-digest/    # AI news digest skill
+│   ├── ai-daily-digest/         # AI news digest skill
 │   │   ├── SKILL.md
 │   │   ├── sources.md
-│   │   └── output-template.md
-│   ├── review-claude-md/   # CLAUDE.md review & fix skill
-│   │   └── SKILL.md
-│   └── review-skill/       # Skill definition review & fix
-│       └── SKILL.md
-└── findings/               # Runtime state (gitignored)
+│   │   ├── output-template.md
+│   │   └── references/
+│   │       └── search-patterns.md
+│   ├── gh-review-comments/      # GitHub PR review comments
+│   │   ├── SKILL.md
+│   │   ├── references/
+│   │   │   └── gh-api-guide.md
+│   │   └── scripts/
+│   │       ├── create-review.sh
+│   │       ├── list-threads.sh
+│   │       ├── reply-thread.sh
+│   │       ├── resolve-thread.sh
+│   │       └── unresolve-thread.sh
+│   ├── review-claude-md/        # CLAUDE.md review & fix skill
+│   │   ├── SKILL.md
+│   │   ├── references/
+│   │   │   ├── examples.md
+│   │   │   ├── output-format.md
+│   │   │   ├── rubric.md
+│   │   │   └── sources.md
+│   │   └── scripts/
+│   │       ├── validate-claudemd.sh
+│   │       └── validate-commands.sh
+│   └── review-skill/            # Skill definition review & fix
+│       ├── SKILL.md
+│       ├── references/
+│       │   ├── checklist.md
+│       │   └── examples.md
+│       └── scripts/
+│           ├── validate-frontmatter.sh
+│           └── validate-structure.sh
+└── findings/                    # Runtime state (gitignored)
 ```
 
 ## Development

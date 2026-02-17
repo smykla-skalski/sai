@@ -22,22 +22,20 @@ Parse from `$ARGUMENTS`:
 
 ### Notion Parent Page ID (required for publishing)
 
-The digest is published to a Notion page. You must configure the parent page ID.
-
-**Resolution order** (first match wins):
+Resolve the Notion parent page ID using this precedence (first match wins):
 
 1. `--notion-page-id` argument
 2. `NOTION_PARENT_PAGE_ID` environment variable
-3. Interactive prompt — skill will ask the user at runtime
+3. Interactive prompt — ask the user at runtime
 
-**How to find your Notion page ID:**
+When prompting the user, provide these instructions for finding the page ID:
 
-1. Open the target parent page in your browser
-2. Copy the URL — it looks like `https://www.notion.so/Page-Title-{32-hex-chars}`
-3. The page ID is the last 32 hex characters (insert hyphens as `8-4-4-4-12` to get UUID format)
-4. Alternatively: click "Share" → "Copy link" and extract the ID from the URL
+- Open the target parent page in the browser
+- Copy the URL (`https://www.notion.so/Page-Title-{32-hex-chars}`)
+- Extract the last 32 hex characters, insert hyphens as `8-4-4-4-12` for UUID format
+- Alternative: click "Share" → "Copy link" and extract the ID
 
-**How to persist** (recommended): Set the env var in your shell profile (`~/.zshrc`, `~/.bashrc`):
+Recommend persisting via env var in `~/.zshrc` / `~/.bashrc`:
 
 ```bash
 export NOTION_PARENT_PAGE_ID="your-page-id-here"

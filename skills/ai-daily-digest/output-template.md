@@ -2,7 +2,7 @@
 
 Use this template for generating AI daily digests.
 
-## Table of Contents
+## Contents
 
 - [Template](#template)
 - [Section Guidelines](#section-guidelines)
