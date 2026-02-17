@@ -37,14 +37,19 @@ Parse from `$ARGUMENTS`:
 
 ## Scripts
 
-All scripts in `scripts/` are executable and self-documented. Run any with no args for usage.
+All scripts live in `scripts/` relative to this skill's base directory. **Always run with `bash` explicitly** (execute bits may not survive plugin cache):
+
+```
+SKILL_DIR="<this skill's base directory>"
+bash "$SKILL_DIR/scripts/<script>.sh" [args...]
+```
 
 ### `scripts/list-threads.sh`
 
 List review threads with metadata via GraphQL.
 
 ```
-./scripts/list-threads.sh <owner> <repo> <pr_number> [--author <login>] [--unresolved-only]
+bash "$SKILL_DIR/scripts/list-threads.sh" <owner> <repo> <pr_number> [--author <login>] [--unresolved-only]
 ```
 
 Output: one JSON line per thread with `thread_id`, `comment_id`, `author`, `body`, `path`, `line`, `is_resolved`, `is_outdated`, `reply_count`.
@@ -54,7 +59,7 @@ Output: one JSON line per thread with `thread_id`, `comment_id`, `author`, `body
 Reply to a review thread via REST API.
 
 ```
-./scripts/reply-thread.sh <owner> <repo> <pr_number> <comment_id> <body>
+bash "$SKILL_DIR/scripts/reply-thread.sh" <owner> <repo> <pr_number> <comment_id> <body>
 ```
 
 - `comment_id`: integer database ID of the **top-level** comment (from `list-threads.sh` `comment_id` field)
@@ -65,7 +70,7 @@ Reply to a review thread via REST API.
 Resolve a review thread via GraphQL.
 
 ```
-./scripts/resolve-thread.sh <thread_id>
+bash "$SKILL_DIR/scripts/resolve-thread.sh" <thread_id>
 ```
 
 - `thread_id`: GraphQL node ID (`PRRT_...`) from `list-threads.sh` `thread_id` field
@@ -75,7 +80,7 @@ Resolve a review thread via GraphQL.
 Reopen a resolved review thread via GraphQL.
 
 ```
-./scripts/unresolve-thread.sh <thread_id>
+bash "$SKILL_DIR/scripts/unresolve-thread.sh" <thread_id>
 ```
 
 ### `scripts/create-review.sh`
@@ -83,7 +88,7 @@ Reopen a resolved review thread via GraphQL.
 Create a PR review with line-level comments via REST API.
 
 ```
-./scripts/create-review.sh <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
+bash "$SKILL_DIR/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
 ```
 
 - `event`: `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`
@@ -98,10 +103,11 @@ Create a PR review with line-level comments via REST API.
 2. Split `owner/repo` into separate `OWNER` and `REPO` variables
 3. Validate: both `owner/repo` and PR number are required
 4. When `--reply` or `--resolve` is set, auto-enable `--unresolved-only`
+5. Resolve `SKILL_DIR` — the base directory of this skill (where SKILL.md lives)
 
 ### Phase 2: List Threads
 
-1. Run `scripts/list-threads.sh` with owner, repo, PR number, and filters (`--author`, `--unresolved-only`)
+1. Run `bash "$SKILL_DIR/scripts/list-threads.sh"` with owner, repo, PR number, and filters (`--author`, `--unresolved-only`)
 2. If `--thread-id` is specified, filter output to only that thread
 3. Display results to the user in a readable format:
    - Thread ID
@@ -120,13 +126,13 @@ For each matched thread, execute the requested action:
 **Reply** (`--reply`):
 
 1. Extract `comment_id` from the thread data
-2. Run `scripts/reply-thread.sh` with owner, repo, PR number, comment_id, and the reply message
+2. Run `bash "$SKILL_DIR/scripts/reply-thread.sh"` with owner, repo, PR number, comment_id, and the reply message
 3. Report the created reply URL
 
 **Resolve** (`--resolve`):
 
 1. Extract `thread_id` from the thread data
-2. Run `scripts/resolve-thread.sh` with thread_id
+2. Run `bash "$SKILL_DIR/scripts/resolve-thread.sh"` with thread_id
 3. Report success
 
 **Reply + Resolve** (`--reply` and `--resolve` together):
@@ -138,7 +144,7 @@ For each matched thread, execute the requested action:
 **Unresolve** (`--unresolve`):
 
 1. Extract `thread_id` from the thread data
-2. Run `scripts/unresolve-thread.sh` with thread_id
+2. Run `bash "$SKILL_DIR/scripts/unresolve-thread.sh"` with thread_id
 3. Report success
 
 ### Phase 3 (alternative): Create Review
@@ -152,12 +158,12 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
    - Line number
    - Comment body
 4. Build the comments JSON array
-5. Run `scripts/create-review.sh` with the collected data
+5. Run `bash "$SKILL_DIR/scripts/create-review.sh"` with the collected data
 6. Report the created review URL
 
 ### Phase 4: Verify and Summarize
 
-1. After mutations (reply/resolve/unresolve), re-run `scripts/list-threads.sh` to confirm the operations took effect
+1. After mutations (reply/resolve/unresolve), re-run `bash "$SKILL_DIR/scripts/list-threads.sh"` to confirm the operations took effect
 2. Compare before/after thread states — flag any threads that failed to change
 
 Report:
