@@ -1,32 +1,33 @@
 ---
 name: review-claude-md
-description: Audit, score, and fix CLAUDE.md files against a 100-point rubric based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
-argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--strict] [--target 95|A+]"
+description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
+argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
 allowed-tools: WebSearch, WebFetch, Read, Write, Edit, Bash, Grep, Glob, Task
 user-invocable: true
 ---
 
 # Review CLAUDE.md
 
-Audit any CLAUDE.md file against a 100-point rubric, report exact deductions with references, then iteratively fix all issues until the target grade is achieved.
+Evaluate any CLAUDE.md against a tiered binary checklist (Critical / Important / Polish), produce a categorical verdict (PASS / NEEDS WORK / FAIL), then fix all failing checks.
 
 ## Arguments
 
 Parse from `$ARGUMENTS`:
 
-- First positional arg: path to repo root (default: cwd)
-- `--score-only` — Report score without fixing
-- `--fix` — Fix issues automatically (default)
-- `--verbose` — Show detailed reasoning per deduction
-- `--strict` — Include optional checks (commit conventions, line count penalty); total becomes 115
-- `--target <value>` — Passing threshold as numeric (`95`) or grade (`A+`). Default: `95` (A+)
+- First positional arg: path to repo root (default: current working directory)
+- `--score-only` — Report verdict without fixing
+- `--fix` — Fix all failing checks (default behavior)
+- `--verbose` — Show chain-of-thought reasoning for each check
+- `--thorough` — Include Polish tier in the report
 
-| Target | Standard | Strict |
-|---|---|---|
-| A++ (100) | 100/100 | 115/115 |
-| A+ (95, default) | 95/100 | 109/115 |
-| A (90) | 90/100 | 104/115 |
-| B+ (85) | 85/100 | 98/115 |
+## Verdict Logic
+
+```text
+Any Critical fails              → FAIL
+3+ Important fails              → NEEDS WORK
+All Critical pass, ≤2 Important → PASS
+Polish checks                   → informational (with --thorough)
+```
 
 ## Workflow
 
@@ -35,107 +36,106 @@ Parse from `$ARGUMENTS`:
 1. Identify target repo root (from argument or cwd)
 2. Find all CLAUDE.md files: root, `.claude/CLAUDE.md`, `CLAUDE.local.md`, subdirectories
 3. Find `.claude/rules/*.md` files
-4. Note git-tracked vs gitignored
+4. Note git-tracked vs gitignored status
 
 ### Phase 2: Codebase Context
 
-Read the codebase to understand what CLAUDE.md SHOULD contain:
+Read the codebase to understand what the CLAUDE.md SHOULD contain:
 
 - **Build system**: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml
 - **Test config**: jest.config, pytest.ini, vitest.config, test directories
-- **Lint/format**: .eslintrc, biome.json, .prettierrc, rustfmt.toml, golangci-lint
+- **Lint/format**: .eslintrc, biome.json, .prettierrc, rustfmt.toml
 - **CI/CD**: .github/workflows/, .gitlab-ci.yml
-- **README.md**: Check for duplicated content
-- **Directory structure**: Top-level layout
-- **Git conventions**: `git log --oneline -20`
+- **README.md**: Check for content that might be duplicated
+- **Directory structure**: Top-level layout and component relationships
+- **Git conventions**: `git log --oneline -20` for commit message patterns
 - **Existing .claude/rules/**: Already modularized content
 
-### Phase 3: Score
+### Phase 3: Automated Checks
 
-Score against every criterion in [rubric.md](references/rubric.md). For each deduction, record:
-- Category and criterion
-- Points deducted
-- Specific line(s) causing deduction
-- Reference from [sources.md](references/sources.md)
+Run the deterministic validation scripts and collect their JSON output:
 
-With `--strict`, also score optional criteria.
+```bash
+bash "$SKILL_DIR/scripts/validate-claudemd.sh" "$TARGET_DIR"
+bash "$SKILL_DIR/scripts/validate-commands.sh" "$TARGET_DIR"
+```
 
-### Phase 4: Report
+Where `$SKILL_DIR` is this skill's directory and `$TARGET_DIR` is the repo being reviewed. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion.
 
-Output the initial scorecard per [output-format.md](references/output-format.md).
+### Phase 4: Manual Evaluation
 
-### Phase 5: Fix
+Read `references/rubric.md` in full before starting this phase.
+
+For each criterion not already covered by automated scripts, evaluate as binary pass/fail:
+
+1. Read the check description and source reference
+2. Examine the relevant section of the CLAUDE.md
+3. Record the result with specific evidence (quote the line or describe the absence)
+4. If `--thorough`, also evaluate Polish tier checks
+
+Consult `references/sources.md` for authoritative source URLs when citing findings.
+
+### Phase 5: Synthesize Verdict
+
+Think step by step before declaring the verdict:
+
+1. List all Critical results — any FAIL?
+2. Count Important FAILs — 3 or more?
+3. Apply the verdict logic above
+4. Write a 2-3 sentence chain-of-thought explaining the reasoning
+
+### Phase 6: Report
+
+Output the verdict per the template in `references/output-format.md`.
+
+### Phase 7: Fix
 
 If `--score-only` was NOT passed:
 
-1. Rewrite the CLAUDE.md addressing every deduction
-2. Apply these principles:
+1. Address every failing Critical and Important check
+2. Apply these principles when rewriting:
    - Every line must pass "would removing this cause mistakes?"
    - Bullets over paragraphs
    - `file:line` references over embedded code
    - "Use Y instead of X" over "Never use X"
    - Only non-obvious info — skip what Claude infers from code
-   - Commands are highest-value items
+   - Commands are the highest-value items
    - No README content duplication
 3. Create `.claude/rules/` files if root exceeds 150 lines
 4. Target: under 150 lines (ideally 50-100 for root)
 
-### Phase 6: Re-Score and Iterate
+### Phase 8: Final Report
 
-1. Re-score the fixed file against full rubric
-2. If below target, fix remaining issues
-3. Repeat until target grade is achieved — do not stop below it
+1. Re-run automated checks against the fixed CLAUDE.md
+2. Re-evaluate manual checks
+3. Output the post-fix report per `references/output-format.md`
+4. If verdict is still not PASS, iterate: fix remaining issues and re-evaluate
 
-### Phase 7: Final Report
+## Good vs Bad Examples
 
-Output post-fix scorecard per [output-format.md](references/output-format.md) showing:
-- Final score and grade
-- All changes made
-- Before/after line count
-- Any `.claude/rules/` files created
+Read `references/examples.md` for detailed comparison pairs. Key patterns:
 
-## Example
+**Commands** — Good: Specific commands with focused-test variant (`npm test -- --testPathPattern="auth"`). Bad: "Run tests" with no actual command.
+
+**Architecture** — Good: Component relationships with file:line pointers (`src/services/` calls `src/db/`, never imports from `src/api/`). Bad: Plain file tree with no relationship explanations.
+
+**Gotchas** — Good: "Payment service uses eventual consistency — check `transaction.status` before assuming completion (see `services/payment.ts:45`)." Bad: "Handle errors gracefully."
+
+## Example Invocations
 
 ```bash
-# Default audit (target: A+ / 95)
+# Default audit
 /review-claude-md
 
-# Specific repo, verbose, strict, perfect score
-/review-claude-md /path/to/repo --verbose --strict --target A++
+# Specific repo, verbose
+/review-claude-md /path/to/repo --verbose
 
-# Score only
+# Verdict only, no fixes
 /review-claude-md --score-only
-```
 
-### Sample Audit Output
+# Include Polish tier
+/review-claude-md --thorough
 
-```
-## CLAUDE.md Quality Audit
-
-**File**: ./CLAUDE.md
-**Lines**: 247
-**Mode**: Standard
-**Target**: A+ (95/100)
-**Initial Score**: 68/100 (C)
-
-### Deductions
-- [-5] Brevity: 247 lines exceeds 150-line limit (ref: Official Best Practices)
-- [-5] Brevity: Lines 40-55 repeat README project overview (ref: Official Best Practices)
-- [-4] Commands: Missing single-test command (ref: Builder.io)
-- [-4] Commands: Missing pre-commit workflow (ref: Builder.io)
-- [-6] Architecture: File tree on lines 12-30 has no relationship explanations (ref: HumanLayer)
-- [-4] Architecture: "handler", "service", "resolver" used without definitions (ref: HumanLayer)
-- [-3] Testing: No mock strategy documented (ref: rubric)
-- [-5] Gotchas: No project-specific gotchas — only generic "handle errors" (ref: Arize)
-
-### Anti-Pattern Penalties
-- [-3] Generic advice: "Always write clean, readable code" (line 89)
-- [-3] Generic advice: "Make sure to add tests" (line 92)
-- [-2] Negative-only: "Never use var" without alternative (line 78)
-
-### Missing Content
-- Single-test command (e.g., `npm test -- --grep "pattern"`)
-- Pre-commit checklist (lint, typecheck, test)
-- Mock strategy (hand-written vs auto-generated, location)
-- At least 2 project-specific gotchas
+# Combine flags
+/review-claude-md /path/to/repo --verbose --thorough
 ```

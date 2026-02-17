@@ -3,40 +3,41 @@
 ## Initial Report
 
 ```
-## CLAUDE.md Quality Audit
+## CLAUDE.md Review
 
 **File**: <path>
 **Lines**: <count>
-**Mode**: Standard | Strict (--strict)
-**Target**: <grade> (<score>/<max>)
-**Initial Score**: <score>/<max> (<grade>)
+**Verdict**: PASS | NEEDS WORK | FAIL
 
-### Deductions
-- [-X] <category>: <specific issue> (ref: <source>)
-- [-X] <category>: <specific issue> (ref: <source>)
+### Critical
+- [PASS] C1: Build/test/lint commands present and correct
+- [FAIL] C2: 247 lines exceeds 150 limit
 ...
 
-### Anti-Pattern Penalties
-- [-X] <anti-pattern>: <specific instance>
+### Important
+- [PASS] I1: Architecture describes component relationships
+- [FAIL] I3: No project-specific gotchas found
 ...
 
-### Missing Content
-- <what should be added and why>
+### Polish (--thorough only)
+- [INFO] P1: No focused-test command documented
 ...
 
-### ⭐ Optional Check Results (--strict only)
-- [-X] <criterion>: <specific issue>
-...
+### Chain of Thought
+<reasoning explaining how each check was evaluated and how the verdict was determined>
+
+### Verdict: <VERDICT>
+<summary — e.g., "4 Important checks failed (threshold: 3)" or "All Critical passed, 1 Important failed">
 ```
 
-## After Fix
+## Post-Fix Report
 
 ```
-## Post-Fix Audit
+## Post-Fix Review
 
 **File**: <path>
 **Lines**: <count> (was: <old_count>)
-**Final Score**: <score>/<max> (<grade>)
+**Verdict**: PASS
 
 ### Changes Made
 - <change 1>
