@@ -67,41 +67,6 @@ Review and fix Claude Code skill definitions (SKILL.md) using tiered binary chec
 
 [Full documentation →](./review-skill/README.md)
 
-## Repository Structure
-
-```
-.
-├── ai-daily-digest/
-│   ├── .claude-plugin/plugin.json
-│   ├── SKILL.md
-│   ├── sources.md
-│   ├── output-template.md
-│   ├── references/
-│   ├── findings/            # gitignored runtime state
-│   └── README.md
-├── gh-review-comments/
-│   ├── .claude-plugin/plugin.json
-│   ├── SKILL.md
-│   ├── references/
-│   ├── scripts/
-│   └── README.md
-├── review-claude-md/
-│   ├── .claude-plugin/plugin.json
-│   ├── SKILL.md
-│   ├── references/
-│   ├── scripts/
-│   └── README.md
-├── review-skill/
-│   ├── .claude-plugin/plugin.json
-│   ├── SKILL.md
-│   ├── references/
-│   ├── scripts/
-│   └── README.md
-├── CLAUDE.md              # Development guide
-├── CONTRIBUTING.md
-└── README.md
-```
-
 ## Development
 
 See [CLAUDE.md](./CLAUDE.md) for detailed documentation on:
