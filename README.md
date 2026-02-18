@@ -15,23 +15,35 @@ This monorepo contains 4 independent plugins, each providing specialized capabil
 
 ## Installation
 
-Install plugins individually by pointing to their directory:
+### Via marketplace
+
+Add the SAI marketplace, then install individual plugins:
 
 ```bash
-# Install ai-daily-digest
-claude --plugin-dir /path/to/sai/ai-daily-digest
+# Add the SAI marketplace
+/plugin marketplace add git@github.com:smykla-skalski/sai.git
 
-# Install gh-review-comments
-claude --plugin-dir /path/to/sai/gh-review-comments
-
-# Install review-claude-md
-claude --plugin-dir /path/to/sai/review-claude-md
-
-# Install review-skill
-claude --plugin-dir /path/to/sai/review-skill
+# Install individual plugins
+/plugin install sai/ai-daily-digest
+/plugin install sai/gh-review-comments
+/plugin install sai/review-claude-md
+/plugin install sai/review-skill
 ```
 
 Each plugin is independent - install only what you need.
+
+### Local development
+
+Clone the repository and point directly to plugin directories:
+
+```bash
+git clone git@github.com:smykla-skalski/sai.git
+
+claude --plugin-dir /path/to/sai/ai-daily-digest
+claude --plugin-dir /path/to/sai/gh-review-comments
+claude --plugin-dir /path/to/sai/review-claude-md
+claude --plugin-dir /path/to/sai/review-skill
+```
 
 ## Plugins
 
