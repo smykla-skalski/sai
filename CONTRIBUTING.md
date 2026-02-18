@@ -15,6 +15,15 @@ Check the project's README for specific prerequisites. Common requirements inclu
 - [mise](https://mise.jdx.dev/) for tool version management
 - Project-specific tools managed by mise
 
+### SAI Monorepo Structure
+
+For the SAI project specifically:
+
+- Each plugin is in its own top-level directory
+- Test individual plugins: `claude --plugin-dir {plugin-name}/`
+- Plugin-specific changes modify files in `{plugin-name}/`
+- Monorepo-wide changes modify root files (README.md, CLAUDE.md, etc.)
+
 ### Setup
 
 1. Fork the repository on GitHub
@@ -36,15 +45,6 @@ Check the project's README for specific prerequisites. Common requirements inclu
    ```bash
    mise install
    ```
-
-### SAI Monorepo Structure
-
-For the SAI project specifically:
-
-- Each plugin is in its own top-level directory
-- Test individual plugins: `claude --plugin-dir {plugin-name}/`
-- Plugin-specific changes modify files in `{plugin-name}/`
-- Monorepo-wide changes modify root files (README.md, CLAUDE.md, etc.)
 
 ## Development Workflow
 
