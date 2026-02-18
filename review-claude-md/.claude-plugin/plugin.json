@@ -1,7 +1,7 @@
 {
   "name": "review-claude-md",
   "description": "Audit and fix CLAUDE.md files using tiered binary checklist",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },
