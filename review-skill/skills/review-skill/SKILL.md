@@ -33,6 +33,8 @@ Polish checks                   → informational (with --thorough)
 
 ### Phase 1: Discovery
 
+Read `references/skill-structure.md` to understand the canonical skill layout before evaluating.
+
 1. Identify the target skill directory (from argument or cwd)
 2. Read the SKILL.md file
 3. Inventory all bundled resources (`references/`, `scripts/`, `assets/`, `examples/`)
@@ -40,14 +42,13 @@ Polish checks                   → informational (with --thorough)
 
 ### Phase 2: Automated Checks
 
-Run the deterministic validation scripts and collect their JSON output:
+Run the validation script and collect its JSON output:
 
 ```bash
-bash "$SKILL_DIR/scripts/validate-frontmatter.sh" "$TARGET_DIR"
-bash "$SKILL_DIR/scripts/validate-structure.sh" "$TARGET_DIR"
+bash "$SKILL_DIR/scripts/validate.sh" "$TARGET_DIR"
 ```
 
-Where `$SKILL_DIR` is this skill's directory and `$TARGET_DIR` is the skill being reviewed. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion.
+Where `$SKILL_DIR` is this skill's directory and `$TARGET_DIR` is the skill being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts.
 
 ### Phase 3: Manual Evaluation
 

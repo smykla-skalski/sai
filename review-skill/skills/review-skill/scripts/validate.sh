@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+# validate.sh — Validate SKILL.md frontmatter fields and directory structure.
+#
+# Usage:
+#   bash validate.sh <skill-directory> [mode]
+#
+# Modes:
+#   all          — Run all checks (default)
+#   frontmatter  — Frontmatter field checks only
+#   structure    — Directory structure checks only
+#
+# Output: One JSON object per line:
+#   {"check": "<id>", "pass": true|false, "detail": "<message>"}
+#
+# Final line is always a summary:
+#   {"summary": true, "total": N, "passed": N, "failed": N}
+#
+# Exit code: 0 if all checks pass, 1 if any check fails, 2 if usage error.
+#
+# Canonical skill layout (per Agent Skills spec):
+#
+#   skill-name/
+#   ├── SKILL.md           (required — entrypoint)
+#   ├── references/        (documentation loaded into context on demand)
+#   ├── scripts/           (executable code invoked via Bash tool)
+#   ├── assets/            (templates, icons, fonts used in output)
+#   └── examples/          (example files showing expected format)
+#
+# All bundled resources live alongside SKILL.md in the skill directory.
+# See: https://code.claude.com/docs/en/skills
+#      references/skill-structure.md (bundled with review-skill)
+#
+# Dependencies: bash 4+, awk, grep, sed, wc
+set -euo pipefail
+
+# ========================
+# ARGUMENT PARSING
+# ========================
+if [[ $# -lt 1 ]]; then
+  echo "Usage: $0 <skill-directory> [all|frontmatter|structure]" >&2
+  exit 2
+fi
+
+SKILL_DIR="$1"
+MODE="${2:-all}"
+SKILL_MD="${SKILL_DIR}/SKILL.md"
+
+# ========================
+# COUNTERS
+# ========================
+TOTAL=0
+PASSED=0
+FAILED=0
+
+# ========================
+# HELPERS
+# ========================
+
+# Emit a single check result as JSON.
+emit() {
+  local check="$1" pass="$2" detail="$3"
+  TOTAL=$((TOTAL + 1))
+  if [[ "$pass" == "true" ]]; then
+    PASSED=$((PASSED + 1))
+  else
+    FAILED=$((FAILED + 1))
+  fi
+  # Escape backslashes and double quotes for valid JSON
+  detail="${detail//\\/\\\\}"
+  detail="${detail//\"/\\\"}"
+  echo "{\"check\": \"${check}\", \"pass\": ${pass}, \"detail\": \"${detail}\"}"
+}
+
+# Extract a YAML frontmatter field value.
+# Handles single-line values, block scalars (>- > | |-), and YAML lists.
+get_field() {
+  local field="$1"
+  echo "$FRONTMATTER" | awk -v f="$field" '
+    BEGIN { found = 0; block = 0; buf = "" }
+    !found && $0 ~ "^"f":" {
+      found = 1
+      val = $0
+      sub("^"f":[[:space:]]*", "", val)
+      if (val ~ /^[>|]-?[[:space:]]*$/ || val == "") {
+        block = 1
+        next
+      }
+      print val
+      exit
+    }
+    found && block && /^[[:space:]]/ {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      sub(/^- /, "", line)
+      buf = buf (buf ? " " : "") line
+    }
+    found && block && !/^[[:space:]]/ {
+      print buf
+      exit
+    }
+    END { if (block && buf != "") print buf }
+  '
+}
+
+# Detect the plugin root by walking up from the skill directory looking for
+# .claude-plugin/plugin.json. Returns empty string if not found.
+find_plugin_root() {
+  local dir="$1"
+  local i
+  for i in 1 2 3 4; do
+    dir=$(dirname "$dir")
+    if [[ -f "${dir}/.claude-plugin/plugin.json" ]]; then
+      echo "$dir"
+      return
+    fi
+  done
+  echo ""
+}
+
+# ========================
+# PRE-FLIGHT
+# ========================
+if [[ ! -f "$SKILL_MD" ]]; then
+  emit "skill-md-exists" "false" "SKILL.md not found in ${SKILL_DIR}"
+  echo "{\"summary\": true, \"total\": ${TOTAL}, \"passed\": ${PASSED}, \"failed\": ${FAILED}}"
+  exit 1
+fi
+
+# Extract frontmatter block (between first and second --- delimiters)
+FRONTMATTER=$(sed -n '/^---$/,/^---$/p' "$SKILL_MD" | sed '1d;$d')
+
+# Line number where body starts (after second ---)
+BODY_START=$(grep -n "^---$" "$SKILL_MD" | sed -n '2p' | cut -d: -f1)
+
+# Detect plugin root (if skill is inside a plugin)
+PLUGIN_ROOT=$(find_plugin_root "$SKILL_DIR")
+
+# ========================
+# FRONTMATTER CHECKS
+# ========================
+run_frontmatter() {
+  # --- name ---
+  local NAME DIR_NAME
+  NAME=$(get_field "name")
+  DIR_NAME=$(basename "$SKILL_DIR")
+
+  if [[ -z "$NAME" ]]; then
+    emit "name-present" "false" "Field 'name' is missing from frontmatter"
+  else
+    emit "name-present" "true" "Field 'name' is present"
+
+    if [[ ${#NAME} -gt 64 ]]; then
+      emit "name-format" "false" "Name '${NAME}' exceeds 64 characters (${#NAME})"
+    elif [[ ! "$NAME" =~ ^[a-z0-9-]+$ ]]; then
+      emit "name-format" "false" "Name '${NAME}' contains invalid characters (only lowercase, numbers, hyphens)"
+    elif [[ "$NAME" =~ ^- ]] || [[ "$NAME" =~ -$ ]]; then
+      emit "name-format" "false" "Name '${NAME}' must not start or end with a hyphen"
+    elif [[ "$NAME" =~ -- ]]; then
+      emit "name-format" "false" "Name '${NAME}' contains consecutive hyphens"
+    else
+      emit "name-format" "true" "Name '${NAME}' matches pattern [a-z0-9-]{1,64}"
+    fi
+
+    if [[ "$NAME" == "$DIR_NAME" ]]; then
+      emit "name-matches-dir" "true" "Name '${NAME}' matches directory '${DIR_NAME}'"
+    else
+      emit "name-matches-dir" "false" "Name '${NAME}' does not match directory '${DIR_NAME}'"
+    fi
+  fi
+
+  # --- description ---
+  local DESCRIPTION
+  DESCRIPTION=$(get_field "description")
+
+  if [[ -z "$DESCRIPTION" ]]; then
+    emit "description-present" "false" "Field 'description' is missing from frontmatter"
+  else
+    emit "description-present" "true" "Field 'description' is present"
+
+    local DESC_LOWER
+    DESC_LOWER=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]')
+    if echo "$DESC_LOWER" | grep -qE '\b(when|use|for)\b'; then
+      emit "description-trigger-phrases" "true" "Description includes trigger phrase (when/use/for)"
+    else
+      emit "description-trigger-phrases" "false" "Description should include a trigger phrase (when/use/for) for discoverability"
+    fi
+
+    if echo "$DESCRIPTION" | grep -qiE '^\s*"?(I can|You can)'; then
+      emit "description-third-person" "false" "Description should use third-person form, not 'I can' or 'You can'"
+    else
+      emit "description-third-person" "true" "Description uses appropriate voice"
+    fi
+  fi
+
+  # --- allowed-tools ---
+  local ALLOWED_TOOLS
+  ALLOWED_TOOLS=$(get_field "allowed-tools")
+
+  if [[ -z "$ALLOWED_TOOLS" ]]; then
+    emit "allowed-tools-present" "false" "Field 'allowed-tools' is missing from frontmatter"
+  else
+    emit "allowed-tools-present" "true" "Field 'allowed-tools' is present: ${ALLOWED_TOOLS}"
+  fi
+
+  # --- user-invocable ---
+  local USER_INVOCABLE
+  USER_INVOCABLE=$(get_field "user-invocable")
+
+  if [[ -z "$USER_INVOCABLE" ]]; then
+    emit "user-invocable-present" "false" "Field 'user-invocable' is missing from frontmatter"
+  else
+    if [[ "$USER_INVOCABLE" == "true" ]] || [[ "$USER_INVOCABLE" == "false" ]]; then
+      emit "user-invocable-present" "true" "Field 'user-invocable' is '${USER_INVOCABLE}'"
+    else
+      emit "user-invocable-present" "false" "Field 'user-invocable' must be boolean (true/false), got '${USER_INVOCABLE}'"
+    fi
+  fi
+}
+
+# ========================
+# STRUCTURE CHECKS
+# ========================
+run_structure() {
+  # --- body line count (<=500) ---
+  if [[ -n "$BODY_START" ]]; then
+    local TOTAL_LINES BODY_LINES
+    TOTAL_LINES=$(wc -l < "$SKILL_MD" | tr -d ' ')
+    BODY_LINES=$(( TOTAL_LINES - BODY_START ))
+    if [[ "$BODY_LINES" -le 500 ]]; then
+      emit "body-line-count" "true" "SKILL.md body is ${BODY_LINES} lines (limit 500)"
+    else
+      emit "body-line-count" "false" "SKILL.md body is ${BODY_LINES} lines, exceeds 500-line limit"
+    fi
+  else
+    emit "body-line-count" "false" "Could not locate frontmatter closing delimiter"
+  fi
+
+  # --- file references resolve ---
+  # Extract body text, strip fenced code blocks to avoid matching example paths.
+  # Per the Agent Skills spec, bundled resources (references/, scripts/, assets/,
+  # examples/) belong alongside SKILL.md in the skill directory. If a reference
+  # is not found there but exists at the plugin root, report it as misplaced.
+  local SKILL_BODY REFERENCED_FILES
+  SKILL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
+  REFERENCED_FILES=$(echo "$SKILL_BODY" \
+    | grep -oE '(references/[a-zA-Z0-9._-]+|scripts/[a-zA-Z0-9._-]+|assets/[a-zA-Z0-9._-]+|examples/[a-zA-Z0-9._-]+)' \
+    | grep -vE '/(\.\.\.|\.\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)' \
+    | sort -u || true)
+
+  if [[ -n "$REFERENCED_FILES" ]]; then
+    while IFS= read -r ref; do
+      local CANONICAL_PATH="${SKILL_DIR}/${ref}"
+      if [[ -e "$CANONICAL_PATH" ]]; then
+        # Found at canonical location (alongside SKILL.md)
+        emit "file-ref-resolves" "true" "Reference '${ref}' resolves in skill directory"
+      elif [[ -n "$PLUGIN_ROOT" ]] && [[ -e "${PLUGIN_ROOT}/${ref}" ]]; then
+        # Found at plugin root but not in skill dir — misplaced
+        emit "file-ref-resolves" "false" "Reference '${ref}' found at plugin root but not in skill directory — move to ${CANONICAL_PATH}"
+      else
+        # Not found anywhere
+        emit "file-ref-resolves" "false" "Reference '${ref}' not found — expected at ${CANONICAL_PATH}"
+      fi
+    done <<< "$REFERENCED_FILES"
+  else
+    emit "file-ref-resolves" "true" "No file references found in SKILL.md"
+  fi
+
+  # --- no disallowed files in skill directory ---
+  local DISALLOWED_FILES=("README.md" "CHANGELOG.md" "INSTALLATION_GUIDE.md")
+  for f in "${DISALLOWED_FILES[@]}"; do
+    if [[ -f "${SKILL_DIR}/${f}" ]]; then
+      emit "no-disallowed-files" "false" "Disallowed file '${f}' found in skill directory"
+    else
+      emit "no-disallowed-files" "true" "'${f}' not present (correct)"
+    fi
+  done
+
+  # --- references are one level deep (no cross-references between reference files) ---
+  if [[ -d "${SKILL_DIR}/references" ]]; then
+    for ref_file in "${SKILL_DIR}"/references/*; do
+      [[ -f "$ref_file" ]] || continue
+      local BASENAME STRIPPED
+      BASENAME=$(basename "$ref_file")
+      STRIPPED=$(sed '/^```/,/^```/d' "$ref_file" | sed 's/"[^"]*"//g')
+      if echo "$STRIPPED" | grep -qE '\(references/[a-zA-Z0-9._-]+\)' 2>/dev/null; then
+        emit "refs-one-level" "false" "Reference '${BASENAME}' cross-references other reference files"
+      else
+        emit "refs-one-level" "true" "Reference '${BASENAME}' does not cross-reference other files"
+      fi
+    done
+  fi
+
+  # --- long references (>100 lines) have table of contents ---
+  if [[ -d "${SKILL_DIR}/references" ]]; then
+    for ref_file in "${SKILL_DIR}"/references/*; do
+      [[ -f "$ref_file" ]] || continue
+      local BASENAME LINE_COUNT
+      BASENAME=$(basename "$ref_file")
+      LINE_COUNT=$(wc -l < "$ref_file" | tr -d ' ')
+      if [[ "$LINE_COUNT" -gt 100 ]]; then
+        if grep -qE '^#{1,2} Contents' "$ref_file" 2>/dev/null; then
+          emit "long-ref-toc" "true" "Reference '${BASENAME}' (${LINE_COUNT} lines) has table of contents"
+        else
+          emit "long-ref-toc" "false" "Reference '${BASENAME}' (${LINE_COUNT} lines) exceeds 100 lines but has no '# Contents' heading"
+        fi
+      fi
+    done
+  fi
+
+  # --- SKILL.md mentions all bundled resource files ---
+  for subdir in references scripts assets examples; do
+    if [[ -d "${SKILL_DIR}/${subdir}" ]]; then
+      for file in "${SKILL_DIR}/${subdir}"/*; do
+        [[ -f "$file" ]] || continue
+        local BASENAME REL_PATH
+        BASENAME=$(basename "$file")
+        REL_PATH="${subdir}/${BASENAME}"
+        if grep -q "$REL_PATH" "$SKILL_MD" 2>/dev/null; then
+          emit "skill-md-mentions-file" "true" "SKILL.md mentions '${REL_PATH}'"
+        else
+          emit "skill-md-mentions-file" "false" "SKILL.md does not mention '${REL_PATH}' — all bundled files should be referenced"
+        fi
+      done
+    fi
+  done
+}
+
+# ========================
+# MAIN
+# ========================
+case "$MODE" in
+  all)         run_frontmatter; run_structure ;;
+  frontmatter) run_frontmatter ;;
+  structure)   run_structure ;;
+  *)
+    echo "Unknown mode: ${MODE} (valid: all, frontmatter, structure)" >&2
+    exit 2
+    ;;
+esac
+
+# Always emit a summary as the final line
+echo "{\"summary\": true, \"total\": ${TOTAL}, \"passed\": ${PASSED}, \"failed\": ${FAILED}}"
+
+# Exit 0 if all passed, 1 if any failed
+[[ "$FAILED" -eq 0 ]]
