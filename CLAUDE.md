@@ -4,36 +4,51 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This repository is a **Claude Code plugin** called **SAI (Skills for Agentic Intelligence)**. It contains a collection of skills for agentic programming workflows. Skills are specialized capabilities that agents (like Claude Code) can invoke to perform complex, multi-step tasks such as code review automation, documentation generation, PR management, project maintenance, and development workflow optimization.
+This repository is a **monorepo of Claude Code plugins** called **SAI (Skills for Agentic Intelligence)**. Each plugin contains a single skill for agentic programming workflows. Skills are specialized capabilities that agents (like Claude Code) can invoke to perform complex, multi-step tasks such as code review automation, documentation generation, PR management, project maintenance, and development workflow optimization.
 
 ## Plugin Architecture
 
-SAI follows the Claude Code plugin structure:
+Each plugin follows the Claude Code plugin structure:
 
-- **Plugin metadata**: `.claude-plugin/plugin.json` defines name, version, and description
-- **Marketplace config**: `.claude-plugin/marketplace.json` enables distribution
-- **Skills directory**: `skills/` contains all skill definitions
-- **Namespacing**: Skills are invoked as `/sai:skill-name` or `/skill-name`
+- **Plugin metadata**: `{plugin-name}/.claude-plugin/plugin.json` defines name, version, and description
+- **Skill definition**: `{plugin-name}/SKILL.md` at plugin root (flat structure)
+- **Supporting files**: `{plugin-name}/references/`, `{plugin-name}/scripts/`, etc.
+- **Runtime state**: `{plugin-name}/findings/` (gitignored)
+- **Independent versioning**: Each plugin has its own version
 
 ## Repository Structure
 
 ```
 .
-├── .claude-plugin/
-│   ├── plugin.json        # Plugin metadata (name, version, description)
-│   └── marketplace.json   # Marketplace distribution config
-├── skills/
-│   └── {skill-name}/      # Each skill in its own directory
-│       ├── SKILL.md       # Skill definition with YAML frontmatter
-│       ├── sources.md     # Optional: Data sources, search patterns
-│       ├── output-template.md # Optional: Output format template
-│       └── ...            # Other skill-specific files
-├── findings/              # Runtime state and output files (gitignored)
-│   └── {skill-name}/
-│       ├── .last-run      # State tracking files
-│       ├── .covered-stories
-│       └── {outputs}      # Generated artifacts
-├── CLAUDE.md             # This file
+├── ai-daily-digest/
+│   ├── .claude-plugin/
+│   │   └── plugin.json     # Plugin metadata
+│   ├── SKILL.md            # Skill definition at plugin root
+│   ├── sources.md          # Data sources, search patterns
+│   ├── output-template.md  # Output format template
+│   ├── references/         # Supporting documentation
+│   ├── findings/           # Runtime state (gitignored)
+│   └── README.md           # Plugin-specific docs
+├── gh-review-comments/
+│   ├── .claude-plugin/plugin.json
+│   ├── SKILL.md
+│   ├── references/
+│   ├── scripts/
+│   └── README.md
+├── review-claude-md/
+│   ├── .claude-plugin/plugin.json
+│   ├── SKILL.md
+│   ├── references/
+│   ├── scripts/
+│   └── README.md
+├── review-skill/
+│   ├── .claude-plugin/plugin.json
+│   ├── SKILL.md
+│   ├── references/
+│   ├── scripts/
+│   └── README.md
+├── CLAUDE.md               # This file - development guide
+├── CONTRIBUTING.md
 └── README.md
 ```
 
@@ -90,7 +105,7 @@ Complex skills should be organized into numbered phases (see `ai-daily-digest/SK
 
 ### State Management
 
-Skills that run periodically should track state in `./findings/{skill-name}/`:
+Skills that run periodically should track state in `{plugin-name}/findings/`:
 
 - Use hidden files for state (`.last-run`, `.covered-items`)
 - Document state file format in SKILL.md
@@ -106,17 +121,18 @@ When integrating with external services (Notion, Slack, etc.):
 - Verify integration success before updating state
 - Include integration step in workflow phases
 
-## Creating New Skills
+## Creating New Plugins
 
-When adding a new skill to the SAI plugin:
+When adding a new plugin to the SAI monorepo:
 
-1. Create directory: `mkdir skills/{skill-name}/`
-2. Create `SKILL.md` with required frontmatter
-3. Add supporting files if needed (sources, templates)
-4. Test skill invocation: `/sai:skill-name [args]` or `/skill-name [args]`
-5. Update root `README.md` to list the new skill
-6. Add to `.gitignore` if skill generates runtime artifacts
-7. Increment plugin version in `.claude-plugin/plugin.json` if publishing
+1. Create plugin directory: `mkdir {plugin-name}/`
+2. Create `.claude-plugin/plugin.json` with metadata (start at v1.0.0)
+3. Create `SKILL.md` at plugin root with required frontmatter
+4. Add supporting files if needed (references/, scripts/, templates)
+5. Create `findings/` directory if plugin needs runtime state
+6. Create `README.md` with installation and usage instructions
+7. Update root `README.md` to list the new plugin
+8. Test: `claude --plugin-dir {plugin-name}/`
 
 ## Conventions from Existing Skills
 
@@ -156,15 +172,14 @@ Skills commonly use these tool patterns:
 
 ### Claude Code Plugin System
 
-This plugin integrates with Claude Code via:
+Each plugin integrates with Claude Code via:
 
-- **Plugin installation**: `/plugin install sai@skills` or `claude --plugin-dir .`
-- **Namespaced invocation**: `/sai:skill-name [args]`
-- **Direct invocation**: `/skill-name [args]` (if no conflicts)
+- **Plugin installation**: `claude --plugin-dir {plugin-name}/`
+- **Skill invocation**: `/{plugin-name} [args]` or `/{skill-name} [args]`
 - **Argument parsing**: From `$ARGUMENTS` environment variable
 - **Tool restrictions**: Via `allowed-tools` frontmatter
 - **User invocability**: Via `user-invocable: true`
-- **Version management**: Semantic versioning in `plugin.json`
+- **Version management**: Independent semantic versioning per plugin
 
 ### MCP (Model Context Protocol) Tools
 

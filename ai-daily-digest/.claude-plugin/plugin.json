@@ -1,0 +1,10 @@
+{
+  "name": "ai-daily-digest",
+  "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT"
+}
