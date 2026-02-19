@@ -1,207 +1,58 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Overview
 
-This repository is a **monorepo of Claude Code plugins** called **SAI (Skills for Agentic Intelligence)**. Each plugin contains a single skill for agentic programming workflows. Skills are specialized capabilities that agents (like Claude Code) can invoke to perform complex, multi-step tasks such as code review automation, documentation generation, PR management, project maintenance, and development workflow optimization.
+Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**. Each plugin contains one skill for agentic programming workflows (code review, docs generation, PR management, etc.).
 
-## Plugin Architecture
+## Commands
 
-Each plugin follows the Claude Code plugin structure:
+- Test plugin locally: `claude --plugin-dir {plugin-name}/`
+- Test specific skill: `claude --plugin-dir {plugin-name}/ -p "/{skill-name} test args"`
+- No build step (pure markdown + shell scripts)
+- No lint step (no linter configured)
 
-- **Plugin metadata**: `{plugin-name}/.claude-plugin/plugin.json` defines name, version, and description
-- **Skill definition**: `{plugin-name}/skills/{skill-name}/SKILL.md` (required for Claude Code discovery)
-- **Supporting files**: `{plugin-name}/references/`, `{plugin-name}/scripts/`, etc.
-- **Runtime state**: `{plugin-name}/findings/` (gitignored)
-- **Independent versioning**: Each plugin has its own version
+## Pre-commit Checklist
 
-## Repository Structure
+- Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
+- Test modified plugins with `claude --plugin-dir {plugin-name}/`
+- Update root README.md if adding/removing plugins
+- Follow conventional commits: `type(scope): description` — see `CONTRIBUTING.md:93`
 
-```
-.
-├── ai-daily-digest/
-│   ├── .claude-plugin/
-│   │   └── plugin.json     # Plugin metadata
-│   ├── skills/
-│   │   └── ai-daily-digest/
-│   │       └── SKILL.md    # Skill definition (required path for discovery)
-│   ├── sources.md          # Data sources, search patterns
-│   ├── output-template.md  # Output format template
-│   ├── references/         # Supporting documentation
-│   ├── findings/           # Runtime state (gitignored)
-│   └── README.md           # Plugin-specific docs
-├── gh-review-comments/
-│   ├── .claude-plugin/plugin.json
-│   ├── skills/
-│   │   └── gh-review-comments/
-│   │       └── SKILL.md
-│   ├── references/
-│   ├── scripts/
-│   └── README.md
-├── review-claude-md/
-│   ├── .claude-plugin/plugin.json
-│   ├── skills/
-│   │   └── review-claude-md/
-│   │       └── SKILL.md
-│   ├── references/
-│   ├── scripts/
-│   └── README.md
-├── review-skill/
-│   ├── .claude-plugin/plugin.json
-│   ├── skills/
-│   │   └── review-skill/
-│   │       └── SKILL.md
-│   ├── references/
-│   ├── scripts/
-│   └── README.md
-├── CLAUDE.md               # This file - development guide
-├── CONTRIBUTING.md
-└── README.md
-```
+## Architecture
 
-## Skill Definition Format
-
-Each skill MUST have a `SKILL.md` file at `{plugin-name}/skills/{skill-name}/SKILL.md` with YAML frontmatter. This path is required for Claude Code to discover and register the skill as a command.
-
-```markdown
----
-name: skill-name
-description: Brief description of what the skill does and when to use it
-argument-hint: "[--flag value] [optional-args]"
-allowed-tools: WebSearch, WebFetch, Read, Write, Bash, Grep, Glob
-user-invocable: true
----
-
-# Skill Name
-
-Detailed skill instructions...
-```
-
-### Frontmatter Fields
-
-- **name** (required): Kebab-case skill identifier (e.g., `ai-daily-digest`)
-- **description** (required): One-sentence summary including use cases
-- **argument-hint** (optional): Command-line style hint for arguments
-- **allowed-tools** (required): Comma-separated list of tools the skill can use
-- **user-invocable** (required): Boolean - whether users can invoke via `/skill-name`
-
-### Skill Body Structure
-
-The SKILL.md body should contain:
-
-1. **Overview section**: What the skill does
-2. **Arguments section**: Parse from `$ARGUMENTS` with supported flags
-3. **State Files section**: Document any persistent state files (location, format, purpose)
-4. **Workflow section**: Step-by-step phases for execution
-5. **Output Requirements**: Format, validation, delivery
-6. **Error Handling**: Failure modes and recovery
-7. **Example Invocations**: Usage examples
-
-## Skill Workflow Patterns
-
-### Phase-Based Execution
-
-Complex skills should be organized into numbered phases (see `ai-daily-digest/SKILL.md` for reference):
-
-- **Phase 1: Setup** - Read config, parse args, load state
-- **Phase N: Data Collection** - Gather information from sources
-- **Phase N+1: Synthesis** - Process and deduplicate
-- **Phase N+2: Output Generation** - Create artifacts
-- **Phase N+3: State Persistence** - Save tracking files
-- **Phase N+4: Verification** - Spawn verification agent if needed
-
-### State Management
-
-Skills that run periodically should track state in `{plugin-name}/findings/`:
-
-- Use hidden files for state (`.last-run`, `.covered-items`)
-- Document state file format in SKILL.md
-- Read state on startup, update on successful completion
-- Keep state files under size limits (e.g., last 300 entries)
-
-### External Integrations
-
-When integrating with external services (Notion, Slack, etc.):
-
-- Document required MCP tools in SKILL.md
-- Use deferred tool loading pattern (`ToolSearch` → `select:mcp__*`)
-- Verify integration success before updating state
-- Include integration step in workflow phases
+- Each plugin is self-contained in `{plugin-name}/` with independent versioning
+- `{plugin-name}/.claude-plugin/plugin.json` — plugin metadata (name, version, description)
+- `{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
+- `{plugin-name}/references/` — supporting docs; `{plugin-name}/scripts/` — automation scripts
+- `{plugin-name}/findings/` — runtime state (gitignored)
+- Plugins: `ai-daily-digest`, `gh-review-comments`, `humanize`, `review-claude-md`, `review-skill`
+- Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins
 
-When adding a new plugin to the SAI monorepo:
+1. `mkdir -p {plugin-name}/.claude-plugin {plugin-name}/skills/{skill-name}/`
+2. Create `plugin.json` — see `humanize/.claude-plugin/plugin.json` for template
+3. Create `SKILL.md` with YAML frontmatter — see `humanize/skills/humanize/SKILL.md` for template
+4. Add `references/`, `scripts/`, `findings/` as needed
+5. Create `README.md` and update root `README.md`
+6. Test: `claude --plugin-dir {plugin-name}/`
 
-1. Create plugin directory: `mkdir {plugin-name}/`
-2. Create `.claude-plugin/plugin.json` with metadata (start at v1.0.0)
-3. Create `skills/{skill-name}/SKILL.md` with required frontmatter
-4. Add supporting files if needed (references/, scripts/, templates)
-5. Create `findings/` directory if plugin needs runtime state
-6. Create `README.md` with installation and usage instructions
-7. Update root `README.md` to list the new plugin
-8. Test: `claude --plugin-dir {plugin-name}/`
+## Skill Authoring
 
-## Conventions from Existing Skills
+See `.claude/rules/skill-authoring.md` for:
 
-### ai-daily-digest Skill
+- SKILL.md frontmatter fields and body structure
+- Phase-based execution patterns
+- State management in `findings/`
+- External integration patterns (MCP tools, Notion, etc.)
+- Tool usage patterns and plugin integration
 
-This skill demonstrates several important patterns:
+## Gotchas
 
-- **Multi-phase workflow** with 20 distinct phases
-- **State tracking** using `.last-run` and `.covered-stories` files
-- **Deduplication** via story IDs and covered URL tracking
-- **External integration** with Notion API
-- **Verification agent** spawned for quality assurance
-- **Source management** via separate `sources.md` file
-- **Output templating** with markdown template file
-- **Date-based variations** (Friday weekly recap mode)
-
-Key architectural decisions:
-
-- Deduplication happens BEFORE digest generation (Phase 16)
-- State files updated AFTER verification passes (Phase 20)
-- Verification agent is separate to avoid polluting context
-- Story IDs enable fuzzy matching across different URLs
-
-## Tool Usage Patterns
-
-Skills commonly use these tool patterns:
-
-- **WebSearch + WebFetch**: Information gathering from web sources
-- **Read**: Loading configuration, templates, and state files
-- **Write**: Saving outputs and state files
-- **Bash**: Git operations, file system commands, external CLI tools
-- **Grep**: Searching within files for verification
-- **Glob**: Finding files by pattern
-- **Task (spawning agents)**: Verification, parallel research tasks
-
-## Integration Points
-
-### Claude Code Plugin System
-
-Each plugin integrates with Claude Code via:
-
-- **Plugin installation**: `claude --plugin-dir {plugin-name}/`
-- **Skill invocation**: `/{plugin-name} [args]` or `/{skill-name} [args]`
-- **Argument parsing**: From `$ARGUMENTS` environment variable
-- **Tool restrictions**: Via `allowed-tools` frontmatter
-- **User invocability**: Via `user-invocable: true`
-- **Version management**: Independent semantic versioning per plugin
-
-### MCP (Model Context Protocol) Tools
-
-Skills can use MCP-provided tools:
-
-- Notion API: `mcp__notion__notion-create-pages`
-- Other integrations as needed
-- Load via `ToolSearch` before first use
-
-## Common Pitfalls
-
-- **Don't update state prematurely**: Update tracking files AFTER successful completion
-- **Verify external integrations**: Confirm API calls succeed before marking complete
-- **Deduplicate early**: Filter duplicates BEFORE generating output
-- **Use verification agents**: Spawn separate agents for quality checks to avoid context pollution
-- **Document state format**: Future skill runs depend on parsing state correctly
-- **Handle missing state gracefully**: First run often has no state files
+- SKILL.md path **must** be `{plugin-name}/skills/{skill-name}/SKILL.md` — Claude Code won't discover skills at other paths
+- Update state files AFTER successful completion, not before — premature updates corrupt state on failure
+- Deduplicate BEFORE generating output — downstream phases assume unique entries
+- Spawn verification agents separately to avoid polluting main context
+- First run has no state files — always handle missing state gracefully
+- `$ARGUMENTS` is the only way skills receive user input — parse flags from it
+- CI workflows in `.github/workflows/` are org-synced — do not edit manually
