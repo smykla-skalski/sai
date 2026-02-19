@@ -39,12 +39,30 @@ Reference: `ai-daily-digest/skills/ai-daily-digest/SKILL.md` for a 20-phase exam
 
 ## State Management
 
-Skills that run periodically track state in `{plugin-name}/findings/`:
+Skills that need persistent state or artifacts MUST use an XDG-compliant path outside the plugin cache. Plugin cache directories are replaced on version updates — any files written there will be lost.
 
-- Use hidden files (`.last-run`, `.covered-items`)
+**Persistent data directory pattern:**
+
+```
+${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/
+```
+
+Resolve this path once in the setup phase via Bash and store as a variable (e.g., `DATA_DIR`). Use the resolved absolute path for all subsequent file operations.
+
+**Do NOT use:**
+
+- `./findings/` — ambiguous, may resolve to plugin cache
+- `$SKILL_DIR/findings/` — inside plugin cache, lost on update
+- Any relative paths for persistent state
+
+**Guidelines:**
+
+- Use hidden files for tracking state (`.last-run`, `.covered-items`)
 - Document state file format in SKILL.md
 - Read on startup, update on successful completion only
 - Keep state files bounded (e.g., last 300 entries)
+
+Reference: `ai-daily-digest/skills/ai-daily-digest/SKILL.md` for the pattern.
 
 ## External Integrations
 

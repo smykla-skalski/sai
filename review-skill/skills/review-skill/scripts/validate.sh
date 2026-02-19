@@ -307,6 +307,32 @@ run_structure() {
     done
   fi
 
+  # --- persistent state uses XDG paths, not relative or cache-relative ---
+  # If the skill writes persistent state (findings/, .last-run, .covered-stories,
+  # state files, artifacts), it must use XDG_DATA_HOME, not relative paths.
+  # Plugin cache directories are replaced on version updates.
+  local HAS_STATE_PATTERNS HAS_XDG_PATH
+  HAS_STATE_PATTERNS=$(echo "$SKILL_BODY" \
+    | grep -cE '\./findings/|\$SKILL_DIR/findings/|\.last-run|\.covered-|state stored in|persistent.*state|State Files' || true)
+  HAS_XDG_PATH=$(echo "$SKILL_BODY" \
+    | grep -cE 'XDG_DATA_HOME|\$HOME/\.local/share' || true)
+
+  if [[ "$HAS_STATE_PATTERNS" -gt 0 ]]; then
+    # Skill appears to use persistent state — check for proper XDG paths.
+    # Prioritize XDG detection: if XDG paths are present, the skill is doing the
+    # right thing and any ./findings/ mentions are likely warnings, not actual usage.
+    local HAS_BAD_PATHS
+    HAS_BAD_PATHS=$(echo "$SKILL_BODY" \
+      | grep -cE '\./findings/|\$SKILL_DIR/findings/' || true)
+    if [[ "$HAS_XDG_PATH" -gt 0 ]]; then
+      emit "persistent-state-xdg" "true" "Persistent state uses XDG-compliant path"
+    elif [[ "$HAS_BAD_PATHS" -gt 0 ]]; then
+      emit "persistent-state-xdg" "false" "Skill uses relative paths (./findings/ or \$SKILL_DIR/findings/) for persistent state — use \${XDG_DATA_HOME:-\$HOME/.local/share}/sai/{plugin}/ instead"
+    else
+      emit "persistent-state-xdg" "true" "State references found but no relative path issues detected"
+    fi
+  fi
+
   # --- SKILL.md mentions all bundled resource files ---
   for subdir in references scripts assets examples; do
     if [[ -d "${SKILL_DIR}/${subdir}" ]]; then

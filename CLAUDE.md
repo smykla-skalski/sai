@@ -24,7 +24,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - `{plugin-name}/.claude-plugin/plugin.json` — plugin metadata (name, version, description)
 - `{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
 - `{plugin-name}/skills/{skill-name}/references/` — supporting docs; `{plugin-name}/skills/{skill-name}/scripts/` — automation scripts
-- `{plugin-name}/findings/` — runtime state (gitignored)
+- Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
 - Plugins: `ai-daily-digest`, `gh-review-comments`, `humanize`, `review-claude-md`, `review-skill`
 - Full directory tree: see `README.md` (do not duplicate here)
 
@@ -33,7 +33,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 1. `mkdir -p {plugin-name}/.claude-plugin {plugin-name}/skills/{skill-name}/`
 2. Create `plugin.json` — see `humanize/.claude-plugin/plugin.json` for template
 3. Create `SKILL.md` with YAML frontmatter — see `humanize/skills/humanize/SKILL.md` for template
-4. Add `references/`, `scripts/`, `findings/` as needed
+4. Add `references/`, `scripts/` as needed
 5. Create `README.md` and update root `README.md`
 6. Test: `claude --plugin-dir {plugin-name}/`
 
@@ -43,7 +43,7 @@ See `.claude/rules/skill-authoring.md` for:
 
 - SKILL.md frontmatter fields and body structure
 - Phase-based execution patterns
-- State management in `findings/`
+- State management via XDG persistent data directory
 - External integration patterns (MCP tools, Notion, etc.)
 - Tool usage patterns and plugin integration
 

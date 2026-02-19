@@ -51,9 +51,15 @@ Or in `~/.claude/settings.json` under the `"env"` key:
 }
 ```
 
+## Persistent Data Directory
+
+All persistent state and generated artifacts are stored in `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest/`. This path is independent of the plugin cache and project working directory — artifacts survive plugin updates and work from any project.
+
+Resolve this path once in Phase 1 and use the resolved absolute path for all subsequent file operations. Do NOT use `./findings/` or other relative paths — they may resolve to the plugin cache and be lost on updates.
+
 ## State Files
 
-All state stored in `./findings/ai-daily-digest/`.
+All state stored in the persistent data directory.
 
 ### Last Run Date (`.last-run`)
 
@@ -82,9 +88,10 @@ Example:
 2. Read `references/output-template.md` for digest format
 3. Parse arguments for focus area and `--notion-page-id`
 4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode). Otherwise check in order: `--notion-page-id` arg → `NOTION_PARENT_PAGE_ID` env var → prompt user interactively. Store resolved value as `notion_page_id` for Phase 18. If user declines to provide an ID, skip Notion publishing (archive-only mode).
-5. Read `.last-run` — set date range from last run to today
-6. Read `.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
-7. If today is Friday, enable weekly recap mode (see `references/search-patterns.md` → Friday Weekly Recap)
+5. **Resolve persistent data directory** — run `echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest"` via Bash to get the absolute path. Store as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"`.
+6. Read `$DATA_DIR/.last-run` — set date range from last run to today
+7. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
+8. If today is Friday, enable weekly recap mode (see `references/search-patterns.md` → Friday Weekly Recap)
 
 ### Phases 2-15: Research
 
@@ -149,9 +156,7 @@ Filter out stories where:
 
 DO NOT update `.covered-stories` in this phase — wait for verification.
 
-**Step 1:** `mkdir -p ./findings/ai-daily-digest`
-
-**Step 2: Save to Notion**
+**Step 1: Save to Notion**
 
 Skip this step if `notion_page_id` was not resolved in Phase 1 (archive-only mode).
 
@@ -161,18 +166,18 @@ Load Notion tool via ToolSearch (`select:mcp__notion__notion-create-pages`), the
 - Title: `🤖 AI Digest {YYYY-MM-DD}`
 - Content: Full digest markdown (excluding H1 title)
 
-If page creation fails, warn the user and continue — the archive copy in Step 3 still provides value.
+If page creation fails, warn the user and continue — the archive copy in Step 2 still provides value.
 
-**Step 3:** Write archive copy to `./findings/ai-daily-digest/ai-digest-{YYYY-MM-DD}.md`
+**Step 2:** Write archive copy to `$DATA_DIR/ai-digest-{YYYY-MM-DD}.md`
 
-**Step 4:** Update `.last-run` with today's date (YYYY-MM-DD).
+**Step 3:** Update `$DATA_DIR/.last-run` with today's date (YYYY-MM-DD).
 
 ### Phase 19: Duplicate Verification
 
 Spawn a `general-purpose` verification agent to check today's digest against:
 
-1. `.covered-stories` (should NOT include today's stories yet)
-2. Last 3 digests from `./findings/ai-daily-digest/`
+1. `$DATA_DIR/.covered-stories` (should NOT include today's stories yet)
+2. Last 3 digests from `$DATA_DIR/`
 
 Agent checks for: exact duplicates, near duplicates (same company + similar action within 7 days), URL duplicates, topic fatigue (same topic 3+ times in past week).
 
@@ -184,7 +189,7 @@ Agent checks for: exact duplicates, near duplicates (same company + similar acti
 
 ### Phase 20: Update Covered Stories (FINAL)
 
-Only after Phase 19 passes. Append to `.covered-stories` for each story in final digest:
+Only after Phase 19 passes. Append to `$DATA_DIR/.covered-stories` for each story in final digest:
 
 ```text
 {date}|{story_id}|{url}
