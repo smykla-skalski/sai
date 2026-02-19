@@ -333,6 +333,50 @@ run_structure() {
     fi
   fi
 
+  # --- no grading/rubric style (C6) ---
+  # Skills should give imperative instructions, not scoring rubrics with point
+  # values, percentage weights, or letter grades. Require 2+ signals to fail.
+  local GRADING_SIGNALS=0
+  local GRADING_EVIDENCE=""
+
+  # Point values: "10 points", "5 pts"
+  if echo "$SKILL_BODY" | grep -qiE '\b[0-9]+\s+(points?|pts)\b'; then
+    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
+    GRADING_EVIDENCE="${GRADING_EVIDENCE}point-values "
+  fi
+
+  # Score/rating numeric assignments: "score: 4", "rating: 3"
+  if echo "$SKILL_BODY" | grep -qiE '\b(score|rating)\s*:\s*[0-9]'; then
+    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
+    GRADING_EVIDENCE="${GRADING_EVIDENCE}score-assignments "
+  fi
+
+  # Percentage weights: "30% weight", "weight: 25%"
+  if echo "$SKILL_BODY" | grep -qiE '\b[0-9]+%\s*(weight|of total)|\bweight[s]?\s*:?\s*[0-9]+%'; then
+    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
+    GRADING_EVIDENCE="${GRADING_EVIDENCE}percentage-weights "
+  fi
+
+  # Letter grade scales: "Grade: A", "A (90-100)"
+  if echo "$SKILL_BODY" | grep -qiE '\bgrade\s*:?\s*[A-F]\b|\b[A-F]\s*\([0-9]+-[0-9]+'; then
+    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
+    GRADING_EVIDENCE="${GRADING_EVIDENCE}letter-grades "
+  fi
+
+  # Rubric keywords: "rubric", "scoring matrix", "grading scale/criteria"
+  if echo "$SKILL_BODY" | grep -qiE '\brubric\b|\bscoring\s+matrix\b|\bgrading\s+(scale|criteria)\b'; then
+    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
+    GRADING_EVIDENCE="${GRADING_EVIDENCE}rubric-keywords "
+  fi
+
+  GRADING_EVIDENCE="${GRADING_EVIDENCE% }"
+
+  if [[ "$GRADING_SIGNALS" -ge 2 ]]; then
+    emit "no-grading-style" "false" "Grading/rubric style detected (${GRADING_SIGNALS} signals: ${GRADING_EVIDENCE}) — restructure as imperative workflow"
+  else
+    emit "no-grading-style" "true" "No grading/rubric style detected"
+  fi
+
   # --- SKILL.md mentions all bundled resource files ---
   for subdir in references scripts assets examples; do
     if [[ -d "${SKILL_DIR}/${subdir}" ]]; then

@@ -10,6 +10,7 @@ Good vs bad patterns for skill evaluation.
 - [Read Directives](#read-directives)
 - [Script Invocation](#script-invocation)
 - [Degrees of Freedom](#degrees-of-freedom)
+- [Grading Style](#grading-style)
 
 ---
 
@@ -95,3 +96,32 @@ bash "$SKILL_DIR/scripts/validate.sh" "$TARGET"
 
 **Bad** — menu of choices:
 > Output as markdown, JSON, YAML, HTML, or plain text. Choose whichever format best suits your needs.
+
+---
+
+## Grading Style
+
+**Good** — imperative workflow with concrete actions:
+
+```text
+### Phase 2: Analyze
+Check each function for:
+1. Missing error handling on external calls
+2. Hardcoded credentials or secrets
+3. SQL queries built from string concatenation
+
+List each issue with file path, line number, and suggested fix.
+```
+
+**Bad** — scoring rubric with points and grades:
+
+```text
+### Evaluation Criteria
+| Criterion   | Weight | Score Range |
+|:------------|:-------|:------------|
+| Readability | 30%    | 1-5         |
+| Performance | 25%    | 1-5         |
+
+Grade A (90-100%): Excellent code quality.
+Grade B (80-89%): Good with minor issues.
+```

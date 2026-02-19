@@ -153,6 +153,8 @@ Read `references/examples.md` for detailed comparison pairs. Key patterns:
 
 **Read directives** — Good: "Read the search patterns file in full before starting Phase 3." Bad: "Search patterns are available in the search patterns file."
 
+**Grading style** — Good: "Check each function for missing error handling. List issues with file path and fix." Bad: "Evaluate criteria with numeric scores and percentage weights, then derive a letter grade."
+
 ## Example Invocations
 
 ```bash

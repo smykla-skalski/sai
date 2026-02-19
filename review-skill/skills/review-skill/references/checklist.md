@@ -21,10 +21,11 @@ Any single failure in this tier results in an overall **FAIL** verdict. These re
 | C3  | All file references in SKILL.md resolve to actual files                       | Agent Skills Spec                            |
 | C4  | Name field valid format and matches directory name                            | Agent Skills Spec                            |
 | C5  | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
+| C6  | Not structured as a scoring rubric with points, weights, or letter grades     | Anthropic Best Practices                     |
 
 ### How to evaluate
 
-Read the SKILL.md frontmatter first. Confirm the `description` field contains both a functional summary and at least one trigger phrase (e.g., "Use when..."). Count body lines excluding the YAML frontmatter block and verify < 500. Grep for file paths referenced in the body and confirm each resolves relative to the skill directory. Verify the `name` field is kebab-case and matches the parent directory name exactly. Scan for filler instructions that restate LLM defaults — if removing a sentence changes nothing about behavior, it fails C5.
+Read the SKILL.md frontmatter first. Confirm the `description` field contains both a functional summary and at least one trigger phrase (e.g., "Use when..."). Count body lines excluding the YAML frontmatter block and verify < 500. Grep for file paths referenced in the body and confirm each resolves relative to the skill directory. Verify the `name` field is kebab-case and matches the parent directory name exactly. Scan for filler instructions that restate LLM defaults — if removing a sentence changes nothing about behavior, it fails C5. Scan for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow — it fails C6.
 
 ---
 
