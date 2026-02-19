@@ -61,6 +61,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["writing", "ai-cleanup", "text"]
+    },
+    {
+      "name": "git",
+      "source": "./git",
+      "description": "Git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["git", "worktree", "branch-management", "automation"]
     }
   ]
 }

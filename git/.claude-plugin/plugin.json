@@ -1,0 +1,10 @@
+{
+  "name": "git",
+  "description": "Git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT"
+}

@@ -25,7 +25,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - `{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
 - `{plugin-name}/skills/{skill-name}/references/` — supporting docs; `{plugin-name}/skills/{skill-name}/scripts/` — automation scripts
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
-- Plugins: `ai-daily-digest`, `gh-review-comments`, `humanize`, `review-claude-md`, `review-skill`
+- Plugins: `ai-daily-digest`, `gh-review-comments`, `git`, `humanize`, `review-claude-md`, `review-skill`
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins

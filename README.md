@@ -4,7 +4,7 @@ A collection of independent Claude Code plugins for development workflows, autom
 
 ## Overview
 
-This monorepo contains 5 independent plugins, each providing specialized capabilities:
+This monorepo contains 6 independent plugins, each providing specialized capabilities:
 
 | Plugin                 | Description                                                                             | Installation Path     |
 |:-----------------------|:----------------------------------------------------------------------------------------|:----------------------|
@@ -13,6 +13,7 @@ This monorepo contains 5 independent plugins, each providing specialized capabil
 | **humanize**           | Make text sound natural by removing AI writing patterns                                 | `humanize/`           |
 | **review-claude-md**   | Audit and fix CLAUDE.md files using tiered binary checklist                             | `review-claude-md/`   |
 | **review-skill**       | Review and fix Claude Code skill definitions using tiered binary checklist              | `review-skill/`       |
+| **git**                | Git workflow automation: worktree creation, branch cleanup, and reset utilities         | `git/`                |
 
 ## Installation
 
@@ -30,6 +31,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/humanize
 /plugin install sai/review-claude-md
 /plugin install sai/review-skill
+/plugin install sai/git
 ```
 
 Each plugin is independent - install only what you need.
@@ -46,6 +48,7 @@ claude --plugin-dir /path/to/sai/gh-review-comments
 claude --plugin-dir /path/to/sai/humanize
 claude --plugin-dir /path/to/sai/review-claude-md
 claude --plugin-dir /path/to/sai/review-skill
+claude --plugin-dir /path/to/sai/git
 ```
 
 ## Plugins
@@ -89,6 +92,14 @@ Review and fix Claude Code skill definitions (SKILL.md) using tiered binary chec
 **Usage**: `/review-skill [path/to/SKILL.md]`
 
 [Full documentation →](./review-skill/README.md)
+
+### git
+
+Git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities. Includes 4 skills: worktree creation, branch reset, stale branch cleanup, and worktree validation.
+
+**Usage**: `/worktree <task>`, `/reset-main`, `/clean-gone`, `/worktree-review`
+
+[Full documentation →](./git/README.md)
 
 ## Development
 
