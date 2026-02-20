@@ -1,8 +1,8 @@
 ---
 name: humanize
 description: Identify and remove AI writing patterns to make text sound natural and human-written. Use when humanizing commit messages, PR descriptions, review comments, docs, changelogs, or release notes. Also for de-slopping text that sounds robotic, has AI vibes, or reads like ChatGPT output.
-argument-hint: "[file-path] [--score-only] [--inline]"
-allowed-tools: Read, Write, Edit, Grep, Glob, AskUserQuestion
+argument-hint: "[file-path] [--score-only] [--dry-run]"
+allowed-tools: Read, Write, Edit, Grep, AskUserQuestion
 user-invocable: true
 ---
 
@@ -18,7 +18,9 @@ Parse from `$ARGUMENTS`:
 |:---------------|:--------|:------------------------------------------------|
 | (positional)   | —       | File path to humanize. Prompt user if omitted   |
 | `--score-only` | off     | Report detected patterns without rewriting      |
-| `--inline`     | off     | Edit the file in-place. Default: output to chat |
+| `--dry-run`    | off     | Output to chat instead of editing in-place      |
+
+Default: edit the file in-place, fixing all detected patterns regardless of severity (including faint ones). Use `--dry-run` to preview changes without modifying the file.
 
 ## Pattern categories
 
@@ -65,7 +67,7 @@ Read `references/voice-guide.md` in full before starting this phase.
 
 ### Phase 4: Rewrite
 
-Apply fixes in this order:
+Fix every detected pattern regardless of severity. Even faint tells get fixed. Apply fixes in this order:
 
 1. Strip communication artifacts: chatbot phrases, disclaimers, sycophantic openings.
 2. Fix content patterns: deflate significance claims, replace vague attributions with specifics, remove formulaic sections.
@@ -105,9 +107,9 @@ If `--score-only`, stop here.
 
 ### Phase 7: Output
 
-1. If `--inline`: apply edits to the file using the Edit tool. Present a summary of changes.
-2. If no `--inline`: output the rewritten text to chat.
-3. Append the pattern report after the rewritten text.
+1. If `--dry-run`: output the rewritten text to chat.
+2. Otherwise: apply edits to the file in-place using the Edit tool. Present a summary of changes.
+3. Append the pattern report after the output.
 
 ## Example
 
