@@ -265,6 +265,30 @@ run_structure() {
     emit "file-ref-resolves" "true" "No file references found in SKILL.md"
   fi
 
+  # --- script invocations use $SKILL_DIR prefix (I6) ---
+  # If the skill has a scripts/ directory, check that script references in the
+  # body use $SKILL_DIR/scripts/ — bare paths like `scripts/foo.sh` resolve
+  # relative to the wrong directory in plugin cache.
+  if [[ -d "${SKILL_DIR}/scripts" ]]; then
+    # Find lines mentioning scripts/*.sh without $SKILL_DIR prefix.
+    # Exclude markdown headers (### `scripts/...`) which are documentation.
+    local BARE_REFS
+    BARE_REFS=$(echo "$SKILL_BODY" \
+      | grep -E 'scripts/[a-zA-Z0-9._-]+\.sh' \
+      | grep -vE '^\s*#{1,6}\s' \
+      | grep -vE '\$SKILL_DIR' \
+      || true)
+
+    if [[ -n "$BARE_REFS" ]]; then
+      local BARE_COUNT FIRST_BAD
+      BARE_COUNT=$(echo "$BARE_REFS" | wc -l | tr -d ' ')
+      FIRST_BAD=$(echo "$BARE_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
+      emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \$SKILL_DIR prefix — use bash \"\$SKILL_DIR/scripts/...\" — first: ${FIRST_BAD}"
+    else
+      emit "script-invocation-prefix" "true" "All script references use \$SKILL_DIR prefix"
+    fi
+  fi
+
   # --- no disallowed files in skill directory ---
   local DISALLOWED_FILES=("README.md" "CHANGELOG.md" "INSTALLATION_GUIDE.md")
   for f in "${DISALLOWED_FILES[@]}"; do
