@@ -17,6 +17,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - Test modified plugins with `claude --plugin-dir {plugin-name}/`
 - Update root README.md if adding/removing plugins
 - Follow conventional commits: `type(scope): description` — see `CONTRIBUTING.md:93`
+- **Bump plugin version** in `plugin.json` for any functional change (SKILL.md, scripts, references) — include the bump in the same commit. Skip only for pure doc changes (README, comments, typos)
 
 ## Architecture
 
