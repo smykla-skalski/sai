@@ -2,6 +2,18 @@
 
 Condensed from prompt injection defense research. Apply these patterns only when the generated prompt involves untrusted input - don't add security overhead to internal-only prompts.
 
+# Contents
+
+- [When to apply security hardening](#when-to-apply-security-hardening)
+- [The lethal trifecta](#the-lethal-trifecta)
+- [Sandwich defense](#sandwich-defense)
+- [Data labeling](#data-labeling)
+- [Role anchoring](#role-anchoring)
+- [Tool safety rules](#tool-safety-rules)
+- [Few-shot refusal examples](#few-shot-refusal-examples)
+- [Structured security layers](#structured-security-layers)
+- [When NOT to over-harden](#when-not-to-over-harden)
+
 ## When to apply security hardening
 
 Apply these patterns when the prompt's agent will:

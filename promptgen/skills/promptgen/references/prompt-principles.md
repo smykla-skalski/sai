@@ -2,6 +2,21 @@
 
 Condensed from 35+ academic papers, Anthropic/OpenAI vendor docs, and Mollick/Wharton Prompting Science Reports. No URLs inline - see the full research at `tmp/prompt-engineering-research.md` for citations.
 
+# Contents
+
+- [Preamble rules](#preamble-rules)
+- [Structure order](#structure-order)
+- [Information positioning](#information-positioning)
+- [Formatting](#formatting)
+- [Conciseness](#conciseness)
+- [Model-generation awareness](#model-generation-awareness)
+- [Few-shot rules](#few-shot-rules)
+- [Positive framing](#positive-framing)
+- [Chain-of-thought guidance](#chain-of-thought-guidance)
+- [Emphasis and tone](#emphasis-and-tone)
+- [Contradictions](#contradictions)
+- [Automated optimization](#automated-optimization)
+
 ## Preamble rules
 
 1. Open with brief factual identity: "You are [Name], [what it is, who made it]." One sentence scope. Then straight into constraints.

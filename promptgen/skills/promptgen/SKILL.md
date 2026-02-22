@@ -1,8 +1,8 @@
 ---
 name: promptgen
 description: Turn rough instructions into optimized, evidence-based AI prompts. For system prompts, task prompts, agent instructions, or any scenario where a well-structured prompt is needed. Copies to clipboard.
-argument-hint: "<instructions> [--for claude|gpt|generic] [--verbose] [--no-copy] [--with-examples]"
-allowed-tools: Read, Write, Bash, Grep, Glob, AskUserQuestion
+argument-hint: "<instructions> [--for claude|gpt|generic] [--verbose] [--no-copy] [--with-examples] [--raw]"
+allowed-tools: Read, Bash, AskUserQuestion
 user-invocable: true
 ---
 
@@ -21,6 +21,7 @@ Parse from `$ARGUMENTS`:
 | `--verbose`       | off     | Show reasoning behind prompt decisions           |
 | `--no-copy`       | off     | Output to chat only, skip clipboard              |
 | `--with-examples` | off     | Include few-shot examples in generated prompt    |
+| `--raw`           | off     | Skip opinionated formatting preferences          |
 
 ## Workflow
 
@@ -28,7 +29,7 @@ Parse from `$ARGUMENTS`:
 
 1. Parse `$ARGUMENTS` for flags and positional instructions.
 2. Extract `--for` value (default: claude). Accepted values: claude, gpt, generic.
-3. Check for `--verbose`, `--no-copy`, `--with-examples` flags.
+3. Check for `--verbose`, `--no-copy`, `--with-examples`, `--raw` flags.
 4. If no positional instructions provided, use AskUserQuestion to get what the prompt should do.
 
 ### Phase 2: Task analysis
@@ -94,13 +95,21 @@ Generation rules:
 8. For GPT target: add final reminders section repeating 1-2 critical constraints.
 9. For generic target: no model-specific optimizations.
 
+Opinionated formatting preferences (skip when `--raw` is set):
+
+When the task involves markdown output (docs, reports, changelogs, READMEs, or any task where the generated prompt will produce markdown files), append these formatting rules to the generated prompt:
+
+- Do not hard-wrap or break long lines. Keep each sentence or logical unit on a single line regardless of length. Let the editor or renderer handle wrapping.
+- No trailing whitespace on lines.
+
+These preferences reflect the prompt author's workflow. The `--raw` flag produces a clean prompt without them.
+
 Writing style rules (applied to the generated prompt text):
-- No AI vocabulary: additionally, crucial, delve, enhance, foster, garner, highlight (verb), intricate, key (adj), landscape (abstract), pivotal, showcase, tapestry (abstract), testament, underscore (verb), valuable, vibrant
-- No filler: "in order to" -> "to", "due to the fact that" -> "because"
 - No sycophantic patterns, chatbot artifacts, or promotional language
 - Sentence case headings, straight quotes
 - Varied sentence rhythm - mix short and long
 - State things plainly
+- AI vocabulary and filler phrase rules are in `$SKILL_DIR/references/anti-patterns.md` items 10-11 - apply them during generation, not just during self-check
 
 ### Phase 5: Self-check
 
@@ -138,7 +147,7 @@ Verify token budget: task prompts under 500, system prompts under 1500. If over 
 3. Unless `--no-copy` is set, copy to clipboard:
 
 ```bash
-echo '<generated_prompt>' | "$SKILL_DIR/scripts/clipboard.sh"
+echo '<generated_prompt>' | bash "$SKILL_DIR/scripts/clipboard.sh"
 ```
 
 4. Report clipboard status:
@@ -155,6 +164,7 @@ echo '<generated_prompt>' | "$SKILL_DIR/scripts/clipboard.sh"
 /promptgen --no-copy create a plan for migrating from REST to GraphQL
 /promptgen build a customer support chatbot that handles returns --with-examples
 /promptgen --for generic create a code review agent for Python PRs
+/promptgen --raw write a migration guide for the new API version
 ```
 
 ## Error handling

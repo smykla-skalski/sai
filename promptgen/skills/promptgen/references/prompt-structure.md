@@ -2,6 +2,13 @@
 
 Three template variants the skill fills in during generation. Choose based on `--for` flag.
 
+# Contents
+
+- [Claude variant (XML tags)](#claude-variant-xml-tags)
+- [GPT variant (final reminders)](#gpt-variant-final-reminders)
+- [Generic variant (Markdown-only)](#generic-variant-markdown-only)
+- [Skeleton rules (all variants)](#skeleton-rules-all-variants)
+
 ## Claude variant (XML tags)
 
 ```xml
