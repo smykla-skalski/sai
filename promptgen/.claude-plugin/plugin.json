@@ -1,7 +1,7 @@
 {
   "name": "promptgen",
   "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents. Clipboard output for macOS and Linux.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },

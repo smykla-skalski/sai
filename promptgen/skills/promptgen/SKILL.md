@@ -96,6 +96,7 @@ Generation rules:
 7. For Claude target: soften tool-use language, no anti-laziness prompts.
 8. For GPT target: add final reminders section repeating 1-2 critical constraints.
 9. For generic target: no model-specific optimizations.
+10. If the task involves adding or upgrading any dependency, library, package, GitHub Action, Docker image, Helm chart, or other versioned artifact: include an explicit instruction in the generated prompt requiring the agent to look up the latest stable version before using it. The instruction must cover the relevant ecosystems (npm, pip, go get, cargo, GitHub Actions, Helm, Docker, etc.) and must not let the agent assume or guess a version.
 
 Opinionated formatting preferences (skip when `--raw` is set):
 
