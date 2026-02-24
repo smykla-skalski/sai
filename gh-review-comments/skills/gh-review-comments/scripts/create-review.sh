@@ -71,8 +71,10 @@ if [[ "$EVENT" != "APPROVE" && -z "$BODY" && ("$COMMENTS_JSON" == "[]" || -z "$C
   exit 1
 fi
 
-# Use python3 to safely construct the full JSON payload
-PAYLOAD=$(python3 -c "
+# Use python3 to safely construct the full JSON payload and count comments.
+# Outputs two lines: first is the comment count, second is the JSON payload.
+# This avoids a separate python invocation for counting.
+BUILT=$(python3 -c "
 import json, sys
 
 body = sys.argv[1]
@@ -89,9 +91,18 @@ payload = {'event': event, 'comments': comments}
 if body:
     payload['body'] = body
 
+print(len(comments))
 print(json.dumps(payload))
 " "$BODY" "$EVENT" "$COMMENTS_JSON")
 
+# Split the two-line output: line 1 = comment count, line 2 = JSON payload
+COMMENT_COUNT=$(head -n1 <<< "$BUILT")
+PAYLOAD=$(tail -n1 <<< "$BUILT")
+
+# Submit the review. The API response does NOT include the comments array, so
+# we build the jq filter with the known count from the payload we just sent.
+# If the API call succeeds (set -euo pipefail), all comments were attached.
+JQ_FILTER='{id: .id, html_url: .html_url, state: .state, comment_count: '"$COMMENT_COUNT"'}'
 echo "$PAYLOAD" | gh api "repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews" \
   --input - \
-  --jq '{id: .id, html_url: .html_url, state: .state, comment_count: (.comments // [] | length)}'
+  --jq "$JQ_FILTER"

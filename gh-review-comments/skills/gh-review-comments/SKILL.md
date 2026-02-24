@@ -153,18 +153,22 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
 
 1. Ask the user for the review event type (COMMENT, APPROVE, or REQUEST_CHANGES)
 2. Ask for the review body text
-3. Ask for inline comments — for each comment, collect:
+3. Ask for inline comments - for each comment, collect:
    - File path (validate it exists in the PR diff)
    - Line number
    - Comment body
 4. Build the comments JSON array
-5. Run `bash "$SKILL_DIR/scripts/create-review.sh"` with the collected data
-6. Report the created review URL
+5. Run `bash "$SKILL_DIR/scripts/create-review.sh"` **exactly once** with the collected data
+6. The script returns `comment_count` from the submitted payload (not from the API response). If the script exits 0, the review and all comments were submitted atomically - treat it as fully successful
+7. Report the created review URL and comment count
+
+**NEVER re-run `create-review.sh` after it exits 0.** The GitHub review creation API is atomic: if the call succeeds, the review body and all inline comments were attached. Running it again creates a duplicate review. There is no partial success - it either all works or the script fails with a non-zero exit.
 
 ### Phase 4: Verify and Summarize
 
-1. After mutations (reply/resolve/unresolve), re-run `bash "$SKILL_DIR/scripts/list-threads.sh"` to confirm the operations took effect
-2. Compare before/after thread states — flag any threads that failed to change
+**For reply/resolve/unresolve actions:** re-run `bash "$SKILL_DIR/scripts/list-threads.sh"` to confirm the operations took effect. Compare before/after thread states and flag any threads that failed to change.
+
+**For create-review:** do NOT re-list threads to verify. The `create-review.sh` script output is the sole source of truth. If it exited 0 and returned a `comment_count` and `html_url`, the review was created with all comments attached. Do not second-guess this result.
 
 Report:
 
@@ -177,10 +181,9 @@ Report:
 
 - If a thread operation fails, log the error and continue with remaining threads
 - If `--thread-id` matches no thread, report "No matching thread found"
+- If `create-review.sh` fails (non-zero exit), report the error to the user. Do not retry automatically - the most common cause is invalid file paths or line numbers not present in the PR diff. Ask the user to verify the comment targets before re-attempting
 
-## References
-
-Read [references/gh-api-guide.md](references/gh-api-guide.md) for detailed API documentation including ID type mapping, REST vs GraphQL differences, permissions, rate limits, and practical gotchas.
+Read `references/gh-api-guide.md` before Phase 3 for ID type mapping (REST integer IDs vs GraphQL node IDs), reply endpoint constraints, and shell quoting patterns.
 
 ## Example Invocations
 
