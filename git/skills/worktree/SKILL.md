@@ -1,6 +1,6 @@
 ---
 name: worktree
-description: Create git worktree with context transfer for feature branches. Use when starting a feature branch, isolating experimental work, or doing parallel development. Handles conventional branch naming, IDE detection, symlinks for context files, and clipboard setup.
+description: Create git worktree with context transfer. Use ONLY when the user explicitly asks for a worktree - never infer this from generic branch or PR requests. Handles conventional branch naming, IDE detection, symlinks for context files, and clipboard setup.
 argument-hint: "<task-description> [--quick] [--no-pbcopy] [--no-ide] [--ide <name>]"
 allowed-tools: Bash, AskUserQuestion
 user-invocable: true
