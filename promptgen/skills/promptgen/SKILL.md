@@ -1,8 +1,8 @@
 ---
 name: promptgen
 description: Turn rough instructions into optimized, evidence-based AI prompts. For system prompts, task prompts, agent instructions, or any scenario where a well-structured prompt is needed. Copies to clipboard.
-argument-hint: "<instructions> [--for claude|gpt|generic] [--verbose] [--no-copy] [--with-examples] [--raw]"
-allowed-tools: Read, Bash, AskUserQuestion
+argument-hint: "<prompt-description> [--for claude|gpt|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]"
+allowed-tools: Read, Bash, Glob, Grep, AskUserQuestion
 user-invocable: true
 ---
 
@@ -12,29 +12,50 @@ Generate optimized, evidence-based prompts from rough human instructions. Built 
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Two input channels:
 
-| Flag              | Default | Purpose                                          |
-|:------------------|:--------|:-------------------------------------------------|
-| (positional)      | -       | Rough instructions for what the prompt should do |
-| `--for <model>`   | claude  | Target: claude, gpt, generic                     |
-| `--verbose`       | off     | Show reasoning behind prompt decisions           |
-| `--no-copy`       | off     | Output to chat only, skip clipboard              |
-| `--with-examples` | off     | Include few-shot examples in generated prompt    |
-| `--raw`           | off     | Skip opinionated formatting preferences          |
+- **Conversation history** (messages before the `/promptgen` invocation): requirements, constraints, or context directed at promptgen itself. Read this to understand what the user wants from the generated prompt.
+- **`$ARGUMENTS`** (positional + flags): the prompt description and output flags. `$ARGUMENTS` is not directed at promptgen — it describes the prompt to generate.
+
+| Flag                    | Default | Purpose                                               |
+|:------------------------|:--------|:------------------------------------------------------|
+| (positional)            | -       | Description of the prompt to generate                 |
+| `--for <model>`         | claude  | Target: claude, gpt, generic                          |
+| `--research light\|deep` | off     | Do research before generating (see below)             |
+| `--verbose`             | off     | Show reasoning behind prompt decisions                |
+| `--no-copy`             | off     | Output to chat only, skip clipboard                   |
+| `--examples`       | off     | Include few-shot examples in generated prompt         |
+| `--raw`                 | off     | Skip opinionated formatting preferences               |
 
 ## Responsibility boundary
 
-Promptgen's job is to produce a prompt. Any deep investigation - reading source files, exploring the codebase, analyzing existing code - belongs to the agent that will run the generated prompt, not to promptgen. Light lookups to understand task structure (e.g. checking what language or framework is in use) are fine. Heavy lifting is not. When in doubt, put the investigation work into the generated prompt as explicit instructions to the target agent.
+By default, promptgen does no research. No codebase exploration, no file reads outside `$SKILL_DIR`. All investigation work belongs inside the generated prompt as explicit instructions for the target agent.
+
+`--research light` and `--research deep` opt into investigation before generation:
+
+- `light`: identify language, framework, build system, and test runner from config files and directory structure. Just enough to make the generated prompt accurate about tooling and conventions.
+- `deep`: full codebase read — relevant source files, existing patterns, architecture. Use when the prompt needs to reference specific file paths, function names, or project-specific conventions that can't be inferred from the description alone.
+
+In all cases, promptgen works from the prompt description in `$ARGUMENTS` and any context the user provided before the invocation.
 
 ## Workflow
 
 ### Phase 1: Input parsing
 
-1. Parse `$ARGUMENTS` for flags and positional instructions.
-2. Extract `--for` value (default: claude). Accepted values: claude, gpt, generic.
-3. Check for `--verbose`, `--no-copy`, `--with-examples`, `--raw` flags.
-4. If no positional instructions provided, use AskUserQuestion to get what the prompt should do.
+1. Read conversation history above the invocation for any requirements, constraints, or context the user directed at promptgen (e.g. "the agent will have Read and Bash tools", "keep it under 300 tokens", "the target is a RAG pipeline").
+2. Parse `$ARGUMENTS` for flags and the positional prompt description. The positional text describes the prompt to generate — it is not directed at promptgen.
+3. Extract `--for` value (default: claude). Accepted values: claude, gpt, generic.
+4. Extract `--research` value (default: none). Accepted values: light, deep.
+5. Check for `--verbose`, `--no-copy`, `--examples`, `--raw` flags.
+6. If no positional description provided, use AskUserQuestion to get what the prompt should do.
+
+### Phase 1b: Research (conditional)
+
+Skip entirely if `--research` was not passed.
+
+**`--research light`**: Identify the project's language, framework, build system, and test runner. Check for: `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, `Makefile`, `README.md` (first 50 lines), and top-level directory structure. Do not read source files. Note findings to use in Phase 4 when writing tool lists, command examples, or naming conventions.
+
+**`--research deep`**: Perform full codebase investigation relevant to the prompt description. Read source files, trace call paths, identify existing patterns, note file paths and function names the generated prompt should reference. Scope the investigation to what the target agent will need — don't read unrelated modules.
 
 ### Phase 2: Task analysis
 
@@ -96,7 +117,7 @@ Generation rules:
 3. Instructions are specific and actionable. No generic quality statements like "be thorough" or "be accurate."
 4. Token budget: task prompts under 500 tokens, system prompts under 1500 tokens.
 5. Include security patterns from Phase 3 only when the threat model warrants them.
-6. Add few-shot examples section only if `--with-examples` flag is set. Examples must perfectly match desired behavior.
+6. Add few-shot examples section only if `--examples` flag is set. Examples must perfectly match desired behavior.
 7. For Claude target: soften tool-use language, no anti-laziness prompts.
 8. For GPT target: add final reminders section repeating 1-2 critical constraints.
 9. For generic target: no model-specific optimizations.
@@ -174,12 +195,26 @@ echo '<generated_prompt>' | bash "$SKILL_DIR/scripts/clipboard.sh"
 
 ## Example invocations
 
+Arguments after `/promptgen` = prompt description. Context for promptgen goes in the message before the invocation:
+
 ```
+# Basic — no research, generates prompt from description only
 /promptgen write technical docs for the auth module API endpoints
+
+# Context for promptgen before, then description after
+# (user said: "the agent will have Read, Bash, Grep and targets Go code")
+/promptgen investigate auth bypass vulnerabilities in the login flow
+
+# Light research — promptgen checks config files first, then generates
+/promptgen --research light refactor the database layer to use connection pooling
+
+# Deep research — promptgen reads relevant source before generating
+/promptgen --research deep add pagination to the user listing endpoint
+
 /promptgen refactor the database layer to use connection pooling --for gpt
 /promptgen --verbose investigate auth bypass vulnerabilities in the login flow
 /promptgen --no-copy create a plan for migrating from REST to GraphQL
-/promptgen build a customer support chatbot that handles returns --with-examples
+/promptgen build a customer support chatbot that handles returns --examples
 /promptgen --for generic create a code review agent for Python PRs
 /promptgen --raw write a migration guide for the new API version
 ```
