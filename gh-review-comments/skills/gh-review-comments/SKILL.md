@@ -37,11 +37,11 @@ Parse from `$ARGUMENTS`:
 
 ## Scripts
 
-All scripts live in `scripts/` relative to this skill's base directory. **Always run with `bash` explicitly** (execute bits may not survive plugin cache):
+All scripts live in `scripts/` relative to this skill's base directory. Run them directly so users can allow-list by path pattern:
 
 ```
 SKILL_DIR="<this skill's base directory>"
-bash "$SKILL_DIR/scripts/<script>.sh" [args...]
+"$SKILL_DIR/scripts/<script>.sh" [args...]
 ```
 
 ### `scripts/list-threads.sh`
@@ -49,7 +49,7 @@ bash "$SKILL_DIR/scripts/<script>.sh" [args...]
 List review threads with metadata via GraphQL.
 
 ```
-bash "$SKILL_DIR/scripts/list-threads.sh" <owner> <repo> <pr_number> [--author <login>] [--unresolved-only]
+"$SKILL_DIR/scripts/list-threads.sh" <owner> <repo> <pr_number> [--author <login>] [--unresolved-only]
 ```
 
 Output: one JSON line per thread with `thread_id`, `comment_id`, `author`, `body`, `path`, `line`, `is_resolved`, `is_outdated`, `reply_count`.
@@ -59,7 +59,7 @@ Output: one JSON line per thread with `thread_id`, `comment_id`, `author`, `body
 Reply to a review thread via REST API.
 
 ```
-bash "$SKILL_DIR/scripts/reply-thread.sh" <owner> <repo> <pr_number> <comment_id> <body>
+"$SKILL_DIR/scripts/reply-thread.sh" <owner> <repo> <pr_number> <comment_id> <body>
 ```
 
 - `comment_id`: integer database ID of the **top-level** comment (from `list-threads.sh` `comment_id` field)
@@ -70,7 +70,7 @@ bash "$SKILL_DIR/scripts/reply-thread.sh" <owner> <repo> <pr_number> <comment_id
 Resolve a review thread via GraphQL.
 
 ```
-bash "$SKILL_DIR/scripts/resolve-thread.sh" <thread_id>
+"$SKILL_DIR/scripts/resolve-thread.sh" <thread_id>
 ```
 
 - `thread_id`: GraphQL node ID (`PRRT_...`) from `list-threads.sh` `thread_id` field
@@ -80,7 +80,7 @@ bash "$SKILL_DIR/scripts/resolve-thread.sh" <thread_id>
 Reopen a resolved review thread via GraphQL.
 
 ```
-bash "$SKILL_DIR/scripts/unresolve-thread.sh" <thread_id>
+"$SKILL_DIR/scripts/unresolve-thread.sh" <thread_id>
 ```
 
 ### `scripts/create-review.sh`
@@ -88,7 +88,7 @@ bash "$SKILL_DIR/scripts/unresolve-thread.sh" <thread_id>
 Create a PR review with line-level comments via REST API.
 
 ```
-bash "$SKILL_DIR/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
+"$SKILL_DIR/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
 ```
 
 - `event`: `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`
@@ -107,7 +107,7 @@ bash "$SKILL_DIR/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <b
 
 ### Phase 2: List Threads
 
-1. Run `bash "$SKILL_DIR/scripts/list-threads.sh"` with owner, repo, PR number, and filters (`--author`, `--unresolved-only`)
+1. Run `"$SKILL_DIR/scripts/list-threads.sh"` with owner, repo, PR number, and filters (`--author`, `--unresolved-only`)
 2. If `--thread-id` is specified, filter output to only that thread
 3. Display results to the user in a readable format:
    - Thread ID
@@ -126,13 +126,13 @@ For each matched thread, execute the requested action:
 **Reply** (`--reply`):
 
 1. Extract `comment_id` from the thread data
-2. Run `bash "$SKILL_DIR/scripts/reply-thread.sh"` with owner, repo, PR number, comment_id, and the reply message
+2. Run `"$SKILL_DIR/scripts/reply-thread.sh"` with owner, repo, PR number, comment_id, and the reply message
 3. Report the created reply URL
 
 **Resolve** (`--resolve`):
 
 1. Extract `thread_id` from the thread data
-2. Run `bash "$SKILL_DIR/scripts/resolve-thread.sh"` with thread_id
+2. Run `"$SKILL_DIR/scripts/resolve-thread.sh"` with thread_id
 3. Report success
 
 **Reply + Resolve** (`--reply` and `--resolve` together):
@@ -144,7 +144,7 @@ For each matched thread, execute the requested action:
 **Unresolve** (`--unresolve`):
 
 1. Extract `thread_id` from the thread data
-2. Run `bash "$SKILL_DIR/scripts/unresolve-thread.sh"` with thread_id
+2. Run `"$SKILL_DIR/scripts/unresolve-thread.sh"` with thread_id
 3. Report success
 
 ### Phase 3 (alternative): Create Review
@@ -158,7 +158,7 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
    - Line number
    - Comment body
 4. Build the comments JSON array
-5. Run `bash "$SKILL_DIR/scripts/create-review.sh"` **exactly once** with the collected data
+5. Run `"$SKILL_DIR/scripts/create-review.sh"` **exactly once** with the collected data
 6. The script returns `comment_count` from the submitted payload (not from the API response). If the script exits 0, the review and all comments were submitted atomically - treat it as fully successful
 7. Report the created review URL and comment count
 
@@ -166,7 +166,7 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
 
 ### Phase 4: Verify and Summarize
 
-**For reply/resolve/unresolve actions:** re-run `bash "$SKILL_DIR/scripts/list-threads.sh"` to confirm the operations took effect. Compare before/after thread states and flag any threads that failed to change.
+**For reply/resolve/unresolve actions:** re-run `"$SKILL_DIR/scripts/list-threads.sh"` to confirm the operations took effect. Compare before/after thread states and flag any threads that failed to change.
 
 **For create-review:** do NOT re-list threads to verify. The `create-review.sh` script output is the sole source of truth. If it exited 0 and returned a `comment_count` and `html_url`, the review was created with all comments attached. Do not second-guess this result.
 
