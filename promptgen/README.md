@@ -10,11 +10,16 @@ Supports three target formats: Claude (XML tags), GPT (final reminders), and gen
 
 ## Installation
 
-```bash
-# Via marketplace
-/plugin install sai/promptgen
+### Quick install
 
-# Local development
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install promptgen@smykla-skalski-sai
+```
+
+### Manual
+
+```bash
 claude --plugin-dir /path/to/sai/promptgen
 ```
 

@@ -4,6 +4,15 @@ Audit and fix CLAUDE.md files using tiered binary checklist.
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install review-claude-md@smykla-skalski-sai
+```
+
+### Manual
+
 ```bash
 claude --plugin-dir /path/to/sai/review-claude-md
 ```

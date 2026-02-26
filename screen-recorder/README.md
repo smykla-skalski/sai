@@ -4,6 +4,13 @@ Record macOS screen with verification, retry logic, and format conversion for Di
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install screen-recorder@smykla-skalski-sai
+```
+
 ### From GitHub Marketplace
 
 Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).

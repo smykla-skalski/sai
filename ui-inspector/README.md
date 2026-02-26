@@ -4,6 +4,13 @@ Inspect live macOS UI elements via Accessibility API and get click coordinates f
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install ui-inspector@smykla-skalski-sai
+```
+
 ### From GitHub Marketplace
 
 Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).

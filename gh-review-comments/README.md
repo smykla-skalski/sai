@@ -4,6 +4,14 @@ List, reply to, resolve, and create GitHub PR review comment threads.
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai && claude plugin install gh-review-comments@smykla-skalski-sai
+```
+
+### Manual
+
 ```bash
 claude --plugin-dir /path/to/sai/gh-review-comments
 ```

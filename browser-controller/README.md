@@ -4,6 +4,13 @@ Programmatic control of Chrome and Firefox browsers via CDP and Marionette for t
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install browser-controller@smykla-skalski-sai
+```
+
 ### From GitHub Marketplace
 
 Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).

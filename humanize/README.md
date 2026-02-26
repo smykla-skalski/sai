@@ -9,6 +9,13 @@ Two complementary sources:
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install humanize@smykla-skalski-sai
+```
+
 ### From GitHub Marketplace
 
 Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).

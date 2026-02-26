@@ -4,6 +4,13 @@ Create, modify, or transform implementation plans with codebase investigation an
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install manage-plan@smykla-skalski-sai
+```
+
 ### From GitHub Marketplace
 
 Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).

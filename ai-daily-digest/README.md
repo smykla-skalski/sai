@@ -4,6 +4,14 @@ Daily AI news digest covering technical advances, business news, and engineering
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai && claude plugin install ai-daily-digest@smykla-skalski-sai
+```
+
+### Manual
+
 ```bash
 claude --plugin-dir /path/to/sai/ai-daily-digest
 ```

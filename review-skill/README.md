@@ -4,6 +4,15 @@ Review and fix Claude Code skill definitions using tiered binary checklist.
 
 ## Installation
 
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install review-skill@smykla-skalski-sai
+```
+
+### Manual
+
 ```bash
 claude --plugin-dir /path/to/sai/review-skill
 ```
