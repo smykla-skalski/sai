@@ -21,14 +21,14 @@ claude --plugin-dir /path/to/sai/humanize/
 ```
 /humanize path/to/file.md
 /humanize path/to/file.md --score-only
-/humanize path/to/file.md --inline
+/humanize path/to/file.md --dry-run
 ```
 
-| Flag           | Purpose                                              |
-|:---------------|:-----------------------------------------------------|
-| (positional)   | File path to humanize                                |
-| `--score-only` | Report detected patterns without rewriting           |
-| `--inline`     | Edit the file in-place instead of outputting to chat |
+| Flag           | Purpose                                         |
+|:---------------|:------------------------------------------------|
+| (positional)   | File path to humanize                           |
+| `--score-only` | Report detected patterns without rewriting      |
+| `--dry-run`    | Output rewritten text to chat instead of saving |
 
 ## What it detects
 

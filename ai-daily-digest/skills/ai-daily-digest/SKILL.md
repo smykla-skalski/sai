@@ -1,8 +1,8 @@
 ---
 name: ai-daily-digest
 description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
-argument-hint: "[--focus technical|business|engineering|leadership] [--notion-page-id ID] [--no-notion]"
-allowed-tools: WebSearch, WebFetch, Read, Write, Bash, Task, Glob
+argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion]"
+allowed-tools: WebSearch, WebFetch, Read, Write, Bash, Task, Glob, ToolSearch
 user-invocable: true
 ---
 

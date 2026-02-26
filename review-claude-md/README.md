@@ -10,13 +10,17 @@ claude --plugin-dir /path/to/sai/review-claude-md
 
 ## Usage
 
-```bash
-/review-claude-md [path/to/CLAUDE.md]
+```
+/review-claude-md [path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]
 ```
 
-## Documentation
-
-See [SKILL.md](./skills/review-claude-md/SKILL.md) for detailed configuration and workflow.
+| Flag           | Default | Purpose                                       |
+|:---------------|:--------|:----------------------------------------------|
+| (positional)   | cwd     | Path to repo root containing CLAUDE.md        |
+| `--score-only` | off     | Report verdict without fixing                 |
+| `--fix`        | on      | Fix all failing checks (default behavior)     |
+| `--verbose`    | off     | Show reasoning for each check                 |
+| `--thorough`   | off     | Include Polish tier in the report             |
 
 ## License
 
