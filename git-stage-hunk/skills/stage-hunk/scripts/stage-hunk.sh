@@ -484,9 +484,11 @@ stage_hunks() {
 map_to_global_ids() {
   local matched_index="$1"
   local result=""
-  while IFS='|' read -r mid mfile mhn rest; do
+  while IFS='|' read -r mid mfile mhn mos moc mns mnc madded mremoved mpreview; do
     local global_entry
-    global_entry=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$mfile" -v h="$mhn" '$2==f && $3==h' || true)
+    # Match by file + old_start (not hunk_num) — grepdiff returns a subset so
+    # per-file hunk numbers in the matched diff don't match the original diff.
+    global_entry=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$mfile" -v os="$mos" '$2==f && $4==os' || true)
     if [[ -n "$global_entry" ]]; then
       if [[ -z "$result" ]]; then
         result="$global_entry"
@@ -557,7 +559,8 @@ if [[ "$MODE" == "file" ]]; then
   matched_entries=""
   bad_files=""
   for rf in "${requested_files[@]}"; do
-    rf=$(echo "$rf" | tr -d ' ')
+    # trim surrounding whitespace only (preserve internal spaces in paths)
+    rf=$(echo "$rf" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     entries=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$rf" '$2 == f' || true)
     if [[ -z "$entries" ]]; then
       bad_files="${bad_files}${rf},"
