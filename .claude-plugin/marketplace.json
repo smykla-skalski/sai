@@ -52,6 +52,17 @@
       "tags": ["git", "worktree", "branch-management", "automation"]
     },
     {
+      "name": "git-stage-hunk",
+      "source": "./git-stage-hunk",
+      "description": "Non-interactive hunk staging for selective git add without TTY",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["git", "staging", "hunk", "partial-add", "automation"]
+    },
+    {
       "name": "humanize",
       "source": "./humanize",
       "description": "Make text sound natural by removing AI writing patterns",

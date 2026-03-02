@@ -12,6 +12,7 @@ This monorepo contains independent plugins, each providing specialized capabilit
 | **browser-controller**  | Programmatic control of Chrome/Firefox via CDP/Marionette                               | `browser-controller/`  |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `gh-review-comments/`  |
 | **git**                 | Git workflow automation: worktree creation, branch cleanup, and reset utilities         | `git/`                 |
+| **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `git-stage-hunk/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `humanize/`            |
 | **manage-agent**        | Create, modify, or transform subagent definitions with quality validation               | `manage-agent/`        |
 | **manage-plan**         | Investigate codebases and produce implementation plans                                  | `manage-plan/`         |
@@ -44,6 +45,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/browser-controller
 /plugin install sai/gh-review-comments
 /plugin install sai/git
+/plugin install sai/git-stage-hunk
 /plugin install sai/humanize
 /plugin install sai/manage-agent
 /plugin install sai/manage-plan
@@ -75,6 +77,7 @@ claude --plugin-dir /path/to/sai/ai-daily-digest
 claude --plugin-dir /path/to/sai/browser-controller
 claude --plugin-dir /path/to/sai/gh-review-comments
 claude --plugin-dir /path/to/sai/git
+claude --plugin-dir /path/to/sai/git-stage-hunk
 claude --plugin-dir /path/to/sai/humanize
 claude --plugin-dir /path/to/sai/manage-agent
 claude --plugin-dir /path/to/sai/manage-plan
@@ -126,6 +129,14 @@ Git workflow automation: worktree creation with context transfer, branch cleanup
 **Usage**: `/worktree <task>`, `/reset-main`, `/clean-gone`, `/worktree-review`
 
 [Full documentation →](./git/README.md)
+
+### git-stage-hunk
+
+Non-interactive hunk staging for selective `git add` without a TTY. Lists hunks with stable IDs, then stages by ID, pattern, file, or line range. Works in scripted and multi-agent environments where `git add -p` is unavailable.
+
+**Usage**: `/stage-hunk [--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]`
+
+[Full documentation →](./git-stage-hunk/README.md)
 
 ### humanize
 
