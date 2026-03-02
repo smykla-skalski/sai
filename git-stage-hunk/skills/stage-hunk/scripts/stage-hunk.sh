@@ -323,8 +323,11 @@ if [[ "$MODE" == "verify" ]]; then
     s_hunks=0
     u_hunks=0
     if [[ -n "$staged_diff" ]]; then
-      s_hunks=$(echo "$staged_diff" | filterdiff -i "a/${f}" 2>/dev/null | grep -c '^@@ ' || true)
-      [[ "$FALLBACK" == "true" ]] && s_hunks=$(echo "$staged_diff" | awk -v target="$f" '/^diff --git/{found=0; f=$0; sub(/^diff --git a\//,"",f); sub(/ b\/.*/,"",f); if(f==target)found=1} found && /^@@ /{c++} END{print c+0}')
+      if [[ "$FALLBACK" == "false" ]]; then
+        s_hunks=$(echo "$staged_diff" | filterdiff -i "a/${f}" 2>/dev/null | grep -c '^@@ ' || true)
+      else
+        s_hunks=$(echo "$staged_diff" | awk -v target="$f" '/^diff --git/{found=0; f=$0; sub(/^diff --git a\//,"",f); sub(/ b\/.*/,"",f); if(f==target)found=1} found && /^@@ /{c++} END{print c+0}')
+      fi
     fi
     u_hunks=$(echo "$DIFF" | awk -v target="$f" '/^diff --git/{found=0; f=$0; sub(/^diff --git a\//,"",f); sub(/ b\/.*/,"",f); if(f==target)found=1} found && /^@@ /{c++} END{print c+0}')
     local_f=$(json_str "$f")
@@ -395,26 +398,6 @@ extract_hunk_patch() {
   fi
 }
 
-# Extract hunks for an entire file.
-# Args: file
-extract_file_patch() {
-  local file="$1"
-
-  if [[ "$FALLBACK" == "false" ]]; then
-    echo "$DIFF" | filterdiff -i "a/${file}" 2>/dev/null
-  else
-    echo "$DIFF" | awk -v target="$file" '
-      /^diff --git/ {
-        f = $0
-        sub(/^diff --git a\//, "", f)
-        sub(/ b\/.*/, "", f)
-        if (f == target) { found = 1 } else if (found) { exit } else { found = 0 }
-      }
-      found { print }
-    '
-  fi
-}
-
 # Apply a patch to the index. Returns 0 on success, 1 on failure.
 apply_patch() {
   local patch="$1"
@@ -458,35 +441,25 @@ stage_hunks() {
       continue
     fi
 
-    # Try bulk apply for all hunks of this file
-    local bulk_patch=""
+    # Try bulk apply via filterdiff (patchutils only - produces valid multi-hunk patch).
+    # Fallback mode skips bulk and goes straight to per-hunk since concatenating
+    # individual patches produces duplicate diff headers that git apply rejects.
+    local bulk_ok=false
     if [[ "$FALLBACK" == "false" ]]; then
+      local bulk_patch
       bulk_patch=$(echo "$DIFF" | filterdiff -i "a/${file}" --hunks="${hunk_nums}" 2>/dev/null) || true
-    else
-      # Fallback: concatenate individual hunks
-      while IFS='|' read -r id f hn rest; do
-        local p
-        p=$(extract_hunk_patch "$f" "$hn")
-        if [[ -n "$p" ]]; then
-          if [[ -z "$bulk_patch" ]]; then
-            bulk_patch="$p"
-          else
-            bulk_patch="${bulk_patch}
-${p}"
-          fi
-        fi
-      done <<< "$file_entries"
+      if [[ -n "$bulk_patch" ]] && apply_patch "$bulk_patch"; then
+        bulk_ok=true
+        while IFS='|' read -r id f hn os oc ns nc added removed preview; do
+          local_f=$(json_str "$f")
+          emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+          STAGE_OK=$((STAGE_OK + 1))
+        done <<< "$file_entries"
+      fi
     fi
 
-    if [[ -n "$bulk_patch" ]] && apply_patch "$bulk_patch"; then
-      # Bulk succeeded
-      while IFS='|' read -r id f hn os oc ns nc added removed preview; do
-        local_f=$(json_str "$f")
-        emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
-        STAGE_OK=$((STAGE_OK + 1))
-      done <<< "$file_entries"
-    else
-      # Bulk failed - retry per hunk
+    # Per-hunk fallback (always used in fallback mode, or when bulk apply fails)
+    if [[ "$bulk_ok" == "false" ]]; then
       while IFS='|' read -r id f hn os oc ns nc added removed preview; do
         local_f=$(json_str "$f")
         local hunk_patch
@@ -504,6 +477,26 @@ ${p}"
       done <<< "$file_entries"
     fi
   done <<< "$files"
+}
+
+# Map a local hunk index (from a filtered diff) back to global HUNK_INDEX entries
+# by matching file + per-file hunk number. Outputs matching global entries.
+map_to_global_ids() {
+  local matched_index="$1"
+  local result=""
+  while IFS='|' read -r mid mfile mhn rest; do
+    local global_entry
+    global_entry=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$mfile" -v h="$mhn" '$2==f && $3==h' || true)
+    if [[ -n "$global_entry" ]]; then
+      if [[ -z "$result" ]]; then
+        result="$global_entry"
+      else
+        result="${result}
+${global_entry}"
+      fi
+    fi
+  done <<< "$matched_index"
+  echo "$result"
 }
 
 # ========================
@@ -621,19 +614,7 @@ if [[ "$MODE" == "pattern" ]]; then
   fi
 
   # Map matched hunks back to global IDs by file+hunk_num
-  final_entries=""
-  while IFS='|' read -r mid mfile mhn rest; do
-    # Find the global entry matching this file and hunk number
-    global_entry=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$mfile" -v h="$mhn" '$2==f && $3==h' || true)
-    if [[ -n "$global_entry" ]]; then
-      if [[ -z "$final_entries" ]]; then
-        final_entries="$global_entry"
-      else
-        final_entries="${final_entries}
-${global_entry}"
-      fi
-    fi
-  done <<< "$matched_index"
+  final_entries=$(map_to_global_ids "$matched_index")
 
   if [[ -z "$final_entries" ]]; then
     emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":0,\"failed\":0,\"dry_run\":${DRY_RUN},\"error\":\"matched hunks could not be mapped to global IDs\"}"
@@ -675,18 +656,7 @@ if [[ "$MODE" == "range" ]]; then
   matched_index=$(build_hunk_index "$matched_diff")
 
   # Map back to global IDs
-  final_entries=""
-  while IFS='|' read -r mid mfile mhn rest; do
-    global_entry=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$mfile" -v h="$mhn" '$2==f && $3==h' || true)
-    if [[ -n "$global_entry" ]]; then
-      if [[ -z "$final_entries" ]]; then
-        final_entries="$global_entry"
-      else
-        final_entries="${final_entries}
-${global_entry}"
-      fi
-    fi
-  done <<< "$matched_index"
+  final_entries=$(map_to_global_ids "$matched_index")
 
   if [[ -z "$final_entries" ]]; then
     emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":0,\"failed\":0,\"dry_run\":${DRY_RUN},\"error\":\"matched hunks could not be mapped to global IDs\"}"

@@ -1,7 +1,7 @@
 {
   "name": "git-stage-hunk",
   "description": "Non-interactive hunk staging for selective git add without TTY. Stage only part of a file, specific hunks, or pattern-matched changes when git add -p is unavailable.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Smykla Skalski Labs"
   },
