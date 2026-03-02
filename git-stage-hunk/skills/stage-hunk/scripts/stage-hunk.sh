@@ -601,7 +601,7 @@ if [[ "$MODE" == "pattern" ]]; then
   [[ -z "$PATTERN" ]] && die "no pattern specified" 2
 
   # Use grepdiff to find hunks matching the pattern
-  matched_diff=$(echo "$DIFF" | grepdiff "$PATTERN" --output-matching=hunk 2>/dev/null) || true
+  matched_diff=$(echo "$DIFF" | grepdiff -E "$PATTERN" --output-matching=hunk 2>/dev/null) || true
 
   if [[ -z "$matched_diff" ]]; then
     emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":0,\"failed\":0,\"dry_run\":${DRY_RUN},\"error\":\"no hunks match pattern\"}"
