@@ -42,6 +42,22 @@ Start from changed files (PR diff or branch diff against master). Common locatio
 | G6 Multi-zone | KDS sync markers on the resource type, `pkg/kds/` for sync behavior |
 | G7 Backward compat | `deprecated.go`, old field names in API spec, migration notes |
 
+## Variant detection signals
+
+While reading code for G1-G7, also scan for patterns that indicate feature variants. Variants expand the suite with G8+ groups.
+
+| Signal | Where to look | What it means |
+|:-------|:--------------|:--------------|
+| S1 Deployment topology | KDS markers, resource registration, `pkg/kds/` | Multi-zone groups needed |
+| S2 Feature modes | Enum/string fields in API spec, switch/case in plugin.go | Per-mode groups |
+| S3 Backend variants | Multiple backend types in spec struct, `backendRef` kinds | Per-backend groups |
+| S4 Feature flags | Conditional branches in `Apply()` checking flags/config | Per-flag groups |
+| S5 Policy roles | `targetRef` section, producer/consumer/workload-owner markers | Role-specific groups |
+| S6 Protocol variants | HTTP/TCP/gRPC branching in plugin.go | Per-protocol groups |
+| S7 Backward compat | `deprecated.go`, old field names, version-gated logic | Legacy path groups |
+
+See `references/variant-detection.md` for the full methodology, signal strength classification, and a worked MOTB example.
+
 ## Tips
 
 - Golden files in `testdata/` show exact expected Envoy configs - use these to derive validation commands.
