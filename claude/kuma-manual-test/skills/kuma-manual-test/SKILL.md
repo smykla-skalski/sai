@@ -31,6 +31,7 @@ Parse from `$ARGUMENTS`:
 2. Apply every manifest through `bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh"`.
 3. Record every state-changing command via `bash "$SKILL_DIR/scripts/record-command.sh"`.
 4. Stop and triage on first unexpected failure.
+5. Never use `--validate=false` on any kubectl command. Validation errors mean the manifest or CRD is wrong - fix the root cause.
 
 Read `references/agent-contract.md` for full agent behavior rules and artifact requirements.
 
