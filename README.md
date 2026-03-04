@@ -18,6 +18,8 @@ Repository layout:
 | **git**                 | Git workflow automation: worktree creation, branch cleanup, and reset utilities         | `claude/git/`                 |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
+| **kuma-manual-test**    | Reproducible manual test harness for Kuma service mesh on local k3d clusters           | `claude/kuma-manual-test/`    |
+| **kuma-suite-author**   | Generate test suites for kuma-manual-test by reading Kuma source code                  | `claude/kuma-suite-author/`   |
 | **manage-agent**        | Create, modify, or transform subagent definitions with quality validation               | `claude/manage-agent/`        |
 | **manage-plan**         | Investigate codebases and produce implementation plans                                  | `claude/manage-plan/`         |
 | **ocr-finder**          | Find text in images using EasyOCR and return click coordinates                          | `claude/ocr-finder/`          |
@@ -51,6 +53,8 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/git
 /plugin install sai/git-stage-hunk
 /plugin install sai/humanize
+/plugin install sai/kuma-manual-test
+/plugin install sai/kuma-suite-author
 /plugin install sai/manage-agent
 /plugin install sai/manage-plan
 /plugin install sai/ocr-finder
@@ -83,6 +87,8 @@ claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/humanize
+claude --plugin-dir /path/to/sai/claude/kuma-manual-test
+claude --plugin-dir /path/to/sai/claude/kuma-suite-author
 claude --plugin-dir /path/to/sai/claude/manage-agent
 claude --plugin-dir /path/to/sai/claude/manage-plan
 claude --plugin-dir /path/to/sai/claude/ocr-finder
@@ -149,6 +155,22 @@ Make text sound natural by removing AI writing patterns. Based on Wikipedia's Si
 **Usage**: `/humanize path/to/file.md [--score-only] [--inline]`
 
 [Full documentation →](./claude/humanize/README.md)
+
+### kuma-manual-test
+
+Reproducible manual test harness for Kuma service mesh on local k3d clusters. Tracks manifests, commands, and artifacts for full run reproducibility.
+
+**Usage**: `/kuma-manual-test [suite-path] [--profile single-zone|multi-zone] [--repo /path/to/kuma] [--run-id ID] [--resume RUN_ID]`
+
+[Full documentation ->](./claude/kuma-manual-test/README.md)
+
+### kuma-suite-author
+
+Generate test suites for kuma-manual-test by reading Kuma source code. Produces ready-to-run suites with manifests, validation steps, and expected outcomes.
+
+**Usage**: `/kuma-suite-author <feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH]`
+
+[Full documentation ->](./claude/kuma-suite-author/README.md)
 
 ### manage-agent
 
