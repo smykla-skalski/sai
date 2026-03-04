@@ -12,7 +12,7 @@ user-invocable: true       # Boolean
 ---
 ```
 
-Reference: `humanize/skills/humanize/SKILL.md` for a complete example.
+Reference: `claude/humanize/skills/humanize/SKILL.md` for a complete example.
 
 ## SKILL.md Body Structure
 
@@ -35,7 +35,7 @@ Organize complex skills into numbered phases:
 - Phase N+3: State persistence — save tracking files
 - Phase N+4: Verification — spawn separate agent for QA
 
-Reference: `ai-daily-digest/skills/ai-daily-digest/SKILL.md` for a 20-phase example.
+Reference: `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` for a 20-phase example.
 
 ## State Management
 
@@ -62,7 +62,7 @@ Resolve this path once in the setup phase via Bash and store as a variable (e.g.
 - Read on startup, update on successful completion only
 - Keep state files bounded (e.g., last 300 entries)
 
-Reference: `ai-daily-digest/skills/ai-daily-digest/SKILL.md` for the pattern.
+Reference: `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` for the pattern.
 
 ## External Integrations
 
@@ -83,7 +83,7 @@ When using MCP tools (Notion, Slack, etc.):
 
 ## Plugin Integration
 
-- Install: `claude --plugin-dir {plugin-name}/`
+- Install: `claude --plugin-dir claude/{plugin-name}/`
 - Invoke: `/{skill-name} [args]`
 - Arguments: parsed from `$ARGUMENTS` env var
 - Tool restrictions: `allowed-tools` frontmatter

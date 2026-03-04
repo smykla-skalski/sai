@@ -19,9 +19,9 @@ Check the project's README for specific prerequisites. Common requirements inclu
 
 For the SAI project specifically:
 
-- Each plugin is in its own top-level directory
-- Test individual plugins: `claude --plugin-dir {plugin-name}/`
-- Plugin-specific changes modify files in `{plugin-name}/`
+- Claude plugins live under `claude/{plugin-name}/` and Codex skills live under `codex/{skill-name}/`
+- Test individual plugins: `claude --plugin-dir claude/{plugin-name}/`
+- Plugin-specific changes modify files in `claude/{plugin-name}/`
 - Monorepo-wide changes modify root files (README.md, CLAUDE.md, etc.)
 
 ### Setup

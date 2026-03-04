@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Review Comments"
+  short_description: "Manage GitHub PR review threads with gh"
+  default_prompt: "List and address GitHub PR review threads for this branch, then summarize outcomes and any failures."
