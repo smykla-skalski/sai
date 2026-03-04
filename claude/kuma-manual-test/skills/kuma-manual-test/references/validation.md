@@ -21,7 +21,7 @@ bash "$SKILL_DIR/scripts/validate-manifest.sh" \
   --manifest "<manifest-file>"
 ```
 
-Validation is not optional.
+Validation is not optional. Never pass `--validate=false` to kubectl - validation failures indicate a bug in the manifest or missing CRDs. Fix the root cause instead.
 
 ## Safe apply flow
 
