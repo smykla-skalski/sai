@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "ai-daily-digest",
-      "source": "./ai-daily-digest",
+      "source": "./claude/ai-daily-digest",
       "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -20,7 +20,7 @@
     },
     {
       "name": "browser-controller",
-      "source": "./browser-controller",
+      "source": "./claude/browser-controller",
       "description": "Programmatic control of Chrome/Firefox via CDP/Marionette",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -31,7 +31,7 @@
     },
     {
       "name": "gh-review-comments",
-      "source": "./gh-review-comments",
+      "source": "./claude/gh-review-comments",
       "description": "List, reply to, resolve, and create GitHub PR review comment threads",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -42,7 +42,7 @@
     },
     {
       "name": "git",
-      "source": "./git",
+      "source": "./claude/git",
       "description": "Git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -53,7 +53,7 @@
     },
     {
       "name": "git-stage-hunk",
-      "source": "./git-stage-hunk",
+      "source": "./claude/git-stage-hunk",
       "description": "Non-interactive hunk staging for selective git add without TTY",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -64,7 +64,7 @@
     },
     {
       "name": "humanize",
-      "source": "./humanize",
+      "source": "./claude/humanize",
       "description": "Make text sound natural by removing AI writing patterns",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -75,7 +75,7 @@
     },
     {
       "name": "manage-agent",
-      "source": "./manage-agent",
+      "source": "./claude/manage-agent",
       "description": "Create, modify, or transform subagent definitions with quality validation",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -86,7 +86,7 @@
     },
     {
       "name": "manage-plan",
-      "source": "./manage-plan",
+      "source": "./claude/manage-plan",
       "description": "Investigate codebases and produce implementation plans",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -97,7 +97,7 @@
     },
     {
       "name": "ocr-finder",
-      "source": "./ocr-finder",
+      "source": "./claude/ocr-finder",
       "description": "Find text in images using EasyOCR and return click coordinates",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -108,7 +108,7 @@
     },
     {
       "name": "review-agent",
-      "source": "./review-agent",
+      "source": "./claude/review-agent",
       "description": "Audit subagent definitions for quality compliance",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -119,7 +119,7 @@
     },
     {
       "name": "promptgen",
-      "source": "./promptgen",
+      "source": "./claude/promptgen",
       "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -130,7 +130,7 @@
     },
     {
       "name": "review-claude-md",
-      "source": "./review-claude-md",
+      "source": "./claude/review-claude-md",
       "description": "Audit and fix CLAUDE.md files using tiered binary checklist",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -141,7 +141,7 @@
     },
     {
       "name": "review-plan",
-      "source": "./review-plan",
+      "source": "./claude/review-plan",
       "description": "Review implementation plans for executor-readiness",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -152,7 +152,7 @@
     },
     {
       "name": "review-skill",
-      "source": "./review-skill",
+      "source": "./claude/review-skill",
       "description": "Review and fix Claude Code skill definitions using tiered binary checklist",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -163,7 +163,7 @@
     },
     {
       "name": "screen-recorder",
-      "source": "./screen-recorder",
+      "source": "./claude/screen-recorder",
       "description": "Record macOS screen with verification and format conversion",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -174,7 +174,7 @@
     },
     {
       "name": "session",
-      "source": "./session",
+      "source": "./claude/session",
       "description": "Capture session context for continuity between Claude Code sessions",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -185,7 +185,7 @@
     },
     {
       "name": "space-finder",
-      "source": "./space-finder",
+      "source": "./claude/space-finder",
       "description": "Find and switch macOS Spaces by application name",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -196,7 +196,7 @@
     },
     {
       "name": "ui-inspector",
-      "source": "./ui-inspector",
+      "source": "./claude/ui-inspector",
       "description": "Inspect live macOS UI elements via Accessibility API",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -207,7 +207,7 @@
     },
     {
       "name": "verified-screenshot",
-      "source": "./verified-screenshot",
+      "source": "./claude/verified-screenshot",
       "description": "Capture screenshots with verification and retry logic",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -218,7 +218,7 @@
     },
     {
       "name": "web-automation",
-      "source": "./web-automation",
+      "source": "./claude/web-automation",
       "description": "Investigate and implement web browser automation workflows",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -229,7 +229,7 @@
     },
     {
       "name": "window-controller",
-      "source": "./window-controller",
+      "source": "./claude/window-controller",
       "description": "Find, activate, and screenshot macOS windows across Spaces",
       "author": {
         "name": "Smykla Skalski Labs"

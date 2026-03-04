@@ -1,0 +1,36 @@
+# Review CLAUDE.md
+
+Audit and fix CLAUDE.md files using tiered binary checklist.
+
+## Installation
+
+### Quick install
+
+```bash
+claude plugin marketplace add smykla-skalski/sai
+claude plugin install review-claude-md@smykla-skalski-sai
+```
+
+### Manual
+
+```bash
+claude --plugin-dir /path/to/sai/claude/review-claude-md
+```
+
+## Usage
+
+```
+/review-claude-md [path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]
+```
+
+| Flag           | Default | Purpose                                       |
+|:---------------|:--------|:----------------------------------------------|
+| (positional)   | cwd     | Path to repo root containing CLAUDE.md        |
+| `--score-only` | off     | Report verdict without fixing                 |
+| `--fix`        | on      | Fix all failing checks (default behavior)     |
+| `--verbose`    | off     | Show reasoning for each check                 |
+| `--thorough`   | off     | Include Polish tier in the report             |
+
+## License
+
+MIT - See [../../LICENSE](../../LICENSE)

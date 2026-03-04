@@ -6,37 +6,37 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 
 ## Commands
 
-- Test plugin locally: `claude --plugin-dir {plugin-name}/`
-- Test specific skill: `claude --plugin-dir {plugin-name}/ -p "/{skill-name} test args"`
+- Test plugin locally: `claude --plugin-dir claude/{plugin-name}/`
+- Test specific skill: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
 - No build step (pure markdown + shell scripts)
 - No lint step (no linter configured)
 
 ## Pre-commit Checklist
 
 - Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
-- Test modified plugins with `claude --plugin-dir {plugin-name}/`
+- Test modified plugins with `claude --plugin-dir claude/{plugin-name}/`
 - Update root README.md if adding/removing plugins
 - Follow conventional commits: `type(scope): description` — see `CONTRIBUTING.md:93`
 - **Bump plugin version** in `plugin.json` for any functional change (SKILL.md, scripts, references) — include the bump in the same commit. Skip only for pure doc changes (README, comments, typos)
 
 ## Architecture
 
-- Each plugin is self-contained in `{plugin-name}/` with independent versioning
-- `{plugin-name}/.claude-plugin/plugin.json` — plugin metadata (name, version, description)
-- `{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
-- `{plugin-name}/skills/{skill-name}/references/` — supporting docs; `{plugin-name}/skills/{skill-name}/scripts/` — automation scripts
+- Each plugin is self-contained in `claude/{plugin-name}/` with independent versioning
+- `claude/{plugin-name}/.claude-plugin/plugin.json` — plugin metadata (name, version, description)
+- `claude/{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
+- `claude/{plugin-name}/skills/{skill-name}/references/` — supporting docs; `claude/{plugin-name}/skills/{skill-name}/scripts/` — automation scripts
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
 - Plugins: `ai-daily-digest`, `gh-review-comments`, `git`, `humanize`, `review-claude-md`, `review-skill`
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins
 
-1. `mkdir -p {plugin-name}/.claude-plugin {plugin-name}/skills/{skill-name}/`
-2. Create `plugin.json` — see `humanize/.claude-plugin/plugin.json` for template
-3. Create `SKILL.md` with YAML frontmatter — see `humanize/skills/humanize/SKILL.md` for template
+1. `mkdir -p claude/{plugin-name}/.claude-plugin claude/{plugin-name}/skills/{skill-name}/`
+2. Create `plugin.json` — see `claude/humanize/.claude-plugin/plugin.json` for template
+3. Create `SKILL.md` with YAML frontmatter — see `claude/humanize/skills/humanize/SKILL.md` for template
 4. Add `references/`, `scripts/` as needed
 5. Create `README.md` and update root `README.md`
-6. Test: `claude --plugin-dir {plugin-name}/`
+6. Test: `claude --plugin-dir claude/{plugin-name}/`
 
 ## Skill Authoring
 
@@ -50,10 +50,17 @@ See `.claude/rules/skill-authoring.md` for:
 
 ## Gotchas
 
-- SKILL.md path **must** be `{plugin-name}/skills/{skill-name}/SKILL.md` — Claude Code won't discover skills at other paths
+- SKILL.md path **must** be `claude/{plugin-name}/skills/{skill-name}/SKILL.md` — Claude Code won't discover skills at other paths
 - Update state files AFTER successful completion, not before — premature updates corrupt state on failure
 - Deduplicate BEFORE generating output — downstream phases assume unique entries
 - Spawn verification agents separately to avoid polluting main context
 - First run has no state files — always handle missing state gracefully
 - `$ARGUMENTS` is the only way skills receive user input — parse flags from it
 - CI workflows in `.github/workflows/` are org-synced — do not edit manually
+
+## Claude Code skills
+
+The `git-stage-hunk` SAI plugin stages partial file changes without a TTY. Use `/stage-hunk` when only some changes in a file belong in the current commit, multiple sessions modified the same file, or `git add -p` is unavailable.
+
+Install: `claude --plugin-dir ~/Projects/github.com/smykla-skalski/sai/claude/git-stage-hunk/`
+Modes: `--list`, `--hunk H1,H2`, `--pattern REGEX`, `--file PATH`, `--range FILE:S-E`, `--verify`, `--dry-run`
