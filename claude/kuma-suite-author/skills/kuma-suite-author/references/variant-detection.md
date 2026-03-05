@@ -82,11 +82,11 @@ Scan source code for these patterns. Each signal type maps to a specific kind of
 
 Not all signals warrant variant groups. Classify each detected signal:
 
-| Strength | Criteria | Action |
-|:---------|:---------|:-------|
-| Strong   | Distinct code path in plugin.go, different xDS output, separate test golden files | Include in variant list, recommend selecting |
+| Strength | Criteria                                                                            | Action                                           |
+| :------- | :---------------------------------------------------------------------------------- | :----------------------------------------------- |
+| Strong   | Distinct code path in plugin.go, different xDS output, separate test golden files   | Include in variant list, recommend selecting     |
 | Moderate | Mentioned in spec but no separate code path yet, or code path exists but is trivial | Present with `[uncertain]` tag, explain evidence |
-| Weak     | Hinted at in comments or docs but no implementation | Mention in notes, don't pre-select |
+| Weak     | Hinted at in comments or docs but no implementation                                 | Mention in notes, don't pre-select               |
 
 Strong signals: the code does something measurably different. Moderate signals: the code might do something different but you're not sure without runtime testing. Weak signals: you see a pattern that could become a variant but isn't one yet.
 
@@ -106,6 +106,7 @@ Rules:
 MOTB (MeshObservabilityTelemetryBackend) breakdown:
 
 **Base groups (G1-G7):**
+
 - G1: CRUD for the MOTB resource
 - G2: Validation - invalid specs, missing fields
 - G3: backendRef acceptance and mutual exclusion
@@ -116,20 +117,20 @@ MOTB (MeshObservabilityTelemetryBackend) breakdown:
 
 **Detected variants and resulting groups:**
 
-| Signal | Variant | Groups | Count |
-|:-------|:--------|:-------|:------|
-| S7 | Backward compat (inline endpoint) | G8 | 1 |
-| S1 | KDS sync in multi-zone | G9 | 1 |
-| S3 | Mixed backend usage (OTel + Prometheus) | G10 | 1 |
-| S3 | Path suffix semantics | G11 | 1 |
-| S2 | Unified naming mode | G12 | 1 |
-| S5 | Gap analysis and edge semantics | G13 | 1 |
-| S3 | Endpoint optionality and schema parity | G14 | 1 |
-| S1 | Mesh isolation (cross-mesh) | G15 | 1 |
-| S3 | nodeEndpoint behavior | G16 | 1 |
-| S6+S4 | Pipe mode pre-unified (per-signal) | G17-G26 | 10 |
-| S1 | Universal multi-zone parity | G27-G39 | 13 |
-| S2+S6 | Unified pipe mode | G40-G53 | 14 |
+| Signal | Variant                                 | Groups  | Count |
+| :----- | :-------------------------------------- | :------ | :---- |
+| S7     | Backward compat (inline endpoint)       | G8      | 1     |
+| S1     | KDS sync in multi-zone                  | G9      | 1     |
+| S3     | Mixed backend usage (OTel + Prometheus) | G10     | 1     |
+| S3     | Path suffix semantics                   | G11     | 1     |
+| S2     | Unified naming mode                     | G12     | 1     |
+| S5     | Gap analysis and edge semantics         | G13     | 1     |
+| S3     | Endpoint optionality and schema parity  | G14     | 1     |
+| S1     | Mesh isolation (cross-mesh)             | G15     | 1     |
+| S3     | nodeEndpoint behavior                   | G16     | 1     |
+| S6+S4  | Pipe mode pre-unified (per-signal)      | G17-G26 | 10    |
+| S1     | Universal multi-zone parity             | G27-G39 | 13    |
+| S2+S6  | Unified pipe mode                       | G40-G53 | 14    |
 
 **Total**: 7 base + 46 variant = 53 groups.
 

@@ -16,14 +16,14 @@ Generate test suites for `kuma-manual-test` by reading Kuma source code. Produce
 
 Parse from `$ARGUMENTS`:
 
-| Argument       | Default              | Purpose                                                       |
-|:---------------|:---------------------|:--------------------------------------------------------------|
-| (positional)   | -                    | Feature or policy name (e.g., `meshretry`, `meshtrace`)       |
-| `--repo`       | auto-detect cwd      | Path to Kuma repo checkout                                    |
-| `--mode`       | `generate`           | `generate` (full AI) or `wizard` (interactive step-by-step)   |
-| `--from-pr`    | -                    | GitHub PR URL to scope the feature from                       |
-| `--from-branch` | -                   | Git branch to diff against master for scope                   |
-| `--suite-name` | derived from feature | Override output filename                                      |
+| Argument        | Default              | Purpose                                                     |
+| :-------------- | :------------------- | :---------------------------------------------------------- |
+| (positional)    | -                    | Feature or policy name (e.g., `meshretry`, `meshtrace`)     |
+| `--repo`        | auto-detect cwd      | Path to Kuma repo checkout                                  |
+| `--mode`        | `generate`           | `generate` (full AI) or `wizard` (interactive step-by-step) |
+| `--from-pr`     | -                    | GitHub PR URL to scope the feature from                     |
+| `--from-branch` | -                    | Git branch to diff against master for scope                 |
+| `--suite-name`  | derived from feature | Override output filename                                    |
 
 ## Workflow - generate mode (default)
 
@@ -117,15 +117,15 @@ Read `references/suite-structure.md` for the format spec.
 
 Build the suite with base groups (skip groups that don't apply, document why):
 
-| Group            | Source                         | Contents                                                   |
-|:-----------------|:-------------------------------|:-----------------------------------------------------------|
-| G1 CRUD          | API spec struct                | create/read/update/delete manifests with realistic values   |
-| G2 Validation    | validator.go                   | invalid manifests that trigger each rejection path          |
-| G3 Runtime config | plugin.go                     | xDS inspection commands based on what Apply() generates     |
-| G4 E2E flow      | golden files + plugin logic    | traffic generation + expected behavior                     |
-| G5 Edge cases    | validator edge cases, nil handling | dangling refs, missing deps, boundary values            |
-| G6 Multi-zone    | KDS markers, sync config       | global-to-zone presence checks                             |
-| G7 Backward compat | deprecated.go, old fields    | legacy path behavior, deprecation warnings                 |
+| Group              | Source                             | Contents                                                  |
+| :----------------- | :--------------------------------- | :-------------------------------------------------------- |
+| G1 CRUD            | API spec struct                    | create/read/update/delete manifests with realistic values |
+| G2 Validation      | validator.go                       | invalid manifests that trigger each rejection path        |
+| G3 Runtime config  | plugin.go                          | xDS inspection commands based on what Apply() generates   |
+| G4 E2E flow        | golden files + plugin logic        | traffic generation + expected behavior                    |
+| G5 Edge cases      | validator edge cases, nil handling | dangling refs, missing deps, boundary values              |
+| G6 Multi-zone      | KDS markers, sync config           | global-to-zone presence checks                            |
+| G7 Backward compat | deprecated.go, old fields          | legacy path behavior, deprecation warnings                |
 
 Then add G8+ for selected variants. Variant groups number sequentially from G8. Use range notation for multi-group variants (e.g., `G17-G26 Pipe mode`).
 
