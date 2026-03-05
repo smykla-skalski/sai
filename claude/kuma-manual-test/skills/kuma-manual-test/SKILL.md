@@ -17,13 +17,13 @@ Execute reproducible manual tests on local k3d clusters for any Kuma feature. Tr
 
 Parse from `$ARGUMENTS`:
 
-| Argument | Default | Purpose |
-|:---------|:--------|:--------|
-| (positional) | - | Suite path or bare name. Bare names (no `/`) are looked up in `${DATA_DIR}/suites/` first. Prompt with AskUserQuestion if omitted |
-| `--profile` | `single-zone` | Cluster profile: `single-zone`, `multi-zone` |
-| `--repo` | auto-detect cwd | Path to Kuma repo checkout |
-| `--run-id` | timestamp-based | Override run identifier |
-| `--resume` | - | Resume a partial run by its run ID |
+| Argument     | Default         | Purpose                                                                                                                           |
+| :----------- | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| (positional) | -               | Suite path or bare name. Bare names (no `/`) are looked up in `${DATA_DIR}/suites/` first. Prompt with AskUserQuestion if omitted |
+| `--profile`  | `single-zone`   | Cluster profile: `single-zone`, `multi-zone`                                                                                      |
+| `--repo`     | auto-detect cwd | Path to Kuma repo checkout                                                                                                        |
+| `--run-id`   | timestamp-based | Override run identifier                                                                                                           |
+| `--resume`   | -               | Resume a partial run by its run ID                                                                                                |
 
 ## Non-negotiable rules
 
@@ -170,20 +170,20 @@ KIND_CLUSTER_NAME=kuma-1 make k3d/stop
 
 ## Performance toggles
 
-| Profile | HARNESS_BUILD_IMAGES | HARNESS_LOAD_IMAGES | HARNESS_HELM_CLEAN | Use when |
-|---|---|---|---|---|
-| default | 1 | 1 | 0 | Normal test runs |
-| strict | 1 | 1 | 1 | Full isolation between deploys |
-| fast | 0 | 0 | 0 | Images already match code |
+| Profile | HARNESS_BUILD_IMAGES | HARNESS_LOAD_IMAGES | HARNESS_HELM_CLEAN | Use when                       |
+| ------- | -------------------- | ------------------- | ------------------ | ------------------------------ |
+| default | 1                    | 1                   | 0                  | Normal test runs               |
+| strict  | 1                    | 1                   | 1                  | Full isolation between deploys |
+| fast    | 0                    | 0                   | 0                  | Images already match code      |
 
 ## Report compactness thresholds
 
-| Limit | Default | Flag |
-|---|---|---|
-| Total lines | 220 | `--max-lines` |
-| Line length | 220 chars | `--max-line-length` |
-| Code blocks | 4 | `--max-code-blocks` |
-| Lines per code block | 30 | `--max-code-block-lines` |
+| Limit                | Default   | Flag                     |
+| -------------------- | --------- | ------------------------ |
+| Total lines          | 220       | `--max-lines`            |
+| Line length          | 220 chars | `--max-line-length`      |
+| Code blocks          | 4         | `--max-code-blocks`      |
+| Lines per code block | 30        | `--max-code-block-lines` |
 
 Store raw output in `artifacts/` and reference file paths from the report.
 
@@ -192,7 +192,7 @@ Store raw output in `artifacts/` and reference file paths from the report.
 - `references/agent-contract.md` - agent behavior rules, failure policy, artifact requirements
 - `references/workflow.md` - detailed phase descriptions with verification gates
 - `references/cluster-setup.md` - k3d profiles, kubeconfig mapping, deploy commands
-- `references/mesh-policies.md` - Mesh* policy authoring, targeting, and debug flow
+- `references/mesh-policies.md` - Mesh\* policy authoring, targeting, and debug flow
 - `references/validation.md` - pre-apply checklist and safe apply flow
 - `references/troubleshooting.md` - 10 known failure modes with fixes
 - `$SKILL_DIR/scripts/init-run.sh` - create run directory from templates

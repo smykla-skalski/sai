@@ -1,4 +1,4 @@
-# manual test report - __RUN_ID__
+# manual test report - **RUN_ID**
 
 Compactness rules:
 
@@ -24,19 +24,19 @@ Compactness rules:
 
 ## preflight status
 
-| check | status | evidence |
-|---|---|---|
-| docker reachable | PASS/FAIL | `artifacts/...` |
-| cluster reachable | PASS/FAIL | `artifacts/...` |
-| kuma control plane ready | PASS/FAIL | `artifacts/...` |
+| check                     | status    | evidence        |
+| ------------------------- | --------- | --------------- |
+| docker reachable          | PASS/FAIL | `artifacts/...` |
+| cluster reachable         | PASS/FAIL | `artifacts/...` |
+| kuma control plane ready  | PASS/FAIL | `artifacts/...` |
 | sidecar injection healthy | PASS/FAIL | `artifacts/...` |
-| local kumactl confirmed | PASS/FAIL | `artifacts/...` |
+| local kumactl confirmed   | PASS/FAIL | `artifacts/...` |
 
 ## test execution log
 
-| test id | title | status | manifests | key evidence | notes |
-|---|---|---|---|---|---|
-| G1 | Resource CRUD | PASS/FAIL | `manifests/...` | `artifacts/...` | |
+| test id | title         | status    | manifests       | key evidence    | notes |
+| ------- | ------------- | --------- | --------------- | --------------- | ----- |
+| G1      | Resource CRUD | PASS/FAIL | `manifests/...` | `artifacts/...` |       |
 
 ## failures and triage
 

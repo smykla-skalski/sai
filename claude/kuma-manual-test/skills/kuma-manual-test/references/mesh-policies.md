@@ -10,7 +10,7 @@
 
 ---
 
-# Mesh* policies: authoring, apply, debug
+# Mesh\* policies: authoring, apply, debug
 
 Use this reference when a test run includes any `Mesh*` policy.
 
@@ -37,12 +37,12 @@ This file is based on Kuma docs `2.13.x` pages:
 
 Kuma policy role affects priority and multi-zone sync.
 
-| Role | Typical shape | Namespace and intent |
-|---|---|---|
-| producer | has `spec.to` and targets service in same namespace | backend owner sets defaults for callers |
-| consumer | has `spec.to` and targets service in other namespace (or label set) | caller owner overrides how caller reaches upstream |
-| workload-owner | has `spec.rules`, or only `spec.targetRef/default` | owner configures own dataplane proxy behavior |
-| system | policy created in system namespace (`kuma-system`) | operator-managed mesh-wide behavior |
+| Role           | Typical shape                                                       | Namespace and intent                               |
+| -------------- | ------------------------------------------------------------------- | -------------------------------------------------- |
+| producer       | has `spec.to` and targets service in same namespace                 | backend owner sets defaults for callers            |
+| consumer       | has `spec.to` and targets service in other namespace (or label set) | caller owner overrides how caller reaches upstream |
+| workload-owner | has `spec.rules`, or only `spec.targetRef/default`                  | owner configures own dataplane proxy behavior      |
+| system         | policy created in system namespace (`kuma-system`)                  | operator-managed mesh-wide behavior                |
 
 Verify labels after apply:
 
@@ -138,24 +138,24 @@ kubectl --kubeconfig "${KUBECONFIG_GLOBAL}" get zones
 kubectl --kubeconfig "${KUBECONFIG_GLOBAL}" get zoneinsights -o yaml
 ```
 
-## 6) Edge-case matrix for every Mesh* feature test plan
+## 6) Edge-case matrix for every Mesh\* feature test plan
 
 Add these groups to the suite unless out of scope:
 
-| Case | What to verify | Artifacts |
-|---|---|---|
-| baseline mesh-level policy | expected default behavior | apply log + runtime output |
-| specificity overrides | mesh vs dataplane labels vs dataplane name/section | `inspect dataplane` + config-dump |
-| producer vs consumer | consumer override precedence in caller namespace | policy labels + request behavior |
-| route-level targeting | `MeshHTTPRoute` override on one route only | route manifest + route-specific behavior |
-| sectionName targeting | named section and numeric section behavior | config-dump listener/cluster match |
-| selector fan-out | one label selector applying to many dataplanes | `inspect <policy>` affected list |
-| invalid schema | admission rejects wrong enum or shape | validation log |
-| dangling reference | accept/reject behavior and runtime effect | apply + control-plane logs |
-| update and rollback | config changes and restore behavior | before/after artifacts |
-| delete semantics | effective cleanup after delete | post-delete inspect/config-dump |
-| multi-zone propagation | origin/sync and zone runtime behavior | `zones`, `zoneinsights`, zone logs |
-| protocol mismatch | expected non-application when listener type mismatches | config-dump + negative result |
+| Case                       | What to verify                                         | Artifacts                                |
+| -------------------------- | ------------------------------------------------------ | ---------------------------------------- |
+| baseline mesh-level policy | expected default behavior                              | apply log + runtime output               |
+| specificity overrides      | mesh vs dataplane labels vs dataplane name/section     | `inspect dataplane` + config-dump        |
+| producer vs consumer       | consumer override precedence in caller namespace       | policy labels + request behavior         |
+| route-level targeting      | `MeshHTTPRoute` override on one route only             | route manifest + route-specific behavior |
+| sectionName targeting      | named section and numeric section behavior             | config-dump listener/cluster match       |
+| selector fan-out           | one label selector applying to many dataplanes         | `inspect <policy>` affected list         |
+| invalid schema             | admission rejects wrong enum or shape                  | validation log                           |
+| dangling reference         | accept/reject behavior and runtime effect              | apply + control-plane logs               |
+| update and rollback        | config changes and restore behavior                    | before/after artifacts                   |
+| delete semantics           | effective cleanup after delete                         | post-delete inspect/config-dump          |
+| multi-zone propagation     | origin/sync and zone runtime behavior                  | `zones`, `zoneinsights`, zone logs       |
+| protocol mismatch          | expected non-application when listener type mismatches | config-dump + negative result            |
 
 ## 7) Common command set for policy-focused runs
 

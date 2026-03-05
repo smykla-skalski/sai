@@ -36,8 +36,8 @@ Summary table listing all test groups with columns:
 
 ```markdown
 | Group | Goal | Minimum artifacts |
-|---|---|---|
-| G1 | ... | ... |
+| ----- | ---- | ----------------- |
+| G1    | ...  | ...               |
 ```
 
 ### Group details
@@ -51,15 +51,15 @@ Each group has a section with:
 
 ## Standard group structure
 
-| Group | Purpose | Typical contents |
-|:------|:--------|:-----------------|
-| G1 | CRUD baseline | create/get/update/delete the resource |
-| G2 | Validation failures | invalid manifests that should be rejected (from validator.go) |
-| G3 | Runtime config | xDS inspection commands (from plugin.go understanding) |
-| G4 | End-to-end flow | traffic generation + expected behavior |
-| G5 | Edge cases | dangling refs, missing deps, bad combinations |
-| G6 | Multi-zone | KDS sync, cross-zone, cross-mesh isolation |
-| G7 | Backward compat | legacy paths, deprecated fields, migration behavior |
+| Group | Purpose             | Typical contents                                              |
+| :---- | :------------------ | :------------------------------------------------------------ |
+| G1    | CRUD baseline       | create/get/update/delete the resource                         |
+| G2    | Validation failures | invalid manifests that should be rejected (from validator.go) |
+| G3    | Runtime config      | xDS inspection commands (from plugin.go understanding)        |
+| G4    | End-to-end flow     | traffic generation + expected behavior                        |
+| G5    | Edge cases          | dangling refs, missing deps, bad combinations                 |
+| G6    | Multi-zone          | KDS sync, cross-zone, cross-mesh isolation                    |
+| G7    | Backward compat     | legacy paths, deprecated fields, migration behavior           |
 
 Not all groups apply to every feature. Skip groups that don't make sense, but document why in the suite metadata.
 
@@ -93,14 +93,14 @@ kubectl logs -n kuma-system deploy/kuma-control-plane --tail=50
 
 ## Artifact capture patterns
 
-| Group type | What to capture |
-|:-----------|:----------------|
-| CRUD | resource YAML before/after, kubectl output |
-| Validation | admission error messages |
-| Runtime config | config dump snippets for relevant xDS sections |
-| E2E flow | traffic tool output, collector/backend logs |
-| Edge cases | CP logs, resource status, error messages |
-| Multi-zone | resource presence on global and zone CPs |
+| Group type      | What to capture                                 |
+| :-------------- | :---------------------------------------------- |
+| CRUD            | resource YAML before/after, kubectl output      |
+| Validation      | admission error messages                        |
+| Runtime config  | config dump snippets for relevant xDS sections  |
+| E2E flow        | traffic tool output, collector/backend logs     |
+| Edge cases      | CP logs, resource status, error messages        |
+| Multi-zone      | resource presence on global and zone CPs        |
 | Backward compat | deprecation warnings, runtime config comparison |
 
 ## Execution contract
@@ -110,7 +110,7 @@ Every suite must include this checklist:
 - all manifests applied through `bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
 - all failures trigger immediate triage before next group
 - all pass/fail decisions include artifact pointers
-- edge cases from `references/mesh-policies.md` included when suite tests Mesh* policies
+- edge cases from `references/mesh-policies.md` included when suite tests Mesh\* policies
 
 ## Reference
 

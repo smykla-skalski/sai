@@ -87,7 +87,7 @@ Do not start tests until preflight is green.
 ## Phase 3 - execute tests
 
 Read `references/validation.md` before applying manifests.
-Read `references/mesh-policies.md` for Mesh* policy targeting and debug flow.
+Read `references/mesh-policies.md` for Mesh\* policy targeting and debug flow.
 
 Select a suite that matches the feature area, or copy `examples/suite-template.md` if none exists.
 
@@ -158,11 +158,11 @@ KIND_CLUSTER_NAME=kuma-1 make k3d/stop
 
 ## Performance toggles
 
-| Profile | `HARNESS_BUILD_IMAGES` | `HARNESS_LOAD_IMAGES` | `HARNESS_HELM_CLEAN` | Use when |
-|---|---|---|---|---|
-| default (fastest functional) | 1 | 1 | 0 | Normal test runs |
-| strict clean-state | 1 | 1 | 1 | Need full isolation between deploys |
-| image-stable fast | 0 | 0 | 0 | Images already match code under test |
+| Profile                      | `HARNESS_BUILD_IMAGES` | `HARNESS_LOAD_IMAGES` | `HARNESS_HELM_CLEAN` | Use when                             |
+| ---------------------------- | ---------------------- | --------------------- | -------------------- | ------------------------------------ |
+| default (fastest functional) | 1                      | 1                     | 0                    | Normal test runs                     |
+| strict clean-state           | 1                      | 1                     | 1                    | Need full isolation between deploys  |
+| image-stable fast            | 0                      | 0                     | 0                    | Images already match code under test |
 
 Example:
 
