@@ -40,7 +40,7 @@ KUMACTL="$(bash "$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_R
 
 Record `kumactl version` output in the run report.
 
-For Mesh* policy authoring, matching, and debug commands, follow
+For Mesh\* policy authoring, matching, and debug commands, follow
 `references/mesh-policies.md`.
 
 ## Run status tracking

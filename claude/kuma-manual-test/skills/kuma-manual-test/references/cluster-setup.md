@@ -21,11 +21,11 @@ Cluster lifecycle commands for local manual testing with k3d.
 
 ## Kubeconfig mapping
 
-| Cluster | Role | Kubeconfig file |
-|---|---|---|
+| Cluster  | Role                  | Kubeconfig file                    |
+| -------- | --------------------- | ---------------------------------- |
 | `kuma-1` | single-zone or global | `${HOME}/.kube/kind-kuma-1-config` |
-| `kuma-2` | zone-1 | `${HOME}/.kube/kind-kuma-2-config` |
-| `kuma-3` | zone-2 | `${HOME}/.kube/kind-kuma-3-config` |
+| `kuma-2` | zone-1                | `${HOME}/.kube/kind-kuma-2-config` |
+| `kuma-3` | zone-2                | `${HOME}/.kube/kind-kuma-3-config` |
 
 Use explicit absolute paths. Do not rely on implicit context switching.
 
