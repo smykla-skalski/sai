@@ -16,7 +16,7 @@ Any single failure in this tier results in an overall **FAIL** verdict. These re
 
 | ID  | Check                                                                         | Source                                       |
 |:----|:------------------------------------------------------------------------------|:---------------------------------------------|
-| C1  | Description includes what the skill does AND when-to-use trigger phrases      | Anthropic Best Practices, Agent Skills Spec  |
+| C1  | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) | Anthropic Best Practices, Agent Skills Spec |
 | C2  | SKILL.md body under 500 lines (excluding frontmatter)                         | Agent Skills Spec, Claude Code Docs          |
 | C3  | All file references in SKILL.md resolve to actual files                       | Agent Skills Spec                            |
 | C4  | Name field valid format and matches directory name                            | Agent Skills Spec                            |
@@ -26,7 +26,7 @@ Any single failure in this tier results in an overall **FAIL** verdict. These re
 
 ### How to evaluate
 
-Read the SKILL.md frontmatter first. Confirm the `description` field contains both a functional summary and at least one trigger phrase (e.g., "Use when..."). Count body lines excluding the YAML frontmatter block and verify < 500. Grep for file paths referenced in the body and confirm each resolves relative to the skill directory. Verify the `name` field is kebab-case and matches the parent directory name exactly. Scan for filler instructions that restate LLM defaults — if removing a sentence changes nothing about behavior, it fails C5. Scan for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow — it fails C6. Scan SKILL.md and all bundled files for secrets: AWS access keys (`AKIA...`), API keys (`sk-...`, `api_key=`), bearer tokens, private key blocks (`-----BEGIN...KEY-----`), inline passwords or tokens. Any match fails C7.
+Read the SKILL.md frontmatter first. Confirm the `description` field contains both a functional summary and at least one trigger phrase (e.g., "Use when..."). Exception: if `disable-model-invocation: true` is set, trigger phrases are not required since the skill cannot be auto-invoked. Count body lines excluding the YAML frontmatter block and verify < 500. Grep for file paths referenced in the body and confirm each resolves relative to the skill directory. Verify the `name` field is kebab-case and matches the parent directory name exactly. Scan for filler instructions that restate LLM defaults — if removing a sentence changes nothing about behavior, it fails C5. Scan for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow — it fails C6. Scan SKILL.md and all bundled files for secrets: AWS access keys (`AKIA...`), API keys (`sk-...`, `api_key=`), bearer tokens, private key blocks (`-----BEGIN...KEY-----`), inline passwords or tokens. Any match fails C7.
 
 ---
 
