@@ -73,7 +73,9 @@ Skip entirely if `--research` was not passed.
 
 ### Phase 2: Task analysis (spawned agent)
 
-Spawn a `general-purpose` analysis agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to [references/prompt-principles.md](references/prompt-principles.md).
+Read [references/prompt-principles.md](references/prompt-principles.md) for task-category-specific prompting principles (passed to the analysis agent below).
+
+Spawn a `general-purpose` analysis agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to the prompt-principles reference above.
 
 Agent instructions:
 
@@ -103,7 +105,9 @@ If `--verbose`, display the returned classification in the chat.
 
 ### Phase 3: Security assessment (spawned agent)
 
-Spawn a `general-purpose` security agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to [references/security-patterns.md](references/security-patterns.md).
+Read [references/security-patterns.md](references/security-patterns.md) for defensive patterns against prompt injection and the lethal trifecta (passed to the security agent below).
+
+Spawn a `general-purpose` security agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to the security-patterns reference above.
 
 Agent instructions:
 
@@ -173,11 +177,11 @@ Writing style rules (applied to the generated prompt text):
 - Sentence case headings, straight quotes
 - Varied sentence rhythm - mix short and long
 - State things plainly
-- AI vocabulary and filler phrase rules are in [references/anti-patterns.md](references/anti-patterns.md) items 10-11 - apply them during generation, not just during self-check
+- AI vocabulary and filler phrase rules from anti-patterns items 10-11 - apply them during generation, not just during self-check
 
 ### Phase 5: Self-check
 
-Read [references/anti-patterns.md](references/anti-patterns.md) in full.
+Read [references/anti-patterns.md](references/anti-patterns.md) in full to verify the generated prompt against all 12 anti-pattern checks.
 
 Verify the generated prompt against all 12 anti-pattern checks:
 

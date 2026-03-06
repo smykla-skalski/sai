@@ -284,7 +284,7 @@ case "$MODE" in
 esac
 
 # Always emit a summary as the final line
-echo "{\"summary\": true, \"total\": ${TOTAL}, \"passed\": ${PASSED}, \"failed\": ${FAILED}}"
+printf '{"summary": true, "total": %d, "passed": %d, "failed": %d}\n' "$TOTAL" "$PASSED" "$FAILED"
 
 # Exit 0 if all passed, 1 if any failed
 [[ "$FAILED" -eq 0 ]]

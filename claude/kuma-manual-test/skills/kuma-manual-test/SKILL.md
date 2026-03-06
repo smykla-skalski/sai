@@ -136,7 +136,7 @@ Create the agent with a prompt that includes:
 - Repo root: `${REPO_ROOT}`
 - Preflight script path: `${CLAUDE_SKILL_DIR}/scripts/preflight.sh`
 - Capture script path: `${CLAUDE_SKILL_DIR}/scripts/capture-state.sh`
-- Reference files to read: [references/cluster-setup.md](references/cluster-setup.md) and [references/validation.md](references/validation.md)
+- Reference files to read: the cluster-setup and validation references from Phase 4 (pass their absolute paths)
 
 The agent must:
 
@@ -148,10 +148,10 @@ Poll the agent task until complete. Do not start tests until the agent reports p
 
 ### Phase 4: Execute tests
 
-Read [references/validation.md](references/validation.md) before applying manifests.
-Read [references/mesh-policies.md](references/mesh-policies.md) when the suite tests any `Mesh*` policy.
+Read [references/validation.md](references/validation.md) for the pre-apply checklist and safe apply flow before applying manifests.
+Read [references/mesh-policies.md](references/mesh-policies.md) for policy authoring rules when the suite tests any `Mesh*` policy.
 
-Select a suite from the positional argument, or use AskUserQuestion if none was provided. Copy [examples/suite-template.md](examples/suite-template.md) for new features.
+Select a suite from the positional argument, or use AskUserQuestion if none was provided. Read [examples/suite-template.md](examples/suite-template.md) as the starting point when creating a new suite for an untested feature. Read [examples/example-motb-core-suite.md](examples/example-motb-core-suite.md) for a worked example of the expected suite format.
 
 For directory suites (`SUITE_DIR` is set):
 
@@ -272,7 +272,7 @@ Store raw output in `artifacts/` and reference file paths from the report.
 - `assets/manifest-index.template.md` - manifest index template
 - `assets/manual-test-report.template.md` - test report template
 - [examples/suite-template.md](examples/suite-template.md) - generic test suite template
-- [examples/example-motb-core-suite.md](examples/example-motb-core-suite.md) - worked example for MOTB testing
+- [examples/example-motb-core-suite.md](examples/example-motb-core-suite.md) - worked example for MOTB testing (read when authoring new suites to see the expected format)
 
 ## Example invocations
 

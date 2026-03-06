@@ -223,7 +223,7 @@ Read [references/split-hunk-guide.md](references/split-hunk-guide.md) for splitt
 ## Dependencies
 
 - git (required)
-- python3 (required, for JSON encoding)
+- python3 (required, for JSON encoding and `scripts/split-hunk.py` sub-hunk extraction)
 - patchutils (optional, provides lsdiff/filterdiff/grepdiff)
 
 Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils usage details.
