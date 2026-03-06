@@ -134,6 +134,67 @@ Reference: `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` for the patt
 - `${CLAUDE_SKILL_DIR}` substitution does NOT work in reference files - agent reads them via Read tool
 - Add explicit read gates: "Read [references/foo.md](references/foo.md) before starting Phase 3"
 
+## AskUserQuestion patterns
+
+Use AskUserQuestion when the skill needs user input or approval. Include it in `allowed-tools` for any skill that asks questions.
+
+### When to ask
+
+- **Missing required input**: a required argument was not provided. Ask for it instead of guessing.
+- **Ambiguity**: multiple valid interpretations or matches. Present the options and let the user pick.
+- **Deviation approval**: the skill needs to change its planned behavior. Get explicit approval before acting.
+- **Confirmation gate**: a destructive or irreversible action is about to happen. Confirm first.
+
+### Pattern catalog
+
+**Binary choice** - two options with descriptions explaining the tradeoff:
+
+```
+Use AskUserQuestion:
+  - Question: "patchutils is not installed. Install it now?"
+  - Option 1: "Yes, install" - "Full hunk filtering. Most reliable."
+  - Option 2: "No, use fallback" - "Pure-bash parsing. Some modes unavailable."
+```
+
+**Dynamic selection** - run a command, parse output, present results as options:
+
+```
+Run `git worktree list`, parse the output, and present available
+worktrees via AskUserQuestion (each option shows path and branch).
+```
+
+**Multi-select with grouping** - use `multiSelect` when the user can pick multiple items. Group by confidence or priority:
+
+```
+Use AskUserQuestion with multiSelect to present detected variants.
+Group by strength:
+- Strong signals (pre-selected): distinct code paths, different output
+- Moderate signals (tagged [uncertain]): present with evidence
+- Weak signals: mention in description, don't offer as options
+```
+
+**Confirmation wizard** - present a summary, offer actions, loop until confirmed:
+
+```
+Present the full summary via AskUserQuestion.
+Options:
+- "Confirm and save"
+- "Add a group"
+- "Remove a group"
+- "Edit a group"
+If user picks add/remove/edit: handle the change, then present again.
+Loop until user confirms.
+```
+
+### Guidelines
+
+- Write the question as a direct sentence, not a paragraph. Put context in option descriptions.
+- Each option description should state the consequence, not restate the question.
+- For dynamic options (from CLI output, file lists), show enough context per option for the user to decide without switching tools (e.g., path + branch, not just a name).
+- Pre-select options that are recommended. Tag uncertain options explicitly.
+- Skills with `disable-model-invocation: true` commonly use AskUserQuestion for deviation gates - the user invoked the skill intentionally, so interrupting for approval is expected.
+- Do not use AskUserQuestion in spawned agents (Task tool). Agents cannot interact with the user. Use `STATUS: NEEDS_INPUT` patterns instead if the agent hits ambiguity.
+
 ## Extended thinking
 
 Include the word "ultrathink" anywhere in skill content to enable extended thinking. Use for complex reasoning skills (multi-tier evaluation, prompt engineering, deep analysis). Increases token usage and response time.
@@ -148,6 +209,7 @@ When using MCP tools (Notion, Slack, etc.):
 
 ## Tool Usage Patterns
 
+- **AskUserQuestion**: missing input, ambiguity, deviation approval, confirmation gates (see patterns above)
 - **WebSearch + WebFetch**: information gathering
 - **Read**: config, templates, state files
 - **Write**: outputs and state
