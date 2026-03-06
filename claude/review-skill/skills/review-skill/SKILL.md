@@ -48,7 +48,7 @@ Run the validation script and collect its JSON output:
 "${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET_DIR"
 ```
 
-`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts. The script also calls `${CLAUDE_SKILL_DIR}/scripts/check-fork-candidate.sh` internally for the P9 fork candidate analysis.
+`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts. The script also calls `${CLAUDE_SKILL_DIR}/scripts/check-fork-candidate.sh` internally for the P9 fork candidate analysis, `${CLAUDE_SKILL_DIR}/scripts/check-preprocessing.sh` for the I18 preprocessing-hygiene check, and `${CLAUDE_SKILL_DIR}/scripts/lint-scripts.sh` for shell script static analysis.
 
 ### Phase 3: Manual Evaluation
 
