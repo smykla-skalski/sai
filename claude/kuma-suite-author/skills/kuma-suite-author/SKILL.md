@@ -3,6 +3,8 @@ name: kuma-suite-author
 description: >-
   Generate test suites for kuma-manual-test by reading Kuma source code.
   Produces ready-to-run suites with manifests, validation steps, and expected outcomes.
+  Use when creating a new test suite for a Kuma feature, converting a PR into a test plan,
+  or building regression tests from source code.
 argument-hint: "<feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH]"
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
