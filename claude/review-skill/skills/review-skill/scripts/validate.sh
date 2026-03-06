@@ -34,21 +34,6 @@
 set -euo pipefail
 
 # ========================
-# TEMP FILE CLEANUP
-# ========================
-_TMPFILES=()
-_cleanup_tmp() {
-  for _t in "${_TMPFILES[@]+"${_TMPFILES[@]}"}"; do
-    if [[ -d "$_t" ]]; then
-      rm -rf "$_t"
-    elif [[ -f "$_t" ]]; then
-      rm -f "$_t"
-    fi
-  done
-}
-trap _cleanup_tmp EXIT
-
-# ========================
 # ARGUMENT PARSING
 # ========================
 if [[ $# -lt 1 ]]; then
@@ -58,100 +43,48 @@ fi
 
 SKILL_DIR="$1"
 MODE="${2:-all}"
-SKILL_MD="${SKILL_DIR}/SKILL.md"
+SCRIPT_DIR="$(dirname "$0")"
 
 # ========================
-# COUNTERS
+# LOAD SHARED LIBRARY (sets globals, helpers, pre-flight)
 # ========================
-TOTAL=0
-PASSED=0
-FAILED=0
+source "${SCRIPT_DIR}/_lib.sh"
 
 # ========================
-# HELPERS
+# LOAD CHECK FUNCTION LIBRARIES (function defs only)
 # ========================
+source "${SCRIPT_DIR}/check-file-refs.sh"
+source "${SCRIPT_DIR}/check-scripts-dir.sh"
+source "${SCRIPT_DIR}/check-content.sh"
+source "${SCRIPT_DIR}/check-references.sh"
+source "${SCRIPT_DIR}/check-config.sh"
 
-# Emit a single check result as JSON.
-emit() {
-  local check="$1" pass="$2" detail="$3"
-  TOTAL=$((TOTAL + 1))
-  if [[ "$pass" == "true" ]]; then
-    PASSED=$((PASSED + 1))
-  else
-    FAILED=$((FAILED + 1))
+# ========================
+# DELEGATION HELPER
+# ========================
+# Re-emit JSON results from an existing standalone companion script.
+# Args: script_path, guard_field (skip if guard field is 0 or absent)
+delegate_script() {
+  local script="$1" guard_field="${2:-}"
+  [[ -x "$script" ]] || return 0
+  local output
+  output=$("$script" "$SKILL_DIR" 2>/dev/null || true)
+  [[ -n "$output" ]] || return 0
+  if [[ -n "$guard_field" ]]; then
+    local guard_val
+    guard_val=$(echo "$output" | tail -1 | sed -n "s/.*\"${guard_field}\": \([0-9]*\).*/\1/p")
+    [[ "${guard_val:-0}" -gt 0 ]] || return 0
   fi
-  # Escape for valid JSON: backslashes, double quotes, and control chars
-  detail="${detail//\\/\\\\}"
-  detail="${detail//\"/\\\"}"
-  detail="${detail//$'\n'/\\n}"
-  detail="${detail//$'\t'/\\t}"
-  detail="${detail//$'\r'/\\r}"
-  echo "{\"check\": \"${check}\", \"pass\": ${pass}, \"detail\": \"${detail}\"}"
+  while IFS= read -r line; do
+    [[ "$line" == *'"summary"'* ]] && continue
+    local chk pss dtl
+    chk=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
+    pss=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
+    dtl=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+    [[ -z "$chk" ]] && continue
+    emit "$chk" "$pss" "$dtl"
+  done <<< "$output"
 }
-
-# Extract a YAML frontmatter field value.
-# Handles single-line values, block scalars (>- > | |-), and YAML lists.
-get_field() {
-  local field="$1"
-  echo "$FRONTMATTER" | awk -v f="$field" '
-    BEGIN { found = 0; block = 0; buf = "" }
-    !found && $0 ~ "^"f":" {
-      found = 1
-      val = $0
-      sub("^"f":[[:space:]]*", "", val)
-      if (val ~ /^[>|]-?[[:space:]]*$/ || val == "") {
-        block = 1
-        next
-      }
-      print val
-      exit
-    }
-    found && block && /^[[:space:]]/ {
-      line = $0
-      sub(/^[[:space:]]+/, "", line)
-      sub(/^- /, "", line)
-      buf = buf (buf ? " " : "") line
-    }
-    found && block && !/^[[:space:]]/ {
-      print buf
-      exit
-    }
-    END { if (block && buf != "") print buf }
-  ' | sed 's/^["'"'"']//; s/["'"'"']$//'
-}
-
-# Detect the plugin root by walking up from the skill directory looking for
-# .claude-plugin/plugin.json. Returns empty string if not found.
-find_plugin_root() {
-  local dir="$1"
-  local _i
-  for _i in 1 2 3 4; do
-    dir=$(dirname "$dir")
-    if [[ -f "${dir}/.claude-plugin/plugin.json" ]]; then
-      echo "$dir"
-      return
-    fi
-  done
-  echo ""
-}
-
-# ========================
-# PRE-FLIGHT
-# ========================
-if [[ ! -f "$SKILL_MD" ]]; then
-  emit "skill-md-exists" "false" "SKILL.md not found in ${SKILL_DIR}"
-  echo "{\"summary\": true, \"total\": ${TOTAL}, \"passed\": ${PASSED}, \"failed\": ${FAILED}}"
-  exit 1
-fi
-
-# Extract frontmatter block (between first and second --- delimiters)
-FRONTMATTER=$(sed -n '/^---$/,/^---$/p' "$SKILL_MD" | sed '1d;$d')
-
-# Line number where body starts (after second ---)
-BODY_START=$(grep -n "^---$" "$SKILL_MD" | sed -n '2p' | cut -d: -f1)
-
-# Detect plugin root (if skill is inside a plugin)
-PLUGIN_ROOT=$(find_plugin_root "$SKILL_DIR")
 
 # ========================
 # FRONTMATTER CHECKS
@@ -239,615 +172,36 @@ run_frontmatter() {
 # STRUCTURE CHECKS
 # ========================
 run_structure() {
-  # --- body line count (<=500) ---
-  if [[ -n "$BODY_START" ]]; then
-    local TOTAL_LINES BODY_LINES
-    TOTAL_LINES=$(wc -l < "$SKILL_MD" | tr -d ' ')
-    BODY_LINES=$(( TOTAL_LINES - BODY_START ))
-    if [[ "$BODY_LINES" -le 500 ]]; then
-      emit "body-line-count" "true" "SKILL.md body is ${BODY_LINES} lines (limit 500)"
-    else
-      emit "body-line-count" "false" "SKILL.md body is ${BODY_LINES} lines, exceeds 500-line limit"
-    fi
-  else
-    emit "body-line-count" "false" "Could not locate frontmatter closing delimiter"
-  fi
+  # Function calls in exact current emission order
+  check_body_line_count
+  check_file_ref_resolves
+  check_script_invocation_prefix
+  check_no_bash_prefix
+  check_script_executable
+  check_no_secrets
+  check_no_backslash_paths
+  check_no_useless_echo
+  check_duplicate_codeblocks
+  check_consistent_phase_numbering
+  check_no_disallowed_files
+  check_refs_one_level
+  check_long_ref_toc
+  check_persistent_state_xdg
+  check_no_grading_style
+  check_skill_md_mentions_file
+  check_ref_link_format
 
-  # --- file references resolve ---
-  # Extract body text, strip fenced code blocks to avoid matching example paths.
-  # Per the Agent Skills spec, bundled resources (references/, scripts/, assets/,
-  # examples/) belong alongside SKILL.md in the skill directory. If a reference
-  # is not found there but exists at the plugin root, report it as misplaced.
-  local SKILL_BODY FULL_BODY REFERENCED_FILES
-  if [[ -n "$BODY_START" ]]; then
-    SKILL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
-    FULL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD")
-  else
-    # No frontmatter delimiters — entire file is the body
-    SKILL_BODY=$(sed '/^```/,/^```/d' "$SKILL_MD")
-    FULL_BODY=$(cat "$SKILL_MD")
-  fi
-  REFERENCED_FILES=$(echo "$SKILL_BODY" \
-    | { grep -oE '(references/[a-zA-Z0-9._-]+|scripts/[a-zA-Z0-9._-]+|assets/[a-zA-Z0-9._-]+|examples/[a-zA-Z0-9._-]+)' || true; } \
-    | { grep -vE '/(\.\.\.|\.\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)' || true; } \
-    | sort -u)
+  # Existing companion scripts (delegation)
+  delegate_script "${SCRIPT_DIR}/check-read-gates.sh" "refs"
 
-  if [[ -n "$REFERENCED_FILES" ]]; then
-    while IFS= read -r ref; do
-      local CANONICAL_PATH="${SKILL_DIR}/${ref}"
-      if [[ -e "$CANONICAL_PATH" ]]; then
-        # Found at canonical location (alongside SKILL.md)
-        emit "file-ref-resolves" "true" "Reference '${ref}' resolves in skill directory"
-      elif [[ -n "$PLUGIN_ROOT" ]] && [[ -e "${PLUGIN_ROOT}/${ref}" ]]; then
-        # Found at plugin root but not in skill dir — misplaced
-        emit "file-ref-resolves" "false" "Reference '${ref}' found at plugin root but not in skill directory — move to ${CANONICAL_PATH}"
-      else
-        # Not found anywhere
-        emit "file-ref-resolves" "false" "Reference '${ref}' not found — expected at ${CANONICAL_PATH}"
-      fi
-    done <<< "$REFERENCED_FILES"
-  else
-    emit "file-ref-resolves" "true" "No file references found in SKILL.md"
-  fi
+  check_allowed_tools_usage
+  check_side_effect_guard
 
-  # --- script invocations use ${CLAUDE_SKILL_DIR} or $SKILL_DIR prefix (I6) ---
-  # If the skill has a scripts/ directory, check that script references in the
-  # body use ${CLAUDE_SKILL_DIR}/scripts/ (or legacy $SKILL_DIR/scripts/) —
-  # bare paths like `scripts/foo.sh` resolve relative to the wrong directory
-  # in plugin cache.
-  if [[ -d "${SKILL_DIR}/scripts" ]]; then
-    # Find lines mentioning scripts/*.sh without a valid prefix.
-    # Exclude markdown headers (### `scripts/...`) which are documentation.
-    local BARE_REFS
-    BARE_REFS=$(echo "$SKILL_BODY" \
-      | { grep -E 'scripts/[a-zA-Z0-9._-]+\.sh' || true; } \
-      | { grep -vE '^\s*#{1,6}\s' || true; } \
-      | { grep -vE '\$SKILL_DIR|\$\{CLAUDE_SKILL_DIR\}' || true; })
-
-    if [[ -n "$BARE_REFS" ]]; then
-      local BARE_COUNT FIRST_BAD
-      BARE_COUNT=$(wc -l <<< "$BARE_REFS" | tr -d ' ')
-      FIRST_BAD=$(echo "$BARE_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
-      emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \${CLAUDE_SKILL_DIR} prefix — use \"\${CLAUDE_SKILL_DIR}/scripts/...\" — first: ${FIRST_BAD}"
-    else
-      emit "script-invocation-prefix" "true" "All script references use \${CLAUDE_SKILL_DIR} prefix"
-    fi
-  fi
-
-  # --- no bash prefix on script invocations ---
-  # Scripts must be invoked directly ("${CLAUDE_SKILL_DIR}/scripts/..."),
-  # never via bash "${CLAUDE_SKILL_DIR}/scripts/...".
-  # Scripts should have the executable bit set.
-  if [[ -d "${SKILL_DIR}/scripts" ]]; then
-    local BASH_PREFIX_REFS
-    BASH_PREFIX_REFS=$(echo "$FULL_BODY" \
-      | awk '/^```/{f=!f;next} f && /^\s*bash\s+/' \
-      || true)
-
-    if [[ -n "$BASH_PREFIX_REFS" ]]; then
-      local BASH_COUNT FIRST_BASH
-      BASH_COUNT=$(wc -l <<< "$BASH_PREFIX_REFS" | tr -d ' ')
-      FIRST_BASH=$(echo "$BASH_PREFIX_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
-      emit "no-bash-prefix" "false" "Found ${BASH_COUNT} script invocation(s) using bash prefix — invoke directly via \"\${CLAUDE_SKILL_DIR}/scripts/...\" and set executable bit — first: ${FIRST_BASH}"
-    else
-      emit "no-bash-prefix" "true" "No bash-prefixed script invocations found"
-    fi
-  fi
-
-  # --- scripts have executable bit set ---
-  if [[ -d "${SKILL_DIR}/scripts" ]]; then
-    for script_file in "${SKILL_DIR}/scripts"/*; do
-      [[ -f "$script_file" ]] || continue
-      local SCRIPT_BASENAME
-      SCRIPT_BASENAME=$(basename "$script_file")
-      if [[ -x "$script_file" ]]; then
-        emit "script-executable" "true" "Script '${SCRIPT_BASENAME}' has executable bit set"
-      else
-        emit "script-executable" "false" "Script '${SCRIPT_BASENAME}' missing executable bit — run chmod +x"
-      fi
-    done
-  fi
-
-  # --- no secrets or credentials (C7) ---
-  # Scan SKILL.md and all bundled files for common secret patterns.
-  # Filter out obvious placeholders (sequential digits, hex patterns,
-  # placeholder words) — real secrets have high entropy.
-  local SECRET_HIT_FILES_ARR=()
-
-  local ALL_SKILL_FILES=("$SKILL_MD")
-  for subdir in references scripts assets examples; do
-    if [[ -d "${SKILL_DIR}/${subdir}" ]]; then
-      for f in "${SKILL_DIR}/${subdir}"/*; do
-        [[ -f "$f" ]] && ALL_SKILL_FILES+=("$f")
-      done
-    fi
-  done
-
-  for sf in ${ALL_SKILL_FILES[@]+"${ALL_SKILL_FILES[@]}"}; do
-    local MATCHES
-    MATCHES=$(grep -oE 'AKIA[A-Z0-9]{16}|sk-[a-zA-Z0-9]{20,}|-----BEGIN[[:space:]]+(RSA |EC )?(PRIVATE )?KEY-----|Bearer[[:space:]]+[a-zA-Z0-9._-]{20,}' "$sf" 2>/dev/null || true)
-    if [[ -n "$MATCHES" ]]; then
-      # Check if any match looks real (not a placeholder)
-      local HAS_REAL="false"
-      while IFS= read -r match; do
-        if ! echo "$match" | grep -qiE '1234|0000|xxxx|abcdef|example|test|fake|placeholder|your_|INSERT|REPLACE|changeme'; then
-          HAS_REAL="true"
-          break
-        fi
-      done <<< "$MATCHES"
-      if [[ "$HAS_REAL" == "true" ]]; then
-        SECRET_HIT_FILES_ARR+=("$(basename "$sf")")
-      fi
-    fi
-  done
-
-  if [[ ${#SECRET_HIT_FILES_ARR[@]} -gt 0 ]]; then
-    local SECRET_HIT_FILES
-    SECRET_HIT_FILES=$(printf '%s ' ${SECRET_HIT_FILES_ARR[@]+"${SECRET_HIT_FILES_ARR[@]}"})
-    SECRET_HIT_FILES="${SECRET_HIT_FILES% }"
-    emit "no-secrets" "false" "Possible secrets or credentials found in: ${SECRET_HIT_FILES}"
-  else
-    emit "no-secrets" "true" "No secrets or credentials detected"
-  fi
-
-  # --- no Windows-style backslash paths (P6) ---
-  local BACKSLASH_PATHS
-  BACKSLASH_PATHS=$(echo "$SKILL_BODY" \
-    | { grep -oE '(references|scripts|assets|examples)\\[a-zA-Z0-9._-]+' || true; })
-
-  if [[ -n "$BACKSLASH_PATHS" ]]; then
-    local FIRST_BP
-    FIRST_BP=$(echo "$BACKSLASH_PATHS" | head -1)
-    emit "no-backslash-paths" "false" "Windows-style backslash path found: ${FIRST_BP} — use forward slashes"
-  else
-    emit "no-backslash-paths" "true" "No Windows-style backslash paths found"
-  fi
-
-  # --- no useless echo in code blocks (I13) ---
-  # ShellCheck SC2116: $(echo "literal") is the same as "literal".
-  # Only flags $(echo ...) wrapping literal strings. Skips $(echo "${VAR}")
-  # because in a skills context the agent interprets code blocks as intent
-  # descriptions — the subshell wrapper can affect agent behavior even though
-  # it's a no-op in bash. See: https://www.shellcheck.net/wiki/SC2116
-  # See also: https://github.com/anthropics/claude-code/issues/23813
-  local USELESS_ECHO_FILES_ARR=()
-  local FIRST_ECHO_LINE=""
-
-  for md_file in ${ALL_SKILL_FILES[@]+"${ALL_SKILL_FILES[@]}"}; do
-    [[ "$md_file" == *.md ]] || continue
-    local ECHO_HITS
-    ECHO_HITS=$(awk '
-      /^```/ {
-        if (in_block) { in_block = 0 }
-        else {
-          lang = $0; sub(/^```/, "", lang); sub(/[[:space:]].*/, "", lang)
-          if (lang == "" || lang == "bash" || lang == "sh" || lang == "shell")
-            in_block = 1
-        }
-        next
-      }
-      in_block && /\$\(echo / {
-        # Skip if the echo wraps a variable expansion — in skills context,
-        # the subshell may serve as an agent execution signal even though
-        # it is a no-op in pure bash.
-        if ($0 !~ /\$\(echo[^)]*\$[A-Za-z_{]/) print
-      }
-    ' "$md_file" || true)
-    if [[ -n "$ECHO_HITS" ]]; then
-      USELESS_ECHO_FILES_ARR+=("$(basename "$md_file")")
-      if [[ -z "$FIRST_ECHO_LINE" ]]; then
-        FIRST_ECHO_LINE=$(echo "$ECHO_HITS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
-      fi
-    fi
-  done
-
-  if [[ ${#USELESS_ECHO_FILES_ARR[@]} -gt 0 ]]; then
-    local USELESS_ECHO_FILES
-    USELESS_ECHO_FILES=$(printf '%s ' ${USELESS_ECHO_FILES_ARR[@]+"${USELESS_ECHO_FILES_ARR[@]}"})
-    USELESS_ECHO_FILES="${USELESS_ECHO_FILES% }"
-    emit "no-useless-echo" "false" "Useless echo (SC2116) in code blocks: ${USELESS_ECHO_FILES} — first: ${FIRST_ECHO_LINE}"
-  else
-    emit "no-useless-echo" "true" "No useless echo patterns in code blocks"
-  fi
-
-  # --- duplicated code blocks between SKILL.md and references (P8, informational) ---
-  # "The context window is a public good" — Anthropic Best Practices.
-  # However, progressive disclosure means reference files are loaded independently,
-  # so each file should be self-contained. Duplicating low-freedom operational code
-  # blocks (3-5 lines) is often correct — the agent needs them wherever it looks.
-  # This check is informational only (Polish tier). It always passes.
-  # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-  # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
-  if [[ -d "${SKILL_DIR}/references" ]]; then
-    local DUP_COUNT=0
-    local DUP_REFS_ARR=()
-
-    # Awk extracts fenced code blocks (3+ lines) into numbered temp files.
-    # Uses temp directory + awk file output to avoid NUL-pipe issues on macOS bash.
-    local BLOCK_EXTRACT_AWK='
-      /^```/ {
-        if (in_block) {
-          if (lines >= 3) {
-            fn = dir "/b_" (++n)
-            printf "%s", buf > fn
-            close(fn)
-          }
-          in_block = 0; buf = ""; lines = 0
-        } else {
-          in_block = 1; buf = ""; lines = 0
-        }
-        next
-      }
-      in_block {
-        sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
-        buf = (buf == "" ? $0 : buf "\n" $0)
-        lines++
-      }
-    '
-
-    # Extract and hash SKILL.md body code blocks
-    local SKILL_BLOCK_DIR SKILL_HASH_FILE
-    SKILL_BLOCK_DIR=$(mktemp -d); _TMPFILES+=("$SKILL_BLOCK_DIR")
-    SKILL_HASH_FILE=$(mktemp); _TMPFILES+=("$SKILL_HASH_FILE")
-    echo "$FULL_BODY" \
-      | awk -v dir="$SKILL_BLOCK_DIR" "$BLOCK_EXTRACT_AWK"
-    for bf in "$SKILL_BLOCK_DIR"/b_*; do
-      [[ -f "$bf" ]] || continue
-      shasum < "$bf" | cut -d' ' -f1
-    done | sort -u > "$SKILL_HASH_FILE"
-    rm -rf "$SKILL_BLOCK_DIR"
-
-    if [[ -s "$SKILL_HASH_FILE" ]]; then
-      for ref_file in "${SKILL_DIR}"/references/*.md; do
-        [[ -f "$ref_file" ]] || continue
-        local BASENAME
-        BASENAME=$(basename "$ref_file")
-
-        local REF_BLOCK_DIR REF_HASH_FILE
-        REF_BLOCK_DIR=$(mktemp -d); _TMPFILES+=("$REF_BLOCK_DIR")
-        REF_HASH_FILE=$(mktemp); _TMPFILES+=("$REF_HASH_FILE")
-        awk -v dir="$REF_BLOCK_DIR" "$BLOCK_EXTRACT_AWK" "$ref_file"
-        for bf in "$REF_BLOCK_DIR"/b_*; do
-          [[ -f "$bf" ]] || continue
-          shasum < "$bf" | cut -d' ' -f1
-        done | sort -u > "$REF_HASH_FILE"
-        rm -rf "$REF_BLOCK_DIR"
-
-        local MATCH_COUNT
-        MATCH_COUNT=$(comm -12 "$SKILL_HASH_FILE" "$REF_HASH_FILE" 2>/dev/null | wc -l | tr -d ' ')
-        if [[ "$MATCH_COUNT" -gt 0 ]]; then
-          DUP_COUNT=$((DUP_COUNT + MATCH_COUNT))
-          DUP_REFS_ARR+=("$BASENAME")
-        fi
-        rm -f "$REF_HASH_FILE"
-      done
-    fi
-
-    rm -f "$SKILL_HASH_FILE"
-    if [[ ${#DUP_REFS_ARR[@]} -gt 0 ]]; then
-      local DUP_REFS
-      DUP_REFS=$(printf '%s ' ${DUP_REFS_ARR[@]+"${DUP_REFS_ARR[@]}"})
-      DUP_REFS="${DUP_REFS% }"
-      emit "duplicate-codeblocks-info" "true" "INFO: ${DUP_COUNT} code block(s) (3+ lines) shared between SKILL.md and references: ${DUP_REFS} — review whether each is intentional for progressive disclosure"
-    else
-      emit "duplicate-codeblocks-info" "true" "No shared code blocks between SKILL.md and references"
-    fi
-  fi
-
-  # --- consistent phase numbering between SKILL.md and references (I14) ---
-  # "Use consistent terminology" — Anthropic Best Practices.
-  # If SKILL.md and a reference both define numbered phases via headers,
-  # overlapping phase numbers must be consistent. Disjoint (complementary)
-  # ranges are valid — e.g., SKILL.md covers phases [1,16-20] while a
-  # reference covers phases [2-15].
-  # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-  if [[ -d "${SKILL_DIR}/references" ]]; then
-    local SKILL_PHASES
-    SKILL_PHASES=$(echo "$SKILL_BODY" \
-      | { grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' || true; } \
-      | { grep -oE '[0-9]+' || true; } \
-      | sort -n -u)
-    local SKILL_PHASE_COUNT
-    SKILL_PHASE_COUNT=$(echo "$SKILL_PHASES" | { grep -c '[0-9]' || true; })
-
-    if [[ "$SKILL_PHASE_COUNT" -ge 2 ]]; then
-      for ref_file in "${SKILL_DIR}"/references/*.md; do
-        [[ -f "$ref_file" ]] || continue
-        local BASENAME
-        BASENAME=$(basename "$ref_file")
-        local REF_PHASES
-        REF_PHASES=$(sed '/^```/,/^```/d' "$ref_file" \
-          | { grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' || true; } \
-          | { grep -oE '[0-9]+' || true; } \
-          | sort -n -u)
-        local REF_PHASE_COUNT
-        REF_PHASE_COUNT=$(echo "$REF_PHASES" | { grep -c '[0-9]' || true; })
-
-        if [[ "$REF_PHASE_COUNT" -ge 2 ]]; then
-          # Only fail on overlapping mismatches. Disjoint sets are valid
-          # (reference covers different phases than SKILL.md).
-          local OVERLAP
-          OVERLAP=$(comm -12 <(echo "$SKILL_PHASES") <(echo "$REF_PHASES") 2>/dev/null | { grep -c '[0-9]' || true; })
-
-          if [[ "$OVERLAP" -eq 0 ]]; then
-            emit "consistent-phase-numbering" "true" "Phase ranges in '${BASENAME}' and SKILL.md are complementary (no overlap)"
-          elif [[ "$SKILL_PHASES" == "$REF_PHASES" ]]; then
-            emit "consistent-phase-numbering" "true" "Phase numbers in '${BASENAME}' match SKILL.md"
-          else
-            local SKILL_LIST REF_LIST
-            SKILL_LIST=$(echo "$SKILL_PHASES" | tr '\n' ',' | sed 's/,$//')
-            REF_LIST=$(echo "$REF_PHASES" | tr '\n' ',' | sed 's/,$//')
-            emit "consistent-phase-numbering" "false" "Phase numbering mismatch: SKILL.md has [${SKILL_LIST}] but ${BASENAME} has [${REF_LIST}] (overlapping phases differ)"
-          fi
-        fi
-      done
-    fi
-  fi
-
-  # --- no disallowed files in skill directory ---
-  local DISALLOWED_FILES=("README.md" "CHANGELOG.md" "INSTALLATION_GUIDE.md")
-  for f in ${DISALLOWED_FILES[@]+"${DISALLOWED_FILES[@]}"}; do
-    if [[ -f "${SKILL_DIR}/${f}" ]]; then
-      emit "no-disallowed-files" "false" "Disallowed file '${f}' found in skill directory"
-    else
-      emit "no-disallowed-files" "true" "'${f}' not present (correct)"
-    fi
-  done
-
-  # --- references are one level deep (no cross-references between reference files) ---
-  if [[ -d "${SKILL_DIR}/references" ]]; then
-    for ref_file in "${SKILL_DIR}"/references/*; do
-      [[ -f "$ref_file" ]] || continue
-      local BASENAME STRIPPED
-      BASENAME=$(basename "$ref_file")
-      STRIPPED=$(sed '/^```/,/^```/d' "$ref_file" | sed 's/"[^"]*"//g; s/`[^`]*`//g')
-      local BARE_PARENS
-      BARE_PARENS=$(echo "$STRIPPED" | { grep -E '\(references/[a-zA-Z0-9._-]+\)' || true; } \
-        | { grep -vE '\]\(references/' || true; })
-      if [[ -n "$BARE_PARENS" ]]; then
-        emit "refs-one-level" "false" "Reference '${BASENAME}' cross-references other reference files"
-      else
-        emit "refs-one-level" "true" "Reference '${BASENAME}' does not cross-reference other files"
-      fi
-    done
-  fi
-
-  # --- long references (>100 lines) have table of contents ---
-  if [[ -d "${SKILL_DIR}/references" ]]; then
-    for ref_file in "${SKILL_DIR}"/references/*; do
-      [[ -f "$ref_file" ]] || continue
-      local BASENAME LINE_COUNT
-      BASENAME=$(basename "$ref_file")
-      LINE_COUNT=$(wc -l < "$ref_file" | tr -d ' ')
-      if [[ "$LINE_COUNT" -gt 100 ]]; then
-        if grep -qE '^#{1,2} Contents' "$ref_file" 2>/dev/null; then
-          emit "long-ref-toc" "true" "Reference '${BASENAME}' (${LINE_COUNT} lines) has table of contents"
-        else
-          emit "long-ref-toc" "false" "Reference '${BASENAME}' (${LINE_COUNT} lines) exceeds 100 lines but has no '# Contents' heading"
-        fi
-      fi
-    done
-  fi
-
-  # --- persistent state uses XDG paths, not relative or cache-relative ---
-  # If the skill writes persistent state (findings/, .last-run, .covered-stories,
-  # state files, artifacts), it must use XDG_DATA_HOME, not relative paths.
-  # Plugin cache directories are replaced on version updates.
-  local HAS_STATE_PATTERNS HAS_XDG_PATH
-  HAS_STATE_PATTERNS=$(echo "$SKILL_BODY" \
-    | grep -cE '\./findings/|\$SKILL_DIR/findings/|\$\{CLAUDE_SKILL_DIR\}/findings/|\.last-run|\.covered-|state stored in|persistent.*state|State Files' || true)
-  HAS_XDG_PATH=$(echo "$SKILL_BODY" \
-    | grep -cE 'XDG_DATA_HOME|\$HOME/\.local/share' || true)
-
-  if [[ "$HAS_STATE_PATTERNS" -gt 0 ]]; then
-    # Skill appears to use persistent state — check for proper XDG paths.
-    # Prioritize XDG detection: if XDG paths are present, the skill is doing the
-    # right thing and any ./findings/ mentions are likely warnings, not actual usage.
-    local HAS_BAD_PATHS
-    HAS_BAD_PATHS=$(echo "$SKILL_BODY" \
-      | grep -cE '\./findings/|\$SKILL_DIR/findings/|\$\{CLAUDE_SKILL_DIR\}/findings/' || true)
-    if [[ "$HAS_XDG_PATH" -gt 0 ]]; then
-      emit "persistent-state-xdg" "true" "Persistent state uses XDG-compliant path"
-    elif [[ "$HAS_BAD_PATHS" -gt 0 ]]; then
-      emit "persistent-state-xdg" "false" "Skill uses relative paths (./findings/ or \${CLAUDE_SKILL_DIR}/findings/) for persistent state — use \${XDG_DATA_HOME:-\$HOME/.local/share}/sai/{plugin}/ instead"
-    else
-      emit "persistent-state-xdg" "true" "State references found but no relative path issues detected"
-    fi
-  fi
-
-  # --- no grading/rubric style (C6) ---
-  # Skills should give imperative instructions, not scoring rubrics with point
-  # values, percentage weights, or letter grades. Require 2+ signals to fail.
-  local GRADING_SIGNALS=0
-  local GRADING_EVIDENCE=""
-
-  # Point values: "10 points", "5 pts"
-  if echo "$SKILL_BODY" | grep -qiE '\b[0-9]+\s+(points?|pts)\b'; then
-    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
-    GRADING_EVIDENCE="${GRADING_EVIDENCE}point-values "
-  fi
-
-  # Score/rating numeric assignments: "score: 4", "rating: 3"
-  if echo "$SKILL_BODY" | grep -qiE '\b(score|rating)\s*:\s*[0-9]'; then
-    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
-    GRADING_EVIDENCE="${GRADING_EVIDENCE}score-assignments "
-  fi
-
-  # Percentage weights: "30% weight", "weight: 25%"
-  if echo "$SKILL_BODY" | grep -qiE '\b[0-9]+%\s*(weight|of total)|\bweight[s]?\s*:?\s*[0-9]+%'; then
-    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
-    GRADING_EVIDENCE="${GRADING_EVIDENCE}percentage-weights "
-  fi
-
-  # Letter grade scales: "Grade: A", "A (90-100)"
-  if echo "$SKILL_BODY" | grep -qiE '\bgrade\s*:?\s*[A-F]\b|\b[A-F]\s*\([0-9]+-[0-9]+'; then
-    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
-    GRADING_EVIDENCE="${GRADING_EVIDENCE}letter-grades "
-  fi
-
-  # Rubric keywords: "rubric", "scoring matrix", "grading scale/criteria"
-  if echo "$SKILL_BODY" | grep -qiE '\brubric\b|\bscoring\s+matrix\b|\bgrading\s+(scale|criteria)\b'; then
-    GRADING_SIGNALS=$((GRADING_SIGNALS + 1))
-    GRADING_EVIDENCE="${GRADING_EVIDENCE}rubric-keywords "
-  fi
-
-  GRADING_EVIDENCE="${GRADING_EVIDENCE% }"
-
-  if [[ "$GRADING_SIGNALS" -ge 2 ]]; then
-    emit "no-grading-style" "false" "Grading/rubric style detected (${GRADING_SIGNALS} signals: ${GRADING_EVIDENCE}) — restructure as imperative workflow"
-  else
-    emit "no-grading-style" "true" "No grading/rubric style detected"
-  fi
-
-  # --- SKILL.md mentions all bundled resource files ---
-  for subdir in references scripts assets examples; do
-    if [[ -d "${SKILL_DIR}/${subdir}" ]]; then
-      for file in "${SKILL_DIR}/${subdir}"/*; do
-        [[ -f "$file" ]] || continue
-        local BASENAME REL_PATH
-        BASENAME=$(basename "$file")
-        REL_PATH="${subdir}/${BASENAME}"
-        if grep -qF "$REL_PATH" "$SKILL_MD" 2>/dev/null; then
-          emit "skill-md-mentions-file" "true" "SKILL.md mentions '${REL_PATH}'"
-        else
-          emit "skill-md-mentions-file" "false" "SKILL.md does not mention '${REL_PATH}' — all bundled files should be referenced"
-        fi
-      done
-    fi
-  done
-
-  # --- reference files use markdown link format for progressive disclosure (I15) ---
-  # Claude Code recognizes markdown links [text](references/file.md) for on-demand
-  # loading. Inline code paths `references/file.md` bypass progressive disclosure.
-  # Only checks references/ and examples/ — scripts are invoked via
-  # ${CLAUDE_SKILL_DIR}, not markdown links.
-  # See: https://code.claude.com/docs/en/skills (Progressive Disclosure)
-  local INLINE_CODE_REFS
-  INLINE_CODE_REFS=$(echo "$SKILL_BODY" \
-    | { grep -oE '`(references|examples)/[a-zA-Z0-9._-]+`' || true; })
-
-  if [[ -n "$INLINE_CODE_REFS" ]]; then
-    local INLINE_COUNT FIRST_INLINE
-    INLINE_COUNT=$(wc -l <<< "$INLINE_CODE_REFS" | tr -d ' ')
-    FIRST_INLINE=$(echo "$INLINE_CODE_REFS" | head -1)
-    emit "ref-link-format" "false" "Found ${INLINE_COUNT} inline code reference(s) — use markdown links [file](path) for progressive disclosure — first: ${FIRST_INLINE}"
-  else
-    emit "ref-link-format" "true" "Reference file paths use markdown link format"
-  fi
-
-  # --- reference file read gate analysis (I19, externalized) ---
-  # Validates read gates, passive mentions, orphan files, dead listings,
-  # use-before-gate ordering, gate purpose, and multi-flow coverage.
-  # See: check-read-gates.sh for the 7 sub-checks (RG-GATE through RG-FLOW).
-  local REFGATE_SCRIPT
-  REFGATE_SCRIPT="$(dirname "$0")/check-read-gates.sh"
-  if [[ -x "$REFGATE_SCRIPT" ]]; then
-    local REFGATE_OUTPUT REFGATE_SUMMARY REFGATE_REFS
-    REFGATE_OUTPUT=$("$REFGATE_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
-    REFGATE_SUMMARY=$(echo "$REFGATE_OUTPUT" | tail -1)
-    REFGATE_REFS=$(echo "$REFGATE_SUMMARY" | sed -n 's/.*"refs": \([0-9]*\).*/\1/p')
-
-    if [[ "${REFGATE_REFS:-0}" -gt 0 ]]; then
-      while IFS= read -r line; do
-        [[ "$line" == *'"summary"'* ]] && continue
-        local RG_CHECK RG_PASS RG_DETAIL
-        RG_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
-        RG_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
-        RG_DETAIL=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
-        [[ -z "$RG_CHECK" ]] && continue
-        emit "$RG_CHECK" "$RG_PASS" "$RG_DETAIL"
-      done <<< "$REFGATE_OUTPUT"
-    fi
-  fi
-
-  # --- allowed-tools only lists tools referenced in the skill (I16) ---
-  # High-signal tools (Task, ToolSearch) grant significant permissions and should
-  # only be listed when the skill actually uses them. Task requires agent spawning;
-  # ToolSearch requires MCP/deferred tool loading.
-  local AT
-  AT=$(get_field "allowed-tools")
-  if [[ -n "$AT" ]]; then
-    local UNUSED_TOOLS=""
-
-    if [[ "$AT" == *Task* ]]; then
-      if ! grep -qE '\bTask\b' <<< "$FULL_BODY" \
-        && ! grep -qiE '\bagent\b|\bspawn\b|\bsubagent\b' <<< "$FULL_BODY"; then
-        UNUSED_TOOLS="${UNUSED_TOOLS}Task "
-      fi
-    fi
-
-    if [[ "$AT" == *ToolSearch* ]]; then
-      if ! grep -qE '\bToolSearch\b' <<< "$FULL_BODY" \
-        && ! grep -qiE 'mcp__|select:' <<< "$FULL_BODY"; then
-        UNUSED_TOOLS="${UNUSED_TOOLS}ToolSearch "
-      fi
-    fi
-
-    UNUSED_TOOLS=$(echo "$UNUSED_TOOLS" | xargs)
-    if [[ -n "$UNUSED_TOOLS" ]]; then
-      emit "allowed-tools-usage" "false" "allowed-tools lists unused tool(s): ${UNUSED_TOOLS} — remove to minimize granted permissions"
-    else
-      emit "allowed-tools-usage" "true" "No unused high-signal tools detected in allowed-tools"
-    fi
-  fi
-
-  # --- side-effect skills have disable-model-invocation guard (I17) ---
-  # Skills containing destructive or infrastructure-modifying commands should have
-  # disable-model-invocation: true to prevent accidental auto-invocation by the
-  # model. Without this guard, Claude may trigger the skill autonomously, creating
-  # clusters, deleting branches, or modifying staging areas without user intent.
-  local DMI
-  DMI=$(get_field "disable-model-invocation")
-  local SIDE_EFFECT_HITS
-  SIDE_EFFECT_HITS=$(echo "$FULL_BODY" \
-    | grep -ciE 'k3d (cluster|create|delete)|kind (create|delete) cluster|git reset|git branch -[dD]|git apply --cached|git clean -|git push --force|kubectl (delete|drain|cordon)|helm (uninstall|delete)|rm -rf' \
-    || true)
-
-  if [[ "$SIDE_EFFECT_HITS" -gt 0 ]]; then
-    if [[ "$DMI" == "true" ]]; then
-      emit "side-effect-guard" "true" "Side-effect skill has disable-model-invocation: true"
-    else
-      emit "side-effect-guard" "false" "Skill contains ${SIDE_EFFECT_HITS} side-effect pattern(s) (destructive/infrastructure commands) but lacks disable-model-invocation: true"
-    fi
-  else
-    emit "side-effect-guard" "true" "No side-effect patterns detected"
-  fi
-
-  # --- preprocessing directive hygiene (I18) ---
-  # Validates !`command` shell preprocessing directives for best practices:
-  # error handling, output limiting, secret leaking, state mutations,
-  # slow commands, redundant CLAUDE_SKILL_DIR wrapping, hanging commands.
-  # See: https://code.claude.com/docs/en/skills (Inject dynamic context)
-  local PREPROC_SCRIPT
-  PREPROC_SCRIPT="$(dirname "$0")/check-preprocessing.sh"
-  if [[ -x "$PREPROC_SCRIPT" ]]; then
-    local PREPROC_OUTPUT PREPROC_SUMMARY PREPROC_DIRECTIVES
-    PREPROC_OUTPUT=$("$PREPROC_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
-    PREPROC_SUMMARY=$(echo "$PREPROC_OUTPUT" | tail -1)
-    PREPROC_DIRECTIVES=$(echo "$PREPROC_SUMMARY" | sed -n 's/.*"directives": \([0-9]*\).*/\1/p')
-
-    if [[ "${PREPROC_DIRECTIVES:-0}" -gt 0 ]]; then
-      # Re-emit each sub-check result from the preprocessing script
-      while IFS= read -r line; do
-        # Skip summary line
-        [[ "$line" == *'"summary"'* ]] && continue
-        local PC_CHECK PC_PASS PC_DETAIL
-        PC_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
-        PC_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
-        PC_DETAIL=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
-        [[ -z "$PC_CHECK" ]] && continue
-        emit "$PC_CHECK" "$PC_PASS" "$PC_DETAIL"
-      done <<< "$PREPROC_OUTPUT"
-    fi
-  fi
+  delegate_script "${SCRIPT_DIR}/check-preprocessing.sh" "directives"
 
   # --- shell script static analysis (I20) ---
-  # Runs lint-scripts.py on the target skill's scripts/ directory to detect
-  # common shell script antipatterns (32 bug classes covering JSON safety,
-  # array handling, grep/regex, injection, temp files, etc.).
-  # Fails on any critical or medium findings — these are real bugs.
   local LINT_SCRIPT SCRIPTS_DIR
-  LINT_SCRIPT="$(dirname "$0")/lint-scripts.py"
+  LINT_SCRIPT="${SCRIPT_DIR}/lint-scripts.py"
   SCRIPTS_DIR="${SKILL_DIR}/scripts"
   if [[ ! -d "$SCRIPTS_DIR" ]]; then
     emit "script-lint" "true" "No scripts/ directory"
@@ -877,7 +231,7 @@ run_structure() {
 
   # --- AskUserQuestion usage validation (I21) ---
   local AUQ_SCRIPT
-  AUQ_SCRIPT="$(dirname "$0")/check-ask-user.py"
+  AUQ_SCRIPT="${SCRIPT_DIR}/check-ask-user.py"
   if [[ -x "$AUQ_SCRIPT" ]]; then
     local AUQ_OUTPUT AUQ_SUMMARY AUQ_TOTAL
     AUQ_OUTPUT=$(python3 "$AUQ_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
@@ -899,12 +253,8 @@ run_structure() {
   fi
 
   # --- fork candidate analysis (P9, informational) ---
-  # Runs check-fork-candidate.sh to determine if the skill would benefit
-  # from context: fork + agent field. This is informational only — always
-  # passes. Strong/soft recommendations are surfaced in the detail message.
-  # See: https://code.claude.com/docs/en/skills (Subagent execution)
   local FORK_SCRIPT
-  FORK_SCRIPT="$(dirname "$0")/check-fork-candidate.sh"
+  FORK_SCRIPT="${SCRIPT_DIR}/check-fork-candidate.sh"
   if [[ -x "$FORK_SCRIPT" ]]; then
     local FORK_RESULT
     FORK_RESULT=$("$FORK_SCRIPT" "$SKILL_DIR" 2>/dev/null | tail -1 || true)
