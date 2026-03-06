@@ -10,7 +10,7 @@ description: >-
   for scripted and non-TTY environments. Also for partial staging,
   stage specific hunks, or selective git add by pattern, file,
   or line range.
-argument-hint: "[--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]"
+argument-hint: "[--list [--split]] [--split H3] [--hunk H1,H3.1,H5:5-10] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]"
 allowed-tools: AskUserQuestion, Bash
 user-invocable: true
 disable-model-invocation: true
@@ -30,15 +30,19 @@ The heavy lifting happens in the shell script at `${CLAUDE_SKILL_DIR}/scripts/st
 
 Parse from `$ARGUMENTS`:
 
-| Flag                | Default | Purpose                                       |
-|:--------------------|:--------|:----------------------------------------------|
-| `--list`            | -       | List all unstaged hunks with IDs and previews |
-| `--hunk H1,H2,...`  | -       | Stage specific hunks by global ID             |
-| `--pattern REGEX`   | -       | Stage hunks matching regex content            |
-| `--file PATH`       | -       | Stage all hunks for file(s), comma-separated  |
-| `--range FILE:S-E`  | -       | Stage hunks overlapping line range            |
-| `--dry-run`         | off     | Preview without applying                      |
-| `--verify`          | -       | Show staged vs unstaged summary               |
+| Flag                | Default | Purpose                                          |
+|:--------------------|:--------|:-------------------------------------------------|
+| `--list`            | -       | List all unstaged hunks with IDs and previews    |
+| `--list --split`    | -       | List all hunks with sub-hunk breakdown           |
+| `--split H3`        | -       | Show sub-hunks for one specific hunk             |
+| `--hunk H1,H2,...`  | -       | Stage specific hunks by global ID                |
+| `--hunk H3.1,H3.2`  | -       | Stage sub-hunks by dot-notation ID               |
+| `--hunk H3:5-10`    | -       | Stage hunk-relative lines 5-10 of H3            |
+| `--pattern REGEX`   | -       | Stage hunks matching regex content               |
+| `--file PATH`       | -       | Stage all hunks for file(s), comma-separated     |
+| `--range FILE:S-E`  | -       | Stage hunks overlapping line range               |
+| `--dry-run`         | off     | Preview without applying                         |
+| `--verify`          | -       | Show staged vs unstaged summary                  |
 
 If no mode flag is provided, default to `--list`.
 
@@ -74,8 +78,13 @@ Run the script with the user's requested mode:
 
 ```
 "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --split
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --split H3
 "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3 --dry-run
 "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H3.1,H3.2
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H3:5-10
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3.2,H5:10-15
 "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --pattern 'handleAuth'
 "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --file src/auth.ts
 "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --range src/auth.ts:45-60
@@ -83,6 +92,8 @@ Run the script with the user's requested mode:
 ```
 
 Add `--fallback` if the user declined patchutils in Phase 2.
+
+Mixed hunk IDs are supported in a single `--hunk` call: plain IDs (H1), sub-hunk IDs (H3.2), and line-select IDs (H5:10-15) are processed in separate batches internally.
 
 ### Phase 4: Present results
 
@@ -94,6 +105,17 @@ For `--list` mode, present a table:
 |:----|:-------------|:----------|:----|:------------------------------|
 | H1  | src/auth.ts  | 45-56     | +4/-2 | `+  function handleAuth() {` |
 | H2  | src/auth.ts  | 102-110   | +3/-1 | `+  const token = ...`       |
+
+For `--list --split` mode, present a hierarchical table. Parent hunks show `splittable` status and sub-hunk count. Sub-hunks are indented under their parent:
+
+| ID    | File         | Lines   | +/-   | Preview                       |
+|:------|:-------------|:--------|:------|:------------------------------|
+| H1    | src/auth.ts  | 45-80   | +8/-4 | `+  function handleAuth() {` |
+|  H1.1 | src/auth.ts  | 45-52   | +3/-1 | `+  function handleAuth() {` |
+|  H1.2 | src/auth.ts  | 70-80   | +5/-3 | `+  validateToken(tok) {`    |
+| H2    | src/auth.ts  | 102-110 | +3/-1 | (not splittable)             |
+
+For `--split H3` mode, present the sub-hunks for that specific hunk. If `"splittable":false`, suggest using `--hunk H3:START-END` for line-level selection instead.
 
 For staging modes, report each hunk result and the summary.
 
@@ -132,6 +154,30 @@ On failure:
 {"id":"H2","file":"src/auth.ts","action":"stage_failed","status":"error","detail":"patch does not apply"}
 ```
 
+### Split mode
+
+Per sub-hunk (when splittable):
+```json
+{"id":"H3.1","parent":"H3","file":"src/auth.ts","old_start":45,"old_count":2,"new_start":45,"new_count":3,"added":1,"removed":0,"preview":"+  new line"}
+```
+
+When not splittable:
+```json
+{"parent":"H3","splittable":false,"reason":"single_hunk","suggestion":"use H3:START-END for line-level selection"}
+```
+
+### List-split mode
+
+Parent hunks include split info:
+```json
+{"id":"H1","file":"src/auth.ts","hunk_num":1,"old_start":45,"old_count":36,"new_start":45,"new_count":40,"added":8,"removed":4,"preview":"+  ...","splittable":true,"sub_hunks":2}
+```
+
+Summary includes split counts:
+```json
+{"summary":true,"total_hunks":5,"splittable_hunks":2,"total_sub_hunks":5,"mode":"list-split","fallback":false}
+```
+
 ### Summary
 
 ```json
@@ -148,6 +194,20 @@ On failure:
 
 Global sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then position within each file. Stable within a single diff snapshot - IDs shift if files are added/removed between invocations.
 
+### Sub-hunk IDs
+
+Format: `H{parent}.{sub}` where parent is the global hunk number and sub is 1-indexed within the parent. Example: H3.1, H3.2, H3.3.
+
+Sub-hunks are derived by re-running the diff with `--inter-hunk-context=0 --unified=0` to produce the finest possible hunks, then mapping fine hunks back to their parent's line range.
+
+Sub-hunks are terminal - no recursive splitting. Use line-select (`H3:5-10`) for finer control within any hunk.
+
+### Line-select IDs
+
+Format: `H{id}:{start}-{end}` where start and end are 1-based line numbers relative to the hunk body (line 1 = first line after the @@ header). Example: H3:5-10.
+
+Read [references/split-hunk-guide.md](references/split-hunk-guide.md) for splitting mechanics, header recalculation, and edge cases.
+
 ## Error handling
 
 - Empty diff: script outputs `{"error":"no_unstaged_changes"}` and exits 0.
@@ -155,6 +215,10 @@ Global sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then
 - Apply conflicts: script tries bulk apply first, falls back to per-file, then per-hunk. Each result reported individually.
 - Index lock: script detects "index.lock" in git apply stderr and emits `{"error":"index_locked"}` NDJSON.
 - Binary files: silently skipped during hunk indexing.
+- Sub-hunk not found: Python helper emits `{"error":"sub_hunk_not_found"}` to stderr.
+- Line range out of bounds: Python helper emits `{"error":"line_range_out_of_bounds"}` to stderr.
+- No changes in range: Python helper emits `{"error":"no_changes_in_range"}` to stderr.
+- Not splittable: `--split H3` returns `{"splittable":false}` with suggestion to use line-select. Not an error.
 
 ## Dependencies
 
@@ -168,8 +232,13 @@ Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchu
 
 ```
 /stage-hunk --list
+/stage-hunk --list --split
+/stage-hunk --split H3
 /stage-hunk --hunk H1,H3
 /stage-hunk --hunk H2 --dry-run
+/stage-hunk --hunk H3.1,H3.2
+/stage-hunk --hunk H3:5-10
+/stage-hunk --hunk H1,H3.2,H5:10-15
 /stage-hunk --pattern 'TODO|FIXME'
 /stage-hunk --file src/auth.ts,src/db.ts
 /stage-hunk --range src/auth.ts:45-60
