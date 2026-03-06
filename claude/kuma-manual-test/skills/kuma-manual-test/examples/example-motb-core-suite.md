@@ -1,53 +1,118 @@
-# Example suite - MOTB core manual tests
+# Example suite - MOTB core (directory format)
 
-Reference example for MOTB testing. Copy `suite-template.md` for new features.
+Reference example showing the directory-format suite produced by kuma-suite-author v2.
 
-## How to execute
+## Directory layout
 
-- run in order
-- capture artifacts per test group
-- stop on first unexpected failure and triage
-- do not skip groups unless explicitly scoped in run metadata
+```
+suites/motb-core/
+├── suite.md
+├── baseline/
+│   ├── namespace.yaml
+│   ├── otel-collector.yaml
+│   └── demo-workload.yaml
+└── groups/
+    ├── g01-crud.md
+    ├── g02-validation.md
+    ├── g03-backendref.md
+    ├── g04-xds.md
+    ├── g05-signal-flow.md
+    └── g06-http-protocol.md
+```
 
-## Artifacts required for every test group
+## suite.md content
 
-- tracked manifest copies in `runs/<run-id>/manifests/`
-- command outputs in `runs/<run-id>/artifacts/`
-- command log entries in `runs/<run-id>/commands/command-log.md`
-- result notes in `runs/<run-id>/reports/manual-test-report.md`
+```markdown
+# MOTB core - manual test suite
 
-## Test groups
+## Suite metadata
 
-| Group   | Goal                                                   | Minimum artifacts                                           |
-| ------- | ------------------------------------------------------ | ----------------------------------------------------------- |
-| G1      | Resource CRUD                                          | create/get/update/delete outputs + resource YAML            |
-| G2      | Validation rejects invalid specs                       | admission errors for invalid inputs                         |
-| G3      | `backendRef` policy acceptance and mutual exclusion    | accepted and rejected applies                               |
-| G4      | xDS correctness for MeshMetric/MeshTrace/MeshAccessLog | config dump snippets for clusters/listeners                 |
-| G5      | Signal flow (metrics/traces/logs)                      | collector logs with all signal types                        |
-| G6      | HTTP protocol behavior                                 | no forced HTTP/2 for HTTP trace backend, URI path artifacts |
-| G7      | Dangling reference behavior                            | no crash, info log, skipped backend artifacts               |
-| G8      | Backward compatibility (inline endpoint)               | deprecation warning and expected runtime config             |
-| G9      | KDS sync in multi-zone                                 | global to zone presence/update/delete artifacts             |
-| G10     | Mixed backend usage                                    | OTel and Prometheus/mixed backend artifacts                 |
-| G11     | Path suffix semantics                                  | URI with and without base path artifacts                    |
-| G12     | Unified naming mode                                    | listener/cluster naming and signal flow artifacts           |
-| G13     | Gap analysis and edge semantics                        | expected limitations and mismatch confirmations             |
-| G14     | Endpoint optionality and schema parity                 | backendRef-only policy acceptance artifacts                 |
-| G15     | Mesh isolation                                         | cross-mesh dangling behavior artifacts                      |
-| G16     | nodeEndpoint behavior                                  | HOST_IP + STATIC cluster + all signal flow artifacts        |
-| G17-G26 | Pipe mode pre-unified                                  | per-signal sockets, dynconf, E2E artifacts                  |
-| G27-G39 | Universal multi-zone                                   | k8s and universal zone parity artifacts                     |
-| G40-G53 | Unified pipe mode                                      | shared socket, `/otel` route, opt-out behavior              |
+- suite id: motb-core
+- feature scope: MeshMetric, MeshTrace, MeshAccessLog (unified observability)
+- target environments: single-zone, multi-zone
+- kuma-suite-author version: 2.0.0
 
-## Failure triage
+## Baseline manifests
 
-See `references/agent-contract.md` (failure policy and bug triage protocol) for the full procedure.
+| File                          | Purpose                                           |
+| ----------------------------- | ------------------------------------------------- |
+| baseline/namespace.yaml       | Create kuma-demo namespace with sidecar injection |
+| baseline/otel-collector.yaml  | Deploy OpenTelemetry collector backend            |
+| baseline/demo-workload.yaml   | Deploy demo-app client and server pods            |
 
-## Baseline references
+## Group structure
 
-- `tmp/madr-095-implementation/11-manual-testing.md`
-- `tmp/madr-095-implementation/13-manual-test-report.md`
-- `tmp/madr-095-implementation/manual-test-report.md`
-- `tmp/madr-095-implementation/16-motb-e2e-verification-guide.md`
-- `tmp/madr-095-implementation/k3d-test/`
+| Group | File               | Goal                                | Minimum artifacts                           |
+| ----- | ------------------ | ----------------------------------- | ------------------------------------------- |
+| G1    | groups/g01-crud.md | Resource CRUD                       | create/get/update/delete outputs            |
+| G2    | groups/g02-validation.md | Validation rejects invalid specs | admission errors for invalid inputs         |
+| G3    | groups/g03-backendref.md | backendRef acceptance and mutual exclusion | accepted and rejected applies     |
+| G4    | groups/g04-xds.md  | xDS correctness                     | config dump snippets                        |
+| G5    | groups/g05-signal-flow.md | Signal flow (metrics/traces/logs) | collector logs with all signal types      |
+| G6    | groups/g06-http-protocol.md | HTTP protocol behavior          | no forced HTTP/2, URI path artifacts        |
+
+## Execution contract
+
+- All manifests applied through `"$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
+- All failures trigger immediate triage before next group
+- All pass/fail decisions include artifact pointers
+```
+
+## Group file content (g01-crud.md)
+
+```markdown
+# G1 - Resource CRUD
+
+## Prerequisites
+
+- Baseline manifests applied
+- demo-app pods Running/Ready
+
+## Steps
+
+### S1.1 - Create MeshMetric
+
+- manifest: inline MeshMetric targeting demo-app
+- command: apply through tracked script
+- expected: resource accepted, status shows `Accepted: true`
+- artifacts: apply output, resource YAML
+
+### S1.2 - Get and inspect
+
+- command: `kubectl get meshmetric -n kuma-demo -o yaml`
+- expected: resource present with correct spec
+- artifacts: get output
+
+### S1.3 - Update spec
+
+- manifest: modified MeshMetric with changed backend
+- command: apply through tracked script
+- expected: resource updated, generation incremented
+- artifacts: apply output, diff from previous
+
+### S1.4 - Delete
+
+- command: `kubectl delete meshmetric -n kuma-demo <name>`
+- expected: resource removed
+- artifacts: delete output, get confirming 404
+```
+
+## Baseline manifest (namespace.yaml)
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuma-demo
+  labels:
+    kuma.io/sidecar-injection: enabled
+```
+
+## How the runner consumes this
+
+1. Phase 1 reads `suite.md` (~40 lines of metadata, tables, contract).
+2. Phase 3 baseline applies `namespace.yaml`, `otel-collector.yaml`, `demo-workload.yaml`.
+3. Phase 3 G1 reads `groups/g01-crud.md` (~30 lines), executes steps, drops from context.
+4. Phase 3 G2 reads `groups/g02-validation.md`, and so on per group.
+
+Peak context per group: ~140 lines (suite.md + one group file) instead of 1300+ for a monolithic suite.

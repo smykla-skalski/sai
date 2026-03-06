@@ -69,7 +69,13 @@ RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 
 If `--resume` was passed, read `${RUNS_DIR}/${RESUME_ID}/run-status.yaml` for `last_completed_group` and skip to the next planned group.
 
-Suite resolution: if the positional argument is a bare name (no `/`), look it up in `${DATA_DIR}/suites/` first (with `.md` suffix if needed), then treat as a literal path.
+Suite resolution for bare names (no `/`):
+
+1. Directory suite: check `${DATA_DIR}/suites/${name}/suite.md`
+2. Legacy file: check `${DATA_DIR}/suites/${name}.md`
+3. Literal path
+
+For directory suites, set `SUITE_DIR` to the suite directory and `SUITE_FILE` to `suite.md`. For legacy/literal suites, set `SUITE_FILE` to the resolved path and `SUITE_DIR` to empty.
 
 Fill `run-metadata.yaml` with profile, feature scope, and kumactl version before touching the cluster.
 
@@ -117,6 +123,8 @@ Read `references/validation.md` before applying manifests.
 Read `references/mesh-policies.md` when the suite tests any `Mesh*` policy.
 
 Select a suite from the positional argument, or use AskUserQuestion if none was provided. Copy `examples/suite-template.md` for new features.
+
+For directory suites (`SUITE_DIR` is set): read `${SUITE_DIR}/suite.md` for the group table and execution contract. Before G1, apply all manifests listed in the baseline table from `${SUITE_DIR}/baseline/`. For each group, read the group file from `${SUITE_DIR}/groups/` on demand using the file path from the group table. For legacy single-file suites: read the entire file as before.
 
 For each test step:
 

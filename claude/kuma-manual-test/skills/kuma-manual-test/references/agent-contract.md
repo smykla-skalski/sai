@@ -25,9 +25,16 @@ All run artifacts and authored suites are stored in a persistent data directory 
 
 ```
 ${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test/
-├── suites/     # Authored test suites (by kuma-suite-author)
-├── runs/       # Test run artifacts (by kuma-manual-test)
-└── .last-run   # Last run ID (optional, for quick resume)
+├── suites/                  # Authored test suites (by kuma-suite-author)
+│   ├── motb-core/           # Directory-format suite (v2)
+│   │   ├── suite.md
+│   │   ├── baseline/
+│   │   │   └── *.yaml
+│   │   └── groups/
+│   │       └── g{NN}-*.md
+│   └── meshretry-basic.md   # Legacy single-file suite (v1)
+├── runs/                    # Test run artifacts (by kuma-manual-test)
+└── .last-run                # Last run ID (optional, for quick resume)
 ```
 
 ## Local kumactl setup
