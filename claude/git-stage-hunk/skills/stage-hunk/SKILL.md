@@ -22,6 +22,10 @@ Non-interactive hunk staging for selective `git add` without a TTY. Replaces `gi
 
 The heavy lifting happens in the shell script at `${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh`. Your first action MUST be Bash - run the script, parse the NDJSON output, present results to the user. Do not re-implement git diff/apply logic yourself.
 
+## Preprocessed context
+
+- OS: !`uname -s`
+
 ## Arguments
 
 Parse from `$ARGUMENTS`:
@@ -57,10 +61,9 @@ If no mode flag is provided, default to `--list`.
    - Question: "patchutils is not installed. Install it now?"
    - Option 1: "Yes, install" - "Full hunk filtering with grepdiff/filterdiff. Most reliable."
    - Option 2: "No, use fallback" - "Pure-bash parsing. --pattern and --range modes unavailable."
-4. If user chooses install:
-   - macOS: `brew install patchutils`
-   - Debian/Ubuntu: `sudo apt-get install -y patchutils`
-   - Detect OS via `uname -s`.
+4. If user chooses install, use the OS value from Preprocessed context:
+   - Darwin: `brew install patchutils`
+   - Linux: `sudo apt-get install -y patchutils`
 5. If user chooses fallback, pass `--fallback` to all subsequent script calls.
 6. If git or python3 are missing, report and stop.
 
@@ -149,7 +152,7 @@ Global sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then
 - Empty diff: script outputs `{"error":"no_unstaged_changes"}` and exits 0.
 - Invalid hunk IDs: script warns about bad IDs, stages valid ones.
 - Apply conflicts: script tries bulk apply first, falls back to per-file, then per-hunk. Each result reported individually.
-- Index lock: script detects "Unable to create index.lock" and reports it.
+- Index lock: script detects "index.lock" in git apply stderr and emits `{"error":"index_locked"}` NDJSON.
 - Binary files: silently skipped during hunk indexing.
 
 ## Dependencies

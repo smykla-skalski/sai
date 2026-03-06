@@ -26,6 +26,18 @@ Parse from `$ARGUMENTS`:
 | `--run-id`   | timestamp-based | Override run identifier                                                                                                           |
 | `--resume`   | -               | Resume a partial run by its run ID                                                                                                |
 
+## Preprocessed context
+
+- Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test"`
+- Home: !`echo "$HOME"`
+- Timestamp: !`date +%Y%m%d-%H%M%S`
+- Docker: !`docker info >/dev/null 2>&1 && echo "running" || echo "not running"`
+- k3d: !`command -v k3d >/dev/null 2>&1 && echo "installed" || echo "MISSING"`
+- kubectl: !`command -v kubectl >/dev/null 2>&1 && echo "installed" || echo "MISSING"`
+- helm: !`command -v helm >/dev/null 2>&1 && echo "installed" || echo "MISSING"`
+
+Use these pre-resolved values throughout the run. `DATA_DIR` is the data directory above. `HOME` is the home path above. The timestamp above becomes the default `RUN_ID` suffix. If Docker shows "not running" or any tool shows "MISSING", stop immediately and report the problem.
+
 ## Non-negotiable rules
 
 1. Use locally built `kumactl` from `build/` only.
@@ -45,15 +57,15 @@ Read [references/agent-contract.md](references/agent-contract.md) for full agent
 
 ### Phase 0: Environment check
 
-1. Resolve persistent data directory:
+1. Set `DATA_DIR` to the pre-resolved data directory from "Preprocessed context". Create the subdirectories:
 
 ```bash
-DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test")"
+DATA_DIR="<data directory from Preprocessed context>"
 mkdir -p "${DATA_DIR}/suites" "${DATA_DIR}/runs"
 ```
 
 2. Resolve `REPO_ROOT`: use `--repo` flag if provided, otherwise check if cwd has `go.mod` containing `kumahq/kuma`. Fail with a message if neither works.
-3. Confirm Docker is running: `docker info >/dev/null 2>&1`.
+3. Docker status and tool availability are pre-resolved in "Preprocessed context". If Docker is "not running" or any tool is "MISSING", stop and report the problem. No need to re-check.
 4. Build local kumactl:
 
 ```bash
@@ -68,7 +80,7 @@ KUMACTL="$("${CLAUDE_SKILL_DIR}/scripts/find-local-kumactl.sh" --repo-root "${RE
 
 ```bash
 RUNS_DIR="${DATA_DIR}/runs"
-RUN_ID="${RUN_ID:-$(date +%Y%m%d-%H%M%S)-manual}"
+RUN_ID="${RUN_ID:-<timestamp from Preprocessed context>-manual}"
 "${CLAUDE_SKILL_DIR}/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 ```
@@ -115,7 +127,7 @@ Spawn a `general-purpose` preflight agent to run cluster readiness checks and ca
 
 Create the agent with a prompt that includes:
 
-- Kubeconfig path: `${HOME}/.kube/kind-kuma-1-config`
+- Kubeconfig path: `<Home from Preprocessed context>/.kube/kind-kuma-1-config`
 - Run directory: `${RUN_DIR}`
 - Repo root: `${REPO_ROOT}`
 - Preflight script path: `${CLAUDE_SKILL_DIR}/scripts/preflight.sh`
