@@ -732,6 +732,44 @@ run_structure() {
     emit "ref-link-format" "true" "Reference file paths use markdown link format"
   fi
 
+  # --- reference files have explicit read gates (I5, automated partial) ---
+  # For each references/*.md linked via markdown in the body, check if there
+  # is at least one explicit read directive (Read, Contents of, path to).
+  # References only appearing in bundled resource listings may be supplementary
+  # and not need gates, but the check flags them for manual review.
+  # Catches the most common I5 violation: passively mentioned references.
+  local ALL_REF_PATHS UNGATED_REFS
+  ALL_REF_PATHS=$(echo "$SKILL_BODY" \
+    | grep -oE '\(references/[a-zA-Z0-9._-]+\.md\)' \
+    | sed 's/^(//;s/)$//' \
+    | sort -u || true)
+
+  if [[ -n "$ALL_REF_PATHS" ]]; then
+    UNGATED_REFS=""
+    while IFS= read -r ref_path; do
+      # Check for an explicit read directive mentioning this file.
+      # Accepted patterns:
+      #   "Read [references/file.md]" or "Read [text](references/file.md)"
+      #   "read [references/file.md]" (in agent instructions)
+      #   "Contents of [references/file.md]" (agent prompt pattern)
+      #   "path to [references/file.md]" (agent pass pattern)
+      local REF_ESCAPED
+      REF_ESCAPED=$(echo "$ref_path" | sed 's/\./\\./g')
+      if ! echo "$SKILL_BODY" | grep -qiE "(Read|Contents of|path to).*${REF_ESCAPED}"; then
+        UNGATED_REFS="${UNGATED_REFS} ${ref_path}"
+      fi
+    done <<< "$ALL_REF_PATHS"
+
+    UNGATED_REFS=$(echo "$UNGATED_REFS" | xargs)
+    if [[ -n "$UNGATED_REFS" ]]; then
+      local UNGATED_COUNT
+      UNGATED_COUNT=$(echo "$UNGATED_REFS" | wc -w | tr -d ' ')
+      emit "ref-read-gate" "false" "Found ${UNGATED_COUNT} reference(s) without explicit Read directive: ${UNGATED_REFS} — add 'Read [ref](ref) before Phase N' for workflow-critical references"
+    else
+      emit "ref-read-gate" "true" "All referenced files have explicit Read directives"
+    fi
+  fi
+
   # --- allowed-tools only lists tools referenced in the skill (I16) ---
   # High-signal tools (Task, ToolSearch) grant significant permissions and should
   # only be listed when the skill actually uses them. Task requires agent spawning;
@@ -783,6 +821,34 @@ run_structure() {
     fi
   else
     emit "side-effect-guard" "true" "No side-effect patterns detected"
+  fi
+
+  # --- preprocessing directive hygiene (I18) ---
+  # Validates !`command` shell preprocessing directives for best practices:
+  # error handling, output limiting, secret leaking, state mutations,
+  # slow commands, redundant CLAUDE_SKILL_DIR wrapping, hanging commands.
+  # See: https://code.claude.com/docs/en/skills (Inject dynamic context)
+  local PREPROC_SCRIPT
+  PREPROC_SCRIPT="$(dirname "$0")/check-preprocessing.sh"
+  if [[ -x "$PREPROC_SCRIPT" ]]; then
+    local PREPROC_OUTPUT PREPROC_SUMMARY PREPROC_DIRECTIVES
+    PREPROC_OUTPUT=$("$PREPROC_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
+    PREPROC_SUMMARY=$(echo "$PREPROC_OUTPUT" | tail -1)
+    PREPROC_DIRECTIVES=$(echo "$PREPROC_SUMMARY" | sed -n 's/.*"directives": \([0-9]*\).*/\1/p')
+
+    if [[ "${PREPROC_DIRECTIVES:-0}" -gt 0 ]]; then
+      # Re-emit each sub-check result from the preprocessing script
+      while IFS= read -r line; do
+        # Skip summary line
+        echo "$line" | grep -q '"summary"' && continue
+        local PC_CHECK PC_PASS PC_DETAIL
+        PC_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
+        PC_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
+        PC_DETAIL=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+        [[ -z "$PC_CHECK" ]] && continue
+        emit "$PC_CHECK" "$PC_PASS" "$PC_DETAIL"
+      done <<< "$PREPROC_OUTPUT"
+    fi
   fi
 
   # --- fork candidate analysis (P9, informational) ---
