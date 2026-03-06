@@ -13,6 +13,7 @@ description: >-
 argument-hint: "[--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]"
 allowed-tools: Bash, AskUserQuestion
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # stage-hunk
@@ -157,7 +158,7 @@ Global sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then
 - python3 (required, for JSON encoding)
 - patchutils (optional, provides lsdiff/filterdiff/grepdiff)
 
-See `references/patchutils-guide.md` for patchutils usage details.
+See [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils usage details.
 
 ## Example invocations
 

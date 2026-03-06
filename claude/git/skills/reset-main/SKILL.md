@@ -4,6 +4,7 @@ description: Reset current branch to remote's default branch and unset upstream 
 argument-hint: "[remote] [--force|-f]"
 allowed-tools: Bash, AskUserQuestion
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # Reset Main

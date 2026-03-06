@@ -181,7 +181,7 @@ Report:
 - If `--thread-id` matches no thread, report "No matching thread found"
 - If `create-review.sh` fails (non-zero exit), report the error to the user. Do not retry automatically - the most common cause is invalid file paths or line numbers not present in the PR diff. Ask the user to verify the comment targets before re-attempting
 
-Read `references/gh-api-guide.md` before Phase 3 for ID type mapping (REST integer IDs vs GraphQL node IDs), reply endpoint constraints, and shell quoting patterns.
+Read [references/gh-api-guide.md](references/gh-api-guide.md) before Phase 3 for ID type mapping (REST integer IDs vs GraphQL node IDs), reply endpoint constraints, and shell quoting patterns.
 
 ## Example Invocations
 
