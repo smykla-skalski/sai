@@ -63,28 +63,6 @@
       "tags": ["writing", "ai-cleanup", "text"]
     },
     {
-      "name": "kuma-manual-test",
-      "source": "./claude/kuma-manual-test",
-      "description": "Reproducible manual test harness for Kuma service mesh on local k3d clusters",
-      "author": {
-        "name": "Smykla Skalski Labs"
-      },
-      "license": "MIT",
-      "category": "testing",
-      "tags": ["kuma", "service-mesh", "k3d", "manual-testing"]
-    },
-    {
-      "name": "kuma-suite-author",
-      "source": "./claude/kuma-suite-author",
-      "description": "Generate test suites for kuma-manual-test by reading Kuma source code",
-      "author": {
-        "name": "Smykla Skalski Labs"
-      },
-      "license": "MIT",
-      "category": "testing",
-      "tags": ["kuma", "service-mesh", "test-generation", "suite-authoring"]
-    },
-    {
       "name": "promptgen",
       "source": "./claude/promptgen",
       "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents",
