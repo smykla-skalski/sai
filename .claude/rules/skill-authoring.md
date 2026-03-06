@@ -217,6 +217,54 @@ When using MCP tools (Notion, Slack, etc.):
 - **Grep/Glob**: file search and verification
 - **Task**: spawn verification agents, parallel research
 
+## Skill-scoped hooks
+
+Skill-scoped hooks provide deterministic enforcement of rules that the agent might forget during long runs. A PreToolUse hook that denies an operation physically blocks it regardless of agent behavior.
+
+### Hook script patterns
+
+**Combine related checks into one script** when they share the same event and matcher. For example, multiple PreToolUse/Bash checks (bare kubectl, --validate=false, unrecorded commands) belong in a single `guard-bash.sh`. This avoids spawning multiple processes per tool call.
+
+**Parse stdin JSON once** at the top of every hook script:
+
+```bash
+input="$(cat)"
+command="$(printf '%s' "${input}" | jq -r '.tool_input.command // ""')"
+```
+
+The stdin JSON contains `hook_event_name`, `tool_name`, `tool_input`, `tool_response` (PostToolUse), `error` (PostToolUseFailure), `session_id`, and `last_assistant_message` (SubagentStop).
+
+### Exit codes and output
+
+Always exit 0 for PreToolUse hooks. Exit 2 ignores ALL stdout JSON - you lose `permissionDecisionReason`, `additionalContext`, and `systemMessage`. Use `permissionDecision: "deny"` in JSON output instead.
+
+| Scenario   | Exit code | permissionDecision | Effect                                    |
+| :--------- | :-------- | :----------------- | :---------------------------------------- |
+| Block      | 0         | `"deny"`           | Claude sees reason + fix hint in JSON     |
+| Warn       | 0         | `"allow"`          | additionalContext adds context, cmd runs  |
+| Ask        | 0         | `"ask"`            | Permission prompt shown to user           |
+| Clean pass | 0         | (no output)        | No overhead                               |
+
+Exception: Stop hooks use exit 2 to force continue (no permissionDecision field). PostToolUse and PostToolUseFailure hooks use `additionalContext` only (no permissionDecision).
+
+### Audit hooks
+
+For silent logging hooks, output `{"suppressOutput":true}` to avoid cluttering the conversation. Log to NDJSON files in `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/`.
+
+### Error codes
+
+Use a consistent prefix per skill (e.g., `KMT001` for kuma-manual-test, `KSA001` for kuma-suite-author). Follow the `[CODE] message. Hint.` format in `permissionDecisionReason`.
+
+### Environment variables
+
+`CLAUDE_PROJECT_DIR`, `CLAUDE_SESSION_ID`, and `CLAUDE_PLUGIN_ROOT` (plugin hooks only) are available. `${CLAUDE_SKILL_DIR}` is string substitution in frontmatter - it gets replaced with the literal path before parsing. If substitution doesn't work in frontmatter, use `CLAUDE_PLUGIN_ROOT` with the relative path as a fallback.
+
+### Infinite loop prevention
+
+SubagentStop and Stop hooks must check `stop_hook_active` from stdin JSON. If true, exit 0 immediately to prevent recursive hook firing.
+
+Reference: `claude/kuma-manual-test/skills/kuma-manual-test/SKILL.md` for a complete hooks implementation with 18 hook entries across 9 scripts.
+
 ## Plugin Integration
 
 - Install: `claude --plugin-dir claude/{plugin-name}/`
