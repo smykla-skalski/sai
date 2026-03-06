@@ -41,12 +41,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# --- GraphQL query (hardcoded values to avoid bash $ interpolation issues) ---
-QUERY=$(cat <<GRAPHQL
-{
-  repository(owner: "${OWNER}", name: "${REPO}") {
-    pullRequest(number: ${PR_NUMBER}) {
-      reviewThreads(first: 100) {
+# --- GraphQL query with variables (avoids injection into query string) ---
+# shellcheck disable=SC2016
+QUERY='query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $cursor) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
         nodes {
           id
           isResolved
@@ -65,9 +69,7 @@ QUERY=$(cat <<GRAPHQL
       }
     }
   }
-}
-GRAPHQL
-)
+}'
 
 # --- Build jq filter ---
 JQ_FILTER='.data.repository.pullRequest.reviewThreads.nodes[]'
@@ -77,13 +79,38 @@ if [[ "$UNRESOLVED_ONLY" == "true" ]]; then
   JQ_FILTER="${JQ_FILTER} | select(.isResolved == false)"
 fi
 
-# Filter: by author (first comment author)
+# Filter: by author (first comment author) — use --arg to avoid jq injection
+JQ_AUTHOR_ARGS=()
 if [[ -n "$AUTHOR_FILTER" ]]; then
-  JQ_FILTER="${JQ_FILTER} | select(.comments.nodes[0].author.login == \"${AUTHOR_FILTER}\")"
+  JQ_FILTER="${JQ_FILTER} | select(.comments.nodes[0].author.login == \$author)"
+  JQ_AUTHOR_ARGS=(--arg author "$AUTHOR_FILTER")
 fi
 
 # Format output
 JQ_FILTER="${JQ_FILTER} | {thread_id: .id, comment_id: .comments.nodes[0].databaseId, author: .comments.nodes[0].author.login, body: .comments.nodes[0].body, path: .path, line: .line, is_resolved: .isResolved, is_outdated: .isOutdated, reply_count: (.comments.nodes | length - 1)}"
 
-# --- Execute ---
-gh api graphql -f query="$QUERY" --jq "$JQ_FILTER"
+# --- Execute with cursor-based pagination ---
+CURSOR=""
+while true; do
+  ARGS=(
+    -f query="$QUERY"
+    -f owner="$OWNER"
+    -f repo="$REPO"
+    -F number="$PR_NUMBER"
+  )
+  if [[ -n "$CURSOR" ]]; then
+    ARGS+=(-f cursor="$CURSOR")
+  fi
+
+  RESPONSE=$(gh api graphql "${ARGS[@]}")
+
+  # Emit matching threads from this page
+  echo "$RESPONSE" | jq -r ${JQ_AUTHOR_ARGS[@]+"${JQ_AUTHOR_ARGS[@]}"} "$JQ_FILTER"
+
+  # Check for next page
+  HAS_NEXT=$(echo "$RESPONSE" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage')
+  if [[ "$HAS_NEXT" != "true" ]]; then
+    break
+  fi
+  CURSOR=$(echo "$RESPONSE" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')
+done

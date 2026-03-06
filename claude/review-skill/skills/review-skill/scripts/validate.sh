@@ -34,6 +34,21 @@
 set -euo pipefail
 
 # ========================
+# TEMP FILE CLEANUP
+# ========================
+_TMPFILES=()
+_cleanup_tmp() {
+  for _t in "${_TMPFILES[@]+"${_TMPFILES[@]}"}"; do
+    if [[ -d "$_t" ]]; then
+      rm -rf "$_t"
+    elif [[ -f "$_t" ]]; then
+      rm -f "$_t"
+    fi
+  done
+}
+trap _cleanup_tmp EXIT
+
+# ========================
 # ARGUMENT PARSING
 # ========================
 if [[ $# -lt 1 ]]; then
@@ -65,9 +80,12 @@ emit() {
   else
     FAILED=$((FAILED + 1))
   fi
-  # Escape backslashes and double quotes for valid JSON
+  # Escape for valid JSON: backslashes, double quotes, and control chars
   detail="${detail//\\/\\\\}"
   detail="${detail//\"/\\\"}"
+  detail="${detail//$'\n'/\\n}"
+  detail="${detail//$'\t'/\\t}"
+  detail="${detail//$'\r'/\\r}"
   echo "{\"check\": \"${check}\", \"pass\": ${pass}, \"detail\": \"${detail}\"}"
 }
 
@@ -99,7 +117,7 @@ get_field() {
       exit
     }
     END { if (block && buf != "") print buf }
-  '
+  ' | sed 's/^["'"'"']//; s/["'"'"']$//'
 }
 
 # Detect the plugin root by walking up from the skill directory looking for
@@ -241,8 +259,14 @@ run_structure() {
   # examples/) belong alongside SKILL.md in the skill directory. If a reference
   # is not found there but exists at the plugin root, report it as misplaced.
   local SKILL_BODY FULL_BODY REFERENCED_FILES
-  SKILL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
-  FULL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD")
+  if [[ -n "$BODY_START" ]]; then
+    SKILL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
+    FULL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD")
+  else
+    # No frontmatter delimiters — entire file is the body
+    SKILL_BODY=$(sed '/^```/,/^```/d' "$SKILL_MD")
+    FULL_BODY=$(cat "$SKILL_MD")
+  fi
   REFERENCED_FILES=$(echo "$SKILL_BODY" \
     | grep -oE '(references/[a-zA-Z0-9._-]+|scripts/[a-zA-Z0-9._-]+|assets/[a-zA-Z0-9._-]+|examples/[a-zA-Z0-9._-]+)' \
     | grep -vE '/(\.\.\.|\.\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)' \
@@ -297,7 +321,7 @@ run_structure() {
   # Scripts should have the executable bit set.
   if [[ -d "${SKILL_DIR}/scripts" ]]; then
     local BASH_PREFIX_REFS
-    BASH_PREFIX_REFS=$(sed -n "${BODY_START},\$p" "$SKILL_MD" \
+    BASH_PREFIX_REFS=$(echo "$FULL_BODY" \
       | awk '/^```/{f=!f;next} f && /^\s*bash\s+/' \
       || true)
 
@@ -333,16 +357,16 @@ run_structure() {
   local PLACEHOLDER_PATTERN='1234|0000|xxxx|abcdef|example|test|fake|placeholder|your_|INSERT|REPLACE|changeme'
   local SECRET_HIT_FILES=""
 
-  local ALL_SKILL_FILES="$SKILL_MD"
+  local ALL_SKILL_FILES=("$SKILL_MD")
   for subdir in references scripts assets examples; do
     if [[ -d "${SKILL_DIR}/${subdir}" ]]; then
       for f in "${SKILL_DIR}/${subdir}"/*; do
-        [[ -f "$f" ]] && ALL_SKILL_FILES="$ALL_SKILL_FILES $f"
+        [[ -f "$f" ]] && ALL_SKILL_FILES+=("$f")
       done
     fi
   done
 
-  for sf in $ALL_SKILL_FILES; do
+  for sf in "${ALL_SKILL_FILES[@]}"; do
     local MATCHES
     MATCHES=$(grep -oE "$SECRET_PATTERN" "$sf" 2>/dev/null || true)
     if [[ -n "$MATCHES" ]]; then
@@ -391,7 +415,7 @@ run_structure() {
   local USELESS_ECHO_FILES=""
   local FIRST_ECHO_LINE=""
 
-  for md_file in $ALL_SKILL_FILES; do
+  for md_file in "${ALL_SKILL_FILES[@]}"; do
     [[ "$md_file" == *.md ]] || continue
     local ECHO_HITS
     ECHO_HITS=$(awk '
@@ -463,9 +487,9 @@ run_structure() {
 
     # Extract and hash SKILL.md body code blocks
     local SKILL_BLOCK_DIR SKILL_HASH_FILE
-    SKILL_BLOCK_DIR=$(mktemp -d)
-    SKILL_HASH_FILE=$(mktemp)
-    sed -n "${BODY_START},\$p" "$SKILL_MD" \
+    SKILL_BLOCK_DIR=$(mktemp -d); _TMPFILES+=("$SKILL_BLOCK_DIR")
+    SKILL_HASH_FILE=$(mktemp); _TMPFILES+=("$SKILL_HASH_FILE")
+    echo "$FULL_BODY" \
       | awk -v dir="$SKILL_BLOCK_DIR" "$BLOCK_EXTRACT_AWK"
     for bf in "$SKILL_BLOCK_DIR"/b_*; do
       [[ -f "$bf" ]] || continue
@@ -480,8 +504,8 @@ run_structure() {
         BASENAME=$(basename "$ref_file")
 
         local REF_BLOCK_DIR REF_HASH_FILE
-        REF_BLOCK_DIR=$(mktemp -d)
-        REF_HASH_FILE=$(mktemp)
+        REF_BLOCK_DIR=$(mktemp -d); _TMPFILES+=("$REF_BLOCK_DIR")
+        REF_HASH_FILE=$(mktemp); _TMPFILES+=("$REF_HASH_FILE")
         awk -v dir="$REF_BLOCK_DIR" "$BLOCK_EXTRACT_AWK" "$ref_file"
         for bf in "$REF_BLOCK_DIR"/b_*; do
           [[ -f "$bf" ]] || continue
@@ -517,8 +541,7 @@ run_structure() {
   # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
   if [[ -d "${SKILL_DIR}/references" ]]; then
     local SKILL_PHASES
-    SKILL_PHASES=$(sed -n "${BODY_START},\$p" "$SKILL_MD" \
-      | sed '/^```/,/^```/d' \
+    SKILL_PHASES=$(echo "$SKILL_BODY" \
       | grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' \
       | grep -oE '[0-9]+' \
       | sort -n -u || true)
@@ -576,7 +599,8 @@ run_structure() {
       local BASENAME STRIPPED
       BASENAME=$(basename "$ref_file")
       STRIPPED=$(sed '/^```/,/^```/d' "$ref_file" | sed 's/"[^"]*"//g; s/`[^`]*`//g')
-      if echo "$STRIPPED" | grep -qE '\(references/[a-zA-Z0-9._-]+\)' 2>/dev/null; then
+      if echo "$STRIPPED" | grep -E '\(references/[a-zA-Z0-9._-]+\)' 2>/dev/null \
+        | grep -qvE '\]\(references/' 2>/dev/null; then
         emit "refs-one-level" "false" "Reference '${BASENAME}' cross-references other reference files"
       else
         emit "refs-one-level" "true" "Reference '${BASENAME}' does not cross-reference other files"
@@ -679,7 +703,7 @@ run_structure() {
         local BASENAME REL_PATH
         BASENAME=$(basename "$file")
         REL_PATH="${subdir}/${BASENAME}"
-        if grep -q "$REL_PATH" "$SKILL_MD" 2>/dev/null; then
+        if grep -qF "$REL_PATH" "$SKILL_MD" 2>/dev/null; then
           emit "skill-md-mentions-file" "true" "SKILL.md mentions '${REL_PATH}'"
         else
           emit "skill-md-mentions-file" "false" "SKILL.md does not mention '${REL_PATH}' — all bundled files should be referenced"

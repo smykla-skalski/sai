@@ -136,7 +136,7 @@ capture "zoneinsights" kubectl --kubeconfig "${kubeconfig_path}" get zoneinsight
 capture "zoneingresses" kubectl --kubeconfig "${kubeconfig_path}" get zoneingresses --all-namespaces --output=yaml
 capture "zoneegresses" kubectl --kubeconfig "${kubeconfig_path}" get zoneegresses --all-namespaces --output=yaml
 
-for resource in "${extra_resources[@]}"; do
+for resource in ${extra_resources[@]+"${extra_resources[@]}"}; do
   safe_name="$(printf "%s" "${resource}" | tr '/.' '--')"
   capture "resource-${safe_name}" kubectl --kubeconfig "${kubeconfig_path}" get "${resource}" --all-namespaces --output=yaml
 done

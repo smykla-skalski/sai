@@ -162,9 +162,12 @@ fi
 # Builds a global hunk index: H1, H2, ... assigned by alphabetical file order,
 # then by position within the file.
 #
-# Each entry stored as: HUNK_ID|FILE|HUNK_NUM_IN_FILE|OLD_START|OLD_COUNT|NEW_START|NEW_COUNT|ADDED|REMOVED|PREVIEW
+# Each entry stored as: HUNK_ID<US>FILE<US>HUNK_NUM_IN_FILE<US>OLD_START<US>OLD_COUNT<US>NEW_START<US>NEW_COUNT<US>ADDED<US>REMOVED<US>PREVIEW
+# where <US> is ASCII unit separator (\x1f) to avoid collision with diff content (pipes, colons, etc.)
 #
 # Works in both patchutils and fallback modes.
+
+FS=$'\x1f'  # field separator for hunk index
 
 build_hunk_index() {
   local diff_text="$1"
@@ -184,7 +187,7 @@ build_hunk_index() {
     files=$(echo "$diff_text" | lsdiff --strip=1 | sort)
   else
     local files
-    files=$(echo "$diff_text" | grep -E '^diff --git' | sed 's|^diff --git a/\(.*\) b/.*|\1|' | sort)
+    files=$(echo "$diff_text" | { grep -E '^diff --git' || true; } | sed 's|^diff --git a/\(.*\) b/.*|\1|' | sort)
   fi
 
   [[ -z "$files" ]] && return
@@ -193,7 +196,7 @@ build_hunk_index() {
     [[ -z "$file" ]] && continue
 
     # Check for binary file
-    if echo "$diff_text" | grep -q "^Binary files.*${file}"; then
+    if { echo "$diff_text" | grep "^Binary files" || true; } | grep -qF "$file"; then
       continue
     fi
 
@@ -226,7 +229,7 @@ build_hunk_index() {
           hunk_id=$((hunk_id + 1))
           local preview_escaped
           preview_escaped=$(json_str_raw "$preview")
-          echo "H${hunk_id}|${current_file}|${hunk_num}|${old_start}|${old_count}|${new_start}|${new_count}|${added}|${removed}|${preview_escaped}"
+          echo "H${hunk_id}${FS}${current_file}${FS}${hunk_num}${FS}${old_start}${FS}${old_count}${FS}${new_start}${FS}${new_count}${FS}${added}${FS}${removed}${FS}${preview_escaped}"
         fi
 
         in_hunk=true
@@ -264,7 +267,7 @@ build_hunk_index() {
       hunk_id=$((hunk_id + 1))
       local preview_escaped
       preview_escaped=$(json_str_raw "$preview")
-      echo "H${hunk_id}|${current_file}|${hunk_num}|${old_start}|${old_count}|${new_start}|${new_count}|${added}|${removed}|${preview_escaped}"
+      echo "H${hunk_id}${FS}${current_file}${FS}${hunk_num}${FS}${old_start}${FS}${old_count}${FS}${new_start}${FS}${new_count}${FS}${added}${FS}${removed}${FS}${preview_escaped}"
       in_hunk=false
     fi
   done <<< "$files"
@@ -284,7 +287,7 @@ TOTAL_HUNKS=$(echo "$HUNK_INDEX" | wc -l | tr -d ' ')
 # LIST MODE
 # ========================
 if [[ "$MODE" == "list" ]]; then
-  while IFS='|' read -r id file hunk_num os oc ns nc added removed preview; do
+  while IFS="$FS" read -r id file hunk_num os oc ns nc added removed preview; do
     local_file=$(json_str "$file")
     local_preview=$(json_str "$preview")
     emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview}}"
@@ -318,7 +321,7 @@ if [[ "$MODE" == "verify" ]]; then
   emit "{\"staged_files\":${staged_count},\"unstaged_files\":${unstaged_count},\"staged_hunks\":${staged_hunks},\"unstaged_hunks\":${unstaged_hunks}}"
 
   # Per-file detail
-  for f in $(echo -e "${staged_files}\n${unstaged_files}" | sort -u); do
+  while IFS= read -r f; do
     [[ -z "$f" ]] && continue
     s_hunks=0
     u_hunks=0
@@ -332,7 +335,7 @@ if [[ "$MODE" == "verify" ]]; then
     u_hunks=$(echo "$DIFF" | awk -v target="$f" '/^diff --git/{found=0; f=$0; sub(/^diff --git a\//,"",f); sub(/ b\/.*/,"",f); if(f==target)found=1} found && /^@@ /{c++} END{print c+0}')
     local_f=$(json_str "$f")
     emit "{\"file\":${local_f},\"staged_hunks\":${s_hunks},\"unstaged_hunks\":${u_hunks}}"
-  done
+  done < <(echo -e "${staged_files}\n${unstaged_files}" | sort -u)
 
   emit "{\"summary\":true,\"mode\":\"verify\"}"
   exit 0
@@ -361,21 +364,24 @@ extract_hunk_patch() {
           found = 1
           hunk_count = 0
           header = $0
+          got_minus = 0
+          got_plus = 0
         } else {
           found = 0
         }
       }
-      found && /^---/ && !header_printed {
+      # Only match --- as file header before we have seen +++ and @@
+      found && !got_minus && /^---/ {
         minus_line = $0
-        next_is_plus = 1
+        got_minus = 1
         next
       }
-      found && next_is_plus && /^\+\+\+/ {
+      found && got_minus && !got_plus && /^\+\+\+/ {
         plus_line = $0
-        next_is_plus = 0
+        got_plus = 1
         next
       }
-      found && /^@@ / {
+      found && got_plus && /^@@ / {
         hunk_count++
         if (hunk_count == target_hunk) {
           in_target = 1
@@ -399,10 +405,18 @@ extract_hunk_patch() {
 }
 
 # Apply a patch to the index. Returns 0 on success, 1 on failure.
+# Sets APPLY_STDERR with captured error output for diagnostics.
+APPLY_STDERR=""
 apply_patch() {
   local patch="$1"
   [[ -z "$patch" ]] && return 1
-  echo "$patch" | git apply --cached 2>/dev/null
+  APPLY_STDERR=$(echo "$patch" | git apply --cached 2>&1) && return 0
+  # Check for index lock
+  if echo "$APPLY_STDERR" | grep -qF "index.lock"; then
+    emit "{\"error\":\"index_locked\",\"detail\":$(json_str "$APPLY_STDERR")}"
+    return 1
+  fi
+  return 1
 }
 
 # Stage a list of hunk entries (from HUNK_INDEX format).
@@ -418,22 +432,22 @@ stage_hunks() {
 
   # Group by file for bulk application
   local files
-  files=$(echo "$entries" | cut -d'|' -f2 | sort -u)
+  files=$(echo "$entries" | awk -F"$FS" '{print $2}' | sort -u)
 
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
 
     # Get all hunk entries for this file
     local file_entries
-    file_entries=$(echo "$entries" | awk -F'|' -v f="$file" '$2 == f')
+    file_entries=$(echo "$entries" | awk -F"$FS" -v f="$file" '$2 == f')
 
     # Collect per-file hunk numbers
     local hunk_nums
-    hunk_nums=$(echo "$file_entries" | cut -d'|' -f3 | tr '\n' ',' | sed 's/,$//')
+    hunk_nums=$(echo "$file_entries" | awk -F"$FS" '{print $3}' | tr '\n' ',' | sed 's/,$//')
 
     if [[ "$DRY_RUN" == "true" ]]; then
       # Dry run - just report what would happen
-      while IFS='|' read -r id f hn os oc ns nc added removed preview; do
+      while IFS="$FS" read -r id f hn os oc ns nc added removed preview; do
         local_f=$(json_str "$f")
         emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}"
         STAGE_OK=$((STAGE_OK + 1))
@@ -450,7 +464,7 @@ stage_hunks() {
       bulk_patch=$(echo "$DIFF" | filterdiff -i "a/${file}" --hunks="${hunk_nums}" 2>/dev/null) || true
       if [[ -n "$bulk_patch" ]] && apply_patch "$bulk_patch"; then
         bulk_ok=true
-        while IFS='|' read -r id f hn os oc ns nc added removed preview; do
+        while IFS="$FS" read -r id f hn os oc ns nc added removed preview; do
           local_f=$(json_str "$f")
           emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
           STAGE_OK=$((STAGE_OK + 1))
@@ -460,7 +474,8 @@ stage_hunks() {
 
     # Per-hunk fallback (always used in fallback mode, or when bulk apply fails)
     if [[ "$bulk_ok" == "false" ]]; then
-      while IFS='|' read -r id f hn os oc ns nc added removed preview; do
+      while IFS="$FS" read -r id f hn os oc ns nc added removed preview; do
+        APPLY_STDERR=""
         local_f=$(json_str "$f")
         local hunk_patch
         hunk_patch=$(extract_hunk_patch "$f" "$hn")
@@ -469,9 +484,8 @@ stage_hunks() {
           STAGE_OK=$((STAGE_OK + 1))
         else
           local err_detail
-          err_detail=$(echo "$hunk_patch" | git apply --cached 2>&1 || true)
-          err_detail=$(json_str_raw "$err_detail")
-          emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"${err_detail}\"}"
+          err_detail=$(json_str "$APPLY_STDERR")
+          emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}"
           STAGE_FAILED=$((STAGE_FAILED + 1))
         fi
       done <<< "$file_entries"
@@ -484,11 +498,11 @@ stage_hunks() {
 map_to_global_ids() {
   local matched_index="$1"
   local result=""
-  while IFS='|' read -r mid mfile mhn mos moc mns mnc madded mremoved mpreview; do
+  while IFS="$FS" read -r mid mfile mhn mos moc mns mnc madded mremoved mpreview; do
     local global_entry
     # Match by file + old_start (not hunk_num) — grepdiff returns a subset so
     # per-file hunk numbers in the matched diff don't match the original diff.
-    global_entry=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$mfile" -v os="$mos" '$2==f && $4==os' || true)
+    global_entry=$(echo "$HUNK_INDEX" | awk -F"$FS" -v f="$mfile" -v os="$mos" '$2==f && $4==os' || true)
     if [[ -n "$global_entry" ]]; then
       if [[ -z "$result" ]]; then
         result="$global_entry"
@@ -515,7 +529,7 @@ if [[ "$MODE" == "hunk" ]]; then
   bad_ids=""
   for rid in "${requested_ids[@]}"; do
     rid=$(echo "$rid" | tr -d ' ')
-    entry=$(echo "$HUNK_INDEX" | grep "^${rid}|" || true)
+    entry=$(echo "$HUNK_INDEX" | grep "^${rid}${FS}" || true)
     if [[ -z "$entry" ]]; then
       bad_ids="${bad_ids}${rid},"
     else
@@ -561,7 +575,7 @@ if [[ "$MODE" == "file" ]]; then
   for rf in "${requested_files[@]}"; do
     # trim surrounding whitespace only (preserve internal spaces in paths)
     rf=$(echo "$rf" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    entries=$(echo "$HUNK_INDEX" | awk -F'|' -v f="$rf" '$2 == f' || true)
+    entries=$(echo "$HUNK_INDEX" | awk -F"$FS" -v f="$rf" '$2 == f' || true)
     if [[ -z "$entries" ]]; then
       bad_files="${bad_files}${rf},"
     else
@@ -637,9 +651,9 @@ fi
 if [[ "$MODE" == "range" ]]; then
   [[ -z "$RANGE_SPEC" ]] && die "no range specified" 2
 
-  # Parse FILE:START-END
-  range_file=$(echo "$RANGE_SPEC" | cut -d: -f1)
-  range_lines=$(echo "$RANGE_SPEC" | cut -d: -f2)
+  # Parse FILE:START-END — use parameter expansion to handle colons in filenames
+  range_lines="${RANGE_SPEC##*:}"
+  range_file="${RANGE_SPEC%:${range_lines}}"
   range_start=$(echo "$range_lines" | cut -d- -f1)
   range_end=$(echo "$range_lines" | cut -d- -f2)
 

@@ -20,16 +20,30 @@ fi
 REPO_ROOT="$1"
 CLAUDE_MD="${REPO_ROOT}/CLAUDE.md"
 
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  echo "$s"
+}
+
 if [[ ! -f "$CLAUDE_MD" ]]; then
-  echo "{\"check\": \"file-exists\", \"pass\": false, \"detail\": \"CLAUDE.md not found in ${REPO_ROOT}\"}"
+  echo "{\"check\": \"file-exists\", \"pass\": false, \"detail\": \"CLAUDE.md not found in $(json_escape "${REPO_ROOT}")\"}"
   exit 0
 fi
 
 CONTENT=$(cat "$CLAUDE_MD")
 
 # --- Check: has-build ---
-BUILD_PATTERNS="make\b|npm run build|cargo build|go build|mvn |gradle |bazel build"
+BUILD_PATTERNS="npm run build|cargo build|go build|mvn |gradle |bazel build"
+MAKE_PATTERN='(^|[|;&`])\s*make\b'
 BUILD_MATCH=$(grep -inE "$BUILD_PATTERNS" "$CLAUDE_MD" | head -1 || true)
+if [[ -z "$BUILD_MATCH" ]]; then
+  BUILD_MATCH=$(grep -nE "$MAKE_PATTERN" "$CLAUDE_MD" | head -1 || true)
+fi
 if [[ -n "$BUILD_MATCH" ]]; then
   LINE_NUM=$(echo "$BUILD_MATCH" | cut -d: -f1)
   echo "{\"check\": \"has-build\", \"pass\": true, \"detail\": \"Build command found on line ${LINE_NUM}\"}"
@@ -82,7 +96,8 @@ if grep -qiE "npm |yarn |bun " "$CLAUDE_MD"; then
 fi
 
 # Check make commands → Makefile
-if grep -qiE "\bmake\b" "$CLAUDE_MD"; then
+# Anchor to command context: start of line, after pipe/semicolon/backtick, or "make target" pattern
+if grep -qE '(^|[|;&`])\s*make\b' "$CLAUDE_MD"; then
   if [[ -f "${REPO_ROOT}/Makefile" ]] || [[ -f "${REPO_ROOT}/makefile" ]] || [[ -f "${REPO_ROOT}/GNUmakefile" ]]; then
     VALID_COUNT=$((VALID_COUNT + 1))
   else

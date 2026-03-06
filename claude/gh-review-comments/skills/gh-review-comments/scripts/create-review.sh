@@ -99,6 +99,14 @@ print(json.dumps(payload))
 COMMENT_COUNT=$(head -n1 <<< "$BUILT")
 PAYLOAD=$(tail -n1 <<< "$BUILT")
 
+# Validate COMMENT_COUNT is numeric (python warnings to stdout would corrupt it)
+if ! [[ "$COMMENT_COUNT" =~ ^[0-9]+$ ]]; then
+  echo "Error: expected numeric comment count, got: $COMMENT_COUNT" >&2
+  echo "Python output was:" >&2
+  echo "$BUILT" >&2
+  exit 1
+fi
+
 # Submit the review. The API response does NOT include the comments array, so
 # we build the jq filter with the known count from the payload we just sent.
 # If the API call succeeds (set -euo pipefail), all comments were attached.

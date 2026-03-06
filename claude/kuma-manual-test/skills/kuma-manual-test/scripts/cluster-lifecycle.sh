@@ -61,7 +61,7 @@ fi
 cleanup_generated_manifests() {
   local manifest
 
-  for manifest in "${generated_metallb_manifests[@]}"; do
+  for manifest in ${generated_metallb_manifests[@]+"${generated_metallb_manifests[@]}"}; do
     rm -f "${manifest}"
   done
 }
@@ -82,7 +82,7 @@ is_cluster_image_loaded() {
   local cluster_name="$1"
   local loaded
 
-  for loaded in "${loaded_image_clusters[@]}"; do
+  for loaded in ${loaded_image_clusters[@]+"${loaded_image_clusters[@]}"}; do
     if [[ "${loaded}" == "${cluster_name}" ]]; then
       return 0
     fi
