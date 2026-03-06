@@ -4,7 +4,7 @@ description: >-
   Generate test suites for kuma-manual-test by reading Kuma source code.
   Produces ready-to-run suites with manifests, validation steps, and expected outcomes.
 argument-hint: "<feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, AskUserQuestion, Agent
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 user-invocable: true
 ---
 

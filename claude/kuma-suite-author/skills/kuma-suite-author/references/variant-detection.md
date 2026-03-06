@@ -88,7 +88,7 @@ Not all signals warrant variant groups. Classify each detected signal:
 | Moderate | Mentioned in spec but no separate code path yet, or code path exists but is trivial | Present with `[uncertain]` tag, explain evidence |
 | Weak     | Hinted at in comments or docs but no implementation                                 | Mention in notes, don't pre-select               |
 
-Strong signals: the code does something measurably different. Moderate signals: the code might do something different but you're not sure without runtime testing. Weak signals: you see a pattern that could become a variant but isn't one yet.
+Strong signals: the code does something measurably different. Moderate signals: the code might do something different but runtime testing has not confirmed the behavior. Weak signals: a pattern that could become a variant but is not one yet.
 
 ## Group mapping
 
