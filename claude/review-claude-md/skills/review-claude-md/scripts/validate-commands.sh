@@ -35,8 +35,6 @@ if [[ ! -f "$CLAUDE_MD" ]]; then
   exit 0
 fi
 
-CONTENT=$(cat "$CLAUDE_MD")
-
 # --- Check: has-build ---
 BUILD_MATCH=$(grep -inE "npm run build|cargo build|go build|mvn |gradle |bazel build" "$CLAUDE_MD" | head -1 || true)
 if [[ -z "$BUILD_MATCH" ]]; then

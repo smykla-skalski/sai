@@ -15,6 +15,8 @@ import sys
 import os
 import re
 import json as jsonmod
+import shutil
+import subprocess
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Tuple
@@ -909,6 +911,50 @@ def scan_file(path: str) -> List[Finding]:
     return findings
 
 
+# ---------------------------------------------------------------------------
+# Shellcheck integration
+# ---------------------------------------------------------------------------
+
+SHELLCHECK_SEVERITY_MAP = {
+    "error": "critical",
+    "warning": "medium",
+    "info": "low",
+    "style": "low",
+}
+
+
+def run_shellcheck(files: List[str]) -> List[Finding]:
+    """Run shellcheck on files and convert output to Findings."""
+    sc = shutil.which("shellcheck")
+    if not sc:
+        return []
+    findings = []
+    for path in files:
+        try:
+            result = subprocess.run(
+                [sc, "-S", "warning", "-f", "json", path],
+                capture_output=True, text=True, timeout=30,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            continue
+        if not result.stdout.strip():
+            continue
+        try:
+            items = jsonmod.loads(result.stdout)
+        except jsonmod.JSONDecodeError:
+            continue
+        for item in items:
+            sev = SHELLCHECK_SEVERITY_MAP.get(item.get("level", ""), "low")
+            code = item.get("code", 0)
+            msg = item.get("message", "")
+            line = item.get("line", 0)
+            findings.append(Finding(
+                path, line, sev, f"SC{code}",
+                msg, f"https://www.shellcheck.net/wiki/SC{code}"
+            ))
+    return findings
+
+
 def collect_files(target: str) -> List[str]:
     p = Path(target)
     if p.is_file():
@@ -963,6 +1009,10 @@ def main():
         choices=["critical", "medium", "low", "all"],
         help="Minimum severity to show (default: all)"
     )
+    parser.add_argument(
+        "--no-shellcheck", action="store_true",
+        help="Skip shellcheck even if installed"
+    )
     args = parser.parse_args()
 
     files = collect_files(args.target)
@@ -975,6 +1025,9 @@ def main():
     all_findings = []
     for f in files:
         all_findings.extend(scan_file(f))
+
+    if not args.no_shellcheck:
+        all_findings.extend(run_shellcheck(files))
 
     # Apply severity filter
     if args.severity != "all":

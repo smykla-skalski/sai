@@ -4,7 +4,11 @@
 # Usage:
 #   ./stage-hunk.sh --check-deps
 #   ./stage-hunk.sh --list [--fallback]
+#   ./stage-hunk.sh --list --split [--fallback]
+#   ./stage-hunk.sh --split H3 [--fallback]
 #   ./stage-hunk.sh --hunk H1,H2 [--dry-run] [--fallback]
+#   ./stage-hunk.sh --hunk H3.1,H3.2 [--dry-run] [--fallback]
+#   ./stage-hunk.sh --hunk H3:5-10 [--dry-run] [--fallback]
 #   ./stage-hunk.sh --pattern REGEX [--dry-run]
 #   ./stage-hunk.sh --file PATH [--dry-run] [--fallback]
 #   ./stage-hunk.sh --range FILE:START-END [--dry-run]
@@ -13,7 +17,11 @@
 # Modes:
 #   --check-deps       Check required dependencies, output JSON status
 #   --list             List all unstaged hunks with IDs and previews
+#   --list --split     List all hunks with sub-hunk breakdown
+#   --split H3         Show sub-hunks for one specific hunk
 #   --hunk H1,H2,...   Stage specific hunks by global sequential ID
+#   --hunk H3.1,H3.2   Stage sub-hunks by dot-notation ID
+#   --hunk H3:5-10     Stage hunk-relative lines within a hunk
 #   --pattern REGEX    Stage hunks matching regex (requires patchutils)
 #   --file PATH        Stage all hunks for file(s) (comma-separated)
 #   --range FILE:S-E   Stage hunks overlapping line range (requires patchutils)
@@ -88,6 +96,8 @@ HUNK_IDS=""
 PATTERN=""
 FILE_PATHS=""
 RANGE_SPEC=""
+SPLIT=false
+SPLIT_TARGET=""
 DRY_RUN=false
 FALLBACK=false
 
@@ -95,6 +105,15 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --check-deps) MODE="check-deps"; shift ;;
     --list)       MODE="list"; shift ;;
+    --split)
+      SPLIT=true
+      # --split can be a standalone mode (--split H3) or a modifier (--list --split)
+      if [[ "${2:-}" =~ ^H[0-9]+ ]] && [[ ! "${2:-}" =~ ^-- ]]; then
+        SPLIT_TARGET="$2"; shift 2
+      else
+        shift
+      fi
+      ;;
     --hunk)       MODE="hunk"; HUNK_IDS="${2:-}"; shift 2 || die "missing hunk IDs" 2 ;;
     --pattern)    MODE="pattern"; PATTERN="${2:-}"; shift 2 || die "missing pattern" 2 ;;
     --file)       MODE="file"; FILE_PATHS="${2:-}"; shift 2 || die "missing file path" 2 ;;
@@ -106,7 +125,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -z "$MODE" ]] && die "no mode specified (use --check-deps, --list, --hunk, --pattern, --file, --range, or --verify)" 2
+# Resolve combined modes: --split with a target is its own mode, --list --split is list-split
+if [[ "$SPLIT" == "true" ]]; then
+  if [[ -n "$SPLIT_TARGET" ]]; then
+    MODE="split"
+  elif [[ "$MODE" == "list" ]]; then
+    MODE="list-split"
+  elif [[ -z "$MODE" ]]; then
+    die "--split requires a hunk ID (--split H3) or must be combined with --list" 2
+  fi
+fi
+
+[[ -z "$MODE" ]] && die "no mode specified (use --check-deps, --list, --hunk, --pattern, --file, --range, --split, or --verify)" 2
 
 # ========================
 # DEPENDENCY CHECK
@@ -158,6 +188,11 @@ fi
 git rev-parse --git-dir &>/dev/null || die "not inside a git repository" 1
 
 # ========================
+# SCRIPT DIR (for Python helper)
+# ========================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ========================
 # DIFF CAPTURE
 # ========================
 
@@ -167,6 +202,15 @@ if [[ -z "$DIFF" ]]; then
   emit '{"error":"no_unstaged_changes","detail":"git diff is empty"}'
   exit 0
 fi
+
+# Capture a zero-context diff for fine-grained hunk splitting.
+# Only computed when needed (split/list-split modes, or sub-hunk staging).
+FINE_DIFF=""
+capture_fine_diff() {
+  if [[ -z "$FINE_DIFF" ]]; then
+    FINE_DIFF=$(git diff --inter-hunk-context=0 --unified=0)
+  fi
+}
 
 # ========================
 # HUNK INDEX BUILDER
@@ -311,6 +355,77 @@ if [[ "$MODE" == "list" ]]; then
 fi
 
 # ========================
+# SPLIT MODE (show sub-hunks for one hunk)
+# ========================
+if [[ "$MODE" == "split" ]]; then
+  [[ -z "$SPLIT_TARGET" ]] && die "no hunk ID specified for --split" 2
+
+  # Look up the parent hunk in the index
+  parent_entry=$(echo "$HUNK_INDEX" | grep -F "${SPLIT_TARGET}${FS}" || true)
+  if [[ -z "$parent_entry" ]]; then
+    emit "{\"error\":\"invalid_hunk_id\",\"id\":\"${SPLIT_TARGET}\",\"valid_range\":\"H1-H${TOTAL_HUNKS}\"}"
+    exit 1
+  fi
+
+  # Parse parent entry fields
+  IFS="$FS" read -r p_id p_file p_hn p_os p_oc p_ns p_nc p_added p_removed p_preview <<< "$parent_entry"
+
+  capture_fine_diff
+
+  # Call Python helper to find sub-hunks
+  subhunk_output=$(printf '%s\x00%s' "$DIFF" "$FINE_DIFF" | python3 "${SCRIPT_DIR}/split-hunk.py" \
+    --find-subhunks \
+    --parent "$p_id" \
+    --old-start "$p_os" \
+    --old-count "$p_oc" \
+    --file "$p_file")
+
+  # Pass through the NDJSON output from the Python helper
+  echo "$subhunk_output"
+  exit 0
+fi
+
+# ========================
+# LIST-SPLIT MODE (list all hunks with sub-hunk breakdown)
+# ========================
+if [[ "$MODE" == "list-split" ]]; then
+  capture_fine_diff
+
+  splittable_count=0
+  total_sub_hunks=0
+
+  while IFS="$FS" read -r id file hunk_num os oc ns nc added removed preview; do
+    # Try to find sub-hunks for each parent hunk
+    subhunk_output=$(printf '%s\x00%s' "$DIFF" "$FINE_DIFF" | python3 "${SCRIPT_DIR}/split-hunk.py" \
+      --find-subhunks \
+      --parent "$id" \
+      --old-start "$os" \
+      --old-count "$oc" \
+      --file "$file" 2>/dev/null) || true
+
+    # Check if splittable by looking at the summary line
+    local_file=$(json_str "$file")
+    local_preview=$(json_str "$preview")
+
+    if echo "$subhunk_output" | grep -q '"splittable":true'; then
+      sub_count=$(echo "$subhunk_output" | grep '"summary":true' | python3 -c "import json,sys; print(json.loads(sys.stdin.readline())['sub_hunks'])" 2>/dev/null) || sub_count=0
+      splittable_count=$((splittable_count + 1))
+      total_sub_hunks=$((total_sub_hunks + sub_count))
+      emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":true,\"sub_hunks\":${sub_count}}"
+      # Emit the sub-hunk detail lines (skip the summary)
+      echo "$subhunk_output" | grep -v '"summary":true' | grep -v '"splittable":false'
+    else
+      emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":false,\"sub_hunks\":0}"
+    fi
+  done <<< "$HUNK_INDEX"
+
+  fb="false"
+  [[ "$FALLBACK" == "true" ]] && fb="true"
+  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"splittable_hunks\":${splittable_count},\"total_sub_hunks\":${total_sub_hunks},\"mode\":\"list-split\",\"fallback\":${fb}}"
+  exit 0
+fi
+
+# ========================
 # VERIFY MODE
 # ========================
 if [[ "$MODE" == "verify" ]]; then
@@ -339,7 +454,6 @@ if [[ "$MODE" == "verify" ]]; then
     u_hunks=0
     if [[ -n "$staged_diff" ]]; then
       if [[ "$FALLBACK" == "false" ]]; then
-        local filtered
         filtered=$(echo "$staged_diff" | filterdiff -i "a/${f}" 2>/dev/null) || true
         s_hunks=$(echo "$filtered" | grep -c '^@@ ' || true)
       else
@@ -420,11 +534,14 @@ extract_hunk_patch() {
 
 # Apply a patch to the index. Returns 0 on success, 1 on failure.
 # Sets APPLY_STDERR with captured error output for diagnostics.
+# Optional second arg: extra flags for git apply (e.g., "--unidiff-zero").
 APPLY_STDERR=""
 apply_patch() {
   local patch="$1"
+  local extra_flags="${2:-}"
   [[ -z "$patch" ]] && return 1
-  APPLY_STDERR=$(echo "$patch" | git apply --cached 2>&1) && return 0
+  # shellcheck disable=SC2086  # extra_flags is intentionally word-split
+  APPLY_STDERR=$(echo "$patch" | git apply --cached $extra_flags 2>&1) && return 0
   # Check for index lock
   if echo "$APPLY_STDERR" | grep -qF "index.lock"; then
     emit "{\"error\":\"index_locked\",\"detail\":$(json_str "$APPLY_STDERR")}"
@@ -512,6 +629,7 @@ stage_hunks() {
 map_to_global_ids() {
   local matched_index="$1"
   local result=""
+  # shellcheck disable=SC2034  # destructured fields — only mfile/mos used
   while IFS="$FS" read -r mid mfile mhn mos moc mns mnc madded mremoved mpreview; do
     local global_entry
     # Match by file + old_start (not hunk_num) — grepdiff returns a subset so

@@ -212,8 +212,6 @@ fi
 # For a given ref path, find the first gate line number in BODY_NUMBERED
 find_gate_line() {
   local ref="$1"
-  local escaped
-  escaped=$(echo "$ref" | sed 's/\./\\./g')
   local _match
   _match=$(echo "$BODY_NUMBERED" | { grep -iE '(Read|Contents of|path to|Load)[[:space:]]' || true; } | grep -iF "$ref" | head -1) || true
   [[ -n "$_match" ]] && echo "${_match%%:*}" || true
