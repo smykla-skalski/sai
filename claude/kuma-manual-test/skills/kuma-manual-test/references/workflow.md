@@ -38,7 +38,13 @@ RUN_ID="$(date +%Y%m%d-%H%M%S)-manual"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 ```
 
-Suite resolution: if the positional argument is a bare name (no `/`), look it up in `${DATA_DIR}/suites/` first, then treat as a literal path.
+Suite resolution for bare names (no `/`):
+
+1. Directory suite: check `${DATA_DIR}/suites/${name}/suite.md`
+2. Legacy file: check `${DATA_DIR}/suites/${name}.md`
+3. Literal path
+
+For directory suites, set `SUITE_DIR` to the suite directory and `SUITE_FILE` to `suite.md`. For legacy/literal suites, set `SUITE_FILE` to the resolved path and `SUITE_DIR` to empty.
 
 Fill `run-metadata.yaml` before touching the cluster.
 
@@ -90,6 +96,15 @@ Read `references/validation.md` before applying manifests.
 Read `references/mesh-policies.md` for Mesh\* policy targeting and debug flow.
 
 Select a suite that matches the feature area, or copy `examples/suite-template.md` if none exists.
+
+For directory suites (`SUITE_DIR` is set):
+
+1. Read `${SUITE_DIR}/suite.md` for overview, group table, and execution contract.
+2. Before G1, apply each baseline manifest listed in the baseline table from `${SUITE_DIR}/baseline/`.
+3. Before each group, read the group file from `${SUITE_DIR}/groups/` using the path from the group table.
+4. After completing a group, the group file content can be dropped from context.
+
+For legacy single-file suites: read the entire suite file as before.
 
 For each test step:
 
