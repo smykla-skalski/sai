@@ -268,9 +268,9 @@ run_structure() {
     FULL_BODY=$(cat "$SKILL_MD")
   fi
   REFERENCED_FILES=$(echo "$SKILL_BODY" \
-    | grep -oE '(references/[a-zA-Z0-9._-]+|scripts/[a-zA-Z0-9._-]+|assets/[a-zA-Z0-9._-]+|examples/[a-zA-Z0-9._-]+)' \
-    | grep -vE '/(\.\.\.|\.\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)' \
-    | sort -u || true)
+    | { grep -oE '(references/[a-zA-Z0-9._-]+|scripts/[a-zA-Z0-9._-]+|assets/[a-zA-Z0-9._-]+|examples/[a-zA-Z0-9._-]+)' || true; } \
+    | { grep -vE '/(\.\.\.|\.\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)' || true; } \
+    | sort -u)
 
   if [[ -n "$REFERENCED_FILES" ]]; then
     while IFS= read -r ref; do
@@ -300,14 +300,13 @@ run_structure() {
     # Exclude markdown headers (### `scripts/...`) which are documentation.
     local BARE_REFS
     BARE_REFS=$(echo "$SKILL_BODY" \
-      | grep -E 'scripts/[a-zA-Z0-9._-]+\.sh' \
-      | grep -vE '^\s*#{1,6}\s' \
-      | grep -vE '\$SKILL_DIR|\$\{CLAUDE_SKILL_DIR\}' \
-      || true)
+      | { grep -E 'scripts/[a-zA-Z0-9._-]+\.sh' || true; } \
+      | { grep -vE '^\s*#{1,6}\s' || true; } \
+      | { grep -vE '\$SKILL_DIR|\$\{CLAUDE_SKILL_DIR\}' || true; })
 
     if [[ -n "$BARE_REFS" ]]; then
       local BARE_COUNT FIRST_BAD
-      BARE_COUNT=$(echo "$BARE_REFS" | wc -l | tr -d ' ')
+      BARE_COUNT=$(wc -l <<< "$BARE_REFS" | tr -d ' ')
       FIRST_BAD=$(echo "$BARE_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
       emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \${CLAUDE_SKILL_DIR} prefix — use \"\${CLAUDE_SKILL_DIR}/scripts/...\" — first: ${FIRST_BAD}"
     else
@@ -327,7 +326,7 @@ run_structure() {
 
     if [[ -n "$BASH_PREFIX_REFS" ]]; then
       local BASH_COUNT FIRST_BASH
-      BASH_COUNT=$(echo "$BASH_PREFIX_REFS" | wc -l | tr -d ' ')
+      BASH_COUNT=$(wc -l <<< "$BASH_PREFIX_REFS" | tr -d ' ')
       FIRST_BASH=$(echo "$BASH_PREFIX_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
       emit "no-bash-prefix" "false" "Found ${BASH_COUNT} script invocation(s) using bash prefix — invoke directly via \"\${CLAUDE_SKILL_DIR}/scripts/...\" and set executable bit — first: ${FIRST_BASH}"
     else
@@ -394,8 +393,7 @@ run_structure() {
   # --- no Windows-style backslash paths (P6) ---
   local BACKSLASH_PATHS
   BACKSLASH_PATHS=$(echo "$SKILL_BODY" \
-    | grep -oE '(references|scripts|assets|examples)\\[a-zA-Z0-9._-]+' \
-    || true)
+    | { grep -oE '(references|scripts|assets|examples)\\[a-zA-Z0-9._-]+' || true; })
 
   if [[ -n "$BACKSLASH_PATHS" ]]; then
     local FIRST_BP
@@ -546,9 +544,9 @@ run_structure() {
   if [[ -d "${SKILL_DIR}/references" ]]; then
     local SKILL_PHASES
     SKILL_PHASES=$(echo "$SKILL_BODY" \
-      | grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' \
-      | grep -oE '[0-9]+' \
-      | sort -n -u || true)
+      | { grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' || true; } \
+      | { grep -oE '[0-9]+' || true; } \
+      | sort -n -u)
     local SKILL_PHASE_COUNT
     SKILL_PHASE_COUNT=$(echo "$SKILL_PHASES" | { grep -c '[0-9]' || true; })
 
@@ -559,9 +557,9 @@ run_structure() {
         BASENAME=$(basename "$ref_file")
         local REF_PHASES
         REF_PHASES=$(sed '/^```/,/^```/d' "$ref_file" \
-          | grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' \
-          | grep -oE '[0-9]+' \
-          | sort -n -u || true)
+          | { grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' || true; } \
+          | { grep -oE '[0-9]+' || true; } \
+          | sort -n -u)
         local REF_PHASE_COUNT
         REF_PHASE_COUNT=$(echo "$REF_PHASES" | { grep -c '[0-9]' || true; })
 
@@ -603,8 +601,10 @@ run_structure() {
       local BASENAME STRIPPED
       BASENAME=$(basename "$ref_file")
       STRIPPED=$(sed '/^```/,/^```/d' "$ref_file" | sed 's/"[^"]*"//g; s/`[^`]*`//g')
-      if echo "$STRIPPED" | grep -E '\(references/[a-zA-Z0-9._-]+\)' 2>/dev/null \
-        | grep -qvE '\]\(references/' 2>/dev/null; then
+      local BARE_PARENS
+      BARE_PARENS=$(echo "$STRIPPED" | { grep -E '\(references/[a-zA-Z0-9._-]+\)' || true; } \
+        | { grep -vE '\]\(references/' || true; })
+      if [[ -n "$BARE_PARENS" ]]; then
         emit "refs-one-level" "false" "Reference '${BASENAME}' cross-references other reference files"
       else
         emit "refs-one-level" "true" "Reference '${BASENAME}' does not cross-reference other files"
@@ -724,12 +724,11 @@ run_structure() {
   # See: https://code.claude.com/docs/en/skills (Progressive Disclosure)
   local INLINE_CODE_REFS
   INLINE_CODE_REFS=$(echo "$SKILL_BODY" \
-    | grep -oE '`(references|examples)/[a-zA-Z0-9._-]+`' \
-    || true)
+    | { grep -oE '`(references|examples)/[a-zA-Z0-9._-]+`' || true; })
 
   if [[ -n "$INLINE_CODE_REFS" ]]; then
     local INLINE_COUNT FIRST_INLINE
-    INLINE_COUNT=$(echo "$INLINE_CODE_REFS" | wc -l | tr -d ' ')
+    INLINE_COUNT=$(wc -l <<< "$INLINE_CODE_REFS" | tr -d ' ')
     FIRST_INLINE=$(echo "$INLINE_CODE_REFS" | head -1)
     emit "ref-link-format" "false" "Found ${INLINE_COUNT} inline code reference(s) — use markdown links [file](path) for progressive disclosure — first: ${FIRST_INLINE}"
   else
@@ -750,7 +749,7 @@ run_structure() {
 
     if [[ "${REFGATE_REFS:-0}" -gt 0 ]]; then
       while IFS= read -r line; do
-        echo "$line" | grep -q '"summary"' && continue
+        [[ "$line" == *'"summary"'* ]] && continue
         local RG_CHECK RG_PASS RG_DETAIL
         RG_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
         RG_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
@@ -770,16 +769,16 @@ run_structure() {
   if [[ -n "$AT" ]]; then
     local UNUSED_TOOLS=""
 
-    if echo "$AT" | grep -qw "Task"; then
-      if ! echo "$FULL_BODY" | grep -qE '\bTask\b' \
-        && ! echo "$FULL_BODY" | grep -qiE '\bagent\b|\bspawn\b|\bsubagent\b'; then
+    if [[ "$AT" == *Task* ]]; then
+      if ! grep -qE '\bTask\b' <<< "$FULL_BODY" \
+        && ! grep -qiE '\bagent\b|\bspawn\b|\bsubagent\b' <<< "$FULL_BODY"; then
         UNUSED_TOOLS="${UNUSED_TOOLS}Task "
       fi
     fi
 
-    if echo "$AT" | grep -qw "ToolSearch"; then
-      if ! echo "$FULL_BODY" | grep -qE '\bToolSearch\b' \
-        && ! echo "$FULL_BODY" | grep -qiE 'mcp__|select:'; then
+    if [[ "$AT" == *ToolSearch* ]]; then
+      if ! grep -qE '\bToolSearch\b' <<< "$FULL_BODY" \
+        && ! grep -qiE 'mcp__|select:' <<< "$FULL_BODY"; then
         UNUSED_TOOLS="${UNUSED_TOOLS}ToolSearch "
       fi
     fi
@@ -831,7 +830,7 @@ run_structure() {
       # Re-emit each sub-check result from the preprocessing script
       while IFS= read -r line; do
         # Skip summary line
-        echo "$line" | grep -q '"summary"' && continue
+        [[ "$line" == *'"summary"'* ]] && continue
         local PC_CHECK PC_PASS PC_DETAIL
         PC_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
         PC_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
@@ -866,7 +865,7 @@ run_structure() {
     else
       local LINT_DETAIL_PARTS=("scripts/ has ${LINT_CRITS} critical, ${LINT_MEDS} medium finding(s)")
       local LINT_TOP
-      LINT_TOP=$(echo "$LINT_OUTPUT" | grep -v '"summary"' | head -3 \
+      LINT_TOP=$(echo "$LINT_OUTPUT" | { grep -v '"summary"' || true; } | head -3 \
         | sed -n 's/.*"check": "\([^"]*\)".*"message": "\([^"]*\)".*/\1: \2/p' \
         | tr '\n' '; ' | sed 's/; $//')
       [[ -n "$LINT_TOP" ]] && LINT_DETAIL_PARTS+=(" — ${LINT_TOP}")
@@ -888,7 +887,7 @@ run_structure() {
 
     if [[ "$AUQ_TOTAL" -gt 0 ]]; then
       while IFS= read -r line; do
-        echo "$line" | grep -q '"summary"' && continue
+        [[ "$line" == *'"summary"'* ]] && continue
         local AQ_CHECK AQ_PASS AQ_DETAIL
         AQ_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
         AQ_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')

@@ -196,7 +196,7 @@ fi
 CONV_HITS=$(echo "$SKILL_BODY" | grep -ciE 'conversation (context|history)|previous(ly)? (message|discussed|mentioned)|selected (code|text|block|content)|what (you|the user) (said|asked|want|mentioned)|from (the|our) (conversation|discussion|chat)' || true)
 
 if [[ "$CONV_HITS" -gt 0 ]]; then
-  FIRST_HIT=$(echo "$SKILL_BODY" | grep -iE 'conversation (context|history)|previous(ly)? (message|discussed|mentioned)|selected (code|text|block|content)|what (you|the user) (said|asked|want|mentioned)|from (the|our) (conversation|discussion|chat)' | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
+  FIRST_HIT=$(echo "$SKILL_BODY" | { grep -iE 'conversation (context|history)|previous(ly)? (message|discussed|mentioned)|selected (code|text|block|content)|what (you|the user) (said|asked|want|mentioned)|from (the|our) (conversation|discussion|chat)' || true; } | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
   emit_signal "B2" "blocker" "true" "Conversation-dependent: ${FIRST_HIT}"
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
   BLOCKER_IDS="${BLOCKER_IDS}B2 "
@@ -251,13 +251,11 @@ fi
 # script output structure (e.g. "Script output format", "JSON output"),
 # not the skill's final deliverable returned to the user.
 OUTPUT_HEADERS=$(echo "$SKILL_BODY" \
-  | grep -iE '^#{1,4}[[:space:]].*(Output|Report|Template|Artifact|Digest|Verdict)' \
-  || true)
+  | grep -iE '^#{1,4}[[:space:]].*(Output|Report|Template|Artifact|Digest|Verdict)' || true)
 # Filter out internal format documentation headers
 if [[ -n "$OUTPUT_HEADERS" ]]; then
   OUTPUT_FILTERED=$(echo "$OUTPUT_HEADERS" \
-    | grep -viE '(Script|JSON|NDJSON|Wire|Data|API|Log|Raw|Parse)[[:space:]]+(output|format)' \
-    || true)
+    | grep -viE '(Script|JSON|NDJSON|Wire|Data|API|Log|Raw|Parse)[[:space:]]+(output|format)' || true)
 else
   OUTPUT_FILTERED=""
 fi

@@ -100,9 +100,9 @@ FULL_FILE=$(cat "$SKILL_MD")
 
 # Linked: markdown links (references/*.md) and (examples/*.md) from body
 LINKED_REFS=$(echo "$BODY_STRIPPED" \
-  | grep -oE '\((references|examples)/[a-zA-Z0-9._-]+\.md\)' \
+  | { grep -oE '\((references|examples)/[a-zA-Z0-9._-]+\.md\)' || true; } \
   | sed 's/^(//;s/)$//' \
-  | sort -u || true)
+  | sort -u)
 
 # Disk: actual files in references/ and examples/
 DISK_REFS=""
@@ -121,7 +121,7 @@ ALL_REFS=$(printf '%s\n%s\n' "$LINKED_REFS" "$DISK_REFS" | grep -v '^$' | sort -
 
 REF_COUNT=0
 if [[ -n "$ALL_REFS" ]]; then
-  REF_COUNT=$(echo "$ALL_REFS" | wc -l | tr -d ' ')
+  REF_COUNT=$(wc -l <<< "$ALL_REFS" | tr -d ' ')
 fi
 
 # If no refs at all, emit summary and exit
@@ -168,7 +168,7 @@ in_bundled() {
 WORKFLOW_HEADERS=$(echo "$BODY_NUMBERED" | grep -iE '^[0-9]+:## .*[Ww]orkflow' || true)
 WORKFLOW_COUNT=0
 if [[ -n "$WORKFLOW_HEADERS" ]]; then
-  WORKFLOW_COUNT=$(echo "$WORKFLOW_HEADERS" | wc -l | tr -d ' ')
+  WORKFLOW_COUNT=$(wc -l <<< "$WORKFLOW_HEADERS" | tr -d ' ')
 fi
 
 MODE_HEADERS=$(echo "$BODY_NUMBERED" | grep -iE '^[0-9]+:##+ .*(mode|alternative|fallback)' || true)
@@ -182,9 +182,9 @@ fi
 FLOW_SECTIONS=""
 if [[ "$IS_MULTI_FLOW" == "true" ]]; then
   # Collect all ## Workflow headers with their line numbers
-  FLOW_HEADER_LINES=$(echo "$BODY_NUMBERED" | grep -iE '^[0-9]+:## .*[Ww]orkflow' | while IFS=: read -r lnum rest; do
+  FLOW_HEADER_LINES=$(echo "$BODY_NUMBERED" | { grep -iE '^[0-9]+:## .*[Ww]orkflow' || true; } | while IFS=: read -r lnum rest; do
     echo "$lnum"
-  done || true)
+  done)
 
   if [[ -n "$FLOW_HEADER_LINES" ]]; then
     PREV_LINE=""
@@ -197,7 +197,7 @@ if [[ "$IS_MULTI_FLOW" == "true" ]]; then
       fi
       PREV_LINE="$ORIG_LINE"
       PREV_TEXT="$HEADER_TEXT"
-    done <<< "$(echo "$BODY_NUMBERED" | grep -iE '^[0-9]+:## .*[Ww]orkflow')"
+    done <<< "$(echo "$BODY_NUMBERED" | { grep -iE '^[0-9]+:## .*[Ww]orkflow' || true; })"
     # Last section extends to EOF
     if [[ -n "$PREV_LINE" ]]; then
       FLOW_SECTIONS="${FLOW_SECTIONS}${PREV_LINE}:999999:${PREV_TEXT}"$'\n'
@@ -214,26 +214,28 @@ find_gate_line() {
   local ref="$1"
   local escaped
   escaped=$(echo "$ref" | sed 's/\./\\./g')
-  echo "$BODY_NUMBERED" | grep -iE '(Read|Contents of|path to|Load)[[:space:]]' | grep -iF "$ref" | head -1 | cut -d: -f1 || true
+  local _match
+  _match=$(echo "$BODY_NUMBERED" | { grep -iE '(Read|Contents of|path to|Load)[[:space:]]' || true; } | grep -iF "$ref" | head -1) || true
+  [[ -n "$_match" ]] && echo "${_match%%:*}" || true
 }
 
 # For a given ref path, check if it has any gate in BODY_STRIPPED
 has_gate() {
   local ref="$1"
-  echo "$BODY_STRIPPED" | grep -iE '(Read|Contents of|path to|Load)[[:space:]]' | grep -qiF "$ref"
+  echo "$BODY_STRIPPED" | { grep -iE '(Read|Contents of|path to|Load)[[:space:]]' || true; } | grep -qiF "$ref"
 }
 
 # For a given ref, find passive mentions with line numbers (non-gate, non-bundled)
 find_passive_mentions() {
   local ref="$1"
   # Find lines mentioning the ref that are NOT gates
-  echo "$BODY_NUMBERED" | grep -iF "$ref" | while IFS= read -r line; do
+  echo "$BODY_NUMBERED" | { grep -iF "$ref" || true; } | while IFS= read -r line; do
     local lnum
     lnum=$(echo "$line" | cut -d: -f1)
     local content
     content=$(echo "$line" | cut -d: -f2-)
     # Skip if this line is a gate
-    if echo "$content" | grep -iE '(Read|Contents of|path to|Load)[[:space:]]' | grep -qiF "$ref"; then
+    if echo "$content" | { grep -iE '(Read|Contents of|path to|Load)[[:space:]]' || true; } | grep -qiF "$ref"; then
       continue
     fi
     # Skip if in bundled section
@@ -242,9 +244,9 @@ find_passive_mentions() {
     fi
     # Check if it matches passive patterns
     # "from" is passive UNLESS preceded by "Contents"
-    if echo "$content" | grep -iE '(See|are in|is in|Consult|per|available in|described in|defined in|documented in)' | grep -qiF "$ref"; then
+    if echo "$content" | { grep -iE '(See|are in|is in|Consult|per|available in|described in|defined in|documented in)' || true; } | grep -qiF "$ref"; then
       echo "$lnum"
-    elif echo "$content" | grep -iE 'from' | grep -iF "$ref" | grep -qviE 'Contents from'; then
+    elif echo "$content" | { grep -iE 'from' || true; } | { grep -iF "$ref" || true; } | grep -qviE 'Contents from'; then
       echo "$lnum"
     fi
   done || true
@@ -253,13 +255,13 @@ find_passive_mentions() {
 # For a given ref, find all non-gate, non-bundled mention line numbers
 find_use_lines() {
   local ref="$1"
-  echo "$BODY_NUMBERED" | grep -iF "$ref" | while IFS= read -r line; do
+  echo "$BODY_NUMBERED" | { grep -iF "$ref" || true; } | while IFS= read -r line; do
     local lnum
     lnum=$(echo "$line" | cut -d: -f1)
     local content
     content=$(echo "$line" | cut -d: -f2-)
     # Skip gates
-    if echo "$content" | grep -iE '(Read|Contents of|path to|Load)[[:space:]]' | grep -qiF "$ref"; then
+    if echo "$content" | { grep -iE '(Read|Contents of|path to|Load)[[:space:]]' || true; } | grep -qiF "$ref"; then
       continue
     fi
     # Skip bundled

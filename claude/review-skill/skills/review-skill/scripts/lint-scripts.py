@@ -144,9 +144,9 @@ def check_sed_empty_var(path: str, content: str, lines: List[str]) -> List[Findi
         if not m:
             continue
         var = m.group(2)
-        # Check if guarded in preceding 5 lines
+        # Check if guarded in preceding 5 lines (skip comments)
         start = max(0, i - 5)
-        context = "\n".join(lines[start:i + 1])
+        context = "\n".join(l for l in lines[start:i + 1] if not is_comment(l))
         if re.search(rf'\[\[.*-n.*\${{?{var}}}?|if\s+\[\[.*-n.*{var}', context):
             continue
         findings.append(Finding(
@@ -722,9 +722,11 @@ def check_timestamp_collision(path: str, content: str, lines: List[str]) -> List
             line = lines[j]
             if re.search(rf"\${{?{var}}}?", line) and j != def_line:
                 # Check if this looks like a filename (has extension or path separator)
-                if re.search(r"\.(log|txt|md|yaml|json|sh)\b|/\$", line):
-                    # Check for uniqueness suffix
-                    context = "\n".join(lines[def_line:j + 1])
+                # Exclude sed substitution patterns (s/.../$var.../g)
+                if re.search(r"\.(log|txt|md|yaml|json|sh)\b", line) or \
+                   (re.search(r"/\$", line) and not re.search(r'\bsed\b|s/.*/', line)):
+                    # Check for uniqueness suffix (skip comments)
+                    context = "\n".join(l for l in lines[def_line:j + 1] if not is_comment(l))
                     if not re.search(r"\$\$|\$RANDOM|\$\{RANDOM\}|\$\{PID\}", context):
                         findings.append(Finding(
                             path, def_line + 1, "low", "S23",

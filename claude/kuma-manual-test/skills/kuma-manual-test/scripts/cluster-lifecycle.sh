@@ -388,7 +388,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "${repo_root}" ]]; then
-  repo_root="$(cd "${script_dir}/../../../.." && pwd)"
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    printf 'Error: --repo-root not specified and git rev-parse failed\n' >&2
+    exit 1
+  }
   printf 'Warning: --repo-root not specified, falling back to %s\n' "${repo_root}" >&2
 fi
 
