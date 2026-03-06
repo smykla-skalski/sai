@@ -368,6 +368,7 @@ if [[ "$MODE" == "split" ]]; then
   fi
 
   # Parse parent entry fields
+  # shellcheck disable=SC2034  # destructured fields — only p_file/p_os/p_oc/p_id used
   IFS="$FS" read -r p_id p_file p_hn p_os p_oc p_ns p_nc p_added p_removed p_preview <<< "$parent_entry"
 
   capture_fine_diff
@@ -407,13 +408,13 @@ if [[ "$MODE" == "list-split" ]]; then
     local_file=$(json_str "$file")
     local_preview=$(json_str "$preview")
 
-    if echo "$subhunk_output" | grep -q '"splittable":true'; then
-      sub_count=$(echo "$subhunk_output" | grep '"summary":true' | python3 -c "import json,sys; print(json.loads(sys.stdin.readline())['sub_hunks'])" 2>/dev/null) || sub_count=0
+    if echo "$subhunk_output" | grep -qE '"splittable":\s*true'; then
+      sub_count=$(echo "$subhunk_output" | { grep -E '"summary":\s*true' || true; } | python3 -c "import json,sys; print(json.loads(sys.stdin.readline())['sub_hunks'])" 2>/dev/null) || sub_count=0
       splittable_count=$((splittable_count + 1))
       total_sub_hunks=$((total_sub_hunks + sub_count))
       emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":true,\"sub_hunks\":${sub_count}}"
-      # Emit the sub-hunk detail lines (skip the summary)
-      echo "$subhunk_output" | grep -v '"summary":true' | grep -v '"splittable":false'
+      # Emit the sub-hunk detail lines (skip the summary and non-splittable marker)
+      echo "$subhunk_output" | { grep -vE '"summary":\s*true' || true; } | { grep -vE '"splittable":\s*false' || true; }
     else
       emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":false,\"sub_hunks\":0}"
     fi
@@ -648,29 +649,33 @@ ${global_entry}"
 }
 
 # ========================
-# HUNK MODE
+# HUNK MODE (plain, sub-hunk, and line-select)
 # ========================
 if [[ "$MODE" == "hunk" ]]; then
   [[ -z "$HUNK_IDS" ]] && die "no hunk IDs specified" 2
 
-  # Parse comma-separated IDs
+  # Parse comma-separated IDs and classify each reference type
   IFS=',' read -ra requested_ids <<< "$HUNK_IDS"
 
-  # Validate IDs and collect matching entries
-  matched_entries=""
+  # Three buckets: plain IDs, sub-hunk IDs (H3.1), line-select IDs (H3:5-10)
+  plain_ids=()
+  subhunk_refs=()
+  linesel_refs=()
   bad_ids=""
+
   for rid in ${requested_ids[@]+"${requested_ids[@]}"}; do
     rid=$(echo "$rid" | tr -d ' ')
-    entry=$(echo "$HUNK_INDEX" | grep -F "${rid}${FS}" || true)
-    if [[ -z "$entry" ]]; then
-      bad_ids="${bad_ids}${rid},"
+    if [[ "$rid" =~ ^H[0-9]+\.[0-9]+$ ]]; then
+      # Sub-hunk reference: H3.2
+      subhunk_refs+=("$rid")
+    elif [[ "$rid" =~ ^H[0-9]+:[0-9]+-[0-9]+$ ]]; then
+      # Line-select reference: H3:5-10
+      linesel_refs+=("$rid")
+    elif [[ "$rid" =~ ^H[0-9]+$ ]]; then
+      # Plain hunk reference: H3
+      plain_ids+=("$rid")
     else
-      if [[ -z "$matched_entries" ]]; then
-        matched_entries="$entry"
-      else
-        matched_entries="${matched_entries}
-${entry}"
-      fi
+      bad_ids="${bad_ids}${rid},"
     fi
   done
 
@@ -680,12 +685,146 @@ ${entry}"
     emit "{\"warning\":\"invalid_hunk_ids\",\"ids\":\"${bad_ids}\",\"valid_range\":\"H1-H${TOTAL_HUNKS}\"}"
   fi
 
-  if [[ -z "$matched_entries" ]]; then
+  STAGE_FAILED=0
+  STAGE_OK=0
+
+  # --- Batch 1: Plain hunk IDs (existing logic) ---
+  if [[ ${#plain_ids[@]} -gt 0 ]]; then
+    matched_entries=""
+    for rid in ${plain_ids[@]+"${plain_ids[@]}"}; do
+      entry=$(echo "$HUNK_INDEX" | grep -F "${rid}${FS}" || true)
+      if [[ -z "$entry" ]]; then
+        bad_ids="${bad_ids:+${bad_ids},}${rid}"
+        emit "{\"warning\":\"invalid_hunk_id\",\"id\":\"${rid}\",\"valid_range\":\"H1-H${TOTAL_HUNKS}\"}"
+      else
+        if [[ -z "$matched_entries" ]]; then
+          matched_entries="$entry"
+        else
+          matched_entries="${matched_entries}
+${entry}"
+        fi
+      fi
+    done
+
+    if [[ -n "$matched_entries" ]]; then
+      stage_hunks "$matched_entries"
+    fi
+  fi
+
+  # --- Batch 2: Sub-hunk IDs (need --unidiff-zero) ---
+  if [[ ${#subhunk_refs[@]} -gt 0 ]]; then
+    capture_fine_diff
+
+    for ref in ${subhunk_refs[@]+"${subhunk_refs[@]}"}; do
+      # Parse H3.2 -> parent=H3, sub_index=2
+      parent_id="${ref%%.*}"
+      sub_index="${ref##*.}"
+
+      # Look up parent in index
+      parent_entry=$(echo "$HUNK_INDEX" | grep -F "${parent_id}${FS}" || true)
+      if [[ -z "$parent_entry" ]]; then
+        emit "{\"warning\":\"invalid_hunk_id\",\"id\":\"${ref}\",\"detail\":\"parent ${parent_id} not found\"}"
+        STAGE_FAILED=$((STAGE_FAILED + 1))
+        continue
+      fi
+
+      # shellcheck disable=SC2034  # destructured fields — only p_file/p_os/p_oc used
+      IFS="$FS" read -r p_id p_file p_hn p_os p_oc _ _ _ _ _ <<< "$parent_entry"
+
+      # Extract patch via Python helper
+      patch=$(echo "$FINE_DIFF" | python3 "${SCRIPT_DIR}/split-hunk.py" \
+        --extract-patch \
+        --id "$ref" \
+        --parent-old-start "$p_os" \
+        --parent-old-count "$p_oc" \
+        --sub-index "$sub_index" \
+        --file "$p_file" 2>/dev/null) || true
+
+      if [[ -z "$patch" ]]; then
+        local_f=$(json_str "$p_file")
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"sub-hunk extraction failed\"}"
+        STAGE_FAILED=$((STAGE_FAILED + 1))
+        continue
+      fi
+
+      local_f=$(json_str "$p_file")
+
+      if [[ "$DRY_RUN" == "true" ]]; then
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}"
+        STAGE_OK=$((STAGE_OK + 1))
+        continue
+      fi
+
+      APPLY_STDERR=""
+      if apply_patch "$patch" "--unidiff-zero"; then
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+        STAGE_OK=$((STAGE_OK + 1))
+      else
+        err_detail=$(json_str "$APPLY_STDERR")
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}"
+        STAGE_FAILED=$((STAGE_FAILED + 1))
+      fi
+    done
+  fi
+
+  # --- Batch 3: Line-select IDs (normal apply) ---
+  if [[ ${#linesel_refs[@]} -gt 0 ]]; then
+    for ref in ${linesel_refs[@]+"${linesel_refs[@]}"}; do
+      # Parse H3:5-10 -> hunk_id=H3, lines=5-10
+      hunk_id="${ref%%:*}"
+      lines="${ref##*:}"
+
+      # Look up parent in index
+      parent_entry=$(echo "$HUNK_INDEX" | grep -F "${hunk_id}${FS}" || true)
+      if [[ -z "$parent_entry" ]]; then
+        emit "{\"warning\":\"invalid_hunk_id\",\"id\":\"${ref}\",\"detail\":\"hunk ${hunk_id} not found\"}"
+        STAGE_FAILED=$((STAGE_FAILED + 1))
+        continue
+      fi
+
+      # shellcheck disable=SC2034  # destructured fields — only p_file/p_hn/p_os/p_oc used
+      IFS="$FS" read -r p_id p_file p_hn p_os p_oc _ _ _ _ _ <<< "$parent_entry"
+
+      # Construct partial patch via Python helper
+      patch=$(echo "$DIFF" | python3 "${SCRIPT_DIR}/split-hunk.py" \
+        --line-select \
+        --id "$hunk_id" \
+        --file "$p_file" \
+        --hunk-num "$p_hn" \
+        --lines "$lines" 2>/dev/null) || true
+
+      if [[ -z "$patch" ]]; then
+        local_f=$(json_str "$p_file")
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"line-select patch construction failed\"}"
+        STAGE_FAILED=$((STAGE_FAILED + 1))
+        continue
+      fi
+
+      local_f=$(json_str "$p_file")
+
+      if [[ "$DRY_RUN" == "true" ]]; then
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}"
+        STAGE_OK=$((STAGE_OK + 1))
+        continue
+      fi
+
+      APPLY_STDERR=""
+      if apply_patch "$patch"; then
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+        STAGE_OK=$((STAGE_OK + 1))
+      else
+        err_detail=$(json_str "$APPLY_STDERR")
+        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}"
+        STAGE_FAILED=$((STAGE_FAILED + 1))
+      fi
+    done
+  fi
+
+  total_requested=$(( ${#plain_ids[@]} + ${#subhunk_refs[@]} + ${#linesel_refs[@]} ))
+  if [[ "$total_requested" -eq 0 ]]; then
     emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":0,\"failed\":0,\"dry_run\":${DRY_RUN},\"error\":\"no valid hunk IDs\"}"
     exit 1
   fi
-
-  stage_hunks "$matched_entries"
 
   fb="false"
   [[ "$FALLBACK" == "true" ]] && fb="true"
