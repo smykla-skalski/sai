@@ -38,13 +38,7 @@ RUN_ID="$(date +%Y%m%d-%H%M%S)-manual"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 ```
 
-Suite resolution for bare names (no `/`):
-
-1. Directory suite: check `${DATA_DIR}/suites/${name}/suite.md`
-2. Legacy file: check `${DATA_DIR}/suites/${name}.md`
-3. Literal path
-
-For directory suites, set `SUITE_DIR` to the suite directory and `SUITE_FILE` to `suite.md`. For legacy/literal suites, set `SUITE_FILE` to the resolved path and `SUITE_DIR` to empty.
+Suite resolution uses the three-step order from SKILL.md Phase 1 (directory suite, legacy `.md` file, literal path). Set `SUITE_DIR` and `SUITE_FILE` accordingly.
 
 Fill `run-metadata.yaml` before touching the cluster.
 

@@ -1,3 +1,17 @@
+# Contents
+
+1. [Non-negotiable rules](#non-negotiable-rules)
+2. [Operating mode](#operating-mode)
+3. [Persistent data directory](#persistent-data-directory)
+4. [Local kumactl setup](#local-kumactl-setup)
+5. [Run status tracking](#run-status-tracking)
+6. [Artifacts to collect per test case](#artifacts-to-collect-per-test-case)
+7. [Failure policy](#failure-policy)
+8. [Bug triage protocol](#bug-triage-protocol)
+9. [Reproducibility minimum bar](#reproducibility-minimum-bar)
+
+---
+
 # Agent contract
 
 Rules for any AI agent executing manual tests with this harness.
