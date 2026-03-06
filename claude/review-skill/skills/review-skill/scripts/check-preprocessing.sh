@@ -72,12 +72,18 @@ emit() {
 # ========================
 # EXTRACT BODY (skip frontmatter)
 # ========================
-BODY_START=$(awk '/^---$/ { count++; if (count == 2) { print NR + 1; exit } }' "$SKILL_MD")
+BODY_START=$(awk '
+  /^---$/ && !got_minus { count++; if (count == 2) { print NR + 1; exit } }
+  /^--- a\// { got_minus = 1; next }
+  /^\+\+\+/ && got_minus { got_plus = 1; got_minus = 0; next }
+' "$SKILL_MD")
 if [[ -z "$BODY_START" ]]; then
   echo "{\"summary\": true, \"total\": 0, \"passed\": 0, \"failed\": 0, \"directives\": 0}"
   exit 0
 fi
 
+# Guarded: BODY_START is non-empty (checked above)
+[[ -n "$BODY_START" ]] || exit 0
 # Body with fenced code blocks stripped (we only check directives in prose)
 BODY_NO_FENCE=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
 
@@ -441,6 +447,7 @@ check_hang() {
 # ========================
 
 # Check for malformed directives in the raw body (before code block stripping)
+[[ -n "$BODY_START" ]] || exit 0
 RAW_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
 
 # Look for unclosed !` (opening !` without closing ` on the same line)

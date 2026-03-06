@@ -38,11 +38,9 @@ fi
 CONTENT=$(cat "$CLAUDE_MD")
 
 # --- Check: has-build ---
-BUILD_PATTERNS="npm run build|cargo build|go build|mvn |gradle |bazel build"
-MAKE_PATTERN='(^|[|;&`])\s*make\b'
-BUILD_MATCH=$(grep -inE "$BUILD_PATTERNS" "$CLAUDE_MD" | head -1 || true)
+BUILD_MATCH=$(grep -inE "npm run build|cargo build|go build|mvn |gradle |bazel build" "$CLAUDE_MD" | head -1 || true)
 if [[ -z "$BUILD_MATCH" ]]; then
-  BUILD_MATCH=$(grep -nE "$MAKE_PATTERN" "$CLAUDE_MD" | head -1 || true)
+  BUILD_MATCH=$(grep -nE '(^|[|;&`])\s*make\b' "$CLAUDE_MD" | head -1 || true)
 fi
 if [[ -n "$BUILD_MATCH" ]]; then
   LINE_NUM=$(echo "$BUILD_MATCH" | cut -d: -f1)
@@ -52,8 +50,7 @@ else
 fi
 
 # --- Check: has-test ---
-TEST_PATTERNS="npm test|pytest|cargo test|go test|jest|vitest|make test|yarn test|bun test"
-TEST_MATCH=$(grep -inE "$TEST_PATTERNS" "$CLAUDE_MD" | head -1 || true)
+TEST_MATCH=$(grep -inE "npm test|pytest|cargo test|go test|jest|vitest|make test|yarn test|bun test" "$CLAUDE_MD" | head -1 || true)
 if [[ -n "$TEST_MATCH" ]]; then
   LINE_NUM=$(echo "$TEST_MATCH" | cut -d: -f1)
   echo "{\"check\": \"has-test\", \"pass\": true, \"detail\": \"Test command found on line ${LINE_NUM}\"}"
@@ -62,8 +59,7 @@ else
 fi
 
 # --- Check: has-lint ---
-LINT_PATTERNS="eslint|biome|ruff|golangci-lint|clippy|prettier|make lint|yarn lint|npm run lint"
-LINT_MATCH=$(grep -inE "$LINT_PATTERNS" "$CLAUDE_MD" | head -1 || true)
+LINT_MATCH=$(grep -inE "eslint|biome|ruff|golangci-lint|clippy|prettier|make lint|yarn lint|npm run lint" "$CLAUDE_MD" | head -1 || true)
 if [[ -n "$LINT_MATCH" ]]; then
   LINE_NUM=$(echo "$LINT_MATCH" | cut -d: -f1)
   echo "{\"check\": \"has-lint\", \"pass\": true, \"detail\": \"Lint command found on line ${LINE_NUM}\"}"
@@ -72,8 +68,7 @@ else
 fi
 
 # --- Check: has-precommit ---
-PRECOMMIT_PATTERNS="pre-commit|precommit|before commit|commit checklist|before pushing|pre commit"
-PRECOMMIT_MATCH=$(grep -inE "$PRECOMMIT_PATTERNS" "$CLAUDE_MD" | head -1 || true)
+PRECOMMIT_MATCH=$(grep -inE "pre-commit|precommit|before commit|commit checklist|before pushing|pre commit" "$CLAUDE_MD" | head -1 || true)
 if [[ -n "$PRECOMMIT_MATCH" ]]; then
   LINE_NUM=$(echo "$PRECOMMIT_MATCH" | cut -d: -f1)
   echo "{\"check\": \"has-precommit\", \"pass\": true, \"detail\": \"Pre-commit workflow found on line ${LINE_NUM}\"}"
