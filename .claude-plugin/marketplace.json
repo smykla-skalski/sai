@@ -30,15 +30,15 @@
       "tags": ["github", "code-review", "pr-management"]
     },
     {
-      "name": "git",
-      "source": "./claude/git",
-      "description": "Git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities",
+      "name": "git-clean-gone",
+      "source": "./claude/git-clean-gone",
+      "description": "Clean up local branches with deleted remote tracking and their worktrees",
       "author": {
         "name": "Smykla Skalski Labs"
       },
       "license": "MIT",
       "category": "productivity",
-      "tags": ["git", "worktree", "branch-management", "automation"]
+      "tags": ["git", "branch-cleanup", "worktree", "automation"]
     },
     {
       "name": "git-stage-hunk",
