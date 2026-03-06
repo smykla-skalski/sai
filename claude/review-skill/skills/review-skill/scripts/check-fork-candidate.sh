@@ -87,8 +87,19 @@ fi
 SKILL_DIR="$1"
 SKILL_MD="${SKILL_DIR}/SKILL.md"
 
+# JSON-escape a string value (backslash, double-quote, control chars).
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  printf '%s' "$s"
+}
+
 if [[ ! -f "$SKILL_MD" ]]; then
-  echo "{\"error\": true, \"detail\": \"SKILL.md not found in ${SKILL_DIR}\"}"
+  echo "{\"error\": true, \"detail\": \"SKILL.md not found in $(json_escape "${SKILL_DIR}")\"}"
   exit 2
 fi
 
@@ -103,6 +114,8 @@ if [[ -z "$BODY_START" ]]; then
   exit 2
 fi
 
+# Guarded: BODY_START is non-empty (checked above)
+[[ -n "$BODY_START" ]] || exit 2
 FULL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD")
 # Body with fenced code blocks stripped (for prose analysis only)
 SKILL_BODY=$(echo "$FULL_BODY" | sed '/^```/,/^```/d')
@@ -180,11 +193,10 @@ fi
 # High-confidence phrases that require conversation history to function.
 # Deliberately narrow to avoid false positives on self-referential language
 # within the skill itself ("the criteria above" refers to the skill, not chat).
-CONV_PATTERNS='conversation (context|history)|previous(ly)? (message|discussed|mentioned)|selected (code|text|block|content)|what (you|the user) (said|asked|want|mentioned)|from (the|our) (conversation|discussion|chat)'
-CONV_HITS=$(echo "$SKILL_BODY" | grep -ciE "$CONV_PATTERNS" || true)
+CONV_HITS=$(echo "$SKILL_BODY" | grep -ciE 'conversation (context|history)|previous(ly)? (message|discussed|mentioned)|selected (code|text|block|content)|what (you|the user) (said|asked|want|mentioned)|from (the|our) (conversation|discussion|chat)' || true)
 
 if [[ "$CONV_HITS" -gt 0 ]]; then
-  FIRST_HIT=$(echo "$SKILL_BODY" | grep -iE "$CONV_PATTERNS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
+  FIRST_HIT=$(echo "$SKILL_BODY" | grep -iE 'conversation (context|history)|previous(ly)? (message|discussed|mentioned)|selected (code|text|block|content)|what (you|the user) (said|asked|want|mentioned)|from (the|our) (conversation|discussion|chat)' | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
   emit_signal "B2" "blocker" "true" "Conversation-dependent: ${FIRST_HIT}"
   BLOCKER_COUNT=$((BLOCKER_COUNT + 1))
   BLOCKER_IDS="${BLOCKER_IDS}B2 "
@@ -238,15 +250,13 @@ fi
 # Exclude headers documenting internal wire/data formats — these describe
 # script output structure (e.g. "Script output format", "JSON output"),
 # not the skill's final deliverable returned to the user.
-OUTPUT_KEYWORDS='Output|Report|Template|Artifact|Digest|Verdict'
-EXCLUDE_PREFIX='(Script|JSON|NDJSON|Wire|Data|API|Log|Raw|Parse)'
 OUTPUT_HEADERS=$(echo "$SKILL_BODY" \
-  | grep -iE "^#{1,4}[[:space:]].*(${OUTPUT_KEYWORDS})" \
+  | grep -iE '^#{1,4}[[:space:]].*(Output|Report|Template|Artifact|Digest|Verdict)' \
   || true)
 # Filter out internal format documentation headers
 if [[ -n "$OUTPUT_HEADERS" ]]; then
   OUTPUT_FILTERED=$(echo "$OUTPUT_HEADERS" \
-    | grep -viE "${EXCLUDE_PREFIX}[[:space:]]+(output|format)" \
+    | grep -viE '(Script|JSON|NDJSON|Wire|Data|API|Log|Raw|Parse)[[:space:]]+(output|format)' \
     || true)
 else
   OUTPUT_FILTERED=""
@@ -346,8 +356,7 @@ fi
 # need real-time user visibility. Fork summarizes results after completion,
 # reducing the user's ability to intervene during execution.
 DMI=$(get_field "disable-model-invocation")
-SIDE_EFFECT_PATTERN='k3d (cluster|create|delete)|kind (create|delete) cluster|git reset|git branch -[dD]|git apply --cached|git clean -|git push --force|kubectl (delete|drain|cordon)|helm (uninstall|delete)|rm -rf'
-SIDE_EFFECT_HITS=$(echo "$FULL_BODY" | grep -ciE "$SIDE_EFFECT_PATTERN" || true)
+SIDE_EFFECT_HITS=$(echo "$FULL_BODY" | grep -ciE 'k3d (cluster|create|delete)|kind (create|delete) cluster|git reset|git branch -[dD]|git apply --cached|git clean -|git push --force|kubectl (delete|drain|cordon)|helm (uninstall|delete)|rm -rf' || true)
 
 if [[ "$DMI" == "true" ]] || [[ "$SIDE_EFFECT_HITS" -gt 0 ]]; then
   local_detail=""
@@ -387,32 +396,33 @@ if [[ "$EFFECTIVE_COUNT" -lt 0 ]]; then
 fi
 
 RECOMMENDATION="none"
-DETAIL=""
+DETAIL_PARTS=()
 
 if [[ "$BLOCKER_COUNT" -gt 0 ]]; then
   RECOMMENDATION="none"
-  DETAIL="Blocked by ${BLOCKER_IDS}. Not a fork candidate."
+  DETAIL_PARTS+=("Blocked by ${BLOCKER_IDS}. Not a fork candidate.")
 elif [[ "$EFFECTIVE_COUNT" -ge 3 ]]; then
   RECOMMENDATION="strong"
-  DETAIL="Strong candidate for context: fork (${POSITIVE_COUNT} signals: ${POSITIVE_IDS}"
+  DETAIL_PARTS+=("Strong candidate for context: fork (${POSITIVE_COUNT} signals: ${POSITIVE_IDS}")
   if [[ "$COUNTER_COUNT" -gt 0 ]]; then
-    DETAIL="${DETAIL}, minus N1 counter = ${EFFECTIVE_COUNT} effective"
+    DETAIL_PARTS+=(", minus N1 counter = ${EFFECTIVE_COUNT} effective")
   fi
-  DETAIL="${DETAIL}). Add to frontmatter: context: fork, agent: ${AGENT_TYPE}. ${AGENT_REASON^}."
+  DETAIL_PARTS+=("). Add to frontmatter: context: fork, agent: ${AGENT_TYPE}. ${AGENT_REASON^}.")
 elif [[ "$EFFECTIVE_COUNT" -ge 2 ]]; then
   RECOMMENDATION="soft"
-  DETAIL="Consider context: fork (${POSITIVE_COUNT} signals: ${POSITIVE_IDS}"
+  DETAIL_PARTS+=("Consider context: fork (${POSITIVE_COUNT} signals: ${POSITIVE_IDS}")
   if [[ "$COUNTER_COUNT" -gt 0 ]]; then
-    DETAIL="${DETAIL}, minus N1 counter = ${EFFECTIVE_COUNT} effective"
+    DETAIL_PARTS+=(", minus N1 counter = ${EFFECTIVE_COUNT} effective")
   fi
-  DETAIL="${DETAIL}). Fork would isolate intermediate work from the main context. Suggested agent: ${AGENT_TYPE}."
+  DETAIL_PARTS+=("). Fork would isolate intermediate work from the main context. Suggested agent: ${AGENT_TYPE}.")
 else
-  DETAIL="Only ${EFFECTIVE_COUNT} effective signal(s)"
+  DETAIL_PARTS+=("Only ${EFFECTIVE_COUNT} effective signal(s)")
   if [[ "$COUNTER_COUNT" -gt 0 ]]; then
-    DETAIL="${DETAIL} (${POSITIVE_COUNT} positive minus N1 counter)"
+    DETAIL_PARTS+=(" (${POSITIVE_COUNT} positive minus N1 counter)")
   fi
-  DETAIL="${DETAIL} — fork overhead likely not justified."
+  DETAIL_PARTS+=(" — fork overhead likely not justified.")
 fi
+DETAIL=$(printf '%s' ${DETAIL_PARTS[@]+"${DETAIL_PARTS[@]}"})
 
 # Escape for JSON
 DETAIL="${DETAIL//\\/\\\\}"

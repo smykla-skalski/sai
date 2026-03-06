@@ -353,9 +353,7 @@ run_structure() {
   # Scan SKILL.md and all bundled files for common secret patterns.
   # Filter out obvious placeholders (sequential digits, hex patterns,
   # placeholder words) — real secrets have high entropy.
-  local SECRET_PATTERN='AKIA[A-Z0-9]{16}|sk-[a-zA-Z0-9]{20,}|-----BEGIN[[:space:]]+(RSA |EC )?(PRIVATE )?KEY-----|Bearer[[:space:]]+[a-zA-Z0-9._-]{20,}'
-  local PLACEHOLDER_PATTERN='1234|0000|xxxx|abcdef|example|test|fake|placeholder|your_|INSERT|REPLACE|changeme'
-  local SECRET_HIT_FILES=""
+  local SECRET_HIT_FILES_ARR=()
 
   local ALL_SKILL_FILES=("$SKILL_MD")
   for subdir in references scripts assets examples; do
@@ -366,26 +364,28 @@ run_structure() {
     fi
   done
 
-  for sf in "${ALL_SKILL_FILES[@]}"; do
+  for sf in ${ALL_SKILL_FILES[@]+"${ALL_SKILL_FILES[@]}"}; do
     local MATCHES
-    MATCHES=$(grep -oE "$SECRET_PATTERN" "$sf" 2>/dev/null || true)
+    MATCHES=$(grep -oE 'AKIA[A-Z0-9]{16}|sk-[a-zA-Z0-9]{20,}|-----BEGIN[[:space:]]+(RSA |EC )?(PRIVATE )?KEY-----|Bearer[[:space:]]+[a-zA-Z0-9._-]{20,}' "$sf" 2>/dev/null || true)
     if [[ -n "$MATCHES" ]]; then
       # Check if any match looks real (not a placeholder)
       local HAS_REAL="false"
       while IFS= read -r match; do
-        if ! echo "$match" | grep -qiE "$PLACEHOLDER_PATTERN"; then
+        if ! echo "$match" | grep -qiE '1234|0000|xxxx|abcdef|example|test|fake|placeholder|your_|INSERT|REPLACE|changeme'; then
           HAS_REAL="true"
           break
         fi
       done <<< "$MATCHES"
       if [[ "$HAS_REAL" == "true" ]]; then
-        SECRET_HIT_FILES="$SECRET_HIT_FILES $(basename "$sf")"
+        SECRET_HIT_FILES_ARR+=("$(basename "$sf")")
       fi
     fi
   done
 
-  SECRET_HIT_FILES=$(echo "$SECRET_HIT_FILES" | xargs)
-  if [[ -n "$SECRET_HIT_FILES" ]]; then
+  if [[ ${#SECRET_HIT_FILES_ARR[@]} -gt 0 ]]; then
+    local SECRET_HIT_FILES
+    SECRET_HIT_FILES=$(printf '%s ' ${SECRET_HIT_FILES_ARR[@]+"${SECRET_HIT_FILES_ARR[@]}"})
+    SECRET_HIT_FILES="${SECRET_HIT_FILES% }"
     emit "no-secrets" "false" "Possible secrets or credentials found in: ${SECRET_HIT_FILES}"
   else
     emit "no-secrets" "true" "No secrets or credentials detected"
@@ -412,10 +412,10 @@ run_structure() {
   # descriptions — the subshell wrapper can affect agent behavior even though
   # it's a no-op in bash. See: https://www.shellcheck.net/wiki/SC2116
   # See also: https://github.com/anthropics/claude-code/issues/23813
-  local USELESS_ECHO_FILES=""
+  local USELESS_ECHO_FILES_ARR=()
   local FIRST_ECHO_LINE=""
 
-  for md_file in "${ALL_SKILL_FILES[@]}"; do
+  for md_file in ${ALL_SKILL_FILES[@]+"${ALL_SKILL_FILES[@]}"}; do
     [[ "$md_file" == *.md ]] || continue
     local ECHO_HITS
     ECHO_HITS=$(awk '
@@ -436,15 +436,17 @@ run_structure() {
       }
     ' "$md_file" || true)
     if [[ -n "$ECHO_HITS" ]]; then
-      USELESS_ECHO_FILES="$USELESS_ECHO_FILES $(basename "$md_file")"
+      USELESS_ECHO_FILES_ARR+=("$(basename "$md_file")")
       if [[ -z "$FIRST_ECHO_LINE" ]]; then
         FIRST_ECHO_LINE=$(echo "$ECHO_HITS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
       fi
     fi
   done
 
-  USELESS_ECHO_FILES=$(echo "$USELESS_ECHO_FILES" | xargs)
-  if [[ -n "$USELESS_ECHO_FILES" ]]; then
+  if [[ ${#USELESS_ECHO_FILES_ARR[@]} -gt 0 ]]; then
+    local USELESS_ECHO_FILES
+    USELESS_ECHO_FILES=$(printf '%s ' ${USELESS_ECHO_FILES_ARR[@]+"${USELESS_ECHO_FILES_ARR[@]}"})
+    USELESS_ECHO_FILES="${USELESS_ECHO_FILES% }"
     emit "no-useless-echo" "false" "Useless echo (SC2116) in code blocks: ${USELESS_ECHO_FILES} — first: ${FIRST_ECHO_LINE}"
   else
     emit "no-useless-echo" "true" "No useless echo patterns in code blocks"
@@ -460,7 +462,7 @@ run_structure() {
   # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
   if [[ -d "${SKILL_DIR}/references" ]]; then
     local DUP_COUNT=0
-    local DUP_REFS=""
+    local DUP_REFS_ARR=()
 
     # Awk extracts fenced code blocks (3+ lines) into numbered temp files.
     # Uses temp directory + awk file output to avoid NUL-pipe issues on macOS bash.
@@ -517,15 +519,17 @@ run_structure() {
         MATCH_COUNT=$(comm -12 "$SKILL_HASH_FILE" "$REF_HASH_FILE" 2>/dev/null | wc -l | tr -d ' ')
         if [[ "$MATCH_COUNT" -gt 0 ]]; then
           DUP_COUNT=$((DUP_COUNT + MATCH_COUNT))
-          DUP_REFS="$DUP_REFS ${BASENAME}"
+          DUP_REFS_ARR+=("$BASENAME")
         fi
         rm -f "$REF_HASH_FILE"
       done
     fi
 
     rm -f "$SKILL_HASH_FILE"
-    DUP_REFS=$(echo "$DUP_REFS" | xargs)
-    if [[ -n "$DUP_REFS" ]]; then
+    if [[ ${#DUP_REFS_ARR[@]} -gt 0 ]]; then
+      local DUP_REFS
+      DUP_REFS=$(printf '%s ' ${DUP_REFS_ARR[@]+"${DUP_REFS_ARR[@]}"})
+      DUP_REFS="${DUP_REFS% }"
       emit "duplicate-codeblocks-info" "true" "INFO: ${DUP_COUNT} code block(s) (3+ lines) shared between SKILL.md and references: ${DUP_REFS} — review whether each is intentional for progressive disclosure"
     else
       emit "duplicate-codeblocks-info" "true" "No shared code blocks between SKILL.md and references"
@@ -584,7 +588,7 @@ run_structure() {
 
   # --- no disallowed files in skill directory ---
   local DISALLOWED_FILES=("README.md" "CHANGELOG.md" "INSTALLATION_GUIDE.md")
-  for f in "${DISALLOWED_FILES[@]}"; do
+  for f in ${DISALLOWED_FILES[@]+"${DISALLOWED_FILES[@]}"}; do
     if [[ -f "${SKILL_DIR}/${f}" ]]; then
       emit "no-disallowed-files" "false" "Disallowed file '${f}' found in skill directory"
     else
@@ -860,13 +864,38 @@ run_structure() {
     if [[ "$LINT_TOTAL" -eq 0 ]]; then
       emit "script-lint" "true" "No critical/medium findings in scripts/"
     else
-      local LINT_DETAIL="scripts/ has ${LINT_CRITS} critical, ${LINT_MEDS} medium finding(s)"
+      local LINT_DETAIL_PARTS=("scripts/ has ${LINT_CRITS} critical, ${LINT_MEDS} medium finding(s)")
       local LINT_TOP
       LINT_TOP=$(echo "$LINT_OUTPUT" | grep -v '"summary"' | head -3 \
         | sed -n 's/.*"check": "\([^"]*\)".*"message": "\([^"]*\)".*/\1: \2/p' \
         | tr '\n' '; ' | sed 's/; $//')
-      [[ -n "$LINT_TOP" ]] && LINT_DETAIL="${LINT_DETAIL} — ${LINT_TOP}"
+      [[ -n "$LINT_TOP" ]] && LINT_DETAIL_PARTS+=(" — ${LINT_TOP}")
+      local LINT_DETAIL
+      LINT_DETAIL=$(printf '%s' ${LINT_DETAIL_PARTS[@]+"${LINT_DETAIL_PARTS[@]}"})
       emit "script-lint" "false" "${LINT_DETAIL}"
+    fi
+  fi
+
+  # --- AskUserQuestion usage validation (I21) ---
+  local AUQ_SCRIPT
+  AUQ_SCRIPT="$(dirname "$0")/check-ask-user.py"
+  if [[ -x "$AUQ_SCRIPT" ]]; then
+    local AUQ_OUTPUT AUQ_SUMMARY AUQ_TOTAL
+    AUQ_OUTPUT=$(python3 "$AUQ_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
+    AUQ_SUMMARY=$(echo "$AUQ_OUTPUT" | tail -1)
+    AUQ_TOTAL=$(echo "$AUQ_SUMMARY" | sed -n 's/.*"total": \([0-9]*\).*/\1/p')
+    AUQ_TOTAL="${AUQ_TOTAL:-0}"
+
+    if [[ "$AUQ_TOTAL" -gt 0 ]]; then
+      while IFS= read -r line; do
+        echo "$line" | grep -q '"summary"' && continue
+        local AQ_CHECK AQ_PASS AQ_DETAIL
+        AQ_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
+        AQ_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
+        AQ_DETAIL=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+        [[ -z "$AQ_CHECK" ]] && continue
+        emit "$AQ_CHECK" "$AQ_PASS" "$AQ_DETAIL"
+      done <<< "$AUQ_OUTPUT"
     fi
   fi
 

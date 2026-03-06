@@ -286,7 +286,7 @@ while IFS= read -r ref; do
 done <<< "$ALL_REFS"
 
 if [[ ${#GATE_FAILS_ARR[@]} -gt 0 ]]; then
-  GATE_FAILS=$(printf '%s ' "${GATE_FAILS_ARR[@]}")
+  GATE_FAILS=$(printf '%s ' ${GATE_FAILS_ARR[@]+"${GATE_FAILS_ARR[@]}"})
   GATE_FAILS="${GATE_FAILS% }"
   emit "ref-gate-present" "false" "${#GATE_FAILS_ARR[@]} reference(s) linked without explicit load directive (Read, Contents of, path to, Load): ${GATE_FAILS}"
 else
@@ -319,8 +319,8 @@ while IFS= read -r ref; do
 done <<< "$ALL_REFS"
 
 if [[ ${#PASSIVE_FAILS_ARR[@]} -gt 0 ]]; then
-  PASSIVE_UNIQUE=$(printf '%s\n' "${PASSIVE_FAILS_ARR[@]}" | sort -u | wc -l | tr -d ' ')
-  PASSIVE_DETAIL=$(printf '%s ' "${PASSIVE_DETAIL_ARR[@]}")
+  PASSIVE_UNIQUE=$(printf '%s\n' ${PASSIVE_FAILS_ARR[@]+"${PASSIVE_FAILS_ARR[@]}"} | sort -u | wc -l | tr -d ' ')
+  PASSIVE_DETAIL=$(printf '%s ' ${PASSIVE_DETAIL_ARR[@]+"${PASSIVE_DETAIL_ARR[@]}"})
   PASSIVE_DETAIL="${PASSIVE_DETAIL% }"
   emit "ref-passive-mention" "false" "${PASSIVE_UNIQUE} reference(s) have passive mentions before their gate: ${PASSIVE_DETAIL}"
 else
@@ -345,7 +345,7 @@ done <<< "$ALL_REFS"
 
 ORPHAN_FAILS=""
 if [[ ${#ORPHAN_FAILS_ARR[@]} -gt 0 ]]; then
-  ORPHAN_FAILS=$(printf '%s ' "${ORPHAN_FAILS_ARR[@]}")
+  ORPHAN_FAILS=$(printf '%s ' ${ORPHAN_FAILS_ARR[@]+"${ORPHAN_FAILS_ARR[@]}"})
   ORPHAN_FAILS="${ORPHAN_FAILS% }"
   emit "ref-orphan-file" "false" "${#ORPHAN_FAILS_ARR[@]} file(s) on disk not mentioned in SKILL.md: ${ORPHAN_FAILS}"
 else
@@ -383,7 +383,7 @@ if [[ -n "$BUNDLED_START" ]]; then
 fi
 
 if [[ ${#DEAD_FAILS_ARR[@]} -gt 0 ]]; then
-  DEAD_FAILS=$(printf '%s ' "${DEAD_FAILS_ARR[@]}")
+  DEAD_FAILS=$(printf '%s ' ${DEAD_FAILS_ARR[@]+"${DEAD_FAILS_ARR[@]}"})
   DEAD_FAILS="${DEAD_FAILS% }"
   emit "ref-dead-listing" "false" "${#DEAD_FAILS_ARR[@]} reference(s) only appear in bundled resources section, never used in workflow: ${DEAD_FAILS}"
 else
@@ -417,7 +417,7 @@ while IFS= read -r ref; do
 done <<< "$ALL_REFS"
 
 if [[ ${#ORDER_FAILS_ARR[@]} -gt 0 ]]; then
-  ORDER_DETAIL=$(printf '%s ' "${ORDER_DETAIL_ARR[@]}")
+  ORDER_DETAIL=$(printf '%s ' ${ORDER_DETAIL_ARR[@]+"${ORDER_DETAIL_ARR[@]}"})
   ORDER_DETAIL="${ORDER_DETAIL% }"
   emit "ref-use-before-gate" "false" "${#ORDER_FAILS_ARR[@]} reference(s) cited before their gate: ${ORDER_DETAIL}"
 else
@@ -459,7 +459,7 @@ while IFS= read -r ref; do
 done <<< "$ALL_REFS"
 
 if [[ ${#PURPOSE_FAILS_ARR[@]} -gt 0 ]]; then
-  PURPOSE_FAILS=$(printf '%s ' "${PURPOSE_FAILS_ARR[@]}")
+  PURPOSE_FAILS=$(printf '%s ' ${PURPOSE_FAILS_ARR[@]+"${PURPOSE_FAILS_ARR[@]}"})
   PURPOSE_FAILS="${PURPOSE_FAILS% }"
   emit "ref-gate-purpose" "false" "${#PURPOSE_FAILS_ARR[@]} gate(s) lack purpose text (why to read): ${PURPOSE_FAILS}"
 else
@@ -523,7 +523,7 @@ if [[ "$IS_MULTI_FLOW" == "true" ]] && [[ -n "$FLOW_SECTIONS" ]]; then
   done <<< "$ALL_REFS"
 
   if [[ ${#FLOW_FAILS_ARR[@]} -gt 0 ]]; then
-    FLOW_DETAIL=$(printf '%s ' "${FLOW_DETAIL_ARR[@]}")
+    FLOW_DETAIL=$(printf '%s ' ${FLOW_DETAIL_ARR[@]+"${FLOW_DETAIL_ARR[@]}"})
     FLOW_DETAIL="${FLOW_DETAIL% }"
     emit "ref-flow-coverage" "false" "${#FLOW_FAILS_ARR[@]} reference(s) not gated in all workflow flows: ${FLOW_DETAIL}"
   else

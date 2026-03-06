@@ -51,6 +51,18 @@ emit() {
   echo "$1"
 }
 
+# Escape a string for safe embedding inside a JSON string value.
+# Handles \, ", and control characters (\n, \t, \r).
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  printf '%s' "$s"
+}
+
 # Safely encode a string as a JSON string value (with quotes).
 # Uses python3 for reliable unicode/special-char handling.
 json_str() {
@@ -327,7 +339,9 @@ if [[ "$MODE" == "verify" ]]; then
     u_hunks=0
     if [[ -n "$staged_diff" ]]; then
       if [[ "$FALLBACK" == "false" ]]; then
-        s_hunks=$(echo "$staged_diff" | filterdiff -i "a/${f}" 2>/dev/null | grep -c '^@@ ' || true)
+        local filtered
+        filtered=$(echo "$staged_diff" | filterdiff -i "a/${f}" 2>/dev/null) || true
+        s_hunks=$(echo "$filtered" | grep -c '^@@ ' || true)
       else
         s_hunks=$(echo "$staged_diff" | awk -v target="$f" '/^diff --git/{found=0; f=$0; sub(/^diff --git a\//,"",f); sub(/ b\/.*/,"",f); if(f==target)found=1} found && /^@@ /{c++} END{print c+0}')
       fi
@@ -527,9 +541,9 @@ if [[ "$MODE" == "hunk" ]]; then
   # Validate IDs and collect matching entries
   matched_entries=""
   bad_ids=""
-  for rid in "${requested_ids[@]}"; do
+  for rid in ${requested_ids[@]+"${requested_ids[@]}"}; do
     rid=$(echo "$rid" | tr -d ' ')
-    entry=$(echo "$HUNK_INDEX" | grep "^${rid}${FS}" || true)
+    entry=$(echo "$HUNK_INDEX" | grep -F "${rid}${FS}" || true)
     if [[ -z "$entry" ]]; then
       bad_ids="${bad_ids}${rid},"
     else
@@ -572,7 +586,7 @@ if [[ "$MODE" == "file" ]]; then
 
   matched_entries=""
   bad_files=""
-  for rf in "${requested_files[@]}"; do
+  for rf in ${requested_files[@]+"${requested_files[@]}"}; do
     # trim surrounding whitespace only (preserve internal spaces in paths)
     rf=$(echo "$rf" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
     entries=$(echo "$HUNK_INDEX" | awk -F"$FS" -v f="$rf" '$2 == f' || true)

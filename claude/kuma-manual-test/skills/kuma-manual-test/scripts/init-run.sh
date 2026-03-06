@@ -124,14 +124,5 @@ render_template \
   "${assets_dir}/run-status.template.yaml" \
   "${run_dir}/run-status.yaml"
 
-cat <<EOF
-Created run directory:
-  ${run_dir}
-
-Next steps:
-  1) Start cluster with scripts/cluster-lifecycle.sh
-  2) Run preflight with scripts/preflight.sh
-  3) Apply manifests with scripts/apply-tracked-manifest.sh
-  4) Capture state snapshots with scripts/capture-state.sh
-  5) Run scripts/report-compactness-check.sh before closing report
-EOF
+printf 'Created run directory:\n  %s\n\nNext steps:\n  1) Start cluster with scripts/cluster-lifecycle.sh\n  2) Run preflight with scripts/preflight.sh\n  3) Apply manifests with scripts/apply-tracked-manifest.sh\n  4) Capture state snapshots with scripts/capture-state.sh\n  5) Run scripts/report-compactness-check.sh before closing report\n' \
+  "${run_dir}"

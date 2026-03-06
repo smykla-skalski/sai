@@ -106,11 +106,11 @@ capture() {
   local now
   local exit_code
 
-  cmd_string="$(printf '%q ' "${cmd[@]}")"
+  cmd_string="$(printf '%q ' ${cmd[@]+"${cmd[@]}"})"
   now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
   set +e
-  "${cmd[@]}" >"${output_file}" 2>&1
+  ${cmd[@]+"${cmd[@]}"} >"${output_file}" 2>&1
   exit_code=$?
   set -e
 

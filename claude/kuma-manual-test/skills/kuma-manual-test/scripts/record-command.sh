@@ -98,11 +98,7 @@ printf "| %s | %s | \`%s\` | %s | \`%s\` |\\n" \
   "${output_rel}" \
   >>"${commands_log}"
 
-cat <<EOF
-Command recorded:
-  command: ${cmd_string}
-  output:  ${output_file}
-  exit:    ${exit_code}
-EOF
+printf 'Command recorded:\n  command: %s\n  output:  %s\n  exit:    %s\n' \
+  "${cmd_string}" "${output_file}" "${exit_code}"
 
 exit "${exit_code}"

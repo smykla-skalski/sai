@@ -72,22 +72,25 @@ QUERY='query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
 }'
 
 # --- Build jq filter ---
-JQ_FILTER='.data.repository.pullRequest.reviewThreads.nodes[]'
+JQ_PARTS=('.data.repository.pullRequest.reviewThreads.nodes[]')
 
 # Filter: unresolved only
 if [[ "$UNRESOLVED_ONLY" == "true" ]]; then
-  JQ_FILTER="${JQ_FILTER} | select(.isResolved == false)"
+  JQ_PARTS+=('select(.isResolved == false)')
 fi
 
 # Filter: by author (first comment author) — use --arg to avoid jq injection
 JQ_AUTHOR_ARGS=()
 if [[ -n "$AUTHOR_FILTER" ]]; then
-  JQ_FILTER="${JQ_FILTER} | select(.comments.nodes[0].author.login == \$author)"
+  JQ_PARTS+=('select(.comments.nodes[0].author.login == $author)')
   JQ_AUTHOR_ARGS=(--arg author "$AUTHOR_FILTER")
 fi
 
 # Format output
-JQ_FILTER="${JQ_FILTER} | {thread_id: .id, comment_id: .comments.nodes[0].databaseId, author: .comments.nodes[0].author.login, body: .comments.nodes[0].body, path: .path, line: .line, is_resolved: .isResolved, is_outdated: .isOutdated, reply_count: (.comments.nodes | length - 1)}"
+JQ_PARTS+=('{thread_id: .id, comment_id: .comments.nodes[0].databaseId, author: .comments.nodes[0].author.login, body: .comments.nodes[0].body, path: .path, line: .line, is_resolved: .isResolved, is_outdated: .isOutdated, reply_count: (.comments.nodes | length - 1)}')
+
+JQ_FILTER=$(printf ' | %s' ${JQ_PARTS[@]+"${JQ_PARTS[@]}"})
+JQ_FILTER=${JQ_FILTER:3}
 
 # --- Execute with cursor-based pagination ---
 CURSOR=""
@@ -102,7 +105,7 @@ while true; do
     ARGS+=(-f cursor="$CURSOR")
   fi
 
-  RESPONSE=$(gh api graphql "${ARGS[@]}")
+  RESPONSE=$(gh api graphql ${ARGS[@]+"${ARGS[@]}"})
 
   # Emit matching threads from this page
   echo "$RESPONSE" | jq -r ${JQ_AUTHOR_ARGS[@]+"${JQ_AUTHOR_ARGS[@]}"} "$JQ_FILTER"

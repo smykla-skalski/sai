@@ -82,8 +82,8 @@ GENERIC_PATTERNS=(
 )
 
 GENERIC_FOUND=0
-for pattern in "${GENERIC_PATTERNS[@]}"; do
-  MATCH=$(grep -in "$pattern" "$CLAUDE_MD" || true)
+for pattern in ${GENERIC_PATTERNS[@]+"${GENERIC_PATTERNS[@]}"}; do
+  MATCH=$(grep -inF "$pattern" "$CLAUDE_MD" || true)
   if [[ -n "$MATCH" ]]; then
     LINE_NUM=$(echo "$MATCH" | head -1 | cut -d: -f1)
     LINE_TEXT=$(echo "$MATCH" | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//' | cut -c1-80)
