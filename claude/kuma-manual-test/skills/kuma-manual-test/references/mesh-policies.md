@@ -14,7 +14,7 @@
 
 Use this reference when a test run includes any `Mesh*` policy.
 
-This file is based on Kuma docs `2.13.x` pages:
+This file is based on Kuma docs `2.13.x` pages (check kuma.io/docs/ for newer versions):
 
 - https://kuma.io/docs/2.13.x/policies/introduction/
 - https://kuma.io/docs/2.13.x/explore/inspect-api/
