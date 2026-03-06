@@ -2,7 +2,7 @@
 name: review-skill
 description: Review and fix Claude Code skill definitions (SKILL.md) using a tiered binary checklist based on the Agent Skills specification, Anthropic best practices, and community guidelines. Use when auditing, improving, or validating any skill before publishing.
 argument-hint: "[path/to/skill] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: WebSearch, WebFetch, Read, Write, Edit, Bash, Grep, Glob, Task
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Task
 user-invocable: true
 ---
 
