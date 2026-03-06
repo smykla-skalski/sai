@@ -20,15 +20,27 @@ fi
 REPO_ROOT="$1"
 CLAUDE_MD="${REPO_ROOT}/CLAUDE.md"
 
+# Escape a string for safe embedding in a JSON string value.
+# Handles: \ -> \\, " -> \", newline -> \n, tab -> \t, CR -> \r
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  printf '%s' "$s"
+}
+
 if [[ ! -f "$CLAUDE_MD" ]]; then
-  echo "{\"check\": \"file-exists\", \"pass\": false, \"detail\": \"CLAUDE.md not found in ${REPO_ROOT}\"}"
+  echo "{\"check\": \"file-exists\", \"pass\": false, \"detail\": \"CLAUDE.md not found in $(json_escape "${REPO_ROOT}")\"}"
   exit 0
 fi
 
 CONTENT=$(cat "$CLAUDE_MD")
 
 # --- Check: line-count ---
-LINE_COUNT=$(echo "$CONTENT" | wc -l | tr -d ' ')
+LINE_COUNT=$(wc -l < "$CLAUDE_MD" | tr -d ' ')
 if [[ "$LINE_COUNT" -le 150 ]]; then
   echo "{\"check\": \"line-count\", \"pass\": true, \"detail\": \"${LINE_COUNT} lines, under 150 limit\"}"
 else
@@ -75,7 +87,7 @@ for pattern in "${GENERIC_PATTERNS[@]}"; do
   if [[ -n "$MATCH" ]]; then
     LINE_NUM=$(echo "$MATCH" | head -1 | cut -d: -f1)
     LINE_TEXT=$(echo "$MATCH" | head -1 | cut -d: -f2- | sed 's/^[[:space:]]*//' | cut -c1-80)
-    echo "{\"check\": \"generic-advice\", \"pass\": false, \"detail\": \"Found: '${pattern}' on line ${LINE_NUM}: ${LINE_TEXT}\"}"
+    echo "{\"check\": \"generic-advice\", \"pass\": false, \"detail\": \"Found: '$(json_escape "${pattern}")' on line ${LINE_NUM}: $(json_escape "${LINE_TEXT}")\"}"
     GENERIC_FOUND=$((GENERIC_FOUND + 1))
   fi
 done
@@ -115,9 +127,26 @@ fi
 BULLET_LINES=0
 PARA_LINES=0
 CONSEC_PLAIN=0
+BVP_IN_BLOCK=0
 while IFS= read -r line; do
-  # Skip blank lines, headings, code fences
-  if [[ "$line" =~ ^[[:space:]]*$ ]] || [[ "$line" =~ ^#+\  ]] || [[ "$line" =~ ^\`\`\` ]]; then
+  # Track fenced code blocks and skip their contents
+  if [[ "$line" =~ ^\`\`\` ]]; then
+    if [[ "$BVP_IN_BLOCK" -eq 0 ]]; then
+      BVP_IN_BLOCK=1
+    else
+      BVP_IN_BLOCK=0
+    fi
+    if [[ "$CONSEC_PLAIN" -ge 3 ]]; then
+      PARA_LINES=$((PARA_LINES + CONSEC_PLAIN))
+    fi
+    CONSEC_PLAIN=0
+    continue
+  fi
+  if [[ "$BVP_IN_BLOCK" -eq 1 ]]; then
+    continue
+  fi
+  # Skip blank lines, headings
+  if [[ "$line" =~ ^[[:space:]]*$ ]] || [[ "$line" =~ ^#+\  ]]; then
     if [[ "$CONSEC_PLAIN" -ge 3 ]]; then
       PARA_LINES=$((PARA_LINES + CONSEC_PLAIN))
     fi

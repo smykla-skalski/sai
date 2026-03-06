@@ -147,7 +147,7 @@ run_check "kuma-system-pods" kubectl --kubeconfig "${kubeconfig_path}" get pods 
 run_check "kuma-control-plane-deployment" kubectl --kubeconfig "${kubeconfig_path}" get deployment --namespace kuma-system kuma-control-plane
 run_check "kuma-control-plane-ready" kubectl --kubeconfig "${kubeconfig_path}" wait --for=condition=available deployment/kuma-control-plane --namespace kuma-system --timeout=180s
 
-if local_kumactl="$(${find_local_kumactl} --repo-root "${repo_root}" 2>/dev/null)"; then
+if local_kumactl="$("${find_local_kumactl}" --repo-root "${repo_root}" 2>/dev/null)"; then
   run_check "local-kumactl-version" "${local_kumactl}" version
 else
   kumactl_log="${run_dir}/artifacts/preflight-local-kumactl.log"

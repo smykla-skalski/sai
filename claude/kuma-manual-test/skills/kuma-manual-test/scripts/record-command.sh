@@ -80,7 +80,7 @@ if [[ -z "${safe_label}" ]]; then
 fi
 
 timestamp="$(date -u +"%Y%m%dT%H%M%SZ")"
-output_rel="artifacts/${timestamp}-${safe_label}.log"
+output_rel="artifacts/${timestamp}-$$-${safe_label}.log"
 output_file="${run_dir}/${output_rel}"
 
 cmd_string="$(printf '%q ' "$@")"

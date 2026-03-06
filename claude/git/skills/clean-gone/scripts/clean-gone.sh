@@ -88,7 +88,11 @@ if [[ "$NO_WORKTREES" == "true" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
           emit "DELETE" "$branch:gone"
         else
-          git branch -D "$branch" >/dev/null 2>&1 && emit "DELETE" "$branch:gone"
+          if git branch -D "$branch" >/dev/null 2>&1; then
+            emit "DELETE" "$branch:gone"
+          else
+            echo "ERROR:delete-failed:$branch" >&2
+          fi
         fi
       done
   exit 0
@@ -129,12 +133,18 @@ git for-each-ref --format="%(refname:short) %(upstream:track)" refs/heads | whil
 
   # Check if fully merged via cherry-pick/rebase
   if [[ "$delete" == "false" ]]; then
-    unmerged=$(git cherry "$remote/$main" "$branch" 2>/dev/null | grep -c "^+" || :)
+    cherry_out=""
+    if ! cherry_out=$(git cherry "$remote/$main" "$branch" 2>/dev/null); then
+      # git cherry failed — treat as unmerged (safe default)
+      unmerged=1
+    else
+      unmerged=$(echo "$cherry_out" | grep -c "^+" || :)
+    fi
     [[ "$unmerged" -eq 0 ]] 2>/dev/null && delete=true && reason="merged"
   fi
 
   # Check if squash-merged via PR
-  if [[ "$delete" == "false" ]] && [[ -n "$merged_prs" ]] && echo "|${merged_prs}" | grep -q "|${branch}|"; then
+  if [[ "$delete" == "false" ]] && [[ -n "$merged_prs" ]] && echo "|${merged_prs}" | grep -qF "|${branch}|"; then
     delete=true
     reason="squash-merged"
   fi
@@ -146,18 +156,31 @@ git for-each-ref --format="%(refname:short) %(upstream:track)" refs/heads | whil
       if [[ "$DRY_RUN" == "true" ]]; then
         emit "REMOVE_WT" "$(basename "$wt"):$branch"
       else
-        git worktree remove --force "$wt" 2>/dev/null && emit "REMOVE_WT" "$(basename "$wt"):$branch"
+        if git worktree remove --force "$wt" 2>/dev/null; then
+          emit "REMOVE_WT" "$(basename "$wt"):$branch"
+        else
+          echo "ERROR:worktree-remove-failed:$(basename "$wt"):$branch" >&2
+        fi
       fi
     fi
     # Delete branch
     if [[ "$DRY_RUN" == "true" ]]; then
       emit "DELETE" "$branch:$reason"
     else
-      git branch -D "$branch" >/dev/null 2>&1 && emit "DELETE" "$branch:$reason"
+      if git branch -D "$branch" >/dev/null 2>&1; then
+        emit "DELETE" "$branch:$reason"
+      else
+        echo "ERROR:delete-failed:$branch" >&2
+      fi
     fi
   else
     wt=$(git worktree list | awk -v b="[$branch]" 'index($0, b) {print $1}')
-    unmerged=$(git cherry "$remote/$main" "$branch" 2>/dev/null | grep -c "^+" || :)
+    cherry_out=""
+    if ! cherry_out=$(git cherry "$remote/$main" "$branch" 2>/dev/null); then
+      unmerged="unknown"
+    else
+      unmerged=$(echo "$cherry_out" | grep -c "^+" || :)
+    fi
     if [[ -n "$wt" ]] && [[ "$wt" != "$tl" ]]; then
       emit "KEEP_WT" "$(basename "$wt"):$branch:$unmerged unmerged"
     else

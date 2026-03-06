@@ -1,4 +1,4 @@
-# manual test report - **RUN_ID**
+# manual test report - __RUN_ID__
 
 Compactness rules:
 

@@ -139,7 +139,7 @@ get_field() {
       exit
     }
     END { if (block && buf != "") print buf }
-  '
+  ' | sed 's/^["'"'"']//; s/["'"'"']$//'
 }
 
 # Emit a signal detection result as JSON.
@@ -147,6 +147,9 @@ emit_signal() {
   local id="$1" type="$2" detected="$3" detail="$4"
   detail="${detail//\\/\\\\}"
   detail="${detail//\"/\\\"}"
+  detail="${detail//$'\n'/\\n}"
+  detail="${detail//$'\t'/\\t}"
+  detail="${detail//$'\r'/\\r}"
   echo "{\"signal\": \"${id}\", \"type\": \"${type}\", \"detected\": ${detected}, \"detail\": \"${detail}\"}"
 }
 
@@ -414,6 +417,9 @@ fi
 # Escape for JSON
 DETAIL="${DETAIL//\\/\\\\}"
 DETAIL="${DETAIL//\"/\\\"}"
+DETAIL="${DETAIL//$'\n'/\\n}"
+DETAIL="${DETAIL//$'\t'/\\t}"
+DETAIL="${DETAIL//$'\r'/\\r}"
 
 echo "{\"recommendation\": \"${RECOMMENDATION}\", \"positive_count\": ${POSITIVE_COUNT}, \"effective_count\": ${EFFECTIVE_COUNT}, \"positive_ids\": \"${POSITIVE_IDS}\", \"blocker_count\": ${BLOCKER_COUNT}, \"blocker_ids\": \"${BLOCKER_IDS}\", \"counter_count\": ${COUNTER_COUNT}, \"agent_type\": \"${AGENT_TYPE}\", \"detail\": \"${DETAIL}\"}"
 
