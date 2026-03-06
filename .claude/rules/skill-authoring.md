@@ -24,7 +24,7 @@ hooks:                              # Skill-scoped lifecycle hooks (same format 
 ---
 ```
 
-Reference: `claude/humanize/skills/humanize/SKILL.md` for a complete example.
+Reference: [claude/humanize/skills/humanize/SKILL.md](claude/humanize/skills/humanize/SKILL.md) for a complete example.
 
 ### Invocation control
 
@@ -96,7 +96,7 @@ Organize complex skills into numbered phases:
 - Phase N+3: State persistence — save tracking files
 - Phase N+4: Verification — spawn separate agent for QA
 
-Reference: `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` for a 20-phase example.
+Reference: [claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md](claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md) for a 20-phase example.
 
 ## State Management
 
@@ -123,7 +123,7 @@ Resolve this path once in the setup phase via Bash and store as a variable (e.g.
 - Read on startup, update on successful completion only
 - Keep state files bounded (e.g., last 300 entries)
 
-Reference: `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` for the pattern.
+Reference: [claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md](claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md) for the pattern.
 
 ## Reference file best practices
 
@@ -236,7 +236,9 @@ The stdin JSON contains `hook_event_name`, `tool_name`, `tool_input`, `tool_resp
 
 ### Exit codes and output
 
-Always exit 0 for PreToolUse hooks. Exit 2 ignores ALL stdout JSON - you lose `permissionDecisionReason`, `additionalContext`, and `systemMessage`. Use `permissionDecision: "deny"` in JSON output instead.
+Exit 2 ignores ALL stdout JSON. Use structured JSON output with exit 0 instead.
+
+**PreToolUse** uses `hookSpecificOutput` with `permissionDecision`:
 
 | Scenario   | Exit code | permissionDecision | Effect                                    |
 | :--------- | :-------- | :----------------- | :---------------------------------------- |
@@ -245,25 +247,67 @@ Always exit 0 for PreToolUse hooks. Exit 2 ignores ALL stdout JSON - you lose `p
 | Ask        | 0         | `"ask"`            | Permission prompt shown to user           |
 | Clean pass | 0         | (no output)        | No overhead                               |
 
-Exception: Stop hooks use exit 2 to force continue (no permissionDecision field). PostToolUse and PostToolUseFailure hooks use `additionalContext` only (no permissionDecision).
+**PostToolUse, PostToolUseFailure, SubagentStop** use top-level `decision`/`reason` for blocking and `systemMessage` for warnings. They do NOT use `hookSpecificOutput`.
+
+**Stop** hooks use exit 2 + stderr message to force continue (no JSON output parsed on exit 2).
+
+### Universal output fields
+
+These fields work across all hook events: `suppressOutput` (boolean, hide hook output), `systemMessage` (string, shown to user/agent), `continue` (boolean), `stopReason` (string).
 
 ### Audit hooks
 
 For silent logging hooks, output `{"suppressOutput":true}` to avoid cluttering the conversation. Log to NDJSON files in `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/`.
 
+### Path syntax in frontmatter
+
+Use `$CLAUDE_PROJECT_DIR` in hook command paths. This is an env var resolved at runtime by the shell.
+
+```yaml
+command: "$CLAUDE_PROJECT_DIR/.claude/skills/my-skill/scripts/hooks/my-hook.sh"
+```
+
+**Tested path styles (project-local skills):**
+
+| Style                              | Works? | Why                                            |
+| :--------------------------------- | :----- | :--------------------------------------------- |
+| `$CLAUDE_PROJECT_DIR/path/to/hook` | Yes    | Env var resolved by shell at runtime           |
+| Absolute hardcoded path            | Yes    | Always works, not portable                     |
+| `${CLAUDE_SKILL_DIR}/path/to/hook` | No     | String substitution applies to body, not hooks |
+| Relative (`scripts/hooks/foo.sh`)  | No     | cwd is project root, not SKILL.md directory    |
+
+Four handler types exist: `command`, `http`, `prompt`, `agent`.
+
+### Known limitations
+
+**Plugin hooks are broken** (GitHub issue #17688). Hooks defined in SKILL.md frontmatter do not fire when the skill is loaded via a plugin (`--plugin-dir` or marketplace install). The plugin loader omits the `cH5()` hooks parser call. Only project-local skills (`.claude/skills/`) fire hooks. No fix as of Claude Code 2.1.63.
+
+| Component              | Location           | Hooks  |
+| :--------------------- | :----------------- | :----- |
+| Project skill          | `.claude/skills/`  | Work   |
+| Project agent          | `.claude/agents/`  | Work   |
+| Plugin skill (any)     | `--plugin-dir`     | Broken |
+| Plugin agent (any)     | marketplace        | Broken |
+
 ### Error codes
 
-Use a consistent prefix per skill (e.g., `KMT001` for kuma-manual-test, `KSA001` for kuma-suite-author). Follow the `[CODE] message. Hint.` format in `permissionDecisionReason`.
+Use a consistent prefix per skill (e.g., `PLG001` for my-plugin). Follow the `[CODE] message. Hint.` format in `permissionDecisionReason`.
 
 ### Environment variables
 
-`CLAUDE_PROJECT_DIR`, `CLAUDE_SESSION_ID`, and `CLAUDE_PLUGIN_ROOT` (plugin hooks only) are available. `${CLAUDE_SKILL_DIR}` is string substitution in frontmatter - it gets replaced with the literal path before parsing. If substitution doesn't work in frontmatter, use `CLAUDE_PLUGIN_ROOT` with the relative path as a fallback.
+Available as env vars inside hook scripts at runtime:
+
+- `CLAUDE_PROJECT_DIR` - project root (always available, use for hook paths)
+- `CLAUDE_PLUGIN_ROOT` - plugin root (plugin hooks only, broken per #17688)
+
+NOT available as env vars in hook scripts (body-only string substitution):
+
+- `CLAUDE_SKILL_DIR` - only substituted in SKILL.md body content
+- `CLAUDE_SESSION_ID` - only substituted in SKILL.md body content
 
 ### Infinite loop prevention
 
 SubagentStop and Stop hooks must check `stop_hook_active` from stdin JSON. If true, exit 0 immediately to prevent recursive hook firing.
-
-Reference: `claude/kuma-manual-test/skills/kuma-manual-test/SKILL.md` for a complete hooks implementation with 18 hook entries across 9 scripts.
 
 ## Plugin Integration
 
