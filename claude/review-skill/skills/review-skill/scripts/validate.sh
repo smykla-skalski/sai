@@ -258,6 +258,29 @@ run_structure() {
     fi
   fi
 
+  # --- flag coverage (I22) ---
+  local FC_SCRIPT
+  FC_SCRIPT="${SCRIPT_DIR}/check-flag-coverage.py"
+  if [[ -x "$FC_SCRIPT" ]]; then
+    local FC_OUTPUT FC_SUMMARY FC_TOTAL
+    FC_OUTPUT=$(python3 "$FC_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
+    FC_SUMMARY=$(echo "$FC_OUTPUT" | tail -1)
+    FC_TOTAL=$(echo "$FC_SUMMARY" | sed -n 's/.*"total": \([0-9]*\).*/\1/p')
+    FC_TOTAL="${FC_TOTAL:-0}"
+
+    if [[ "$FC_TOTAL" -gt 0 ]]; then
+      while IFS= read -r line; do
+        [[ "$line" == *'"summary"'* ]] && continue
+        local FC_CHECK FC_PASS FC_DETAIL
+        FC_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
+        FC_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
+        FC_DETAIL=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+        [[ -z "$FC_CHECK" ]] && continue
+        emit "$FC_CHECK" "$FC_PASS" "$FC_DETAIL"
+      done <<< "$FC_OUTPUT"
+    fi
+  fi
+
   # --- fork candidate analysis (P9, informational) ---
   local FORK_SCRIPT
   FORK_SCRIPT="${SCRIPT_DIR}/check-fork-candidate.sh"

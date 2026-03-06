@@ -48,7 +48,7 @@ Run the validation script and collect its JSON output:
 "${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET_DIR"
 ```
 
-`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts. The orchestrator sources modular check libraries (`${CLAUDE_SKILL_DIR}/scripts/_lib.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-file-refs.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-scripts-dir.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-content.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-references.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-config.sh`) and delegates to companion scripts: `${CLAUDE_SKILL_DIR}/scripts/check-fork-candidate.sh` for the P9 fork candidate analysis, `${CLAUDE_SKILL_DIR}/scripts/check-preprocessing.sh` for the I18 preprocessing-hygiene check, `${CLAUDE_SKILL_DIR}/scripts/check-read-gates.sh` for the I19 read gate analysis (7 sub-checks: RG-GATE, RG-PASSIVE, RG-ORPHAN, RG-DEAD, RG-ORDER, RG-PURPOSE, RG-FLOW), `${CLAUDE_SKILL_DIR}/scripts/lint-scripts.py` for the I20 script static analysis (requires python3; runs shellcheck on .sh if installed, ruff on .py if installed), and `${CLAUDE_SKILL_DIR}/scripts/check-ask-user.py` for the I21 AskUserQuestion usage validation (9 sub-checks: AUQ-DECL, AUQ-IMPLICIT, AUQ-REQUIRED-ARG, AUQ-SPAWNED, AUQ-OPTION-STRUCTURE, AUQ-DESTRUCTIVE, AUQ-AMBIGUITY, AUQ-MULTISELECT, AUQ-WIZARD).
+`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts. The orchestrator sources modular check libraries (`${CLAUDE_SKILL_DIR}/scripts/_lib.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-file-refs.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-scripts-dir.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-content.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-references.sh`, `${CLAUDE_SKILL_DIR}/scripts/check-config.sh`) and delegates to companion scripts: `${CLAUDE_SKILL_DIR}/scripts/check-fork-candidate.sh` for the P9 fork candidate analysis, `${CLAUDE_SKILL_DIR}/scripts/check-preprocessing.sh` for the I18 preprocessing-hygiene check, `${CLAUDE_SKILL_DIR}/scripts/check-read-gates.sh` for the I19 read gate analysis (7 sub-checks: RG-GATE, RG-PASSIVE, RG-ORPHAN, RG-DEAD, RG-ORDER, RG-PURPOSE, RG-FLOW), `${CLAUDE_SKILL_DIR}/scripts/lint-scripts.py` for the I20 script static analysis (requires python3; runs shellcheck on .sh if installed, ruff on .py if installed), and `${CLAUDE_SKILL_DIR}/scripts/check-ask-user.py` for the I21 AskUserQuestion usage validation (9 sub-checks: AUQ-DECL, AUQ-IMPLICIT, AUQ-REQUIRED-ARG, AUQ-SPAWNED, AUQ-OPTION-STRUCTURE, AUQ-DESTRUCTIVE, AUQ-AMBIGUITY, AUQ-MULTISELECT, AUQ-WIZARD), and `${CLAUDE_SKILL_DIR}/scripts/check-flag-coverage.py` for the I22 flag coverage validation (3 sub-checks: FC-HINT-DOC, FC-DOC-HINT, FC-DOC-WORKFLOW).
 
 ### Phase 3: Manual Evaluation
 
@@ -69,7 +69,7 @@ The agent returns ONLY structured results - one entry per criterion:
 <id>: <PASS|FAIL> — <evidence quote or absence description>
 ```
 
-Do not duplicate checklist evaluation in the main context. Use the agent's returned results directly in Phase 4.
+Do not duplicate checklist evaluation in the main context. Use the agent's returned results directly in Phase 4. If `--verbose`, display the agent's per-check reasoning in the chat.
 
 ### Phase 4: Synthesize Verdict
 
@@ -115,7 +115,7 @@ Output the verdict report:
 
 ### Phase 6: Fix
 
-If `--score-only` was NOT passed:
+If `--score-only` was NOT passed (`--fix` mode, the default):
 
 1. Address every failing Critical and Important check
 2. Apply these principles when rewriting:

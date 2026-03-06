@@ -18,7 +18,7 @@ if [[ "${file_path}" == *run-status.yaml ]]; then
   if [[ -f "${file_path}" ]]; then
     missing=()
     for field in last_completed_group next_planned_group counts last_updated_utc; do
-      if ! grep -q "${field}" "${file_path}" 2>/dev/null; then
+      if ! grep -qF "${field}" "${file_path}" 2>/dev/null; then
         missing+=("${field}")
       fi
     done
