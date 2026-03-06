@@ -2,7 +2,7 @@
 name: review-claude-md
 description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
 argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: Bash, Edit, Glob, Grep, Read, Task, WebFetch, WebSearch, Write
+allowed-tools: Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
 ---
 
