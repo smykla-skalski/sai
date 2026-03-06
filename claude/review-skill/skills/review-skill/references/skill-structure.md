@@ -66,15 +66,11 @@ When a skill is invoked, Claude Code provides the skill's **base path** in the s
 | Context                | Available path          | Resolves to                         |
 |:-----------------------|:------------------------|:------------------------------------|
 | Hook/MCP JSON configs  | `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory               |
-| Skill invocation       | Base path (automatic)   | Skill directory (contains SKILL.md) |
-| Skill markdown content | Relative paths          | From skill directory                |
+| Skill markdown content | `${CLAUDE_SKILL_DIR}`   | Skill directory (contains SKILL.md) |
 
-There is no formal `$SKILL_DIR` environment variable. The SKILL.md body uses relative paths (`references/X`, `scripts/Y`) which Claude resolves from the skill's base path at runtime.
+`${CLAUDE_SKILL_DIR}` is an official string substitution available in SKILL.md content. Claude Code replaces it with the literal absolute path to the skill directory before the agent sees the content. Use it for script invocations and file references in SKILL.md. It is not available in reference files - those are read by the agent via the Read tool without substitution.
 
-Known issues (as of mid-2025):
-
-- Scripts may fail on first execution with relative paths; Claude retries with absolute paths (GitHub issue #11011)
-- Feature request for `CLAUDE_SKILL_ROOT` environment variable exists (GitHub issue #17564)
+Note: `${CLAUDE_PLUGIN_ROOT}` (plugin root) is only available in hook and MCP JSON configs, not in SKILL.md.
 
 ## Progressive loading
 
