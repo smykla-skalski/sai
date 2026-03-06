@@ -851,6 +851,38 @@ run_structure() {
     fi
   fi
 
+  # --- shell script static analysis (I20) ---
+  # Runs lint-scripts.py on the target skill's scripts/ directory to detect
+  # common shell script antipatterns (32 bug classes covering JSON safety,
+  # array handling, grep/regex, injection, temp files, etc.).
+  # Fails on any critical or medium findings — these are real bugs.
+  local LINT_SCRIPT SCRIPTS_DIR
+  LINT_SCRIPT="$(dirname "$0")/lint-scripts.py"
+  SCRIPTS_DIR="${SKILL_DIR}/scripts"
+  if [[ ! -d "$SCRIPTS_DIR" ]]; then
+    emit "script-lint" "true" "No scripts/ directory"
+  elif [[ -x "$LINT_SCRIPT" ]]; then
+    local LINT_OUTPUT LINT_SUMMARY LINT_CRITS LINT_MEDS LINT_TOTAL
+    LINT_OUTPUT=$(python3 "$LINT_SCRIPT" "$SCRIPTS_DIR" --json --severity medium 2>/dev/null || true)
+    LINT_SUMMARY=$(echo "$LINT_OUTPUT" | tail -1)
+    LINT_TOTAL=$(echo "$LINT_SUMMARY" | sed -n 's/.*"findings": \([0-9]*\).*/\1/p')
+    LINT_TOTAL="${LINT_TOTAL:-0}"
+    LINT_CRITS=$(echo "$LINT_OUTPUT" | grep -c '"severity": "critical"' || true)
+    LINT_MEDS=$(echo "$LINT_OUTPUT" | grep -c '"severity": "medium"' || true)
+
+    if [[ "$LINT_TOTAL" -eq 0 ]]; then
+      emit "script-lint" "true" "No critical/medium findings in scripts/"
+    else
+      local LINT_DETAIL="scripts/ has ${LINT_CRITS} critical, ${LINT_MEDS} medium finding(s)"
+      local LINT_TOP
+      LINT_TOP=$(echo "$LINT_OUTPUT" | grep -v '"summary"' | head -3 \
+        | sed -n 's/.*"check": "\([^"]*\)".*"message": "\([^"]*\)".*/\1: \2/p' \
+        | tr '\n' '; ' | sed 's/; $//')
+      [[ -n "$LINT_TOP" ]] && LINT_DETAIL="${LINT_DETAIL} — ${LINT_TOP}"
+      emit "script-lint" "false" "${LINT_DETAIL}"
+    fi
+  fi
+
   # --- fork candidate analysis (P9, informational) ---
   # Runs check-fork-candidate.sh to determine if the skill would benefit
   # from context: fork + agent field. This is informational only — always
