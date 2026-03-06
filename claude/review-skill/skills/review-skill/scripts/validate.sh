@@ -379,9 +379,12 @@ run_structure() {
   fi
 
   # --- no useless echo in code blocks (I13) ---
-  # ShellCheck SC2116: $(echo "value") is the same as "value".
-  # Scan bash/sh code blocks in all .md files for this anti-pattern.
-  # See: https://www.shellcheck.net/wiki/SC2116
+  # ShellCheck SC2116: $(echo "literal") is the same as "literal".
+  # Only flags $(echo ...) wrapping literal strings. Skips $(echo "${VAR}")
+  # because in a skills context the agent interprets code blocks as intent
+  # descriptions — the subshell wrapper can affect agent behavior even though
+  # it's a no-op in bash. See: https://www.shellcheck.net/wiki/SC2116
+  # See also: https://github.com/anthropics/claude-code/issues/23813
   local USELESS_ECHO_FILES=""
   local FIRST_ECHO_LINE=""
 
@@ -398,7 +401,12 @@ run_structure() {
         }
         next
       }
-      in_block && /\$\(echo / { print }
+      in_block && /\$\(echo / {
+        # Skip if the echo wraps a variable expansion — in skills context,
+        # the subshell may serve as an agent execution signal even though
+        # it is a no-op in pure bash.
+        if ($0 !~ /\$\(echo[^)]*\$[A-Za-z_{]/) print
+      }
     ' "$md_file" || true)
     if [[ -n "$ECHO_HITS" ]]; then
       USELESS_ECHO_FILES="$USELESS_ECHO_FILES $(basename "$md_file")"
@@ -415,10 +423,14 @@ run_structure() {
     emit "no-useless-echo" "true" "No useless echo patterns in code blocks"
   fi
 
-  # --- no duplicated code blocks between SKILL.md and references (I14) ---
+  # --- duplicated code blocks between SKILL.md and references (P8, informational) ---
   # "The context window is a public good" — Anthropic Best Practices.
-  # Code blocks (3+ lines) in SKILL.md that appear verbatim in references waste context.
+  # However, progressive disclosure means reference files are loaded independently,
+  # so each file should be self-contained. Duplicating low-freedom operational code
+  # blocks (3-5 lines) is often correct — the agent needs them wherever it looks.
+  # This check is informational only (Polish tier). It always passes.
   # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+  # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
   if [[ -d "${SKILL_DIR}/references" ]]; then
     local DUP_COUNT=0
     local DUP_REFS=""
@@ -487,9 +499,9 @@ run_structure() {
     rm -f "$SKILL_HASH_FILE"
     DUP_REFS=$(echo "$DUP_REFS" | xargs)
     if [[ -n "$DUP_REFS" ]]; then
-      emit "no-duplicate-codeblocks" "false" "Found ${DUP_COUNT} code block(s) (3+ lines) duplicated between SKILL.md and references: ${DUP_REFS}"
+      emit "duplicate-codeblocks-info" "true" "INFO: ${DUP_COUNT} code block(s) (3+ lines) shared between SKILL.md and references: ${DUP_REFS} — review whether each is intentional for progressive disclosure"
     else
-      emit "no-duplicate-codeblocks" "true" "No duplicated code blocks between SKILL.md and references"
+      emit "duplicate-codeblocks-info" "true" "No shared code blocks between SKILL.md and references"
     fi
   fi
 

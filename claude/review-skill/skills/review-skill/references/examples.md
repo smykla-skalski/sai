@@ -129,13 +129,23 @@ Use API key: sk-1234567890abcdef1234567890abcdef
 
 ## Useless echo in code blocks
 
-**Good** — direct variable assignment:
+Only flag `$(echo ...)` wrapping literal strings. Do NOT flag `$(echo "${VAR}")` because
+in a skills context the agent interprets code blocks as intent descriptions and the
+subshell wrapper can affect agent behavior ([GitHub #23813](https://github.com/anthropics/claude-code/issues/23813)).
+
+**Good** — direct literal assignment:
 
 ```bash
-DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sai/my-plugin"
+DATA_DIR="/opt/sai/my-plugin"
 ```
 
-**Bad** — unnecessary subshell via echo (ShellCheck SC2116):
+**Bad** — useless echo wrapping a literal (SC2116):
+
+```bash
+DATA_DIR="$(echo "/opt/sai/my-plugin")"
+```
+
+**OK** — echo wrapping a variable expansion (acceptable in skills):
 
 ```bash
 DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/my-plugin")"
@@ -145,7 +155,23 @@ DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/my-plugin")"
 
 ## Duplicated code blocks
 
-**Good** — SKILL.md has the code, reference cross-references it:
+Progressive disclosure means reference files are loaded independently from SKILL.md
+([Agent Skills Overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)).
+Each file should be self-contained — duplicating low-freedom operational code blocks is
+often correct because the agent needs them wherever it looks. Cross-references like
+"Use the X from SKILL.md Phase N" are fragile because the agent may not follow them.
+
+**Good** — both files have the code block (self-contained):
+
+```text
+## In SKILL.md Phase 2:
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+
+## In references/workflow.md Phase 2:
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+```
+
+**Bad** — cross-reference the agent might not follow:
 
 ```text
 ## In SKILL.md Phase 2:
@@ -153,16 +179,6 @@ DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/my-plugin")"
 
 ## In references/workflow.md Phase 2:
 Use the cluster-lifecycle.sh invocation from SKILL.md Phase 2.
-```
-
-**Bad** — same code block copied to both files:
-
-```text
-## In SKILL.md Phase 2:
-"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
-
-## In references/workflow.md Phase 2:
-"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 ```
 
 ---
