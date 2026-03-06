@@ -34,7 +34,7 @@ Resolve `REPO_ROOT`: `--repo` flag > check if cwd has `go.mod` with `kumahq/kuma
 RUNS_DIR="${DATA_DIR}/runs"
 RUN_ID="$(date +%Y%m%d-%H%M%S)-manual"
 
-bash "$SKILL_DIR/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
+"$SKILL_DIR/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 ```
 
@@ -51,9 +51,9 @@ Read `references/cluster-setup.md` before starting this phase.
 Pick a profile and start the cluster:
 
 ```bash
-bash "$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 # or
-bash "$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" global-two-zones-up kuma-1 kuma-2 kuma-3 zone-1 zone-2
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" global-two-zones-up kuma-1 kuma-2 kuma-3 zone-1 zone-2
 ```
 
 If changes modify CRDs, refresh them after deploy:
@@ -69,12 +69,12 @@ kubectl --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
 ## Phase 2 - preflight
 
 ```bash
-bash "$SKILL_DIR/scripts/preflight.sh" \
+"$SKILL_DIR/scripts/preflight.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --repo-root "${REPO_ROOT}"
 
-bash "$SKILL_DIR/scripts/capture-state.sh" \
+"$SKILL_DIR/scripts/capture-state.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --label "preflight"
@@ -95,11 +95,11 @@ For each test step:
 
 1. Create or copy manifest to a working file.
 2. Apply through the tracked script only.
-3. Collect runtime artifacts (log ad-hoc commands with `bash "$SKILL_DIR/scripts/record-command.sh"`).
+3. Collect runtime artifacts (log ad-hoc commands with `"$SKILL_DIR/scripts/record-command.sh"`).
 4. Write result into the report.
 
 ```bash
-bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh" \
+"$SKILL_DIR/scripts/apply-tracked-manifest.sh" \
   --run-dir "${RUN_DIR}" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --manifest "<manifest-path>" \
@@ -123,7 +123,7 @@ Read `references/troubleshooting.md` for known failure modes.
 5. Continue only when classification is explicit.
 
 ```bash
-bash "$SKILL_DIR/scripts/capture-state.sh" \
+"$SKILL_DIR/scripts/capture-state.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --label "failure-<test-id>"
@@ -132,12 +132,12 @@ bash "$SKILL_DIR/scripts/capture-state.sh" \
 ## Phase 5 - closeout
 
 ```bash
-bash "$SKILL_DIR/scripts/capture-state.sh" \
+"$SKILL_DIR/scripts/capture-state.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --label "postrun"
 
-bash "$SKILL_DIR/scripts/report-compactness-check.sh" \
+"$SKILL_DIR/scripts/report-compactness-check.sh" \
   --report "${RUN_DIR}/reports/manual-test-report.md"
 ```
 
@@ -168,5 +168,5 @@ Example:
 
 ```bash
 HARNESS_BUILD_IMAGES=0 HARNESS_LOAD_IMAGES=0 \
-  bash "$SKILL_DIR/scripts/cluster-lifecycle.sh" single-up kuma-1
+  "$SKILL_DIR/scripts/cluster-lifecycle.sh" single-up kuma-1
 ```

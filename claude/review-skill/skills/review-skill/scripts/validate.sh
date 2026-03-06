@@ -283,10 +283,43 @@ run_structure() {
       local BARE_COUNT FIRST_BAD
       BARE_COUNT=$(echo "$BARE_REFS" | wc -l | tr -d ' ')
       FIRST_BAD=$(echo "$BARE_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
-      emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \$SKILL_DIR prefix — use bash \"\$SKILL_DIR/scripts/...\" — first: ${FIRST_BAD}"
+      emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \$SKILL_DIR prefix — use \"\$SKILL_DIR/scripts/...\" — first: ${FIRST_BAD}"
     else
       emit "script-invocation-prefix" "true" "All script references use \$SKILL_DIR prefix"
     fi
+  fi
+
+  # --- no bash prefix on script invocations ---
+  # Scripts must be invoked directly ("$SKILL_DIR/scripts/..."), never via
+  # bash "$SKILL_DIR/scripts/...". Scripts should have the executable bit set.
+  if [[ -d "${SKILL_DIR}/scripts" ]]; then
+    local BASH_PREFIX_REFS
+    BASH_PREFIX_REFS=$(sed -n "${BODY_START},\$p" "$SKILL_MD" \
+      | awk '/^```/{f=!f;next} f && /^\s*bash\s+/' \
+      || true)
+
+    if [[ -n "$BASH_PREFIX_REFS" ]]; then
+      local BASH_COUNT FIRST_BASH
+      BASH_COUNT=$(echo "$BASH_PREFIX_REFS" | wc -l | tr -d ' ')
+      FIRST_BASH=$(echo "$BASH_PREFIX_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
+      emit "no-bash-prefix" "false" "Found ${BASH_COUNT} script invocation(s) using bash prefix — invoke directly via \"\$SKILL_DIR/scripts/...\" and set executable bit — first: ${FIRST_BASH}"
+    else
+      emit "no-bash-prefix" "true" "No bash-prefixed script invocations found"
+    fi
+  fi
+
+  # --- scripts have executable bit set ---
+  if [[ -d "${SKILL_DIR}/scripts" ]]; then
+    for script_file in "${SKILL_DIR}/scripts"/*; do
+      [[ -f "$script_file" ]] || continue
+      local SCRIPT_BASENAME
+      SCRIPT_BASENAME=$(basename "$script_file")
+      if [[ -x "$script_file" ]]; then
+        emit "script-executable" "true" "Script '${SCRIPT_BASENAME}' has executable bit set"
+      else
+        emit "script-executable" "false" "Script '${SCRIPT_BASENAME}' missing executable bit — run chmod +x"
+      fi
+    done
   fi
 
   # --- no disallowed files in skill directory ---

@@ -49,7 +49,7 @@ If no mode flag is provided, default to `--list`.
 1. Run the script with `--check-deps`:
 
    ```
-   bash "$SKILL_DIR/scripts/stage-hunk.sh" --check-deps
+   "$SKILL_DIR/scripts/stage-hunk.sh" --check-deps
    ```
 
 2. Parse the NDJSON output. Each line is a dependency status.
@@ -69,13 +69,13 @@ If no mode flag is provided, default to `--list`.
 Run the script with the user's requested mode:
 
 ```
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --list
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --hunk H1,H3 --dry-run
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --hunk H1,H3
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --pattern 'handleAuth'
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --file src/auth.ts
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --range src/auth.ts:45-60
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --verify
+"$SKILL_DIR/scripts/stage-hunk.sh" --list
+"$SKILL_DIR/scripts/stage-hunk.sh" --hunk H1,H3 --dry-run
+"$SKILL_DIR/scripts/stage-hunk.sh" --hunk H1,H3
+"$SKILL_DIR/scripts/stage-hunk.sh" --pattern 'handleAuth'
+"$SKILL_DIR/scripts/stage-hunk.sh" --file src/auth.ts
+"$SKILL_DIR/scripts/stage-hunk.sh" --range src/auth.ts:45-60
+"$SKILL_DIR/scripts/stage-hunk.sh" --verify
 ```
 
 Add `--fallback` if the user declined patchutils in Phase 2.
@@ -100,7 +100,7 @@ If the summary includes `"fallback":true`, note that `--pattern` and `--range` m
 After staging, optionally run `--verify` to show what ended up staged vs unstaged:
 
 ```
-bash "$SKILL_DIR/scripts/stage-hunk.sh" --verify
+"$SKILL_DIR/scripts/stage-hunk.sh" --verify
 ```
 
 Present the staged/unstaged breakdown per file.

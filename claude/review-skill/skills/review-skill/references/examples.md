@@ -75,13 +75,19 @@ Search for "site:openai.com blog 2025"
 
 ## Script Invocation
 
-**Good** — uses `bash` (survives plugin cache):
+**Good** — direct execution with `$SKILL_DIR` prefix and executable bit set:
+
+```bash
+"$SKILL_DIR/scripts/validate.sh" "$TARGET"
+```
+
+**Bad** — `bash` prefix (scripts must have executable bit, no `bash` needed):
 
 ```bash
 bash "$SKILL_DIR/scripts/validate.sh" "$TARGET"
 ```
 
-**Bad** — direct execution (breaks when execute bits are stripped):
+**Bad** — bare path without `$SKILL_DIR`:
 
 ```bash
 ./scripts/validate.sh "$TARGET"

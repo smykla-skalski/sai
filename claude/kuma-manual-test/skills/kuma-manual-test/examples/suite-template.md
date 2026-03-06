@@ -24,7 +24,7 @@ Use this template to define a feature-specific manual suite.
 
 ## Execution contract for this suite
 
-- all manifests must be applied through `bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
+- all manifests must be applied through `"$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
 - all failures must trigger immediate triage before next group
 - all pass/fail decisions must include artifact pointers
 - include edge cases from `references/mesh-policies.md` when suite uses Mesh\* policies

@@ -5,8 +5,8 @@ Rules for any AI agent executing manual tests with this harness.
 ## Non-negotiable rules
 
 1. Use locally built `kumactl` from `build/` only. Never the system binary.
-2. Apply every manifest through `bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh"`.
-3. Record every state-changing command in the run command log via `bash "$SKILL_DIR/scripts/record-command.sh"`.
+2. Apply every manifest through `"$SKILL_DIR/scripts/apply-tracked-manifest.sh"`.
+3. Record every state-changing command in the run command log via `"$SKILL_DIR/scripts/record-command.sh"`.
 4. Run server-side dry-run validation before every apply.
 5. Capture cluster state snapshots before and after each test group.
 6. Stop and triage on first unexpected failure.
@@ -34,7 +34,7 @@ ${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test/
 
 ```bash
 make --directory "${REPO_ROOT}" build/kumactl
-KUMACTL="$(bash "$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_ROOT}")"
+KUMACTL="$("$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_ROOT}")"
 "${KUMACTL}" version
 ```
 
