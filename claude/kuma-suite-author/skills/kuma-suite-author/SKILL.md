@@ -25,16 +25,23 @@ Parse from `$ARGUMENTS`:
 | `--from-branch` | -                    | Git branch to diff against master for scope                 |
 | `--suite-name`  | derived from feature | Override suite name (must follow `{feature}-{scope}` pattern) |
 
+## Preprocessed context
+
+- Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test"`
+- Current repo root: !`git rev-parse --show-toplevel 2>/dev/null || echo "not in a git repo"`
+- Existing suites: !`ls -1 "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test/suites" 2>/dev/null || echo "none yet"`
+
 ## Workflow - generate mode (default)
 
 ### Step 1: Resolve paths
 
+Use the pre-resolved data directory and repo root from the preprocessed context above. Ensure directories exist:
+
 ```bash
-DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test")"
 mkdir -p "${DATA_DIR}/suites" "${DATA_DIR}/runs"
 ```
 
-Resolve `REPO_ROOT`: `--repo` flag > check if cwd has `go.mod` with `kumahq/kuma` > fail with message.
+Resolve `REPO_ROOT`: `--repo` flag > pre-resolved repo root (if in a git repo) > check if cwd has `go.mod` with `kumahq/kuma` > fail with message.
 
 ### Step 2: Check worktree and branch
 

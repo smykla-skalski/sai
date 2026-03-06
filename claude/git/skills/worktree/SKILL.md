@@ -22,11 +22,16 @@ Parse from `$ARGUMENTS`:
 | `--no-ide`     | off         | Disable IDE detection                          |
 | `--ide <name>` | auto-detect | Override IDE (goland, pycharm, webstorm, etc.) |
 
+## Preprocessed context
+
+- Git remote: !`git remote | head -1 2>/dev/null || echo "origin"`
+- Current branch: !`git branch --show-current 2>/dev/null || echo "unknown"`
+
 ## Constraints
 
 - **CRITICAL: ALWAYS use `bash -c '...'`** — NEVER execute scripts directly
 - NEVER create worktree without confirming branch name (unless `--quick`)
-- NEVER assume remote or default branch — detect explicitly
+- NEVER assume remote or default branch — use preprocessed context values
 - Check for uncommitted changes before creating worktree (unless `--quick`)
 - ZERO single quotes inside scripts — scripts wrapped in `bash -c '...'`
 - ZERO tolerance for data loss — handle uncommitted changes explicitly
@@ -35,13 +40,11 @@ Parse from `$ARGUMENTS`:
 
 ### Phase 1: Gather Context
 
-Run these bash commands to collect state:
+Git remote and current branch are already known from preprocessed context. Run these bash commands to collect remaining state:
 
 ```bash
 pwd
 git status --porcelain
-git remote -v
-git branch --show-current
 ls go.mod Cargo.toml pyproject.toml setup.py pom.xml build.gradle build.gradle.kts Gemfile composer.json CMakeLists.txt tsconfig.json package.json requirements.txt 2>/dev/null | tr '\n' ' '
 ```
 
@@ -60,7 +63,7 @@ ls go.mod Cargo.toml pyproject.toml setup.py pom.xml build.gradle build.gradle.k
 
 ### Phase 3: Determine Parameters
 
-**Remote:** prefer `upstream`, fall back to `origin`.
+**Remote:** use the pre-resolved git remote from preprocessed context. Prefer `upstream` if multiple remotes exist.
 
 **Branch type** — detect from task description:
 

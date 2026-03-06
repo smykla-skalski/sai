@@ -51,11 +51,18 @@ Or in `~/.claude/settings.json` under the `"env"` key:
 }
 ```
 
+## Preprocessed context
+
+- Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest"`
+- Today: !`date +%Y-%m-%d`
+- Day of week: !`date +%A`
+- Notion page ID (env): !`echo "${NOTION_PARENT_PAGE_ID:-}"`
+
 ## Persistent Data Directory
 
-All persistent state and generated artifacts are stored in `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest/`. This path is independent of the plugin cache and project working directory — artifacts survive plugin updates and work from any project.
+All persistent state and generated artifacts are stored in the data directory from preprocessed context above. This path is independent of the plugin cache and project working directory — artifacts survive plugin updates and work from any project.
 
-Resolve this path once in Phase 1 and use the resolved absolute path for all subsequent file operations. Do NOT use `./findings/` or other relative paths — they may resolve to the plugin cache and be lost on updates.
+Use the pre-resolved data directory path for all file operations. Do NOT use `./findings/` or other relative paths — they may resolve to the plugin cache and be lost on updates.
 
 ## State Files
 
@@ -87,11 +94,11 @@ Example:
 1. Read [references/sources.md](references/sources.md) for source URLs and tiers
 2. Read [references/output-template.md](references/output-template.md) for digest format
 3. Parse arguments for focus area and `--notion-page-id`
-4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode). Otherwise check in order: `--notion-page-id` arg → `NOTION_PARENT_PAGE_ID` env var → prompt user interactively. Store resolved value as `notion_page_id` for Phase 18. If user declines to provide an ID, skip Notion publishing (archive-only mode).
-5. **Resolve persistent data directory** — run `echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest"` via Bash to get the absolute path. Store as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"`.
-6. Read `$DATA_DIR/.last-run` — set date range from last run to today
+4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode). Otherwise check in order: `--notion-page-id` arg → Notion page ID from preprocessed context → prompt user interactively. Store resolved value as `notion_page_id` for Phase 18. If the preprocessed value is empty and user declines to provide an ID, skip Notion publishing (archive-only mode).
+5. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
+6. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context
 7. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
-8. If today is Friday, enable weekly recap mode (see [references/search-patterns.md](references/search-patterns.md) → Friday Weekly Recap)
+8. Check day of week from preprocessed context — if Friday, enable weekly recap mode (see [references/search-patterns.md](references/search-patterns.md) → Friday Weekly Recap)
 
 ### Phases 2-15: Research
 

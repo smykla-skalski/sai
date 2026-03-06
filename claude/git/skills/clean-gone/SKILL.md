@@ -21,6 +21,12 @@ Parse from `$ARGUMENTS`:
 | `--dry-run`      | off     | Preview only, no changes                         |
 | `--no-worktrees` | off     | Branches only, skip worktree removal             |
 
+## Preprocessed context
+
+- Default remote: !`git for-each-ref --format="%(upstream:remotename)" refs/heads/main 2>/dev/null || git remote | head -1 2>/dev/null || echo "origin"`
+- Default branch: !`basename "$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null || echo refs/remotes/origin/main)"`
+- gh CLI: !`command -v gh >/dev/null 2>&1 && echo "available" || echo "unavailable"`
+
 ## Constraints
 
 - First action MUST be Bash — no text output before executing the script
@@ -79,13 +85,13 @@ Dry-run header: `**Dry Run Preview**` with "Would delete/remove" phrasing.
 
 ## Cleanup Logic
 
-- Detects remote from main branch's upstream (works with origin, upstream, etc.)
+- Uses pre-resolved remote name and default branch from preprocessed context
 - Deletes branches marked `[gone]` (remote tracking deleted)
 - Deletes branches fully merged via rebase/cherry-pick (`git cherry`)
-- Deletes branches squash-merged via PR (`gh pr list --state merged`)
+- Deletes branches squash-merged via PR (`gh pr list --state merged`) when gh CLI is available
 - Removes associated worktrees before branch deletion
 - Skips main and current branch
-- Falls back gracefully if `gh` CLI unavailable
+- Falls back gracefully if gh CLI is unavailable (see preprocessed context)
 
 ## Edge Cases
 
@@ -93,8 +99,8 @@ Dry-run header: `**Dry Run Preview**` with "Would delete/remove" phrasing.
 - No cleanable branches: report "Repository already clean"
 - Current branch is gone/merged: skip deletion, warn in summary
 - Uncommitted changes in worktree: force remove with `--force` flag
-- No `gh` CLI: squash merges won't be detected, only `git cherry` used
-- No remote configured: falls back to first available remote
+- No `gh` CLI (see preprocessed context): squash merges won't be detected, only `git cherry` used
+- No remote configured: remote from preprocessed context used as fallback
 
 ## Example Invocations
 
