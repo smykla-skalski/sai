@@ -119,6 +119,8 @@ If no action flags are set, stop here.
 
 ### Phase 3: Execute Action
 
+Read [references/gh-api-guide.md](references/gh-api-guide.md) for ID type mapping (REST integer IDs vs GraphQL node IDs), reply endpoint constraints, and shell quoting patterns.
+
 For each matched thread, execute the requested action:
 
 **Reply** (`--reply`):
@@ -190,8 +192,6 @@ Display the agent's verification summary to the user along with:
 - If a thread operation fails, log the error and continue with remaining threads
 - If `--thread-id` matches no thread, report "No matching thread found"
 - If `create-review.sh` fails (non-zero exit), report the error to the user. Do not retry automatically - the most common cause is invalid file paths or line numbers not present in the PR diff. Ask the user to verify the comment targets before re-attempting
-
-Read [references/gh-api-guide.md](references/gh-api-guide.md) before Phase 3 for ID type mapping (REST integer IDs vs GraphQL node IDs), reply endpoint constraints, and shell quoting patterns.
 
 ## Example Invocations
 
