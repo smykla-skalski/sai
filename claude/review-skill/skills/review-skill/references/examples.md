@@ -193,17 +193,17 @@ often correct because the agent needs them wherever it looks. Cross-references l
 
 ```text
 ## In SKILL.md Phase 2:
-"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up cluster-1
 
 ## In references/workflow.md Phase 2:
-"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up cluster-1
 ```
 
 **Bad** — cross-reference the agent might not follow:
 
 ```text
 ## In SKILL.md Phase 2:
-"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up cluster-1
 
 ## In references/workflow.md Phase 2:
 Use the cluster-lifecycle.sh invocation from SKILL.md Phase 2.
