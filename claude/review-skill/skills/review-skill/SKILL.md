@@ -52,6 +52,8 @@ Run the validation script and collect its JSON output:
 
 ### Phase 3: Manual Evaluation
 
+Read [references/checklist.md](references/checklist.md) in full before starting this phase.
+
 Spawn a `general-purpose` evaluation agent with these inputs:
 
 - Target skill directory path
