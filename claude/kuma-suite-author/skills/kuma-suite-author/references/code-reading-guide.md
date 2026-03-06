@@ -61,6 +61,6 @@ See `references/variant-detection.md` for the full methodology, signal strength 
 ## Tips
 
 - Golden files in `testdata/` show exact expected Envoy configs - use these to derive validation commands.
-- The `+kuma:policy` markers on the spec struct tell you about scope (Mesh vs Global), display name, etc.
+- The `+kuma:policy` markers on the spec struct indicate scope (Mesh vs Global), display name, etc.
 - `validator.go` returns `admission.Warnings` for deprecations - these become G7 test cases.
 - `plugin.go`'s `Apply()` method reveals which xDS resource types are affected (listeners, clusters, routes, endpoints).
