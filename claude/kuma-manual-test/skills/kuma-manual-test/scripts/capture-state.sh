@@ -82,7 +82,7 @@ if [[ ! -f "${commands_log}" ]]; then
 EOF
 fi
 
-timestamp="$(date -u +"%Y%m%dT%H%M%SZ")"
+timestamp="$(date -u +"%Y%m%dT%H%M%SZ")-$$"
 
 append_command_log() {
   local now="$1"

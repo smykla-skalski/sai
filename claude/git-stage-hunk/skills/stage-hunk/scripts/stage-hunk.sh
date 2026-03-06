@@ -293,7 +293,7 @@ if [[ -z "$HUNK_INDEX" ]]; then
   exit 0
 fi
 
-TOTAL_HUNKS=$(echo "$HUNK_INDEX" | wc -l | tr -d ' ')
+TOTAL_HUNKS=$(wc -l <<< "$HUNK_INDEX" | tr -d ' ')
 
 # ========================
 # LIST MODE

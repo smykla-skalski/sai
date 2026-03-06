@@ -65,7 +65,7 @@ fi
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ -z "${repo_root}" ]]; then
-  repo_root="$(cd "${script_dir}/../../../.." && pwd)"
+  repo_root="$(git -C "${script_dir}" rev-parse --show-toplevel)"
   printf 'Warning: --repo-root not specified, falling back to %s\n' "${repo_root}" >&2
 fi
 
@@ -129,12 +129,11 @@ run_check() {
 
 for tool in docker k3d kubectl helm make; do
   tool_log="${run_dir}/artifacts/preflight-tool-${tool}.log"
-  now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
   if command -v "${tool}" >"${tool_log}" 2>&1; then
-    append_command_log "${now}" "preflight" "command -v ${tool}" "0" "artifacts/preflight-tool-${tool}.log"
+    append_command_log "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "preflight" "command -v ${tool}" "0" "artifacts/preflight-tool-${tool}.log"
   else
-    append_command_log "${now}" "preflight" "command -v ${tool}" "1" "artifacts/preflight-tool-${tool}.log"
+    append_command_log "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "preflight" "command -v ${tool}" "1" "artifacts/preflight-tool-${tool}.log"
     failure_count=$((failure_count + 1))
     printf 'Preflight tool check failed: %s\n' "${tool}" >&2
   fi

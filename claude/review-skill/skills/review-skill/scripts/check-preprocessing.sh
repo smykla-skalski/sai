@@ -96,7 +96,7 @@ BODY_NO_FENCE=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
 DIRECTIVES=$(echo "$BODY_NO_FENCE" | grep -oE '!`[^`]+`' 2>/dev/null || true)
 DIRECTIVE_COUNT=0
 if [[ -n "$DIRECTIVES" ]]; then
-  DIRECTIVE_COUNT=$(echo "$DIRECTIVES" | wc -l | tr -d ' ')
+  DIRECTIVE_COUNT=$(wc -l <<< "$DIRECTIVES" | tr -d ' ')
 fi
 
 # If no directives, emit a single pass and exit
