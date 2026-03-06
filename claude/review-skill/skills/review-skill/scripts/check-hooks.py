@@ -275,8 +275,22 @@ def check_type(hooks: dict) -> list:
                   "All %d hook entries have type: command" % total_hooks)]
 
 
+def uses_project_dir(command: str) -> bool:
+    """Check if a hook command uses $CLAUDE_PROJECT_DIR."""
+    return "$CLAUDE_PROJECT_DIR" in command
+
+
 def resolve_command_path(command: str, skill_dir: str) -> str:
-    """Replace ${CLAUDE_SKILL_DIR} and return resolved path."""
+    """Replace ${CLAUDE_SKILL_DIR} and return resolved path.
+
+    Only handles ${CLAUDE_SKILL_DIR} (body substitution that also works
+    when skill_dir matches the actual skill location).
+
+    $CLAUDE_PROJECT_DIR paths are NOT resolved here - they are runtime
+    env vars that can only resolve in the target project where the skill
+    is installed (see #17688 workaround). Use uses_project_dir() to
+    detect and skip these paths in checks that need file existence.
+    """
     resolved = command.replace("${CLAUDE_SKILL_DIR}", skill_dir)
     resolved = resolved.replace("$CLAUDE_SKILL_DIR", skill_dir)
     return resolved
@@ -298,8 +312,12 @@ def check_resolve(hooks: dict, skill_dir: str) -> list:
     """HK-RESOLVE: all command paths resolve to existing files."""
     missing = []
     checked = 0
+    skipped = 0
     for event, matcher, cmd in collect_hook_entries(hooks):
         if not cmd:
+            continue
+        if uses_project_dir(cmd):
+            skipped += 1
             continue
         resolved = resolve_command_path(cmd, skill_dir)
         checked += 1
@@ -309,8 +327,10 @@ def check_resolve(hooks: dict, skill_dir: str) -> list:
     if missing:
         return [emit("HK-RESOLVE", False,
                       "Missing scripts: " + "; ".join(missing))]
-    return [emit("HK-RESOLVE", True,
-                  "All %d command paths resolve" % checked)]
+    detail = "All %d command paths resolve" % checked
+    if skipped:
+        detail += " (%d $CLAUDE_PROJECT_DIR paths skipped - runtime only)" % skipped
+    return [emit("HK-RESOLVE", True, detail)]
 
 
 def check_exec(hooks: dict, skill_dir: str) -> list:
@@ -357,7 +377,7 @@ def _scripts_for_events(hooks: dict, events: set,
     paths = []
     seen = set()
     for event, matcher, cmd in collect_hook_entries(hooks):
-        if event not in events or not cmd:
+        if event not in events or not cmd or uses_project_dir(cmd):
             continue
         resolved = resolve_command_path(cmd, skill_dir)
         if resolved not in seen and os.path.isfile(resolved):
