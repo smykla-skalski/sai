@@ -2,7 +2,7 @@
 name: ai-daily-digest
 description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
 argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion]"
-allowed-tools: Bash, Glob, Read, Task, ToolSearch, WebFetch, WebSearch, Write
+allowed-tools: AskUserQuestion, Bash, Glob, Read, Task, ToolSearch, WebFetch, WebSearch, Write
 user-invocable: true
 ---
 
@@ -26,7 +26,7 @@ Resolve the Notion parent page ID using this precedence (first match wins):
 
 1. `--notion-page-id` argument
 2. `NOTION_PARENT_PAGE_ID` environment variable
-3. Interactive prompt — ask the user at runtime
+3. Interactive prompt — use AskUserQuestion at runtime
 
 When prompting the user, provide these instructions for finding the page ID:
 
@@ -98,11 +98,11 @@ Example:
 5. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
 6. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context
 7. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
-8. Check day of week from preprocessed context — if Friday, enable weekly recap mode (see [references/search-patterns.md](references/search-patterns.md) → Friday Weekly Recap)
+8. Check day of week from preprocessed context — if Friday, enable weekly recap mode (Friday Weekly Recap section in search patterns)
 
 ### Phases 2-15: Research
 
-**CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full.**
+**CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full for all search queries, source-specific patterns, and the Friday Weekly Recap section.**
 
 Spawn a `general-purpose` research agent for each phase (or batch of independent phases). Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md). Phases 2-5 are independent - spawn them in parallel. Subsequent phases can be batched as appropriate.
 

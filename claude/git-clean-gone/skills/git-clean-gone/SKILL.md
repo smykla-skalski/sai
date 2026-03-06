@@ -32,14 +32,14 @@ Parse from `$ARGUMENTS`:
 - First action MUST be Bash — no text output before executing the script
 - Never delete the current branch — skip and report in summary
 - Never remove the main worktree — only feature/task worktrees
-- Execute `"${CLAUDE_SKILL_DIR}/scripts/git-clean-gone.sh"` as a single Bash invocation
+- Execute `"${CLAUDE_SKILL_DIR}/scripts/clean-gone.sh"` as a single Bash invocation
 - Output summary directly as text (NOT via bash/printf)
 
 ## Workflow
 
 ### Phase 1: Execute Cleanup Script
 
-Execute `"${CLAUDE_SKILL_DIR}/scripts/git-clean-gone.sh"` immediately, passing through any flags from `$ARGUMENTS`.
+Execute `"${CLAUDE_SKILL_DIR}/scripts/clean-gone.sh"` immediately, passing through any flags from `$ARGUMENTS`.
 
 - No flags → full cleanup (gone + merged branches + worktrees)
 - `--dry-run` → preview only, no changes

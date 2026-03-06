@@ -2,7 +2,7 @@
 name: gh-review-comments
 description: List, reply to, resolve, and create GitHub PR review comment threads using gh CLI scripts. Use when managing code review feedback, replying to reviewer remarks, resolving review conversations, creating reviews with line-level comments, or bulk-processing threads by author.
 argument-hint: "<owner/repo> <pr-number> [--author <login>] [--reply <message>] [--resolve] [--unresolve] [--create-review] [--thread-id <id>] [--unresolved-only]"
-allowed-tools: Bash, Glob, Grep, Read, Task
+allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, Task
 user-invocable: true
 ---
 
@@ -151,9 +151,9 @@ For each matched thread, execute the requested action:
 
 When `--create-review` is specified, skip Phase 2 actions and instead:
 
-1. Ask the user for the review event type (COMMENT, APPROVE, or REQUEST_CHANGES)
-2. Ask for the review body text
-3. Ask for inline comments - for each comment, collect:
+1. Use AskUserQuestion for the review event type (COMMENT, APPROVE, or REQUEST_CHANGES)
+2. Use AskUserQuestion for the review body text
+3. Use AskUserQuestion for inline comments - for each comment, collect:
    - File path (validate it exists in the PR diff)
    - Line number
    - Comment body

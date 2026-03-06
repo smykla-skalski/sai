@@ -225,9 +225,9 @@ Interactive step-by-step suite generation:
 1. Same path resolution as generate mode (step 1).
 2. Check worktree and branch (step 2) - same verification flow.
 3. Ask feature name, target environment, scope using AskUserQuestion.
-4. Read code and collect variant signals (step 4).
+4. Read code and collect variant signals (step 4). Read [references/code-reading-guide.md](references/code-reading-guide.md) for where to find policy specs. Read [references/variant-detection.md](references/variant-detection.md) for the variant signal catalog.
 5. Detect and confirm variants (step 5) - present each signal individually for review.
-6. Show the group structure from [references/suite-structure.md](references/suite-structure.md), ask which base groups (G1-G7) to include.
+6. Read [references/suite-structure.md](references/suite-structure.md) for the format spec. Read [examples/example-motb-core-suite.md](examples/example-motb-core-suite.md) for the worked example. Show the group structure, ask which base groups (G1-G7) to include.
 7. For each selected group: ask what to test, generate manifests, show for review.
 8. User edits/approves each group before moving to next.
 9. Confirmation wizard (step 7) - same full summary review before saving.

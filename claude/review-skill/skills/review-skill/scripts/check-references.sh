@@ -6,7 +6,7 @@
 #   check_consistent_phase_numbering, check_long_ref_toc
 #
 # Requires _lib.sh globals: BODY_START, SKILL_MD, FULL_BODY, SKILL_BODY,
-#   SKILL_DIR, _TMPFILES
+#   SKILL_DIR, _TMPFILES, trap _cleanup_tmp EXIT
 
 # --- body line count (<=500) ---
 check_body_line_count() {

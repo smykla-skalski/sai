@@ -35,9 +35,9 @@ The skill detects 24 AI writing patterns organized into five categories:
 4. Communication artifacts (19-21): chatbot correspondence phrases, knowledge-cutoff disclaimers, sycophantic tone
 5. Filler and hedging (22-24): filler phrases, excessive hedging, generic positive conclusions
 
-Full pattern descriptions with words-to-watch lists and before/after examples are in [references/patterns.md](references/patterns.md).
+Read [references/patterns.md](references/patterns.md) for full pattern descriptions with words-to-watch lists and before/after examples (used in Phase 2 scan and Phase 5 verification).
 
-Composition principles for the rewrite phase (active voice, concrete language, omitting needless words, sentence variety, emphasis placement) are in [references/elements-of-style.md](references/elements-of-style.md).
+Read [references/elements-of-style.md](references/elements-of-style.md) for composition principles used during the Phase 4 rewrite (active voice, concrete language, omitting needless words, sentence variety, emphasis placement).
 
 ## Workflow
 
