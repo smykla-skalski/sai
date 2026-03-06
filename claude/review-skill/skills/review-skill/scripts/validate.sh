@@ -265,33 +265,35 @@ run_structure() {
     emit "file-ref-resolves" "true" "No file references found in SKILL.md"
   fi
 
-  # --- script invocations use $SKILL_DIR prefix (I6) ---
+  # --- script invocations use ${CLAUDE_SKILL_DIR} or $SKILL_DIR prefix (I6) ---
   # If the skill has a scripts/ directory, check that script references in the
-  # body use $SKILL_DIR/scripts/ — bare paths like `scripts/foo.sh` resolve
-  # relative to the wrong directory in plugin cache.
+  # body use ${CLAUDE_SKILL_DIR}/scripts/ (or legacy $SKILL_DIR/scripts/) —
+  # bare paths like `scripts/foo.sh` resolve relative to the wrong directory
+  # in plugin cache.
   if [[ -d "${SKILL_DIR}/scripts" ]]; then
-    # Find lines mentioning scripts/*.sh without $SKILL_DIR prefix.
+    # Find lines mentioning scripts/*.sh without a valid prefix.
     # Exclude markdown headers (### `scripts/...`) which are documentation.
     local BARE_REFS
     BARE_REFS=$(echo "$SKILL_BODY" \
       | grep -E 'scripts/[a-zA-Z0-9._-]+\.sh' \
       | grep -vE '^\s*#{1,6}\s' \
-      | grep -vE '\$SKILL_DIR' \
+      | grep -vE '\$SKILL_DIR|\$\{CLAUDE_SKILL_DIR\}' \
       || true)
 
     if [[ -n "$BARE_REFS" ]]; then
       local BARE_COUNT FIRST_BAD
       BARE_COUNT=$(echo "$BARE_REFS" | wc -l | tr -d ' ')
       FIRST_BAD=$(echo "$BARE_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
-      emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \$SKILL_DIR prefix — use \"\$SKILL_DIR/scripts/...\" — first: ${FIRST_BAD}"
+      emit "script-invocation-prefix" "false" "Found ${BARE_COUNT} script reference(s) without \${CLAUDE_SKILL_DIR} prefix — use \"\${CLAUDE_SKILL_DIR}/scripts/...\" — first: ${FIRST_BAD}"
     else
-      emit "script-invocation-prefix" "true" "All script references use \$SKILL_DIR prefix"
+      emit "script-invocation-prefix" "true" "All script references use \${CLAUDE_SKILL_DIR} prefix"
     fi
   fi
 
   # --- no bash prefix on script invocations ---
-  # Scripts must be invoked directly ("$SKILL_DIR/scripts/..."), never via
-  # bash "$SKILL_DIR/scripts/...". Scripts should have the executable bit set.
+  # Scripts must be invoked directly ("${CLAUDE_SKILL_DIR}/scripts/..."),
+  # never via bash "${CLAUDE_SKILL_DIR}/scripts/...".
+  # Scripts should have the executable bit set.
   if [[ -d "${SKILL_DIR}/scripts" ]]; then
     local BASH_PREFIX_REFS
     BASH_PREFIX_REFS=$(sed -n "${BODY_START},\$p" "$SKILL_MD" \
@@ -302,7 +304,7 @@ run_structure() {
       local BASH_COUNT FIRST_BASH
       BASH_COUNT=$(echo "$BASH_PREFIX_REFS" | wc -l | tr -d ' ')
       FIRST_BASH=$(echo "$BASH_PREFIX_REFS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
-      emit "no-bash-prefix" "false" "Found ${BASH_COUNT} script invocation(s) using bash prefix — invoke directly via \"\$SKILL_DIR/scripts/...\" and set executable bit — first: ${FIRST_BASH}"
+      emit "no-bash-prefix" "false" "Found ${BASH_COUNT} script invocation(s) using bash prefix — invoke directly via \"\${CLAUDE_SKILL_DIR}/scripts/...\" and set executable bit — first: ${FIRST_BASH}"
     else
       emit "no-bash-prefix" "true" "No bash-prefixed script invocations found"
     fi
@@ -595,7 +597,7 @@ run_structure() {
   # Plugin cache directories are replaced on version updates.
   local HAS_STATE_PATTERNS HAS_XDG_PATH
   HAS_STATE_PATTERNS=$(echo "$SKILL_BODY" \
-    | grep -cE '\./findings/|\$SKILL_DIR/findings/|\.last-run|\.covered-|state stored in|persistent.*state|State Files' || true)
+    | grep -cE '\./findings/|\$SKILL_DIR/findings/|\$\{CLAUDE_SKILL_DIR\}/findings/|\.last-run|\.covered-|state stored in|persistent.*state|State Files' || true)
   HAS_XDG_PATH=$(echo "$SKILL_BODY" \
     | grep -cE 'XDG_DATA_HOME|\$HOME/\.local/share' || true)
 
@@ -605,11 +607,11 @@ run_structure() {
     # right thing and any ./findings/ mentions are likely warnings, not actual usage.
     local HAS_BAD_PATHS
     HAS_BAD_PATHS=$(echo "$SKILL_BODY" \
-      | grep -cE '\./findings/|\$SKILL_DIR/findings/' || true)
+      | grep -cE '\./findings/|\$SKILL_DIR/findings/|\$\{CLAUDE_SKILL_DIR\}/findings/' || true)
     if [[ "$HAS_XDG_PATH" -gt 0 ]]; then
       emit "persistent-state-xdg" "true" "Persistent state uses XDG-compliant path"
     elif [[ "$HAS_BAD_PATHS" -gt 0 ]]; then
-      emit "persistent-state-xdg" "false" "Skill uses relative paths (./findings/ or \$SKILL_DIR/findings/) for persistent state — use \${XDG_DATA_HOME:-\$HOME/.local/share}/sai/{plugin}/ instead"
+      emit "persistent-state-xdg" "false" "Skill uses relative paths (./findings/ or \${CLAUDE_SKILL_DIR}/findings/) for persistent state — use \${XDG_DATA_HOME:-\$HOME/.local/share}/sai/{plugin}/ instead"
     else
       emit "persistent-state-xdg" "true" "State references found but no relative path issues detected"
     fi

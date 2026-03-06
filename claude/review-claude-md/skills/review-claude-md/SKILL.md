@@ -56,11 +56,11 @@ Read the codebase to understand what the CLAUDE.md SHOULD contain:
 Run the deterministic validation scripts and collect their JSON output:
 
 ```bash
-"$SKILL_DIR/scripts/validate-claudemd.sh" "$TARGET_DIR"
-"$SKILL_DIR/scripts/validate-commands.sh" "$TARGET_DIR"
+"${CLAUDE_SKILL_DIR}/scripts/validate-claudemd.sh" "$TARGET_DIR"
+"${CLAUDE_SKILL_DIR}/scripts/validate-commands.sh" "$TARGET_DIR"
 ```
 
-Where `$SKILL_DIR` is this skill's directory and `$TARGET_DIR` is the repo being reviewed. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion.
+`$TARGET_DIR` is the repo directory being reviewed. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion.
 
 ### Phase 4: Manual Evaluation
 

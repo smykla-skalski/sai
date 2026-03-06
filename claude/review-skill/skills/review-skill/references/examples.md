@@ -79,19 +79,19 @@ Search for "site:openai.com blog 2025"
 
 ## Script Invocation
 
-**Good** — direct execution with `$SKILL_DIR` prefix and executable bit set:
+**Good** — direct execution with `${CLAUDE_SKILL_DIR}` prefix and executable bit set:
 
 ```bash
-"$SKILL_DIR/scripts/validate.sh" "$TARGET"
+"${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET"
 ```
 
 **Bad** — `bash` prefix (scripts must have executable bit, no `bash` needed):
 
 ```bash
-bash "$SKILL_DIR/scripts/validate.sh" "$TARGET"
+bash "${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET"
 ```
 
-**Bad** — bare path without `$SKILL_DIR`:
+**Bad** — bare path without `${CLAUDE_SKILL_DIR}`:
 
 ```bash
 ./scripts/validate.sh "$TARGET"
@@ -165,17 +165,17 @@ often correct because the agent needs them wherever it looks. Cross-references l
 
 ```text
 ## In SKILL.md Phase 2:
-"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 
 ## In references/workflow.md Phase 2:
-"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 ```
 
 **Bad** — cross-reference the agent might not follow:
 
 ```text
 ## In SKILL.md Phase 2:
-"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 
 ## In references/workflow.md Phase 2:
 Use the cluster-lifecycle.sh invocation from SKILL.md Phase 2.

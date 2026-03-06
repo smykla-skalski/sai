@@ -45,10 +45,10 @@ Read `references/skill-structure.md` to understand the canonical skill layout be
 Run the validation script and collect its JSON output:
 
 ```bash
-"$SKILL_DIR/scripts/validate.sh" "$TARGET_DIR"
+"${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET_DIR"
 ```
 
-Where `$SKILL_DIR` is this skill's directory and `$TARGET_DIR` is the skill being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts.
+`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts.
 
 ### Phase 3: Manual Evaluation
 
@@ -113,7 +113,7 @@ If `--score-only` was NOT passed:
    - Imperative form: "Parse the input" not "You should parse the input"
    - Move detail-heavy content to `references/` if SKILL.md exceeds 300 lines
    - Use explicit read directives: "Read X before starting phase Y"
-   - Invoke scripts directly via `"$SKILL_DIR/scripts/..."` (never `./scripts/` or `bash "$SKILL_DIR/scripts/..."`)
+   - Invoke scripts directly with the `${CLAUDE_SKILL_DIR}` prefix (never `./scripts/` or `bash` prefix)
 3. Fix or create missing bundled resources as needed
 4. Verify all file references resolve after changes
 

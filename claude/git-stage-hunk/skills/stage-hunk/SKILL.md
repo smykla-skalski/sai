@@ -19,7 +19,7 @@ user-invocable: true
 
 Non-interactive hunk staging for selective `git add` without a TTY. Replaces `git add -p` in scripted and multi-agent environments.
 
-The heavy lifting happens in the shell script at `$SKILL_DIR/scripts/stage-hunk.sh`. Your first action MUST be Bash - run the script, parse the NDJSON output, present results to the user. Do not re-implement git diff/apply logic yourself.
+The heavy lifting happens in the shell script at `${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh`. Your first action MUST be Bash - run the script, parse the NDJSON output, present results to the user. Do not re-implement git diff/apply logic yourself.
 
 ## Arguments
 
@@ -42,14 +42,13 @@ If no mode flag is provided, default to `--list`.
 ### Phase 1: Setup
 
 1. Parse `$ARGUMENTS` for mode flags and options.
-2. Resolve `$SKILL_DIR` for script paths.
 
 ### Phase 2: Dependency check
 
 1. Run the script with `--check-deps`:
 
    ```
-   "$SKILL_DIR/scripts/stage-hunk.sh" --check-deps
+   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --check-deps
    ```
 
 2. Parse the NDJSON output. Each line is a dependency status.
@@ -69,13 +68,13 @@ If no mode flag is provided, default to `--list`.
 Run the script with the user's requested mode:
 
 ```
-"$SKILL_DIR/scripts/stage-hunk.sh" --list
-"$SKILL_DIR/scripts/stage-hunk.sh" --hunk H1,H3 --dry-run
-"$SKILL_DIR/scripts/stage-hunk.sh" --hunk H1,H3
-"$SKILL_DIR/scripts/stage-hunk.sh" --pattern 'handleAuth'
-"$SKILL_DIR/scripts/stage-hunk.sh" --file src/auth.ts
-"$SKILL_DIR/scripts/stage-hunk.sh" --range src/auth.ts:45-60
-"$SKILL_DIR/scripts/stage-hunk.sh" --verify
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3 --dry-run
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --pattern 'handleAuth'
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --file src/auth.ts
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --range src/auth.ts:45-60
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --verify
 ```
 
 Add `--fallback` if the user declined patchutils in Phase 2.
@@ -100,7 +99,7 @@ If the summary includes `"fallback":true`, note that `--pattern` and `--range` m
 After staging, optionally run `--verify` to show what ended up staged vs unstaged:
 
 ```
-"$SKILL_DIR/scripts/stage-hunk.sh" --verify
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --verify
 ```
 
 Present the staged/unstaged breakdown per file.

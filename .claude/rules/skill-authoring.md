@@ -52,7 +52,7 @@ Resolve this path once in the setup phase via Bash and store as a variable (e.g.
 **Do NOT use:**
 
 - `./findings/` — ambiguous, may resolve to plugin cache
-- `$SKILL_DIR/findings/` — inside plugin cache, lost on update
+- `${CLAUDE_SKILL_DIR}/findings/` — inside plugin cache, lost on update
 - Any relative paths for persistent state
 
 **Guidelines:**
