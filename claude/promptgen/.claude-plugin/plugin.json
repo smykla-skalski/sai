@@ -6,5 +6,6 @@
     "name": "Smykla Skalski Labs"
   },
   "repository": "https://github.com/smykla-skalski/sai",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": ["prompt-engineering", "prompt-generation", "clipboard", "security", "anti-patterns", "agent-prompts", "system-prompts"]
 }

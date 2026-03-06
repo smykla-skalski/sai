@@ -6,5 +6,6 @@
     "name": "Smykla Skalski Labs"
   },
   "repository": "https://github.com/smykla-skalski/sai",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": ["claude-md", "audit", "checklist", "best-practices", "configuration", "linting", "scoring"]
 }
