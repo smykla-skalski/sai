@@ -80,7 +80,7 @@ For each criterion not already covered by automated scripts, evaluate as binary 
 3. Record the result with specific evidence (quote the line or describe the absence)
 4. If `--thorough`, also evaluate Polish tier checks
 
-Consult [references/sources.md](references/sources.md) for authoritative source URLs when citing findings.
+Read [references/sources.md](references/sources.md) for authoritative source URLs when citing findings.
 
 ### Phase 5: Synthesize Verdict
 
@@ -93,7 +93,7 @@ Think step by step before declaring the verdict:
 
 ### Phase 6: Report
 
-Output the verdict per the template in [references/output-format.md](references/output-format.md).
+Read [references/output-format.md](references/output-format.md) for the verdict template. Output the verdict per this template.
 
 ### Phase 7: Fix
 
