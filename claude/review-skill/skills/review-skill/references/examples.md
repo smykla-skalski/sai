@@ -11,6 +11,9 @@ Good vs bad patterns for skill evaluation.
 - [Script Invocation](#script-invocation)
 - [Degrees of Freedom](#degrees-of-freedom)
 - [Secrets and credentials](#secrets-and-credentials)
+- [Useless echo in code blocks](#useless-echo-in-code-blocks)
+- [Duplicated code blocks](#duplicated-code-blocks)
+- [Phase numbering consistency](#phase-numbering-consistency)
 - [Grading Style](#grading-style)
 
 ---
@@ -120,6 +123,77 @@ Use the API key from the OPENAI_API_KEY environment variable.
 ```text
 ## Authentication
 Use API key: sk-1234567890abcdef1234567890abcdef
+```
+
+---
+
+## Useless echo in code blocks
+
+**Good** — direct variable assignment:
+
+```bash
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sai/my-plugin"
+```
+
+**Bad** — unnecessary subshell via echo (ShellCheck SC2116):
+
+```bash
+DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/my-plugin")"
+```
+
+---
+
+## Duplicated code blocks
+
+**Good** — SKILL.md has the code, reference cross-references it:
+
+```text
+## In SKILL.md Phase 2:
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+
+## In references/workflow.md Phase 2:
+Use the cluster-lifecycle.sh invocation from SKILL.md Phase 2.
+```
+
+**Bad** — same code block copied to both files:
+
+```text
+## In SKILL.md Phase 2:
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+
+## In references/workflow.md Phase 2:
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+```
+
+---
+
+## Phase numbering consistency
+
+**Good** — same phase numbers in SKILL.md and references:
+
+```text
+## SKILL.md:
+### Phase 0: Setup
+### Phase 1: Execute
+### Phase 2: Report
+
+## references/workflow.md:
+## Phase 0 - setup
+## Phase 1 - execute
+## Phase 2 - report
+```
+
+**Bad** — different numbering for the same workflow:
+
+```text
+## SKILL.md:
+### Phase 0: Environment
+### Phase 1: Initialize
+### Phase 2: Execute
+
+## references/workflow.md:
+## Phase 0 - initialize (combines SKILL.md 0+1)
+## Phase 1 - execute (off by one from SKILL.md)
 ```
 
 ---
