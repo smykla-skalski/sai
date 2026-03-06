@@ -56,6 +56,8 @@ Read [references/agent-contract.md](references/agent-contract.md) for full agent
 
 ## Workflow
 
+Read [references/workflow.md](references/workflow.md) for supplementary phase details and verification gates.
+
 ### Phase 0: Environment check
 
 1. Set `DATA_DIR` to the pre-resolved data directory from "Preprocessed context". Create the subdirectories:

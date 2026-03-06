@@ -65,7 +65,8 @@ If no mode flag is provided, default to `--list`.
    - Darwin: `brew install patchutils`
    - Linux: `sudo apt-get install -y patchutils`
 5. If user chooses fallback, pass `--fallback` to all subsequent script calls.
-6. If git or python3 are missing, report and stop.
+6. Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils command reference before advising on installation.
+7. If git or python3 are missing, report and stop.
 
 ### Phase 3: Execute mode
 
@@ -161,7 +162,7 @@ Global sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then
 - python3 (required, for JSON encoding)
 - patchutils (optional, provides lsdiff/filterdiff/grepdiff)
 
-See [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils usage details.
+Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils usage details.
 
 ## Example invocations
 

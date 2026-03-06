@@ -134,6 +134,7 @@ If no variants detected, note it and continue to step 6 with G1-G7 only.
 ### Step 6: Generate suite
 
 Read [references/suite-structure.md](references/suite-structure.md) for the format spec.
+Read [examples/example-motb-core-suite.md](examples/example-motb-core-suite.md) for a worked example of the suite format.
 
 Build the suite with base groups (skip groups that don't apply, document why):
 
