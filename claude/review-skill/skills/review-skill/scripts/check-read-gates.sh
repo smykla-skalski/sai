@@ -273,7 +273,7 @@ find_use_lines() {
 # ========================
 # RG-GATE: ref-gate-present
 # ========================
-GATE_FAILS=""
+GATE_FAILS_ARR=()
 while IFS= read -r ref; do
   [[ -z "$ref" ]] && continue
   # Only check refs that are linked (appear in markdown links in the body)
@@ -281,14 +281,14 @@ while IFS= read -r ref; do
     continue
   fi
   if ! has_gate "$ref"; then
-    GATE_FAILS="${GATE_FAILS} ${ref}"
+    GATE_FAILS_ARR+=("$ref")
   fi
 done <<< "$ALL_REFS"
-GATE_FAILS=$(echo "$GATE_FAILS" | xargs)
 
-if [[ -n "$GATE_FAILS" ]]; then
-  GATE_COUNT=$(echo "$GATE_FAILS" | wc -w | tr -d ' ')
-  emit "ref-gate-present" "false" "${GATE_COUNT} reference(s) linked without explicit load directive (Read, Contents of, path to, Load): ${GATE_FAILS}"
+if [[ ${#GATE_FAILS_ARR[@]} -gt 0 ]]; then
+  GATE_FAILS=$(printf '%s ' "${GATE_FAILS_ARR[@]}")
+  GATE_FAILS="${GATE_FAILS% }"
+  emit "ref-gate-present" "false" "${#GATE_FAILS_ARR[@]} reference(s) linked without explicit load directive (Read, Contents of, path to, Load): ${GATE_FAILS}"
 else
   emit "ref-gate-present" "true" "All linked references have explicit load directives"
 fi
@@ -296,8 +296,8 @@ fi
 # ========================
 # RG-PASSIVE: ref-passive-mention
 # ========================
-PASSIVE_FAILS=""
-PASSIVE_DETAIL=""
+PASSIVE_FAILS_ARR=()
+PASSIVE_DETAIL_ARR=()
 while IFS= read -r ref; do
   [[ -z "$ref" ]] && continue
   if ! echo "$LINKED_REFS" | grep -qF "$ref"; then
@@ -310,19 +310,19 @@ while IFS= read -r ref; do
     while IFS= read -r pline; do
       [[ -z "$pline" ]] && continue
       if [[ -z "$GATE_LINE" ]] || [[ "$pline" -lt "$GATE_LINE" ]]; then
-        PASSIVE_FAILS="${PASSIVE_FAILS} ${ref}"
-        PASSIVE_DETAIL="${PASSIVE_DETAIL} ${ref}:L${pline}"
+        PASSIVE_FAILS_ARR+=("$ref")
+        PASSIVE_DETAIL_ARR+=("${ref}:L${pline}")
         break
       fi
     done <<< "$PASSIVES"
   fi
 done <<< "$ALL_REFS"
-PASSIVE_FAILS=$(echo "$PASSIVE_FAILS" | xargs)
-PASSIVE_DETAIL=$(echo "$PASSIVE_DETAIL" | xargs)
 
-if [[ -n "$PASSIVE_FAILS" ]]; then
-  PASSIVE_COUNT=$(echo "$PASSIVE_FAILS" | tr ' ' '\n' | sort -u | wc -l | tr -d ' ')
-  emit "ref-passive-mention" "false" "${PASSIVE_COUNT} reference(s) have passive mentions before their gate: ${PASSIVE_DETAIL}"
+if [[ ${#PASSIVE_FAILS_ARR[@]} -gt 0 ]]; then
+  PASSIVE_UNIQUE=$(printf '%s\n' "${PASSIVE_FAILS_ARR[@]}" | sort -u | wc -l | tr -d ' ')
+  PASSIVE_DETAIL=$(printf '%s ' "${PASSIVE_DETAIL_ARR[@]}")
+  PASSIVE_DETAIL="${PASSIVE_DETAIL% }"
+  emit "ref-passive-mention" "false" "${PASSIVE_UNIQUE} reference(s) have passive mentions before their gate: ${PASSIVE_DETAIL}"
 else
   emit "ref-passive-mention" "true" "No passive weak mentions found before gates"
 fi
@@ -330,7 +330,7 @@ fi
 # ========================
 # RG-ORPHAN: ref-orphan-file
 # ========================
-ORPHAN_FAILS=""
+ORPHAN_FAILS_ARR=()
 while IFS= read -r ref; do
   [[ -z "$ref" ]] && continue
   # Only check disk refs — orphans are files that exist but aren't mentioned
@@ -339,14 +339,15 @@ while IFS= read -r ref; do
   fi
   # Check if mentioned ANYWHERE in the full file (not just body)
   if ! echo "$FULL_FILE" | grep -qF "$ref"; then
-    ORPHAN_FAILS="${ORPHAN_FAILS} ${ref}"
+    ORPHAN_FAILS_ARR+=("$ref")
   fi
 done <<< "$ALL_REFS"
-ORPHAN_FAILS=$(echo "$ORPHAN_FAILS" | xargs)
 
-if [[ -n "$ORPHAN_FAILS" ]]; then
-  ORPHAN_COUNT=$(echo "$ORPHAN_FAILS" | wc -w | tr -d ' ')
-  emit "ref-orphan-file" "false" "${ORPHAN_COUNT} file(s) on disk not mentioned in SKILL.md: ${ORPHAN_FAILS}"
+ORPHAN_FAILS=""
+if [[ ${#ORPHAN_FAILS_ARR[@]} -gt 0 ]]; then
+  ORPHAN_FAILS=$(printf '%s ' "${ORPHAN_FAILS_ARR[@]}")
+  ORPHAN_FAILS="${ORPHAN_FAILS% }"
+  emit "ref-orphan-file" "false" "${#ORPHAN_FAILS_ARR[@]} file(s) on disk not mentioned in SKILL.md: ${ORPHAN_FAILS}"
 else
   emit "ref-orphan-file" "true" "All disk files are mentioned in SKILL.md"
 fi
@@ -354,7 +355,7 @@ fi
 # ========================
 # RG-DEAD: ref-dead-listing
 # ========================
-DEAD_FAILS=""
+DEAD_FAILS_ARR=()
 if [[ -n "$BUNDLED_START" ]]; then
   while IFS= read -r ref; do
     [[ -z "$ref" ]] && continue
@@ -365,7 +366,6 @@ if [[ -n "$BUNDLED_START" ]]; then
     if echo "$ORPHAN_FAILS" | grep -qF "$ref" 2>/dev/null; then
       continue
     fi
-    _escaped=$(echo "$ref" | sed 's/\./\\./g')
     # Check if ref appears in body OUTSIDE the bundled section
     HAS_OUTSIDE="false"
     while IFS= read -r _dl; do
@@ -375,17 +375,17 @@ if [[ -n "$BUNDLED_START" ]]; then
         HAS_OUTSIDE="true"
         break
       fi
-    done <<< "$(echo "$BODY_NUMBERED" | grep -iE "${_escaped}" || true)"
+    done <<< "$(echo "$BODY_NUMBERED" | grep -iF "$ref" || true)"
     if [[ "$HAS_OUTSIDE" == "false" ]]; then
-      DEAD_FAILS="${DEAD_FAILS} ${ref}"
+      DEAD_FAILS_ARR+=("$ref")
     fi
   done <<< "$ALL_REFS"
 fi
-DEAD_FAILS=$(echo "$DEAD_FAILS" | xargs)
 
-if [[ -n "$DEAD_FAILS" ]]; then
-  DEAD_COUNT=$(echo "$DEAD_FAILS" | wc -w | tr -d ' ')
-  emit "ref-dead-listing" "false" "${DEAD_COUNT} reference(s) only appear in bundled resources section, never used in workflow: ${DEAD_FAILS}"
+if [[ ${#DEAD_FAILS_ARR[@]} -gt 0 ]]; then
+  DEAD_FAILS=$(printf '%s ' "${DEAD_FAILS_ARR[@]}")
+  DEAD_FAILS="${DEAD_FAILS% }"
+  emit "ref-dead-listing" "false" "${#DEAD_FAILS_ARR[@]} reference(s) only appear in bundled resources section, never used in workflow: ${DEAD_FAILS}"
 else
   emit "ref-dead-listing" "true" "No dead bundled-only listings found"
 fi
@@ -393,8 +393,8 @@ fi
 # ========================
 # RG-ORDER: ref-use-before-gate
 # ========================
-ORDER_FAILS=""
-ORDER_DETAIL=""
+ORDER_FAILS_ARR=()
+ORDER_DETAIL_ARR=()
 while IFS= read -r ref; do
   [[ -z "$ref" ]] && continue
   if ! echo "$LINKED_REFS" | grep -qF "$ref"; then
@@ -410,17 +410,16 @@ while IFS= read -r ref; do
   if [[ -n "$USE_LINES" ]]; then
     FIRST_USE=$(echo "$USE_LINES" | head -1)
     if [[ -n "$FIRST_USE" ]] && [[ "$FIRST_USE" -lt "$GATE_LINE" ]]; then
-      ORDER_FAILS="${ORDER_FAILS} ${ref}"
-      ORDER_DETAIL="${ORDER_DETAIL} ${ref}:used-L${FIRST_USE}<gate-L${GATE_LINE}"
+      ORDER_FAILS_ARR+=("$ref")
+      ORDER_DETAIL_ARR+=("${ref}:used-L${FIRST_USE}<gate-L${GATE_LINE}")
     fi
   fi
 done <<< "$ALL_REFS"
-ORDER_FAILS=$(echo "$ORDER_FAILS" | xargs)
-ORDER_DETAIL=$(echo "$ORDER_DETAIL" | xargs)
 
-if [[ -n "$ORDER_FAILS" ]]; then
-  ORDER_COUNT=$(echo "$ORDER_FAILS" | wc -w | tr -d ' ')
-  emit "ref-use-before-gate" "false" "${ORDER_COUNT} reference(s) cited before their gate: ${ORDER_DETAIL}"
+if [[ ${#ORDER_FAILS_ARR[@]} -gt 0 ]]; then
+  ORDER_DETAIL=$(printf '%s ' "${ORDER_DETAIL_ARR[@]}")
+  ORDER_DETAIL="${ORDER_DETAIL% }"
+  emit "ref-use-before-gate" "false" "${#ORDER_FAILS_ARR[@]} reference(s) cited before their gate: ${ORDER_DETAIL}"
 else
   emit "ref-use-before-gate" "true" "All references are gated before first use"
 fi
@@ -428,7 +427,7 @@ fi
 # ========================
 # RG-PURPOSE: ref-gate-purpose
 # ========================
-PURPOSE_FAILS=""
+PURPOSE_FAILS_ARR=()
 while IFS= read -r ref; do
   [[ -z "$ref" ]] && continue
   if ! echo "$LINKED_REFS" | grep -qF "$ref"; then
@@ -439,7 +438,7 @@ while IFS= read -r ref; do
     continue
   fi
   # Get the full gate line content
-  GATE_CONTENT=$(echo "$BODY_NUMBERED" | grep -E "^${GATE_LINE}:" | head -1 | cut -d: -f2-)
+  GATE_CONTENT=$(echo "$BODY_NUMBERED" | awk -F: -v ln="$GATE_LINE" '$1 == ln { sub(/^[^:]*:/, ""); print; exit }')
   if [[ -z "$GATE_CONTENT" ]]; then
     continue
   fi
@@ -452,17 +451,17 @@ while IFS= read -r ref; do
   if [[ -z "$AFTER_REF" ]] || [[ "$AFTER_REF" =~ ^\.?$ ]]; then
     # Line ends with just the ref path (+ optional period) — check for
     # accepted trailing patterns within the full line
-    if echo "$GATE_CONTENT" | grep -qiE "(for |before |in full|when |, then |to understand|to learn)"; then
+    if echo "$GATE_CONTENT" | grep -qiE '(for |before |in full|when |, then |to understand|to learn)'; then
       continue
     fi
-    PURPOSE_FAILS="${PURPOSE_FAILS} ${ref}"
+    PURPOSE_FAILS_ARR+=("$ref")
   fi
 done <<< "$ALL_REFS"
-PURPOSE_FAILS=$(echo "$PURPOSE_FAILS" | xargs)
 
-if [[ -n "$PURPOSE_FAILS" ]]; then
-  PURPOSE_COUNT=$(echo "$PURPOSE_FAILS" | wc -w | tr -d ' ')
-  emit "ref-gate-purpose" "false" "${PURPOSE_COUNT} gate(s) lack purpose text (why to read): ${PURPOSE_FAILS}"
+if [[ ${#PURPOSE_FAILS_ARR[@]} -gt 0 ]]; then
+  PURPOSE_FAILS=$(printf '%s ' "${PURPOSE_FAILS_ARR[@]}")
+  PURPOSE_FAILS="${PURPOSE_FAILS% }"
+  emit "ref-gate-purpose" "false" "${#PURPOSE_FAILS_ARR[@]} gate(s) lack purpose text (why to read): ${PURPOSE_FAILS}"
 else
   emit "ref-gate-purpose" "true" "All read gates explain their purpose"
 fi
@@ -471,16 +470,14 @@ fi
 # RG-FLOW: ref-flow-coverage
 # ========================
 if [[ "$IS_MULTI_FLOW" == "true" ]] && [[ -n "$FLOW_SECTIONS" ]]; then
-  FLOW_FAILS=""
-  FLOW_DETAIL=""
+  FLOW_FAILS_ARR=()
+  FLOW_DETAIL_ARR=()
 
   while IFS= read -r ref; do
     [[ -z "$ref" ]] && continue
     if ! echo "$LINKED_REFS" | grep -qF "$ref"; then
       continue
     fi
-    _escaped=$(echo "$ref" | sed 's/\./\\./g')
-
     # Find which flow sections mention this ref (non-bundled)
     MENTIONED_FLOWS=""
     GATED_FLOWS=""
@@ -498,14 +495,14 @@ if [[ "$IS_MULTI_FLOW" == "true" ]] && [[ -n "$FLOW_SECTIONS" ]]; then
         lnum=$(echo "$line" | cut -d: -f1)
         content=$(echo "$line" | cut -d: -f2-)
         if [[ "$lnum" -ge "$SEC_START" ]] && [[ "$lnum" -lt "$SEC_END" ]]; then
-          if echo "$content" | grep -qiE "${_escaped}"; then
+          if echo "$content" | grep -qiF "$ref"; then
             HAS_MENTION="true"
-            if echo "$content" | grep -qiE "${GATE_PATTERN}.*${_escaped}"; then
+            if echo "$content" | grep -iE '(Read|Contents of|path to|Load)[[:space:]]' | grep -qiF "$ref"; then
               HAS_GATE="true"
             fi
           fi
         fi
-      done <<< "$(echo "$BODY_NUMBERED" | grep -iE "${_escaped}" || true)"
+      done <<< "$(echo "$BODY_NUMBERED" | grep -iF "$ref" || true)"
 
       if [[ "$HAS_MENTION" == "true" ]]; then
         MENTIONED_FLOWS="${MENTIONED_FLOWS}${SEC_NAME}"$'\n'
@@ -520,16 +517,15 @@ if [[ "$IS_MULTI_FLOW" == "true" ]] && [[ -n "$FLOW_SECTIONS" ]]; then
 
     # If ref is mentioned in multiple flows but not gated in all of them
     if [[ "$MENTION_COUNT" -ge 2 ]] && [[ "$GATE_COUNT_F" -lt "$MENTION_COUNT" ]]; then
-      FLOW_FAILS="${FLOW_FAILS} ${ref}"
-      FLOW_DETAIL="${FLOW_DETAIL} ${ref}:gated-in-${GATE_COUNT_F}-of-${MENTION_COUNT}-flows"
+      FLOW_FAILS_ARR+=("$ref")
+      FLOW_DETAIL_ARR+=("${ref}:gated-in-${GATE_COUNT_F}-of-${MENTION_COUNT}-flows")
     fi
   done <<< "$ALL_REFS"
-  FLOW_FAILS=$(echo "$FLOW_FAILS" | xargs)
-  FLOW_DETAIL=$(echo "$FLOW_DETAIL" | xargs)
 
-  if [[ -n "$FLOW_FAILS" ]]; then
-    FLOW_COUNT=$(echo "$FLOW_FAILS" | wc -w | tr -d ' ')
-    emit "ref-flow-coverage" "false" "${FLOW_COUNT} reference(s) not gated in all workflow flows: ${FLOW_DETAIL}"
+  if [[ ${#FLOW_FAILS_ARR[@]} -gt 0 ]]; then
+    FLOW_DETAIL=$(printf '%s ' "${FLOW_DETAIL_ARR[@]}")
+    FLOW_DETAIL="${FLOW_DETAIL% }"
+    emit "ref-flow-coverage" "false" "${#FLOW_FAILS_ARR[@]} reference(s) not gated in all workflow flows: ${FLOW_DETAIL}"
   else
     emit "ref-flow-coverage" "true" "All references gated in each workflow flow"
   fi
