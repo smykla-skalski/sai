@@ -129,6 +129,8 @@ If `--verbose`, display the returned security assessment in the chat.
 
 Read [references/prompt-structure.md](references/prompt-structure.md) in full.
 
+This phase requires ultrathink. Reason through competing constraints (template structure, security hardening, token budget, model-specific rules, anti-patterns) before composing the prompt.
+
 Build the prompt using the appropriate template variant:
 - `claude`: XML tags for data boundaries, Markdown for sections
 - `gpt`: Markdown headers, final reminders section for recency effect
@@ -164,7 +166,7 @@ When the task involves code changes (code-gen, refactoring, debugging, investiga
 - Keep functions short enough to fit within a single context window chunk (roughly under 100 lines).
 - Put the most important logic near the top of files. Agents front-load attention; content in the final quarter of a file is routinely missed.
 
-These preferences reflect the prompt author's workflow and are backed by empirical research in [references/code-for-agents.md](references/code-for-agents.md). The `--raw` flag produces a clean prompt without them.
+These preferences reflect the prompt author's workflow. Read [references/code-for-agents.md](references/code-for-agents.md) for the empirical research behind these rules. The `--raw` flag produces a clean prompt without them.
 
 Writing style rules (applied to the generated prompt text):
 - No sycophantic patterns, chatbot artifacts, or promotional language
