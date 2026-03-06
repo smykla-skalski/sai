@@ -240,8 +240,9 @@ run_structure() {
   # Per the Agent Skills spec, bundled resources (references/, scripts/, assets/,
   # examples/) belong alongside SKILL.md in the skill directory. If a reference
   # is not found there but exists at the plugin root, report it as misplaced.
-  local SKILL_BODY REFERENCED_FILES
+  local SKILL_BODY FULL_BODY REFERENCED_FILES
   SKILL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
+  FULL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD")
   REFERENCED_FILES=$(echo "$SKILL_BODY" \
     | grep -oE '(references/[a-zA-Z0-9._-]+|scripts/[a-zA-Z0-9._-]+|assets/[a-zA-Z0-9._-]+|examples/[a-zA-Z0-9._-]+)' \
     | grep -vE '/(\.\.\.|\.\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)' \
@@ -565,7 +566,7 @@ run_structure() {
       [[ -f "$ref_file" ]] || continue
       local BASENAME STRIPPED
       BASENAME=$(basename "$ref_file")
-      STRIPPED=$(sed '/^```/,/^```/d' "$ref_file" | sed 's/"[^"]*"//g')
+      STRIPPED=$(sed '/^```/,/^```/d' "$ref_file" | sed 's/"[^"]*"//g; s/`[^`]*`//g')
       if echo "$STRIPPED" | grep -qE '\(references/[a-zA-Z0-9._-]+\)' 2>/dev/null; then
         emit "refs-one-level" "false" "Reference '${BASENAME}' cross-references other reference files"
       else
@@ -677,6 +678,79 @@ run_structure() {
       done
     fi
   done
+
+  # --- reference files use markdown link format for progressive disclosure (I15) ---
+  # Claude Code recognizes markdown links [text](references/file.md) for on-demand
+  # loading. Inline code paths `references/file.md` bypass progressive disclosure.
+  # Only checks references/ and examples/ — scripts are invoked via
+  # ${CLAUDE_SKILL_DIR}, not markdown links.
+  # See: https://code.claude.com/docs/en/skills (Progressive Disclosure)
+  local INLINE_CODE_REFS
+  INLINE_CODE_REFS=$(echo "$SKILL_BODY" \
+    | grep -oE '`(references|examples)/[a-zA-Z0-9._-]+`' \
+    || true)
+
+  if [[ -n "$INLINE_CODE_REFS" ]]; then
+    local INLINE_COUNT FIRST_INLINE
+    INLINE_COUNT=$(echo "$INLINE_CODE_REFS" | wc -l | tr -d ' ')
+    FIRST_INLINE=$(echo "$INLINE_CODE_REFS" | head -1)
+    emit "ref-link-format" "false" "Found ${INLINE_COUNT} inline code reference(s) — use markdown links [file](path) for progressive disclosure — first: ${FIRST_INLINE}"
+  else
+    emit "ref-link-format" "true" "Reference file paths use markdown link format"
+  fi
+
+  # --- allowed-tools only lists tools referenced in the skill (I16) ---
+  # High-signal tools (Task, ToolSearch) grant significant permissions and should
+  # only be listed when the skill actually uses them. Task requires agent spawning;
+  # ToolSearch requires MCP/deferred tool loading.
+  local AT
+  AT=$(get_field "allowed-tools")
+  if [[ -n "$AT" ]]; then
+    local UNUSED_TOOLS=""
+
+    if echo "$AT" | grep -qw "Task"; then
+      if ! echo "$FULL_BODY" | grep -qE '\bTask\b' \
+        && ! echo "$FULL_BODY" | grep -qiE '\bagent\b|\bspawn\b|\bsubagent\b'; then
+        UNUSED_TOOLS="${UNUSED_TOOLS}Task "
+      fi
+    fi
+
+    if echo "$AT" | grep -qw "ToolSearch"; then
+      if ! echo "$FULL_BODY" | grep -qE '\bToolSearch\b' \
+        && ! echo "$FULL_BODY" | grep -qiE 'mcp__|select:'; then
+        UNUSED_TOOLS="${UNUSED_TOOLS}ToolSearch "
+      fi
+    fi
+
+    UNUSED_TOOLS=$(echo "$UNUSED_TOOLS" | xargs)
+    if [[ -n "$UNUSED_TOOLS" ]]; then
+      emit "allowed-tools-usage" "false" "allowed-tools lists unused tool(s): ${UNUSED_TOOLS} — remove to minimize granted permissions"
+    else
+      emit "allowed-tools-usage" "true" "No unused high-signal tools detected in allowed-tools"
+    fi
+  fi
+
+  # --- side-effect skills have disable-model-invocation guard (I17) ---
+  # Skills containing destructive or infrastructure-modifying commands should have
+  # disable-model-invocation: true to prevent accidental auto-invocation by the
+  # model. Without this guard, Claude may trigger the skill autonomously, creating
+  # clusters, deleting branches, or modifying staging areas without user intent.
+  local DMI
+  DMI=$(get_field "disable-model-invocation")
+  local SIDE_EFFECT_HITS
+  SIDE_EFFECT_HITS=$(echo "$FULL_BODY" \
+    | grep -ciE 'k3d (cluster|create|delete)|kind (create|delete) cluster|git reset|git branch -[dD]|git apply --cached|git clean -|git push --force|kubectl (delete|drain|cordon)|helm (uninstall|delete)|rm -rf' \
+    || true)
+
+  if [[ "$SIDE_EFFECT_HITS" -gt 0 ]]; then
+    if [[ "$DMI" == "true" ]]; then
+      emit "side-effect-guard" "true" "Side-effect skill has disable-model-invocation: true"
+    else
+      emit "side-effect-guard" "false" "Skill contains ${SIDE_EFFECT_HITS} side-effect pattern(s) (destructive/infrastructure commands) but lacks disable-model-invocation: true"
+    fi
+  else
+    emit "side-effect-guard" "true" "No side-effect patterns detected"
+  fi
 }
 
 # ========================
