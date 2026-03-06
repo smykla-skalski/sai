@@ -53,13 +53,7 @@ ${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test/
 
 ## Local kumactl setup
 
-```bash
-make --directory "${REPO_ROOT}" build/kumactl
-KUMACTL="$("$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_ROOT}")"
-"${KUMACTL}" version
-```
-
-Record `kumactl version` output in the run report.
+Use the kumactl build and version check from SKILL.md Phase 0. Record `kumactl version` output in the run report.
 
 For Mesh\* policy authoring, matching, and debug commands, follow
 `references/mesh-policies.md`.
