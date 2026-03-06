@@ -2,7 +2,7 @@
 name: humanize
 description: Identify and remove AI writing patterns to make text sound natural and human-written. Use when humanizing commit messages, PR descriptions, review comments, docs, changelogs, or release notes. Also for de-slopping text that sounds robotic, has AI vibes, or reads like ChatGPT output.
 argument-hint: "[file-path] [--score-only] [--dry-run]"
-allowed-tools: Read, Write, Edit, Grep, AskUserQuestion
+allowed-tools: AskUserQuestion, Edit, Grep, Read, Task, Write
 user-invocable: true
 ---
 
@@ -48,16 +48,39 @@ Composition principles for the rewrite phase (active voice, concrete language, o
 3. Read the target file. If the input is raw text (not a file path), store it for processing.
 4. Determine the text's intended tone and audience from context (technical docs, blog post, PR description, commit message, etc.).
 
-### Phase 2: Pattern scan
+### Phase 2: Pattern scan (spawned agent)
 
-Read [references/patterns.md](references/patterns.md) in full before starting this phase.
+Spawn a `general-purpose` agent to isolate the 280+ line pattern catalog from the main context. The agent reads the full catalog, scans the input, and returns only compact results.
 
-1. Scan the text for each of the 24 AI writing patterns.
-2. For each detected instance, record:
-   - Pattern ID and name
-   - The offending text (quote it)
-   - Severity: how obvious the AI tell is (faint, clear, glaring)
-3. If `--score-only`, skip to Phase 5 (Report).
+1. Use `TaskCreate` to spawn the agent with this prompt:
+
+   ```
+   You are a pattern-detection agent. Your job: scan the provided text against
+   every pattern in the catalog and return ONLY the hits.
+
+   CATALOG: Read the file at {absolute path to references/patterns.md}
+
+   TEXT TO SCAN:
+   <input>
+   {paste the full input text here}
+   </input>
+
+   INSTRUCTIONS:
+   1. Read the catalog file in full.
+   2. Check the input text against all 24 AI writing patterns.
+   3. For each match, record: pattern ID, pattern name, quoted offending text,
+      severity (faint | clear | glaring).
+   4. Return ONLY a fenced code block with one JSON array of hit objects:
+      [{"id": "P01", "name": "...", "quote": "...", "severity": "..."}]
+   5. If no patterns detected, return an empty array: []
+   6. Do NOT rewrite anything. Do NOT add commentary outside the code block.
+   ```
+
+   Set the agent description to `"humanize: pattern scan"`.
+
+2. Poll the agent with `TaskGet` until it completes.
+3. Parse the JSON array from the agent's output. This is the **hit list** - store it for Phase 4.
+4. If `--score-only`, skip to Phase 6 (Report) using the hit list directly.
 
 ### Phase 3: Voice assessment
 
@@ -74,7 +97,7 @@ Read [references/voice-guide.md](references/voice-guide.md) in full before start
 
 Read [references/elements-of-style.md](references/elements-of-style.md) in full before starting this phase.
 
-Fix every detected pattern regardless of severity. Even faint tells get fixed. Apply fixes in this order:
+Use the hit list from the Phase 2 agent to fix every detected pattern regardless of severity. Even faint tells get fixed. Apply fixes in this order:
 
 1. Strip communication artifacts: chatbot phrases, disclaimers, sycophantic openings.
 2. Fix content patterns: deflate significance claims, replace vague attributions with specifics, remove formulaic sections.

@@ -2,7 +2,7 @@
 name: ai-daily-digest
 description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
 argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion]"
-allowed-tools: WebSearch, WebFetch, Read, Write, Bash, Task, Glob, ToolSearch
+allowed-tools: Bash, Glob, Read, Task, ToolSearch, WebFetch, WebSearch, Write
 user-invocable: true
 ---
 
@@ -95,7 +95,13 @@ Example:
 
 ### Phases 2-15: Research
 
-**CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full.** Execute every phase listed below using the search patterns, collect lists, and quality signals from that reference. Each phase has a dedicated section in the reference. Do not skip phases — missing a phase means missing an entire digest section.
+**CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full.**
+
+Spawn a `general-purpose` research agent for each phase (or batch of independent phases). Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md). Phases 2-5 are independent - spawn them in parallel. Subsequent phases can be batched as appropriate.
+
+Each agent executes all web searches for its phase and returns ONLY a list of story items: title, URL, 1-line summary, and story_id. No analysis, no ranking - that happens in Phase 16.
+
+Collect results from all research agents before proceeding to Phase 16. Do not skip phases - missing a phase means missing an entire digest section.
 
 | Phase | Topic | Skip unless focus includes |
 |-------|-------|---------------------------|

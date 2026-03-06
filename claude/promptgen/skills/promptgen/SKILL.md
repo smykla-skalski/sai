@@ -2,7 +2,7 @@
 name: promptgen
 description: Turn rough instructions into optimized, evidence-based AI prompts. For system prompts, task prompts, agent instructions, or any scenario where a well-structured prompt is needed. Copies to clipboard.
 argument-hint: "<prompt-description> [--for claude|gpt|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]"
-allowed-tools: Read, Bash, Glob, Grep, AskUserQuestion
+allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, Task
 user-invocable: true
 ---
 
@@ -71,11 +71,14 @@ Skip entirely if `--research` was not passed.
 
 **`--research deep`**: Perform full codebase investigation relevant to the prompt description. Read source files, trace call paths, identify existing patterns, note file paths and function names the generated prompt should reference. Scope the investigation to what the target agent will need — don't read unrelated modules.
 
-### Phase 2: Task analysis
+### Phase 2: Task analysis (spawned agent)
 
-Read [references/prompt-principles.md](references/prompt-principles.md) in full.
+Spawn a `general-purpose` analysis agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to [references/prompt-principles.md](references/prompt-principles.md).
 
-1. Determine the task category from the instructions:
+Agent instructions:
+
+1. Read the prompt-principles.md reference file at the provided path.
+2. Determine the task category from the prompt description:
    - docs - documentation generation
    - investigation - research, analysis, debugging
    - refactoring - code restructuring
@@ -85,35 +88,42 @@ Read [references/prompt-principles.md](references/prompt-principles.md) in full.
    - testing - test creation, QA
    - debugging - bug identification, root cause analysis
    - general - anything else
-
-2. Detect whether this is a system prompt or task prompt:
+3. Detect whether this is a system prompt or task prompt:
    - System prompt: defines an agent's persistent identity, constraints, and behavior
    - Task prompt: one-shot instructions for a specific task
+4. Identify what tools or capabilities the target agent needs based on the description.
+5. Note any special considerations from prompt-principles.md that apply to this task category.
+6. If the task category is code-gen, refactoring, debugging, testing, or investigation involving code, also read [references/code-for-agents.md](references/code-for-agents.md) for RAG-based code agents or chunking-specific prompts. Otherwise skip it.
 
-3. Identify what tools or capabilities the agent needs based on the instructions.
+The agent returns ONLY a structured result with: task category, prompt type (system/task), tools needed, special considerations. Nothing else.
 
-4. If the task category is code-gen, refactoring, debugging, testing, or investigation involving code, the relevant empirical rules are already baked into the opinionated formatting preferences in Phase 4 - no additional read needed. For RAG-based code agents or chunking-specific prompts, read [references/code-for-agents.md](references/code-for-agents.md) for the additional section on code chunking.
+Store these classification results for use in Phase 4.
 
-5. If `--verbose`, note the category, prompt type, and reasoning.
+If `--verbose`, display the returned classification in the chat.
 
-### Phase 3: Security assessment
+### Phase 3: Security assessment (spawned agent)
 
-Read [references/security-patterns.md](references/security-patterns.md) in full.
+Spawn a `general-purpose` security agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to [references/security-patterns.md](references/security-patterns.md).
 
-1. Check whether the prompt's use case involves any of the lethal trifecta components:
+Agent instructions:
+
+1. Read the security-patterns.md reference file at the provided path.
+2. Check whether the prompt's use case involves any of the lethal trifecta components:
    - Access to private data
    - Exposure to untrusted content
    - Ability to communicate externally
-
-2. If the use case involves untrusted input, plan to include appropriate defensive patterns:
+3. If the use case involves untrusted input, identify which defensive patterns apply:
    - Sandwich defense (reminders after input)
    - Data labeling (mark untrusted content as DATA)
    - Role anchoring (constraints on identity changes)
    - Tool safety rules (if tools are involved)
+4. If the use case is internal-only with no untrusted input path, report that no security hardening is needed.
 
-3. If the use case is internal-only with no untrusted input path, skip security hardening. Don't add security overhead that wastes tokens.
+The agent returns ONLY: threat assessment (yes/no), list of applicable security patterns to include. Nothing else.
 
-4. If `--verbose`, explain the security assessment and which patterns apply.
+Store the security results for use in Phase 4 when generating the prompt. If threat assessment is "no", skip security hardening in Phase 4 - don't add security overhead that wastes tokens.
+
+If `--verbose`, display the returned security assessment in the chat.
 
 ### Phase 4: Prompt generation
 

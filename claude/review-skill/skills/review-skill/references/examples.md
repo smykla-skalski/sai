@@ -214,6 +214,48 @@ Use the cluster-lifecycle.sh invocation from SKILL.md Phase 2.
 
 ---
 
+## Fork candidate (context: fork)
+
+**Good** — self-contained multi-phase skill with structured output, isolation benefits:
+
+```yaml
+---
+name: ai-daily-digest
+context: fork
+agent: Explore
+allowed-tools: WebSearch, WebFetch, Read, Write, Bash
+---
+```
+
+Signals: 5+ phases, structured output template, WebSearch data gathering, self-contained $ARGUMENTS input.
+
+**Not a candidate** — conversation-dependent skill:
+
+```yaml
+---
+name: promptgen
+# No context: fork — skill reads conversation history
+allowed-tools: Read, Write, Task
+---
+```
+
+Blocked: body references "conversation history" — fork subagents have no conversation history.
+
+**Not a candidate** — side-effect git tool:
+
+```yaml
+---
+name: stage-hunk
+disable-model-invocation: true
+# No context: fork — user needs real-time visibility during staging
+allowed-tools: Bash, AskUserQuestion
+---
+```
+
+Counter-signal N1 reduces effective score below threshold. Side-effect skills need real-time user control.
+
+---
+
 ## Grading Style
 
 **Good** — imperative workflow with concrete actions:

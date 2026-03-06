@@ -2,7 +2,7 @@
 name: reset-main
 description: Reset current branch to remote's default branch and unset upstream tracking. Use after PR merge to sync local branch with main, or when resetting a feature branch to start fresh.
 argument-hint: "[remote] [--force|-f]"
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: AskUserQuestion, Bash
 user-invocable: true
 disable-model-invocation: true
 ---

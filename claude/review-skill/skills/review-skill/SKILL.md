@@ -2,7 +2,7 @@
 name: review-skill
 description: Review and fix Claude Code skill definitions (SKILL.md) using a tiered binary checklist based on the Agent Skills specification, Anthropic best practices, and community guidelines. Use when auditing, improving, or validating any skill before publishing.
 argument-hint: "[path/to/skill] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob
+allowed-tools: Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
 ---
 
@@ -48,18 +48,26 @@ Run the validation script and collect its JSON output:
 "${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET_DIR"
 ```
 
-`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts.
+`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts. The script also calls `${CLAUDE_SKILL_DIR}/scripts/check-fork-candidate.sh` internally for the P9 fork candidate analysis.
 
 ### Phase 3: Manual Evaluation
 
-Read [references/checklist.md](references/checklist.md) in full before starting this phase.
+Spawn a `general-purpose` evaluation agent with these inputs:
 
-For each criterion not already covered by the automated scripts, evaluate as binary pass/fail:
+- Target skill directory path
+- Path to [references/checklist.md](references/checklist.md)
+- The `--thorough` flag value (true/false)
+- List of check IDs already covered by automated scripts (from Phase 2)
 
-1. Read the check description and source
-2. Examine the relevant section of the target SKILL.md
-3. Record the result with specific evidence (quote the line or describe the absence)
-4. If `--thorough`, also evaluate Polish tier checks
+The agent reads the checklist, the target SKILL.md, and all bundled resources in the target skill directory. It evaluates each criterion not covered by automated checks as binary pass/fail with evidence.
+
+The agent returns ONLY structured results - one entry per criterion:
+
+```text
+<id>: <PASS|FAIL> — <evidence quote or absence description>
+```
+
+Do not duplicate checklist evaluation in the main context. Use the agent's returned results directly in Phase 4.
 
 ### Phase 4: Synthesize Verdict
 
@@ -119,9 +127,14 @@ If `--score-only` was NOT passed:
 
 ### Phase 7: Final Report
 
-1. Re-run automated checks against the fixed skill
-2. Re-evaluate manual checks
-3. Output the post-fix report:
+Spawn a `general-purpose` verification agent with these inputs:
+
+- Target skill directory path (with fixes applied)
+- Path to validate.sh script: `${CLAUDE_SKILL_DIR}/scripts/validate.sh`
+- Path to [references/checklist.md](references/checklist.md)
+- The `--thorough` flag value
+
+The agent re-runs validate.sh AND re-evaluates all manual checks against the fixed skill. It returns ONLY the post-fix report:
 
 ```text
 ## Post-Fix Review
@@ -141,7 +154,7 @@ If `--score-only` was NOT passed:
 ...
 ```
 
-4. If verdict is still not PASS, iterate: fix remaining issues and re-evaluate
+Display the agent's returned report. If verdict is still not PASS, iterate: fix remaining issues in the main context and spawn a new verification agent.
 
 ## Good vs Bad Examples
 
