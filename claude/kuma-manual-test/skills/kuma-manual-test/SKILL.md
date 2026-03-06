@@ -8,6 +8,50 @@ argument-hint: "[suite-path] [--profile single-zone|multi-zone] [--repo /path/to
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
 disable-model-invocation: true
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard-bash.sh"
+    - matcher: "Write"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard-write.sh"
+  PostToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/verify-bash.sh"
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/audit.sh"
+    - matcher: "Write"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/verify-write.sh"
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/audit.sh"
+  PostToolUseFailure:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/enrich-failure.sh"
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/audit.sh"
+  SubagentStart:
+    - matcher: "general-purpose"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/context-preflight.sh"
+  SubagentStop:
+    - matcher: "general-purpose"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/validate-preflight.sh"
+  Stop:
+    - hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard-incomplete-stop.sh"
 ---
 
 # Kuma manual test
@@ -83,7 +127,7 @@ KUMACTL="$("${CLAUDE_SKILL_DIR}/scripts/find-local-kumactl.sh" --repo-root "${RE
 
 ```bash
 RUNS_DIR="${DATA_DIR}/runs"
-RUN_ID="${RUN_ID:-<timestamp from Preprocessed context>-manual}"
+RUN_ID="${RUN_ID:-<timestamp from Preprocessed context>-manual}"  # override with --run-id flag
 SESSION_ID="<session ID from Preprocessed context, or 'standalone' if empty/unreplaced>"
 "${CLAUDE_SKILL_DIR}/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" --session-id "${SESSION_ID}" "${RUN_ID}"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
@@ -107,11 +151,13 @@ Fill `run-metadata.yaml` with profile, feature scope, and kumactl version before
 
 Read [references/cluster-setup.md](references/cluster-setup.md) before starting this phase.
 
+Select the cluster topology based on the `--profile` flag (default: `single-zone`):
+
 ```bash
-# Single-zone:
+# Single-zone (--profile single-zone):
 "${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 
-# Or multi-zone:
+# Multi-zone (--profile multi-zone):
 "${CLAUDE_SKILL_DIR}/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" global-two-zones-up kuma-1 kuma-2 kuma-3 zone-1 zone-2
 ```
 

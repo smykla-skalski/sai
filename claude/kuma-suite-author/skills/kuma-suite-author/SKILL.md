@@ -5,9 +5,49 @@ description: >-
   Produces ready-to-run suites with manifests, validation steps, and expected outcomes.
   Use when creating a new test suite for a Kuma feature, converting a PR into a test plan,
   or building regression tests from source code.
-argument-hint: "<feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH]"
+argument-hint: "<feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH] [--suite-name NAME]"
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard-bash.sh"
+    - matcher: "Write"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard-write.sh"
+  PostToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/audit.sh"
+    - matcher: "Write"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/verify-write.sh"
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/audit.sh"
+  PostToolUseFailure:
+    - matcher: "Bash"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/audit.sh"
+  SubagentStart:
+    - matcher: "Explore"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/context-code-reader.sh"
+  SubagentStop:
+    - matcher: "Explore"
+      hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/validate-code-reader.sh"
+  Stop:
+    - hooks:
+        - type: "command"
+          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard-incomplete-stop.sh"
 ---
 
 # Kuma suite author
@@ -36,7 +76,7 @@ Parse from `$ARGUMENTS`:
 
 The session ID tracks which Claude Code session generated the suite. If the session ID is empty or contains literal `${`, use `standalone` instead.
 
-## Workflow - generate mode (default)
+## Workflow - generate mode (default, `--mode generate`)
 
 ### Step 1: Resolve paths
 
@@ -74,9 +114,9 @@ If user confirms, continue to step 3.
 
 Identify what code to read based on the input:
 
-- **From feature name**: find policy dir in `pkg/plugins/policies/`, API spec, plugin.go, tests.
-- **From PR URL**: run `gh pr diff <number> --repo kumahq/kuma` to identify changed files.
-- **From branch**: run `git diff master...<branch> --name-only` to identify changed files.
+- **From feature name** (default): find policy dir in `pkg/plugins/policies/`, API spec, plugin.go, tests.
+- **From PR URL** (`--from-pr`): run `gh pr diff <number> --repo kumahq/kuma` to identify changed files.
+- **From branch** (`--from-branch`): run `git diff master...<branch> --name-only` to identify changed files.
 
 Handle ambiguity with AskUserQuestion:
 
@@ -203,6 +243,8 @@ Reject generic names like `test-suite-1`, `full`, `feature-branch`, `my-test`. T
 SUITE_NAME="${SUITE_NAME:-<derived-per-rules-above>}"
 SUITE_DIR="${DATA_DIR}/suites/${SUITE_NAME}"
 mkdir -p "${SUITE_DIR}/baseline" "${SUITE_DIR}/groups"
+# Write .current-suite pointer for stop hook (S8)
+echo "${SUITE_NAME}" > "${DATA_DIR}/suites/.current-suite"
 ```
 
 Write each part separately:
