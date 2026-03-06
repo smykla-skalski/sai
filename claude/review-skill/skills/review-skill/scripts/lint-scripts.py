@@ -577,6 +577,17 @@ def check_jq_injection(path: str, content: str, lines: List[str]) -> List[Findin
             # Strip array expansions, then check for remaining ${VAR}
             cleaned = re.sub(r"\$\{\w+\[@\][^}]*\}", "", line)
             if "${" in cleaned and "--arg" not in line:
+                # Check if ${} only appears before the jq command (piped data)
+                # e.g., printf '%s' "${input}" | jq -r '.field' is safe
+                jq_m = re.search(r"\bjq\b", cleaned)
+                if jq_m:
+                    jq_portion = cleaned[jq_m.start():]
+                    # Strip heredoc input: <<< "${VAR}"
+                    jq_portion = re.sub(r"<<<\s*\"[^\"]*\"", "", jq_portion)
+                    jq_portion = re.sub(r"<<<\s*'[^']*'", "", jq_portion)
+                    jq_portion = re.sub(r"<<<\s*\S+", "", jq_portion)
+                    if "${" not in jq_portion:
+                        continue
                 findings.append(Finding(
                     path, i + 1, "medium", "S17",
                     "Variable interpolated in jq invocation - enables jq injection",

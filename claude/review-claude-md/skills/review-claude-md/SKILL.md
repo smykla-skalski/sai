@@ -78,7 +78,8 @@ For each criterion not already covered by automated scripts, evaluate as binary 
 1. Read the check description and source reference
 2. Examine the relevant section of the CLAUDE.md
 3. Record the result with specific evidence (quote the line or describe the absence)
-4. If `--thorough`, also evaluate Polish tier checks
+4. If `--verbose`, show chain-of-thought reasoning for each check
+5. If `--thorough`, also evaluate Polish tier checks
 
 Read [references/sources.md](references/sources.md) for authoritative source URLs when citing findings.
 
@@ -97,7 +98,7 @@ Read [references/output-format.md](references/output-format.md) for the verdict 
 
 ### Phase 7: Fix
 
-If `--score-only` was NOT passed:
+If `--score-only` was NOT passed (`--fix` mode, the default):
 
 1. Address every failing Critical and Important check
 2. Apply these principles when rewriting:

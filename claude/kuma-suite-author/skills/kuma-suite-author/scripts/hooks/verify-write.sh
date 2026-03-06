@@ -30,7 +30,7 @@ fi
 if [[ "${file_path}" == */suites/*/suite.md ]]; then
   missing_sections=()
   for section in "Baseline" "Groups" "Execution contract" "Metadata"; do
-    if ! grep -qi "${section}" "${file_path}" 2>/dev/null; then
+    if ! grep -qiF "${section}" "${file_path}" 2>/dev/null; then
       missing_sections+=("${section}")
     fi
   done

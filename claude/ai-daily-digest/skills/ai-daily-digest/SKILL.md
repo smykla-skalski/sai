@@ -93,7 +93,7 @@ Example:
 
 1. Read [references/sources.md](references/sources.md) for source URLs and tiers
 2. Read [references/output-template.md](references/output-template.md) for digest format
-3. Parse arguments for focus area and `--notion-page-id`
+3. Parse arguments for `--focus` area and `--notion-page-id`
 4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode). Otherwise check in order: `--notion-page-id` arg → Notion page ID from preprocessed context → prompt user interactively. Store resolved value as `notion_page_id` for Phase 18. If the preprocessed value is empty and user declines to provide an ID, skip Notion publishing (archive-only mode).
 5. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
 6. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context

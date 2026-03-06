@@ -10,7 +10,7 @@ description: >-
   for scripted and non-TTY environments. Also for partial staging,
   stage specific hunks, or selective git add by pattern, file,
   or line range.
-argument-hint: "[--list [--split]] [--split H3] [--hunk H1,H3.1,H5:5-10] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]"
+argument-hint: "[--list [--split]] [--split H3] [--hunk H1,H3.1,H5:5-10] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--verify] [--dry-run]"
 allowed-tools: AskUserQuestion, Bash
 user-invocable: true
 disable-model-invocation: true
