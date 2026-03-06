@@ -11,7 +11,7 @@ description: >-
   stage specific hunks, or selective git add by pattern, file,
   or line range.
 argument-hint: "[--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]"
-allowed-tools: Bash, AskUserQuestion
+allowed-tools: AskUserQuestion, Bash
 user-invocable: true
 disable-model-invocation: true
 ---

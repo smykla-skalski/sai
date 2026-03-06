@@ -4,7 +4,7 @@ description: >-
   Generate test suites for kuma-manual-test by reading Kuma source code.
   Produces ready-to-run suites with manifests, validation steps, and expected outcomes.
 argument-hint: "<feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
 ---
 
@@ -72,32 +72,42 @@ Handle ambiguity with AskUserQuestion:
 - Feature type unclear (policy vs non-policy) - ask the user.
 - PR diff touches files outside the expected scope - ask whether to include them.
 
-### Step 4: Read code
+### Step 4: Read code (spawned agent)
 
-Read [references/code-reading-guide.md](references/code-reading-guide.md) for where to look in the Kuma repo.
-Read [references/variant-detection.md](references/variant-detection.md) for variant signal patterns.
+Spawn an `Explore` agent to read the Kuma source code. The agent's intermediate file reads (Go source, test fixtures, golden files) stay isolated from the main context.
 
-For each identified file, read and extract two kinds of data:
+Pass the agent:
 
-**Group material** (feeds G1-G7):
+- `REPO_ROOT` path
+- Feature name and scoped file list from step 3
+- Contents of [references/code-reading-guide.md](references/code-reading-guide.md) (where to find policy specs, xDS generators, tests)
+- Contents of [references/variant-detection.md](references/variant-detection.md) (variant signal catalog and strength classification)
 
-- **Policy API spec** (`api/v1alpha1/<policy>.go`): struct fields, markers, validation constraints.
-- **Plugin implementation** (`plugin/v1alpha1/plugin.go`): xDS generation logic, which resource types are affected.
-- **Existing tests** (`plugin/v1alpha1/testdata/`): golden files show expected Envoy configs.
-- **Validator** (`api/v1alpha1/validator.go`): what inputs are rejected and why.
-- **Non-policy features**: read relevant `pkg/` code based on changed files list.
+Instruct the agent to read each identified file and return ONLY a structured summary with two sections:
 
-**Variant signals** (patterns from variant-detection.md):
+**Group material** (one entry per applicable group G1-G7):
 
-- S1: KDS markers, resource registration for deployment topology
-- S2: Enum/string fields, switch/case blocks for feature modes
-- S3: Multiple backend types, backendRef kinds for backend variants
-- S4: Conditional Apply() branches for feature flags
-- S5: targetRef section, producer/consumer markers for policy roles
-- S6: HTTP/TCP/gRPC branching for protocol variants
-- S7: deprecated.go, old field names for backward compat paths
+- G1 CRUD: struct fields, markers, validation constraints from API spec
+- G2 Validation: rejection paths from validator.go
+- G3 Runtime config: xDS resource types and Apply() logic from plugin.go
+- G4 E2E flow: expected Envoy configs from golden files
+- G5 Edge cases: nil handling, boundary values, dangling refs
+- G6 Multi-zone: KDS markers, sync config presence
+- G7 Backward compat: deprecated fields, legacy paths
 
-Collect each signal with its source file, evidence, and estimated strength (strong/moderate/weak).
+For each group entry include: one-line description, source file path, and whether enough material was found to generate the group (yes/no).
+
+**Variant signals** (one entry per detected signal):
+
+- id: S1-S7
+- type: deployment-topology / feature-mode / backend-variant / feature-flag / policy-role / protocol-variant / backward-compat
+- source: file path and line range
+- evidence: one-line description of what was found
+- strength: strong / moderate / weak
+
+The agent must NOT return raw file contents, full code blocks, or golden file text. Only the structured summary above.
+
+Wait for the agent to return before proceeding to step 5.
 
 ### Step 5: Detect and confirm variants
 

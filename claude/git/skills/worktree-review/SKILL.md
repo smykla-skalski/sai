@@ -2,7 +2,7 @@
 name: worktree-review
 description: Validate git worktree setup including symlinks, git excludes, and tracking configuration. Use after creating worktrees, when debugging worktree issues, or when auditing existing worktrees. Prevents broken symlinks and git tracking problems.
 argument-hint: "[worktree-path]"
-allowed-tools: Bash, Read, Glob
+allowed-tools: Bash, Glob, Read
 user-invocable: true
 ---
 

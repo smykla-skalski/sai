@@ -2,7 +2,7 @@
 name: gh-review-comments
 description: List, reply to, resolve, and create GitHub PR review comment threads using gh CLI scripts. Use when managing code review feedback, replying to reviewer remarks, resolving review conversations, creating reviews with line-level comments, or bulk-processing threads by author.
 argument-hint: "<owner/repo> <pr-number> [--author <login>] [--reply <message>] [--resolve] [--unresolve] [--create-review] [--thread-id <id>] [--unresolved-only]"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Bash, Glob, Grep, Read, Task
 user-invocable: true
 ---
 
@@ -164,16 +164,26 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
 
 ### Phase 4: Verify and Summarize
 
-**For reply/resolve/unresolve actions:** re-run `"${CLAUDE_SKILL_DIR}/scripts/list-threads.sh"` to confirm the operations took effect. Compare before/after thread states and flag any threads that failed to change.
+**For reply/resolve/unresolve actions:** spawn a `general-purpose` verification agent via `Task`. Pass it:
 
-**For create-review:** do NOT re-list threads to verify. The `create-review.sh` script output is the sole source of truth. If it exited 0 and returned a `comment_count` and `html_url`, the review was created with all comments attached. Do not second-guess this result.
+- The PR identifier (`owner/repo#number`)
+- The action performed (`reply`, `resolve`, `unresolve`, or combination)
+- The before-state thread data captured in Phase 2 (thread IDs with their resolution status and reply counts)
+- The path to the list-threads script: `"${CLAUDE_SKILL_DIR}/scripts/list-threads.sh"`
 
-Report:
+The agent must:
+
+1. Re-run `list-threads.sh` with the same owner, repo, PR number, and filters used in Phase 2
+2. Compare before/after state for each acted-on thread (resolution status for resolve/unresolve, reply count for reply)
+3. Return ONLY: verification result (`success`, `partial`, or `failed`), count of successful operations, count of failed operations, and a list of any failed thread IDs with the reason
+
+Display the agent's verification summary to the user along with:
 
 - Total threads matched/acted on
-- Actions taken (replies sent, threads resolved/unresolved, review created)
-- Verification result (all succeeded vs. failures with details)
+- Actions taken (replies sent, threads resolved/unresolved)
 - Link to the PR on GitHub
+
+**For create-review:** do NOT spawn a verification agent. Do NOT re-list threads. The `create-review.sh` script output is the sole source of truth. If it exited 0 and returned a `comment_count` and `html_url`, the review was created with all comments attached. Do not second-guess this result. Report the review URL and comment count directly.
 
 ## Error Handling
 

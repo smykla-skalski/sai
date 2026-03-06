@@ -5,7 +5,7 @@ description: >-
   Use when running manual verification, testing policy changes on real clusters, validating xDS
   config generation, or doing k3d manual test runs for any Kuma feature area.
 argument-hint: "[suite-path] [--profile single-zone|multi-zone] [--repo /path/to/kuma] [--run-id ID] [--resume RUN_ID]"
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
 disable-model-invocation: true
 ---
@@ -109,21 +109,26 @@ kubectl --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
 
 **Gate**: `kubectl get pods -n kuma-system` shows all pods Running/Ready.
 
-### Phase 3: Preflight
+### Phase 3: Preflight (spawned agent)
 
-```bash
-"${CLAUDE_SKILL_DIR}/scripts/preflight.sh" \
-  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
-  --run-dir "${RUN_DIR}" \
-  --repo-root "${REPO_ROOT}"
+Spawn a `general-purpose` preflight agent to run cluster readiness checks and capture initial state. This isolates verbose cluster introspection (kubectl describe, logs, events) from the main context.
 
-"${CLAUDE_SKILL_DIR}/scripts/capture-state.sh" \
-  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
-  --run-dir "${RUN_DIR}" \
-  --label "preflight"
-```
+Create the agent with a prompt that includes:
 
-Do not start tests until preflight exits 0.
+- Kubeconfig path: `${HOME}/.kube/kind-kuma-1-config`
+- Run directory: `${RUN_DIR}`
+- Repo root: `${REPO_ROOT}`
+- Preflight script path: `${CLAUDE_SKILL_DIR}/scripts/preflight.sh`
+- Capture script path: `${CLAUDE_SKILL_DIR}/scripts/capture-state.sh`
+- Reference files to read: [references/cluster-setup.md](references/cluster-setup.md) and [references/validation.md](references/validation.md)
+
+The agent must:
+
+1. Run `preflight.sh` with the kubeconfig, run-dir, and repo-root flags.
+2. Run `capture-state.sh` with kubeconfig, run-dir, and label `preflight`.
+3. Return ONLY: pass/fail result, state capture directory path, and any warnings or blockers.
+
+Poll the agent task until complete. Do not start tests until the agent reports pass.
 
 ### Phase 4: Execute tests
 

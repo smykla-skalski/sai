@@ -2,7 +2,7 @@
 name: review-claude-md
 description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
 argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: WebSearch, WebFetch, Read, Write, Edit, Bash, Grep, Glob
+allowed-tools: Bash, Edit, Glob, Grep, Read, Task, WebFetch, WebSearch, Write
 user-invocable: true
 ---
 
@@ -40,27 +40,34 @@ Polish checks                   → informational (with --thorough)
 
 ### Phase 2: Codebase Context
 
-Read the codebase to understand what the CLAUDE.md SHOULD contain:
+Spawn an `Explore` agent to scan the target repository. Pass the agent: the repo root path.
 
-- **Build system**: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml
-- **Test config**: jest.config, pytest.ini, vitest.config, test directories
-- **Lint/format**: .eslintrc, biome.json, .prettierrc, rustfmt.toml
-- **CI/CD**: .github/workflows/, .gitlab-ci.yml
-- **README.md**: Check for content that might be duplicated
-- **Directory structure**: Top-level layout and component relationships
-- **Git conventions**: `git log --oneline -20` for commit message patterns
-- **Existing .claude/rules/**: Already modularized content
+The agent reads: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml, CI configs (.github/workflows/, .gitlab-ci.yml), README.md, test configs (jest.config, pytest.ini, vitest.config), lint configs (.eslintrc, biome.json, .prettierrc, rustfmt.toml), top-level directory structure, `git log --oneline -20`, and `.claude/rules/` contents.
+
+The agent returns ONLY a structured summary with these fields:
+
+- Build system and commands found
+- Test framework and test commands
+- Lint/format tool and commands
+- CI provider and workflow names
+- Existing `.claude/rules/` files and their topics
+- Commit message convention observed
+- README sections that overlap with CLAUDE.md content
+
+Use this summary to inform Phase 3-4 checks. Do not re-read any files the agent already summarized.
 
 ### Phase 3: Automated Checks
 
-Run the deterministic validation scripts and collect their JSON output:
+Spawn a `general-purpose` agent to run validation scripts. Pass the agent: target CLAUDE.md path, `$TARGET_DIR`, and paths to both scripts:
 
 ```bash
 "${CLAUDE_SKILL_DIR}/scripts/validate-claudemd.sh" "$TARGET_DIR"
 "${CLAUDE_SKILL_DIR}/scripts/validate-commands.sh" "$TARGET_DIR"
 ```
 
-`$TARGET_DIR` is the repo directory being reviewed. Parse each JSON line — `pass: false` results map to the corresponding checklist criterion.
+The agent runs both scripts, parses the JSON output, and returns ONLY an array of `{check, pass, detail}` results. Each `pass: false` result maps to the corresponding checklist criterion.
+
+Use these results directly in Phase 5 (Synthesize Verdict). Do not re-run the scripts in the main context.
 
 ### Phase 4: Manual Evaluation
 
@@ -106,10 +113,17 @@ If `--score-only` was NOT passed:
 
 ### Phase 8: Final Report
 
-1. Re-run automated checks against the fixed CLAUDE.md
-2. Re-evaluate manual checks
-3. Output the post-fix report per [references/output-format.md](references/output-format.md)
-4. If verdict is still not PASS, iterate: fix remaining issues and re-evaluate
+Spawn a `general-purpose` agent to re-evaluate the fixed CLAUDE.md. Pass the agent: paths to the fixed CLAUDE.md, both validation scripts, `$TARGET_DIR`, the Phase 2 codebase summary, and a link to [references/rubric.md](references/rubric.md).
+
+The agent:
+
+1. Re-runs both automated check scripts and parses JSON output
+2. Re-evaluates manual checks from [references/rubric.md](references/rubric.md)
+3. Applies the verdict logic and produces a post-fix report per [references/output-format.md](references/output-format.md)
+
+The agent returns ONLY the post-fix verdict report.
+
+If the verdict is still not PASS, iterate in the main context: fix remaining issues using Edit, then spawn a new evaluation agent.
 
 ## Good vs Bad Examples
 

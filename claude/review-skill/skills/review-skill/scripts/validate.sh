@@ -508,10 +508,12 @@ run_structure() {
     fi
   fi
 
-  # --- consistent phase numbering between SKILL.md and references (I15) ---
+  # --- consistent phase numbering between SKILL.md and references (I14) ---
   # "Use consistent terminology" — Anthropic Best Practices.
   # If SKILL.md and a reference both define numbered phases via headers,
-  # the phase numbers must match.
+  # overlapping phase numbers must be consistent. Disjoint (complementary)
+  # ranges are valid — e.g., SKILL.md covers phases [1,16-20] while a
+  # reference covers phases [2-15].
   # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
   if [[ -d "${SKILL_DIR}/references" ]]; then
     local SKILL_PHASES
@@ -537,13 +539,20 @@ run_structure() {
         REF_PHASE_COUNT=$(echo "$REF_PHASES" | { grep -c '[0-9]' || true; })
 
         if [[ "$REF_PHASE_COUNT" -ge 2 ]]; then
-          if [[ "$SKILL_PHASES" != "$REF_PHASES" ]]; then
+          # Only fail on overlapping mismatches. Disjoint sets are valid
+          # (reference covers different phases than SKILL.md).
+          local OVERLAP
+          OVERLAP=$(comm -12 <(echo "$SKILL_PHASES") <(echo "$REF_PHASES") 2>/dev/null | { grep -c '[0-9]' || true; })
+
+          if [[ "$OVERLAP" -eq 0 ]]; then
+            emit "consistent-phase-numbering" "true" "Phase ranges in '${BASENAME}' and SKILL.md are complementary (no overlap)"
+          elif [[ "$SKILL_PHASES" == "$REF_PHASES" ]]; then
+            emit "consistent-phase-numbering" "true" "Phase numbers in '${BASENAME}' match SKILL.md"
+          else
             local SKILL_LIST REF_LIST
             SKILL_LIST=$(echo "$SKILL_PHASES" | tr '\n' ',' | sed 's/,$//')
             REF_LIST=$(echo "$REF_PHASES" | tr '\n' ',' | sed 's/,$//')
-            emit "consistent-phase-numbering" "false" "Phase numbering mismatch: SKILL.md has [${SKILL_LIST}] but ${BASENAME} has [${REF_LIST}]"
-          else
-            emit "consistent-phase-numbering" "true" "Phase numbers in '${BASENAME}' match SKILL.md"
+            emit "consistent-phase-numbering" "false" "Phase numbering mismatch: SKILL.md has [${SKILL_LIST}] but ${BASENAME} has [${REF_LIST}] (overlapping phases differ)"
           fi
         fi
       done
@@ -750,6 +759,27 @@ run_structure() {
     fi
   else
     emit "side-effect-guard" "true" "No side-effect patterns detected"
+  fi
+
+  # --- fork candidate analysis (P9, informational) ---
+  # Runs check-fork-candidate.sh to determine if the skill would benefit
+  # from context: fork + agent field. This is informational only — always
+  # passes. Strong/soft recommendations are surfaced in the detail message.
+  # See: https://code.claude.com/docs/en/skills (Subagent execution)
+  local FORK_SCRIPT
+  FORK_SCRIPT="$(dirname "$0")/check-fork-candidate.sh"
+  if [[ -x "$FORK_SCRIPT" ]]; then
+    local FORK_RESULT
+    FORK_RESULT=$("$FORK_SCRIPT" "$SKILL_DIR" 2>/dev/null | tail -1 || true)
+    local FORK_REC FORK_DETAIL
+    FORK_REC=$(echo "$FORK_RESULT" | sed -n 's/.*"recommendation": "\([^"]*\)".*/\1/p')
+    FORK_DETAIL=$(echo "$FORK_RESULT" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+
+    if [[ "$FORK_REC" == "strong" ]] || [[ "$FORK_REC" == "soft" ]]; then
+      emit "fork-candidate-info" "true" "INFO: ${FORK_DETAIL}"
+    else
+      emit "fork-candidate-info" "true" "No fork recommendation — ${FORK_DETAIL}"
+    fi
   fi
 }
 
