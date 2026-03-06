@@ -296,8 +296,6 @@ def check_implicit_interaction(fm: dict, prose_lines: list,
 
     strong_hits = []
     medium_hits = []
-    line_offset = 0  # will be adjusted by caller
-
     for idx, line in prose_lines:
         if idx in bundled_indices:
             continue
@@ -608,7 +606,6 @@ def check_ambiguity(prose_lines: list, bundled_indices: set) -> dict:
     ]
 
     prose_dict = {idx: line for idx, line in prose_lines}
-    all_indices = sorted(prose_dict.keys())
 
     violations = []
     for idx, line in prose_lines:

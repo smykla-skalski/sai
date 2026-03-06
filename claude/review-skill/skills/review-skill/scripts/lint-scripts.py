@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""lint-scripts.py - Static analysis for shell scripts.
+"""lint-scripts.py - Static analysis for shell and Python scripts.
 
-Detects 32 bug classes discovered during the SAI script audit (2026-03-06).
+Detects 32 bug classes discovered during the SAI script audit (2026-03-06)
+for shell scripts. Also runs ruff (if installed) on Python scripts.
 Covers JSON safety, array/splitting, grep/regex, exit codes, temp files,
 injection, defensive coding, and cross-file consistency.
 
 Usage:
     ./lint-scripts.py <file-or-directory> [--json] [--severity critical|medium|low|all]
+                      [--no-shellcheck] [--no-ruff]
 
 Exit codes: 0 = no findings, 1 = findings exist, 2 = usage error.
 """
@@ -18,8 +20,8 @@ import json as jsonmod
 import shutil
 import subprocess
 from pathlib import Path
-from dataclasses import dataclass, field, asdict
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +150,7 @@ def check_sed_empty_var(path: str, content: str, lines: List[str]) -> List[Findi
         var = m.group(2)
         # Check if guarded in preceding 5 lines (skip comments)
         start = max(0, i - 5)
-        context = "\n".join(l for l in lines[start:i + 1] if not is_comment(l))
+        context = "\n".join(ln for ln in lines[start:i + 1] if not is_comment(ln))
         if re.search(rf'\[\[.*-n.*\${{?{var}}}?|if\s+\[\[.*-n.*{var}', context):
             continue
         findings.append(Finding(
@@ -728,7 +730,7 @@ def check_timestamp_collision(path: str, content: str, lines: List[str]) -> List
                 if re.search(r"\.(log|txt|md|yaml|json|sh)\b", line) or \
                    (re.search(r"/\$", line) and not re.search(r'\bsed\b|s/.*/', line)):
                     # Check for uniqueness suffix (skip comments)
-                    context = "\n".join(l for l in lines[def_line:j + 1] if not is_comment(l))
+                    context = "\n".join(ln for ln in lines[def_line:j + 1] if not is_comment(ln))
                     if not re.search(r"\$\$|\$RANDOM|\$\{RANDOM\}|\$\{PID\}", context):
                         findings.append(Finding(
                             path, def_line + 1, "low", "S23",
@@ -895,6 +897,9 @@ ALL_CHECKS = [
 # ---------------------------------------------------------------------------
 
 def scan_file(path: str) -> List[Finding]:
+    """Run custom S01-S27 checks on shell scripts. Skips non-.sh files."""
+    if not path.endswith(".sh"):
+        return []
     try:
         content = Path(path).read_text(errors="replace")
     except OSError as e:
@@ -955,12 +960,72 @@ def run_shellcheck(files: List[str]) -> List[Finding]:
     return findings
 
 
-def collect_files(target: str) -> List[str]:
+# ---------------------------------------------------------------------------
+# Ruff integration
+# ---------------------------------------------------------------------------
+
+RUFF_SEVERITY_MAP = {
+    "E": "critical",   # error
+    "F": "critical",   # fatal / pyflakes
+    "W": "medium",     # warning
+    "C": "low",        # convention
+    "I": "low",        # isort
+    "N": "low",        # pep8-naming
+}
+
+
+def _ruff_severity(code: str) -> str:
+    """Map a ruff rule code (e.g. 'E741') to a severity level."""
+    if code:
+        return RUFF_SEVERITY_MAP.get(code[0], "low")
+    return "low"
+
+
+def run_ruff(files: List[str]) -> List[Finding]:
+    """Run ruff on Python files and convert output to Findings."""
+    rf = shutil.which("ruff")
+    if not rf:
+        return []
+    findings = []
+    for path in files:
+        try:
+            result = subprocess.run(
+                [rf, "check", "--output-format", "json", path],
+                capture_output=True, text=True, timeout=30,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            continue
+        if not result.stdout.strip():
+            continue
+        try:
+            items = jsonmod.loads(result.stdout)
+        except jsonmod.JSONDecodeError:
+            continue
+        for item in items:
+            code = item.get("code", "")
+            msg = item.get("message", "")
+            loc = item.get("location", {})
+            line = loc.get("row", 0)
+            sev = _ruff_severity(code)
+            findings.append(Finding(
+                path, line, sev, f"RF{code}",
+                msg, f"https://docs.astral.sh/ruff/rules/{code}"
+            ))
+    return findings
+
+
+def collect_files(target: str) -> Tuple[List[str], List[str]]:
+    """Collect shell and Python files. Returns (sh_files, py_files)."""
     p = Path(target)
     if p.is_file():
-        return [str(p)]
+        s = str(p)
+        if s.endswith(".py"):
+            return [], [s]
+        return [s], []
     if p.is_dir():
-        return sorted(str(f) for f in p.rglob("*.sh") if f.is_file())
+        sh = sorted(str(f) for f in p.rglob("*.sh") if f.is_file())
+        py = sorted(str(f) for f in p.rglob("*.py") if f.is_file())
+        return sh, py
     print(f"Error: {target} is not a file or directory", file=sys.stderr)
     sys.exit(2)
 
@@ -1000,7 +1065,7 @@ def format_finding_json(f: Finding) -> str:
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description="Static analysis linter for shell scripts"
+        description="Static analysis linter for shell and Python scripts"
     )
     parser.add_argument("target", help="File or directory to scan")
     parser.add_argument("--json", action="store_true", help="Output NDJSON")
@@ -1013,21 +1078,29 @@ def main():
         "--no-shellcheck", action="store_true",
         help="Skip shellcheck even if installed"
     )
+    parser.add_argument(
+        "--no-ruff", action="store_true",
+        help="Skip ruff even if installed"
+    )
     args = parser.parse_args()
 
-    files = collect_files(args.target)
-    if not files:
-        print("No .sh files found", file=sys.stderr)
+    sh_files, py_files = collect_files(args.target)
+    all_files = sh_files + py_files
+    if not all_files:
+        print("No .sh or .py files found", file=sys.stderr)
         sys.exit(0)
 
     filter_rank = SEVERITY_RANK.get(args.severity, 0)
 
     all_findings = []
-    for f in files:
+    for f in all_files:
         all_findings.extend(scan_file(f))
 
-    if not args.no_shellcheck:
-        all_findings.extend(run_shellcheck(files))
+    if not args.no_shellcheck and sh_files:
+        all_findings.extend(run_shellcheck(sh_files))
+
+    if not args.no_ruff and py_files:
+        all_findings.extend(run_ruff(py_files))
 
     # Apply severity filter
     if args.severity != "all":
