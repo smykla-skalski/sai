@@ -30,7 +30,7 @@ Parse from `$ARGUMENTS`:
 ### Step 1: Resolve paths
 
 ```bash
-DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test"
+DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test")"
 mkdir -p "${DATA_DIR}/suites" "${DATA_DIR}/runs"
 ```
 

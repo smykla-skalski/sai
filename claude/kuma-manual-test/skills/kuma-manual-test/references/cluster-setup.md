@@ -116,7 +116,13 @@ K3D_HELM_DEPLOY_NO_CNI=true KIND_CLUSTER_NAME=kuma-1 make k3d/deploy/helm
 
 ## CRD updates
 
-After CRD/schema changes, force-update CRDs using the kubectl apply command from SKILL.md Phase 2.
+After CRD/schema changes, force-update CRDs:
+
+```bash
+kubectl --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  apply --server-side --force-conflicts \
+  -f "${REPO_ROOT}/deployments/charts/kuma/crds/"
+```
 
 ## Baseline readiness validation
 
