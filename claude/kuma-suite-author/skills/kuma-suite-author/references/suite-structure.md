@@ -1,12 +1,16 @@
 # Contents
 
-1. [Suite file format](#suite-file-format)
-2. [Standard group structure](#standard-group-structure)
-3. [Manifest conventions](#manifest-conventions)
-4. [Validation step patterns](#validation-step-patterns)
-5. [Artifact capture patterns](#artifact-capture-patterns)
-6. [Execution contract](#execution-contract)
-7. [Reference](#reference)
+1. [Suite directory layout](#suite-directory-layout)
+2. [suite.md structure](#suitemd-structure)
+3. [Baseline directory](#baseline-directory)
+4. [Groups directory](#groups-directory)
+5. [Group file structure](#group-file-structure)
+6. [Standard group structure](#standard-group-structure)
+7. [Manifest conventions](#manifest-conventions)
+8. [Validation step patterns](#validation-step-patterns)
+9. [Artifact capture patterns](#artifact-capture-patterns)
+10. [Execution contract](#execution-contract)
+11. [Reference](#reference)
 
 ---
 
@@ -14,11 +18,30 @@
 
 Format spec for test suites consumed by `kuma-manual-test`.
 
-## Suite file format
+## Suite directory layout
 
-Every suite is a Markdown file with these sections:
+```
+${DATA_DIR}/suites/${SUITE_NAME}/
+  suite.md                   # metadata, group table, execution contract (~80-130 lines)
+  baseline/                  # shared manifests applied before G1
+    namespace.yaml
+    otel-collector.yaml
+    demo-workload.yaml
+  groups/                    # one file per group (or per range)
+    g01-crud.md
+    g02-validation.md
+    ...
+```
 
-### Metadata block
+## suite.md structure
+
+The entry point file (~80-130 lines) contains metadata and tables that reference the group files. Sections:
+
+### TOC
+
+Links to each section within suite.md.
+
+### Suite metadata
 
 ```markdown
 ## Suite metadata
@@ -27,27 +50,80 @@ Every suite is a Markdown file with these sections:
 - feature scope: <what this tests>
 - target environments: single-zone / multi-zone / universal
 - required dependencies: <workloads, collectors, etc.>
-- required baseline manifests: <mesh config, namespace setup, etc.>
+- skipped groups: <group IDs not included, with reason>
 ```
 
-### Group table
-
-Summary table listing all test groups with columns:
+### Baseline manifests table
 
 ```markdown
-| Group | Goal | Minimum artifacts |
-| ----- | ---- | ----------------- |
-| G1    | ...  | ...               |
+## Baseline manifests
+
+| File                       | Purpose                        |
+| :------------------------- | :----------------------------- |
+| baseline/namespace.yaml    | test namespace with mesh label |
+| baseline/otel-collector.yaml | otel collector deployment    |
+| baseline/demo-workload.yaml  | echo server + client pods    |
 ```
 
-### Group details
+### Test groups table
 
-Each group has a section with:
+```markdown
+## Test groups
 
-- manifests (inline YAML blocks)
-- commands to run
-- expected result
-- artifacts to capture
+| Group   | File                       | Goal                    | Minimum artifacts              |
+| :------ | :------------------------- | :---------------------- | :----------------------------- |
+| G1      | groups/g01-crud.md         | Resource CRUD           | create/get/update/delete YAML  |
+| G2      | groups/g02-validation.md   | Validation rejects      | admission errors               |
+| ...     | ...                        | ...                     | ...                            |
+```
+
+### Execution contract
+
+See [Execution contract](#execution-contract) below.
+
+### Failure triage
+
+Short section referencing `references/agent-contract.md` for the full procedure.
+
+## Baseline directory
+
+One `.yaml` file per shared resource applied before G1. These are manifests that multiple groups depend on (namespace setup, otel collector, demo workloads). Extract them from group steps to avoid duplication.
+
+## Groups directory
+
+One file per group. Naming convention: `g{NN}-{slug}.md` where NN is zero-padded and slug is kebab-case. Range groups use: `g17-g26-pipe-mode.md`.
+
+## Group file structure
+
+Each group file (~30-80 lines) contains:
+
+### Heading
+
+```markdown
+# G{N} - {Goal}
+```
+
+### Signal tag (variant groups only)
+
+```markdown
+[S3 backend variant]
+```
+
+### Prerequisites (optional)
+
+Any setup specific to this group beyond the baseline manifests.
+
+### Steps
+
+Each step includes:
+
+- Inline YAML manifests in fenced code blocks
+- Validation commands to run
+- Expected results stated clearly
+
+### Artifacts
+
+List of artifacts to capture for this group.
 
 ## Standard group structure
 
@@ -105,7 +181,7 @@ kubectl logs -n kuma-system deploy/kuma-control-plane --tail=50
 
 ## Execution contract
 
-Every suite must include this checklist:
+Every suite must include this checklist in suite.md:
 
 - all manifests applied through `"$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
 - all failures trigger immediate triage before next group
@@ -114,6 +190,6 @@ Every suite must include this checklist:
 
 ## Reference
 
-- Suite template: `kuma-manual-test` skill's `examples/suite-template.md`
-- Example suite: `kuma-manual-test` skill's `examples/example-motb-core-suite.md`
+- Suite directory format: described in this file
+- Example suite: `examples/example-motb-core-suite.md`
 - Edge case matrix: `kuma-manual-test` skill's `references/mesh-policies.md`

@@ -131,9 +131,15 @@ Then add G8+ for selected variants. Variant groups number sequentially from G8. 
 
 For G6 multi-zone: if no KDS markers found and no multi-zone variant was selected in step 5, use AskUserQuestion to confirm skipping multi-zone groups.
 
+The suite is split into three buckets:
+
+- `suite.md` - metadata, baseline table, group table, execution contract
+- `baseline/*.yaml` - shared manifests (namespace setup, otel collector, demo workloads) extracted from groups
+- `groups/g{NN}-*.md` - one file per group with steps, manifests, validation commands, artifacts
+
 For each group (base and variant):
 
-- Generate actual YAML manifests inline.
+- Generate actual YAML manifests inline in the group file.
 - Include specific validation commands (kubectl, kumactl, config_dump).
 - State expected outcomes clearly.
 - List artifacts to capture.
@@ -163,17 +169,22 @@ If user picks add/remove/edit: handle the change, then present the summary again
 
 ```bash
 SUITE_NAME="${SUITE_NAME:-<derived-from-feature>}"
-SUITE_PATH="${DATA_DIR}/suites/${SUITE_NAME}.md"
+SUITE_DIR="${DATA_DIR}/suites/${SUITE_NAME}"
+mkdir -p "${SUITE_DIR}/baseline" "${SUITE_DIR}/groups"
 ```
 
-Write the generated suite to `${SUITE_PATH}`.
+Write each part separately:
+
+- `${SUITE_DIR}/suite.md` - metadata, baseline table, group table, execution contract
+- `${SUITE_DIR}/baseline/*.yaml` - one file per shared manifest (namespace, otel collector, demo workloads)
+- `${SUITE_DIR}/groups/g{NN}-{slug}.md` - one file per group (or per range, e.g., `g17-g26-pipe-mode.md`)
 
 ### Step 9: Report
 
 Print the saved path and suggest how to run it:
 
 ```
-Suite saved to: ${SUITE_PATH}
+Suite saved to: ${SUITE_DIR}/
 Run with: /kuma-manual-test ${SUITE_NAME} --repo ${REPO_ROOT}
 ```
 
