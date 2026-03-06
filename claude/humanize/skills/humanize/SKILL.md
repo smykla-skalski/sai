@@ -65,7 +65,7 @@ Spawn a `general-purpose` agent to isolate the 280+ line pattern catalog from th
    {paste the full input text here}
    </input>
 
-   INSTRUCTIONS:
+   INSTRUCTIONS (ultrathink — systematically check every pattern, do not skip any):
    1. Read the catalog file in full.
    2. Check the input text against all 24 AI writing patterns.
    3. For each match, record: pattern ID, pattern name, quoted offending text,
@@ -96,6 +96,8 @@ Read [references/voice-guide.md](references/voice-guide.md) in full before start
 ### Phase 4: Rewrite
 
 Read [references/elements-of-style.md](references/elements-of-style.md) in full before starting this phase.
+
+This phase requires ultrathink. Reason through competing constraints (pattern removal, voice injection, composition principles, meaning preservation) before rewriting each section.
 
 Use the hit list from the Phase 2 agent to fix every detected pattern regardless of severity. Even faint tells get fixed. Apply fixes in this order:
 
