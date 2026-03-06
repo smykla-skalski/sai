@@ -139,14 +139,19 @@ FRONTMATTER=$(sed -n '/^---$/,/^---$/p' "$SKILL_MD" | sed '1d;$d')
 BODY_START=$(grep -n "^---$" "$SKILL_MD" | sed -n '2p' | cut -d: -f1)
 
 # Detect plugin root (if skill is inside a plugin)
+# shellcheck disable=SC2034  # consumed by sourcing scripts
 PLUGIN_ROOT=$(find_plugin_root "$SKILL_DIR")
 
 # Extract body text: SKILL_BODY has code blocks stripped, FULL_BODY keeps them
 if [[ -n "$BODY_START" ]]; then
+  # shellcheck disable=SC2034
   SKILL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD" | sed '/^```/,/^```/d')
+  # shellcheck disable=SC2034
   FULL_BODY=$(sed -n "${BODY_START},\$p" "$SKILL_MD")
 else
+  # shellcheck disable=SC2034
   SKILL_BODY=$(sed '/^```/,/^```/d' "$SKILL_MD")
+  # shellcheck disable=SC2034
   FULL_BODY=$(cat "$SKILL_MD")
 fi
 
