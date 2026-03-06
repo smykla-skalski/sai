@@ -29,7 +29,10 @@ Parse from `$ARGUMENTS`:
 
 - Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test"`
 - Current repo root: !`git rev-parse --show-toplevel 2>/dev/null || echo "not in a git repo"`
-- Existing suites: !`ls -1 "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test/suites" 2>/dev/null || echo "none yet"`
+- Session ID: ${CLAUDE_SESSION_ID}
+- Existing suites: !`ls -1 "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test/suites" 2>/dev/null | head -20 || echo "none yet"`
+
+The session ID tracks which Claude Code session generated the suite. If the session ID is empty or contains literal `${`, use `standalone` instead.
 
 ## Workflow - generate mode (default)
 
@@ -201,7 +204,7 @@ mkdir -p "${SUITE_DIR}/baseline" "${SUITE_DIR}/groups"
 
 Write each part separately:
 
-- `${SUITE_DIR}/suite.md` - metadata, baseline table, group table, execution contract
+- `${SUITE_DIR}/suite.md` - metadata (include `session_id` from Preprocessed context), baseline table, group table, execution contract
 - `${SUITE_DIR}/baseline/*.yaml` - one file per shared manifest (namespace, otel collector, demo workloads)
 - `${SUITE_DIR}/groups/g{NN}-{slug}.md` - one file per group (or per range, e.g., `g17-g26-pipe-mode.md`)
 

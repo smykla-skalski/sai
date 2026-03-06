@@ -1,10 +1,11 @@
 {
   "name": "kuma-manual-test",
   "description": "Reproducible manual test harness for Kuma service mesh on local k3d clusters. Tracks manifests, commands, and artifacts for full run reproducibility.",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },
   "repository": "https://github.com/smykla-skalski/sai",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": ["kuma", "manual-testing", "k3d", "kubernetes", "service-mesh", "cluster", "reproducible", "envoy"]
 }
