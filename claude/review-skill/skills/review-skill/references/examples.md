@@ -69,11 +69,39 @@ Search for "site:openai.com blog 2025"
 
 ## Read Directives
 
-**Good** — explicit instruction:
-> Read `references/sources.md` in full before starting Phase 3.
+**Good** — explicit gate with purpose (RG-GATE + RG-PURPOSE):
+> Read [references/sources.md](references/sources.md) in full before starting Phase 3.
 
-**Bad** — passive pointer the agent may skip:
-> Search patterns are available in `references/sources.md`.
+**Bad** — passive pointer the agent may skip (RG-PASSIVE):
+> Search patterns are available in [references/sources.md](references/sources.md).
+
+**Bad** — gate without purpose (RG-PURPOSE):
+> Read [references/sources.md](references/sources.md).
+
+**Bad** — use before gate (RG-ORDER):
+
+```text
+## Pattern categories
+Full pattern descriptions are in [references/patterns.md](references/patterns.md).
+...
+## Workflow
+### Phase 2: Pattern scan
+Read [references/patterns.md](references/patterns.md) in full before scanning.
+```
+
+The passive mention at "Pattern categories" comes before the gate at Phase 2. Move the gate above or remove the early mention.
+
+**Bad** — multi-flow missing gate (RG-FLOW):
+
+```text
+## Workflow - generate mode
+Read [references/suite-structure.md](references/suite-structure.md) for the format spec.
+...
+## Workflow - wizard mode
+Show the group structure from [references/suite-structure.md](references/suite-structure.md).
+```
+
+The reference is gated in generate mode but only passively mentioned in wizard mode. Each flow needs its own gate.
 
 ---
 

@@ -732,41 +732,28 @@ run_structure() {
     emit "ref-link-format" "true" "Reference file paths use markdown link format"
   fi
 
-  # --- reference files have explicit read gates (I5, automated partial) ---
-  # For each references/*.md linked via markdown in the body, check if there
-  # is at least one explicit read directive (Read, Contents of, path to).
-  # References only appearing in bundled resource listings may be supplementary
-  # and not need gates, but the check flags them for manual review.
-  # Catches the most common I5 violation: passively mentioned references.
-  local ALL_REF_PATHS UNGATED_REFS
-  ALL_REF_PATHS=$(echo "$SKILL_BODY" \
-    | grep -oE '\(references/[a-zA-Z0-9._-]+\.md\)' \
-    | sed 's/^(//;s/)$//' \
-    | sort -u || true)
+  # --- reference file read gate analysis (I19, externalized) ---
+  # Validates read gates, passive mentions, orphan files, dead listings,
+  # use-before-gate ordering, gate purpose, and multi-flow coverage.
+  # See: check-read-gates.sh for the 7 sub-checks (RG-GATE through RG-FLOW).
+  local REFGATE_SCRIPT
+  REFGATE_SCRIPT="$(dirname "$0")/check-read-gates.sh"
+  if [[ -x "$REFGATE_SCRIPT" ]]; then
+    local REFGATE_OUTPUT REFGATE_SUMMARY REFGATE_REFS
+    REFGATE_OUTPUT=$("$REFGATE_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
+    REFGATE_SUMMARY=$(echo "$REFGATE_OUTPUT" | tail -1)
+    REFGATE_REFS=$(echo "$REFGATE_SUMMARY" | sed -n 's/.*"refs": \([0-9]*\).*/\1/p')
 
-  if [[ -n "$ALL_REF_PATHS" ]]; then
-    UNGATED_REFS=""
-    while IFS= read -r ref_path; do
-      # Check for an explicit read directive mentioning this file.
-      # Accepted patterns:
-      #   "Read [references/file.md]" or "Read [text](references/file.md)"
-      #   "read [references/file.md]" (in agent instructions)
-      #   "Contents of [references/file.md]" (agent prompt pattern)
-      #   "path to [references/file.md]" (agent pass pattern)
-      local REF_ESCAPED
-      REF_ESCAPED=$(echo "$ref_path" | sed 's/\./\\./g')
-      if ! echo "$SKILL_BODY" | grep -qiE "(Read|Contents of|path to).*${REF_ESCAPED}"; then
-        UNGATED_REFS="${UNGATED_REFS} ${ref_path}"
-      fi
-    done <<< "$ALL_REF_PATHS"
-
-    UNGATED_REFS=$(echo "$UNGATED_REFS" | xargs)
-    if [[ -n "$UNGATED_REFS" ]]; then
-      local UNGATED_COUNT
-      UNGATED_COUNT=$(echo "$UNGATED_REFS" | wc -w | tr -d ' ')
-      emit "ref-read-gate" "false" "Found ${UNGATED_COUNT} reference(s) without explicit Read directive: ${UNGATED_REFS} — add 'Read [ref](ref) before Phase N' for workflow-critical references"
-    else
-      emit "ref-read-gate" "true" "All referenced files have explicit Read directives"
+    if [[ "${REFGATE_REFS:-0}" -gt 0 ]]; then
+      while IFS= read -r line; do
+        echo "$line" | grep -q '"summary"' && continue
+        local RG_CHECK RG_PASS RG_DETAIL
+        RG_CHECK=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
+        RG_PASS=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
+        RG_DETAIL=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+        [[ -z "$RG_CHECK" ]] && continue
+        emit "$RG_CHECK" "$RG_PASS" "$RG_DETAIL"
+      done <<< "$REFGATE_OUTPUT"
     fi
   fi
 
