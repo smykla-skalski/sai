@@ -378,6 +378,163 @@ run_structure() {
     emit "no-backslash-paths" "true" "No Windows-style backslash paths found"
   fi
 
+  # --- no useless echo in code blocks (I13) ---
+  # ShellCheck SC2116: $(echo "value") is the same as "value".
+  # Scan bash/sh code blocks in all .md files for this anti-pattern.
+  # See: https://www.shellcheck.net/wiki/SC2116
+  local USELESS_ECHO_FILES=""
+  local FIRST_ECHO_LINE=""
+
+  for md_file in $ALL_SKILL_FILES; do
+    [[ "$md_file" == *.md ]] || continue
+    local ECHO_HITS
+    ECHO_HITS=$(awk '
+      /^```/ {
+        if (in_block) { in_block = 0 }
+        else {
+          lang = $0; sub(/^```/, "", lang); sub(/[[:space:]].*/, "", lang)
+          if (lang == "" || lang == "bash" || lang == "sh" || lang == "shell")
+            in_block = 1
+        }
+        next
+      }
+      in_block && /\$\(echo / { print }
+    ' "$md_file" || true)
+    if [[ -n "$ECHO_HITS" ]]; then
+      USELESS_ECHO_FILES="$USELESS_ECHO_FILES $(basename "$md_file")"
+      if [[ -z "$FIRST_ECHO_LINE" ]]; then
+        FIRST_ECHO_LINE=$(echo "$ECHO_HITS" | head -1 | sed 's/^[[:space:]]*//' | cut -c1-80)
+      fi
+    fi
+  done
+
+  USELESS_ECHO_FILES=$(echo "$USELESS_ECHO_FILES" | xargs)
+  if [[ -n "$USELESS_ECHO_FILES" ]]; then
+    emit "no-useless-echo" "false" "Useless echo (SC2116) in code blocks: ${USELESS_ECHO_FILES} — first: ${FIRST_ECHO_LINE}"
+  else
+    emit "no-useless-echo" "true" "No useless echo patterns in code blocks"
+  fi
+
+  # --- no duplicated code blocks between SKILL.md and references (I14) ---
+  # "The context window is a public good" — Anthropic Best Practices.
+  # Code blocks (3+ lines) in SKILL.md that appear verbatim in references waste context.
+  # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+  if [[ -d "${SKILL_DIR}/references" ]]; then
+    local DUP_COUNT=0
+    local DUP_REFS=""
+
+    # Awk extracts fenced code blocks (3+ lines) into numbered temp files.
+    # Uses temp directory + awk file output to avoid NUL-pipe issues on macOS bash.
+    local BLOCK_EXTRACT_AWK='
+      /^```/ {
+        if (in_block) {
+          if (lines >= 3) {
+            fn = dir "/b_" (++n)
+            printf "%s", buf > fn
+            close(fn)
+          }
+          in_block = 0; buf = ""; lines = 0
+        } else {
+          in_block = 1; buf = ""; lines = 0
+        }
+        next
+      }
+      in_block {
+        sub(/^[[:space:]]+/, ""); sub(/[[:space:]]+$/, "")
+        buf = (buf == "" ? $0 : buf "\n" $0)
+        lines++
+      }
+    '
+
+    # Extract and hash SKILL.md body code blocks
+    local SKILL_BLOCK_DIR SKILL_HASH_FILE
+    SKILL_BLOCK_DIR=$(mktemp -d)
+    SKILL_HASH_FILE=$(mktemp)
+    sed -n "${BODY_START},\$p" "$SKILL_MD" \
+      | awk -v dir="$SKILL_BLOCK_DIR" "$BLOCK_EXTRACT_AWK"
+    for bf in "$SKILL_BLOCK_DIR"/b_*; do
+      [[ -f "$bf" ]] || continue
+      shasum < "$bf" | cut -d' ' -f1
+    done | sort -u > "$SKILL_HASH_FILE"
+    rm -rf "$SKILL_BLOCK_DIR"
+
+    if [[ -s "$SKILL_HASH_FILE" ]]; then
+      for ref_file in "${SKILL_DIR}"/references/*.md; do
+        [[ -f "$ref_file" ]] || continue
+        local BASENAME
+        BASENAME=$(basename "$ref_file")
+
+        local REF_BLOCK_DIR REF_HASH_FILE
+        REF_BLOCK_DIR=$(mktemp -d)
+        REF_HASH_FILE=$(mktemp)
+        awk -v dir="$REF_BLOCK_DIR" "$BLOCK_EXTRACT_AWK" "$ref_file"
+        for bf in "$REF_BLOCK_DIR"/b_*; do
+          [[ -f "$bf" ]] || continue
+          shasum < "$bf" | cut -d' ' -f1
+        done | sort -u > "$REF_HASH_FILE"
+        rm -rf "$REF_BLOCK_DIR"
+
+        local MATCH_COUNT
+        MATCH_COUNT=$(comm -12 "$SKILL_HASH_FILE" "$REF_HASH_FILE" 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "$MATCH_COUNT" -gt 0 ]]; then
+          DUP_COUNT=$((DUP_COUNT + MATCH_COUNT))
+          DUP_REFS="$DUP_REFS ${BASENAME}"
+        fi
+        rm -f "$REF_HASH_FILE"
+      done
+    fi
+
+    rm -f "$SKILL_HASH_FILE"
+    DUP_REFS=$(echo "$DUP_REFS" | xargs)
+    if [[ -n "$DUP_REFS" ]]; then
+      emit "no-duplicate-codeblocks" "false" "Found ${DUP_COUNT} code block(s) (3+ lines) duplicated between SKILL.md and references: ${DUP_REFS}"
+    else
+      emit "no-duplicate-codeblocks" "true" "No duplicated code blocks between SKILL.md and references"
+    fi
+  fi
+
+  # --- consistent phase numbering between SKILL.md and references (I15) ---
+  # "Use consistent terminology" — Anthropic Best Practices.
+  # If SKILL.md and a reference both define numbered phases via headers,
+  # the phase numbers must match.
+  # See: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
+  if [[ -d "${SKILL_DIR}/references" ]]; then
+    local SKILL_PHASES
+    SKILL_PHASES=$(sed -n "${BODY_START},\$p" "$SKILL_MD" \
+      | sed '/^```/,/^```/d' \
+      | grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' \
+      | grep -oE '[0-9]+' \
+      | sort -n -u || true)
+    local SKILL_PHASE_COUNT
+    SKILL_PHASE_COUNT=$(echo "$SKILL_PHASES" | { grep -c '[0-9]' || true; })
+
+    if [[ "$SKILL_PHASE_COUNT" -ge 2 ]]; then
+      for ref_file in "${SKILL_DIR}"/references/*.md; do
+        [[ -f "$ref_file" ]] || continue
+        local BASENAME
+        BASENAME=$(basename "$ref_file")
+        local REF_PHASES
+        REF_PHASES=$(sed '/^```/,/^```/d' "$ref_file" \
+          | grep -iE '^#{1,4}[[:space:]]+Phase[[:space:]]+[0-9]+' \
+          | grep -oE '[0-9]+' \
+          | sort -n -u || true)
+        local REF_PHASE_COUNT
+        REF_PHASE_COUNT=$(echo "$REF_PHASES" | { grep -c '[0-9]' || true; })
+
+        if [[ "$REF_PHASE_COUNT" -ge 2 ]]; then
+          if [[ "$SKILL_PHASES" != "$REF_PHASES" ]]; then
+            local SKILL_LIST REF_LIST
+            SKILL_LIST=$(echo "$SKILL_PHASES" | tr '\n' ',' | sed 's/,$//')
+            REF_LIST=$(echo "$REF_PHASES" | tr '\n' ',' | sed 's/,$//')
+            emit "consistent-phase-numbering" "false" "Phase numbering mismatch: SKILL.md has [${SKILL_LIST}] but ${BASENAME} has [${REF_LIST}]"
+          else
+            emit "consistent-phase-numbering" "true" "Phase numbers in '${BASENAME}' match SKILL.md"
+          fi
+        fi
+      done
+    fi
+  fi
+
   # --- no disallowed files in skill directory ---
   local DISALLOWED_FILES=("README.md" "CHANGELOG.md" "INSTALLATION_GUIDE.md")
   for f in "${DISALLOWED_FILES[@]}"; do
