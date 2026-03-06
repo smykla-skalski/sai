@@ -42,7 +42,7 @@ Read `references/agent-contract.md` for full agent behavior rules and artifact r
 1. Resolve persistent data directory:
 
 ```bash
-DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test")"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test"
 mkdir -p "${DATA_DIR}/suites" "${DATA_DIR}/runs"
 ```
 
