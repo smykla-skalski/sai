@@ -2,7 +2,7 @@
 name: review-skill
 description: Review and fix Claude Code skill definitions (SKILL.md) using a tiered binary checklist based on the Agent Skills specification, Anthropic best practices, and community guidelines. Use when auditing, improving, or validating any skill before publishing.
 argument-hint: "[path/to/skill] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: Read, Write, Edit, Bash, Grep, Glob, Task
+allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 user-invocable: true
 ---
 
@@ -33,7 +33,7 @@ Polish checks                   → informational (with --thorough)
 
 ### Phase 1: Discovery
 
-Read `references/skill-structure.md` to understand the canonical skill layout before evaluating.
+Read [references/skill-structure.md](references/skill-structure.md) to understand the canonical skill layout before evaluating.
 
 1. Identify the target skill directory (from argument or cwd)
 2. Read the SKILL.md file
@@ -52,7 +52,7 @@ Run the validation script and collect its JSON output:
 
 ### Phase 3: Manual Evaluation
 
-Read `references/checklist.md` in full before starting this phase.
+Read [references/checklist.md](references/checklist.md) in full before starting this phase.
 
 For each criterion not already covered by the automated scripts, evaluate as binary pass/fail:
 
@@ -145,7 +145,7 @@ If `--score-only` was NOT passed:
 
 ## Good vs Bad Examples
 
-Read `references/examples.md` for detailed comparison pairs. Key patterns:
+Read [references/examples.md](references/examples.md) for detailed comparison pairs. Key patterns:
 
 **Description** — Good: "Aggregate daily AI news from research papers and newsletters. Use when running a daily news roundup." Bad: "Helps with AI news."
 

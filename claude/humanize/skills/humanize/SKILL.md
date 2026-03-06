@@ -35,9 +35,9 @@ The skill detects 24 AI writing patterns organized into five categories:
 4. Communication artifacts (19-21): chatbot correspondence phrases, knowledge-cutoff disclaimers, sycophantic tone
 5. Filler and hedging (22-24): filler phrases, excessive hedging, generic positive conclusions
 
-Full pattern descriptions with words-to-watch lists and before/after examples are in `references/patterns.md`.
+Full pattern descriptions with words-to-watch lists and before/after examples are in [references/patterns.md](references/patterns.md).
 
-Composition principles for the rewrite phase (active voice, concrete language, omitting needless words, sentence variety, emphasis placement) are in `references/elements-of-style.md`.
+Composition principles for the rewrite phase (active voice, concrete language, omitting needless words, sentence variety, emphasis placement) are in [references/elements-of-style.md](references/elements-of-style.md).
 
 ## Workflow
 
@@ -50,7 +50,7 @@ Composition principles for the rewrite phase (active voice, concrete language, o
 
 ### Phase 2: Pattern scan
 
-Read `references/patterns.md` in full before starting this phase.
+Read [references/patterns.md](references/patterns.md) in full before starting this phase.
 
 1. Scan the text for each of the 24 AI writing patterns.
 2. For each detected instance, record:
@@ -61,7 +61,7 @@ Read `references/patterns.md` in full before starting this phase.
 
 ### Phase 3: Voice assessment
 
-Read `references/voice-guide.md` in full before starting this phase.
+Read [references/voice-guide.md](references/voice-guide.md) in full before starting this phase.
 
 1. Assess the text for signs of soulless writing:
    - Uniform sentence length and structure
@@ -72,7 +72,7 @@ Read `references/voice-guide.md` in full before starting this phase.
 
 ### Phase 4: Rewrite
 
-Read `references/elements-of-style.md` in full before starting this phase.
+Read [references/elements-of-style.md](references/elements-of-style.md) in full before starting this phase.
 
 Fix every detected pattern regardless of severity. Even faint tells get fixed. Apply fixes in this order:
 
@@ -82,7 +82,7 @@ Fix every detected pattern regardless of severity. Even faint tells get fixed. A
 4. Fix style patterns: replace em dashes with commas or periods where appropriate, remove mechanical boldface and emoji, use sentence case in headings, straighten curly quotes.
 5. Cut filler: remove filler phrases, reduce hedging, replace generic conclusions with specifics.
 6. Add voice: vary sentence rhythm, inject appropriate perspective, let some imperfection in. Match tone and register to the text's audience.
-7. Apply composition principles from `references/elements-of-style.md`:
+7. Apply composition principles from [references/elements-of-style.md](references/elements-of-style.md):
    - Convert passive constructions to active voice where the actor is known.
    - Replace negative hedging ("was not very often on time") with positive assertions ("usually came late").
    - Swap abstract language for concrete specifics ("a period of unfavorable weather" becomes "it rained every day for a week").
@@ -97,7 +97,7 @@ Preserve the original meaning. Do not add information the source text does not c
 
 Re-read the rewritten text and check:
 
-- No AI patterns from `references/patterns.md` remain.
+- No AI patterns from [references/patterns.md](references/patterns.md) remain.
 - Core meaning is preserved (no information lost or invented).
 - Sentence structure varies naturally (not uniform length or identical clause patterns).
 - Active voice used where the actor is known. No stacked passives.

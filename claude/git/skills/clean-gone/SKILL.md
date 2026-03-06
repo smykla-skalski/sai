@@ -4,6 +4,7 @@ description: Clean up local branches with deleted remote tracking and their work
 argument-hint: "[--dry-run] [--no-worktrees]"
 allowed-tools: Bash
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # Clean Gone

@@ -84,18 +84,18 @@ Example:
 
 ### Phase 1: Setup
 
-1. Read `references/sources.md` for source URLs and tiers
-2. Read `references/output-template.md` for digest format
+1. Read [references/sources.md](references/sources.md) for source URLs and tiers
+2. Read [references/output-template.md](references/output-template.md) for digest format
 3. Parse arguments for focus area and `--notion-page-id`
 4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode). Otherwise check in order: `--notion-page-id` arg → `NOTION_PARENT_PAGE_ID` env var → prompt user interactively. Store resolved value as `notion_page_id` for Phase 18. If user declines to provide an ID, skip Notion publishing (archive-only mode).
 5. **Resolve persistent data directory** — run `echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest"` via Bash to get the absolute path. Store as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"`.
 6. Read `$DATA_DIR/.last-run` — set date range from last run to today
 7. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
-8. If today is Friday, enable weekly recap mode (see `references/search-patterns.md` → Friday Weekly Recap)
+8. If today is Friday, enable weekly recap mode (see [references/search-patterns.md](references/search-patterns.md) → Friday Weekly Recap)
 
 ### Phases 2-15: Research
 
-**CRITICAL: Before starting Phase 2, read `references/search-patterns.md` in full.** Execute every phase listed below using the search patterns, collect lists, and quality signals from that file. Each phase has a dedicated section in the reference. Do not skip phases — missing a phase means missing an entire digest section.
+**CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full.** Execute every phase listed below using the search patterns, collect lists, and quality signals from that reference. Each phase has a dedicated section in the reference. Do not skip phases — missing a phase means missing an entire digest section.
 
 | Phase | Topic | Skip unless focus includes |
 |-------|-------|---------------------------|
@@ -141,11 +141,11 @@ Filter out stories where:
 
 **Step 5: Categorize** into template sections and select Top 5 from filtered content.
 
-**Step 6: Completeness check** — compare categorized items against the Length Guidelines table in `output-template.md`. If any section is below its target minimum, return to the corresponding research phase and run additional searches from `references/search-patterns.md` to fill the gap. Every section in the template must have content before proceeding.
+**Step 6: Completeness check** — compare categorized items against the Length Guidelines table in [references/output-template.md](references/output-template.md). If any section is below its target minimum, return to the corresponding research phase and run additional searches from [references/search-patterns.md](references/search-patterns.md) to fill the gap. Every section in the template must have content before proceeding.
 
 ### Phase 17: Generate Digest
 
-1. Load `references/output-template.md`
+1. Load [references/output-template.md](references/output-template.md)
 2. Fill sections with filtered items from Phase 16 only
 3. Format: `- [ ] **[Title]** — [1-line summary] [Source: URL]`
    - Checkbox `- [ ]` on ALL story items with source URLs (renders as Notion task)

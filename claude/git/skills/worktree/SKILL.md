@@ -78,7 +78,7 @@ ls go.mod Cargo.toml pyproject.toml setup.py pom.xml build.gradle build.gradle.k
 
 **Branch slug:** lowercase, hyphens, max 50 chars from task description.
 
-**IDE detection:** Read `references/ide-detection.md` in full before evaluating.
+**IDE detection:** Read [references/ide-detection.md](references/ide-detection.md) in full before evaluating.
 
 - `--no-ide` → skip
 - `--ide <name>` → use specified IDE
@@ -94,7 +94,7 @@ Skip all validation if `--quick`.
 
 ### Phase 5: Generate and Execute Script
 
-Read `references/script-template.md` in full before generating the script.
+Read [references/script-template.md](references/script-template.md) in full before generating the script.
 
 Fill in the template variables:
 

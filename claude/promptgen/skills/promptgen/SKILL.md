@@ -73,7 +73,7 @@ Skip entirely if `--research` was not passed.
 
 ### Phase 2: Task analysis
 
-Read `${CLAUDE_SKILL_DIR}/references/prompt-principles.md` in full.
+Read [references/prompt-principles.md](references/prompt-principles.md) in full.
 
 1. Determine the task category from the instructions:
    - docs - documentation generation
@@ -92,13 +92,13 @@ Read `${CLAUDE_SKILL_DIR}/references/prompt-principles.md` in full.
 
 3. Identify what tools or capabilities the agent needs based on the instructions.
 
-4. If the task category is code-gen, refactoring, debugging, testing, or investigation involving code, the relevant empirical rules are already baked into the opinionated formatting preferences in Phase 4 - no additional read needed. For RAG-based code agents or chunking-specific prompts, read `${CLAUDE_SKILL_DIR}/references/code-for-agents.md` for the additional section on code chunking.
+4. If the task category is code-gen, refactoring, debugging, testing, or investigation involving code, the relevant empirical rules are already baked into the opinionated formatting preferences in Phase 4 - no additional read needed. For RAG-based code agents or chunking-specific prompts, read [references/code-for-agents.md](references/code-for-agents.md) for the additional section on code chunking.
 
 5. If `--verbose`, note the category, prompt type, and reasoning.
 
 ### Phase 3: Security assessment
 
-Read `${CLAUDE_SKILL_DIR}/references/security-patterns.md` in full.
+Read [references/security-patterns.md](references/security-patterns.md) in full.
 
 1. Check whether the prompt's use case involves any of the lethal trifecta components:
    - Access to private data
@@ -117,7 +117,7 @@ Read `${CLAUDE_SKILL_DIR}/references/security-patterns.md` in full.
 
 ### Phase 4: Prompt generation
 
-Read `${CLAUDE_SKILL_DIR}/references/prompt-structure.md` in full.
+Read [references/prompt-structure.md](references/prompt-structure.md) in full.
 
 Build the prompt using the appropriate template variant:
 - `claude`: XML tags for data boundaries, Markdown for sections
@@ -154,18 +154,18 @@ When the task involves code changes (code-gen, refactoring, debugging, investiga
 - Keep functions short enough to fit within a single context window chunk (roughly under 100 lines).
 - Put the most important logic near the top of files. Agents front-load attention; content in the final quarter of a file is routinely missed.
 
-These preferences reflect the prompt author's workflow and are backed by empirical research in `${CLAUDE_SKILL_DIR}/references/code-for-agents.md`. The `--raw` flag produces a clean prompt without them.
+These preferences reflect the prompt author's workflow and are backed by empirical research in [references/code-for-agents.md](references/code-for-agents.md). The `--raw` flag produces a clean prompt without them.
 
 Writing style rules (applied to the generated prompt text):
 - No sycophantic patterns, chatbot artifacts, or promotional language
 - Sentence case headings, straight quotes
 - Varied sentence rhythm - mix short and long
 - State things plainly
-- AI vocabulary and filler phrase rules are in `${CLAUDE_SKILL_DIR}/references/anti-patterns.md` items 10-11 - apply them during generation, not just during self-check
+- AI vocabulary and filler phrase rules are in [references/anti-patterns.md](references/anti-patterns.md) items 10-11 - apply them during generation, not just during self-check
 
 ### Phase 5: Self-check
 
-Read `${CLAUDE_SKILL_DIR}/references/anti-patterns.md` in full.
+Read [references/anti-patterns.md](references/anti-patterns.md) in full.
 
 Verify the generated prompt against all 12 anti-pattern checks:
 

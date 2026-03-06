@@ -2,7 +2,7 @@
 name: review-claude-md
 description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
 argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: WebSearch, WebFetch, Read, Write, Edit, Bash, Grep, Glob, Task
+allowed-tools: WebSearch, WebFetch, Read, Write, Edit, Bash, Grep, Glob
 user-invocable: true
 ---
 
@@ -64,7 +64,7 @@ Run the deterministic validation scripts and collect their JSON output:
 
 ### Phase 4: Manual Evaluation
 
-Read `references/rubric.md` in full before starting this phase.
+Read [references/rubric.md](references/rubric.md) in full before starting this phase.
 
 For each criterion not already covered by automated scripts, evaluate as binary pass/fail:
 
@@ -73,7 +73,7 @@ For each criterion not already covered by automated scripts, evaluate as binary 
 3. Record the result with specific evidence (quote the line or describe the absence)
 4. If `--thorough`, also evaluate Polish tier checks
 
-Consult `references/sources.md` for authoritative source URLs when citing findings.
+Consult [references/sources.md](references/sources.md) for authoritative source URLs when citing findings.
 
 ### Phase 5: Synthesize Verdict
 
@@ -86,7 +86,7 @@ Think step by step before declaring the verdict:
 
 ### Phase 6: Report
 
-Output the verdict per the template in `references/output-format.md`.
+Output the verdict per the template in [references/output-format.md](references/output-format.md).
 
 ### Phase 7: Fix
 
@@ -108,12 +108,12 @@ If `--score-only` was NOT passed:
 
 1. Re-run automated checks against the fixed CLAUDE.md
 2. Re-evaluate manual checks
-3. Output the post-fix report per `references/output-format.md`
+3. Output the post-fix report per [references/output-format.md](references/output-format.md)
 4. If verdict is still not PASS, iterate: fix remaining issues and re-evaluate
 
 ## Good vs Bad Examples
 
-Read `references/examples.md` for detailed comparison pairs. Key patterns:
+Read [references/examples.md](references/examples.md) for detailed comparison pairs. Key patterns:
 
 **Commands** — Good: Specific commands with focused-test variant (`npm test -- --testPathPattern="auth"`). Bad: "Run tests" with no actual command.
 
