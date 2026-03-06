@@ -128,12 +128,18 @@ run_frontmatter() {
   else
     emit "description-present" "true" "Field 'description' is present"
 
-    local DESC_LOWER
-    DESC_LOWER=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]')
-    if echo "$DESC_LOWER" | grep -qE '\b(when|use|for)\b'; then
-      emit "description-trigger-phrases" "true" "Description includes trigger phrase (when/use/for)"
+    local DMI
+    DMI=$(get_field "disable-model-invocation")
+    if [[ "$DMI" == "true" ]]; then
+      emit "description-trigger-phrases" "true" "Trigger phrases not required (disable-model-invocation: true)"
     else
-      emit "description-trigger-phrases" "false" "Description should include a trigger phrase (when/use/for) for discoverability"
+      local DESC_LOWER
+      DESC_LOWER=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]')
+      if echo "$DESC_LOWER" | grep -qE '\b(when|use|for)\b'; then
+        emit "description-trigger-phrases" "true" "Description includes trigger phrase (when/use/for)"
+      else
+        emit "description-trigger-phrases" "false" "Description should include a trigger phrase (when/use/for) for discoverability"
+      fi
     fi
 
     if echo "$DESCRIPTION" | grep -qiE '^\s*"?(I can|You can)'; then
