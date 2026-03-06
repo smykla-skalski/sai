@@ -15,7 +15,7 @@ Repository layout:
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
-| **git**                 | Git workflow automation: worktree creation, branch cleanup, and reset utilities         | `claude/git/`                 |
+| **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
 | **kuma-manual-test**    | Reproducible manual test harness for Kuma service mesh on local k3d clusters           | `claude/kuma-manual-test/`    |
@@ -37,7 +37,7 @@ Add the SAI marketplace, then install individual plugins:
 # Install individual plugins
 /plugin install sai/ai-daily-digest
 /plugin install sai/gh-review-comments
-/plugin install sai/git
+/plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
 /plugin install sai/humanize
 /plugin install sai/kuma-manual-test
@@ -58,7 +58,7 @@ git clone git@github.com:smykla-skalski/sai.git
 
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
-claude --plugin-dir /path/to/sai/claude/git
+claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/humanize
 claude --plugin-dir /path/to/sai/claude/kuma-manual-test
@@ -86,13 +86,13 @@ List, reply to, resolve, and create GitHub PR review comment threads using gh CL
 
 [Full documentation ->](./claude/gh-review-comments/README.md)
 
-### git
+### git-clean-gone
 
-Git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities. Includes 4 skills: worktree creation, branch reset, stale branch cleanup, and worktree validation.
+Clean up local branches with deleted remote tracking and their worktrees. Detects gone branches, squash-merged PRs, and rebased branches.
 
-**Usage**: `/worktree <task>`, `/reset-main`, `/clean-gone`, `/worktree-review`
+**Usage**: `/git-clean-gone [--dry-run] [--no-worktrees]`
 
-[Full documentation ->](./claude/git/README.md)
+[Full documentation ->](./claude/git-clean-gone/README.md)
 
 ### git-stage-hunk
 

@@ -1,6 +1,6 @@
 # git
 
-A Claude Code plugin for git workflow automation: worktree creation with context transfer, branch cleanup, and reset utilities.
+A Claude Code plugin for git workflow automation: worktree creation with context transfer and reset utilities.
 
 ## Installation
 
@@ -53,21 +53,6 @@ Reset current branch to remote's default branch after PR merge.
 | Flag            | Purpose                       |
 |:----------------|:------------------------------|
 | `--force`, `-f` | Skip dirty state confirmation |
-
-### clean-gone
-
-Clean up local branches with deleted remote tracking and their worktrees.
-
-```
-/clean-gone
-/clean-gone --dry-run
-/clean-gone --no-worktrees
-```
-
-| Flag             | Purpose                              |
-|:-----------------|:-------------------------------------|
-| `--dry-run`      | Preview only, no changes             |
-| `--no-worktrees` | Branches only, skip worktree removal |
 
 ### worktree-review
 
