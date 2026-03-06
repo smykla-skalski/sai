@@ -281,6 +281,9 @@ run_structure() {
     fi
   fi
 
+  # --- hooks validation (I23) ---
+  delegate_script "${SCRIPT_DIR}/check-hooks.py"
+
   # --- fork candidate analysis (P9, informational) ---
   local FORK_SCRIPT
   FORK_SCRIPT="${SCRIPT_DIR}/check-fork-candidate.sh"
