@@ -8,12 +8,13 @@
 6. [Phase 4 - execute tests](#phase-4---execute-tests)
 7. [Phase 5 - failure handling](#phase-5---failure-handling)
 8. [Phase 6 - closeout](#phase-6---closeout)
+9. [Performance toggles](#performance-toggles)
 
 ---
 
 # Workflow
 
-Supplementary detail for the seven-phase execution flow in SKILL.md. Code blocks live in SKILL.md - this file adds gates, edge cases, and the directory suite loading pattern.
+Supplementary detail for the seven-phase execution flow in SKILL.md. Each phase includes its code blocks so this file is self-contained when loaded independently.
 
 ## Resuming a partial run
 
@@ -21,13 +22,36 @@ If a previous run was interrupted, check `runs/<run-id>/run-status.yaml` for `la
 
 ## Phase 0 - environment check
 
-Resolve persistent storage, repo root, Docker, and kumactl as described in SKILL.md Phase 0.
+Resolve persistent storage and repo root first:
+
+```bash
+DATA_DIR="$(echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test")"
+mkdir -p "${DATA_DIR}/suites" "${DATA_DIR}/runs"
+```
+
+Resolve `REPO_ROOT`: `--repo` flag > check if cwd has `go.mod` with `kumahq/kuma` > fail with message.
+
+Build and verify kumactl:
+
+```bash
+make --directory "${REPO_ROOT}" build/kumactl
+KUMACTL="$("$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_ROOT}")"
+"${KUMACTL}" version
+```
 
 **Gate**: kumactl version output matches the repo HEAD.
 
 ## Phase 1 - initialize run
 
-Suite resolution uses the three-step order from SKILL.md Phase 1 (directory suite, legacy `.md` file, literal path). Set `SUITE_DIR` and `SUITE_FILE` accordingly.
+```bash
+RUNS_DIR="${DATA_DIR}/runs"
+RUN_ID="$(date +%Y%m%d-%H%M%S)-manual"
+
+"$SKILL_DIR/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
+RUN_DIR="${RUNS_DIR}/${RUN_ID}"
+```
+
+Suite resolution uses the three-step order (directory suite, legacy `.md` file, literal path). Set `SUITE_DIR` and `SUITE_FILE` accordingly.
 
 Fill `run-metadata.yaml` before touching the cluster.
 
@@ -37,13 +61,39 @@ Fill `run-metadata.yaml` before touching the cluster.
 
 Read `references/cluster-setup.md` before starting this phase.
 
-Use the cluster-lifecycle.sh invocations from SKILL.md Phase 2. If changes modify CRDs, refresh them after deploy using the kubectl apply command from Phase 2.
+Pick a profile and start the cluster:
+
+```bash
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+# or
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" global-two-zones-up kuma-1 kuma-2 kuma-3 zone-1 zone-2
+```
+
+If changes modify CRDs, refresh them after deploy:
+
+```bash
+kubectl --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  apply --server-side --force-conflicts \
+  -f "${REPO_ROOT}/deployments/charts/kuma/crds/"
+```
 
 **Gate**: `kubectl get pods -n kuma-system` shows all pods Running/Ready.
 
 ## Phase 3 - preflight
 
-Use the preflight.sh and capture-state.sh invocations from SKILL.md Phase 3.
+```bash
+"$SKILL_DIR/scripts/preflight.sh" \
+  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  --run-dir "${RUN_DIR}" \
+  --repo-root "${REPO_ROOT}"
+
+"$SKILL_DIR/scripts/capture-state.sh" \
+  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  --run-dir "${RUN_DIR}" \
+  --label "preflight"
+```
+
+Do not start tests until preflight is green.
 
 **Gate**: preflight script exits 0 and state snapshot is saved.
 
@@ -66,9 +116,17 @@ For legacy single-file suites: read the entire suite file as before.
 For each test step:
 
 1. Create or copy manifest to a working file.
-2. Apply through the tracked script only (see SKILL.md Phase 4 for the invocation).
+2. Apply through the tracked script only.
 3. Collect runtime artifacts (log ad-hoc commands with `"$SKILL_DIR/scripts/record-command.sh"`).
 4. Write result into the report.
+
+```bash
+"$SKILL_DIR/scripts/apply-tracked-manifest.sh" \
+  --run-dir "${RUN_DIR}" \
+  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  --manifest "<manifest-path>" \
+  --step "<step-name>"
+```
 
 After each test group, update `run-status.yaml` with `last_completed_group`, `next_planned_group`, and pass/fail counts.
 
@@ -81,14 +139,29 @@ On first unexpected failure, go to Phase 5.
 Read `references/troubleshooting.md` for known failure modes.
 
 1. Stop progression.
-2. Capture immediate state snapshot (see SKILL.md Phase 5 for the capture-state.sh invocation).
+2. Capture immediate state snapshot.
 3. Document expected vs observed.
 4. Classify the issue (manifest, environment, product bug).
 5. Continue only when classification is explicit.
 
+```bash
+"$SKILL_DIR/scripts/capture-state.sh" \
+  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  --run-dir "${RUN_DIR}" \
+  --label "failure-<test-id>"
+```
+
 ## Phase 6 - closeout
 
-Use the capture-state.sh and report-compactness-check.sh invocations from SKILL.md Phase 6.
+```bash
+"$SKILL_DIR/scripts/capture-state.sh" \
+  --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
+  --run-dir "${RUN_DIR}" \
+  --label "postrun"
+
+"$SKILL_DIR/scripts/report-compactness-check.sh" \
+  --report "${RUN_DIR}/reports/manual-test-report.md"
+```
 
 **Gate**: all of these are true before marking the run complete:
 
@@ -98,13 +171,24 @@ Use the capture-state.sh and report-compactness-check.sh invocations from SKILL.
 - Failures include triage details and artifact paths
 - Report compactness check passes
 
-Cluster teardown is optional. Leave clusters running if another run follows immediately.
+Cluster teardown is optional. Leave clusters running if another run follows immediately. Otherwise:
 
-### Performance toggle example
+```bash
+KIND_CLUSTER_NAME=kuma-1 make k3d/stop
+# For multi-zone, also stop kuma-2, kuma-3
+```
+
+## Performance toggles
+
+| Profile                      | `HARNESS_BUILD_IMAGES` | `HARNESS_LOAD_IMAGES` | `HARNESS_HELM_CLEAN` | Use when                             |
+| ---------------------------- | ---------------------- | --------------------- | -------------------- | ------------------------------------ |
+| default (fastest functional) | 1                      | 1                     | 0                    | Normal test runs                     |
+| strict clean-state           | 1                      | 1                     | 1                    | Need full isolation between deploys  |
+| image-stable fast            | 0                      | 0                     | 0                    | Images already match code under test |
+
+Example:
 
 ```bash
 HARNESS_BUILD_IMAGES=0 HARNESS_LOAD_IMAGES=0 \
   "$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 ```
-
-See SKILL.md "Performance toggles" table for all profiles.
