@@ -107,7 +107,7 @@ kubectl logs -n kuma-system deploy/kuma-control-plane --tail=50
 
 Every suite must include this checklist:
 
-- all manifests applied through `bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
+- all manifests applied through `"$SKILL_DIR/scripts/apply-tracked-manifest.sh"`
 - all failures trigger immediate triage before next group
 - all pass/fail decisions include artifact pointers
 - edge cases from `references/mesh-policies.md` included when suite tests Mesh\* policies

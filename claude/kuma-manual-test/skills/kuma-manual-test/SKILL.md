@@ -28,8 +28,8 @@ Parse from `$ARGUMENTS`:
 ## Non-negotiable rules
 
 1. Use locally built `kumactl` from `build/` only.
-2. Apply every manifest through `bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh"`.
-3. Record every state-changing command via `bash "$SKILL_DIR/scripts/record-command.sh"`.
+2. Apply every manifest through `"$SKILL_DIR/scripts/apply-tracked-manifest.sh"`.
+3. Record every state-changing command via `"$SKILL_DIR/scripts/record-command.sh"`.
 4. Stop and triage on first unexpected failure.
 5. Never use `--validate=false` on any kubectl command. Validation errors mean the manifest or CRD is wrong - fix the root cause.
 
@@ -52,7 +52,7 @@ mkdir -p "${DATA_DIR}/suites" "${DATA_DIR}/runs"
 
 ```bash
 make --directory "${REPO_ROOT}" build/kumactl
-KUMACTL="$(bash "$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_ROOT}")"
+KUMACTL="$("$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_ROOT}")"
 "${KUMACTL}" version
 ```
 
@@ -63,7 +63,7 @@ KUMACTL="$(bash "$SKILL_DIR/scripts/find-local-kumactl.sh" --repo-root "${REPO_R
 ```bash
 RUNS_DIR="${DATA_DIR}/runs"
 RUN_ID="${RUN_ID:-$(date +%Y%m%d-%H%M%S)-manual}"
-bash "$SKILL_DIR/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
+"$SKILL_DIR/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 ```
 
@@ -80,9 +80,9 @@ Fill `run-metadata.yaml` with profile, feature scope, and kumactl version before
 Read `references/cluster-setup.md` before starting this phase.
 
 ```bash
-bash "$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" single-up kuma-1
 # or for multi-zone:
-bash "$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" global-two-zones-up kuma-1 kuma-2 kuma-3 zone-1 zone-2
+"$SKILL_DIR/scripts/cluster-lifecycle.sh" --repo-root "${REPO_ROOT}" global-two-zones-up kuma-1 kuma-2 kuma-3 zone-1 zone-2
 ```
 
 If changes modify CRDs, refresh them after deploy:
@@ -98,12 +98,12 @@ kubectl --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
 ### Phase 3: Preflight
 
 ```bash
-bash "$SKILL_DIR/scripts/preflight.sh" \
+"$SKILL_DIR/scripts/preflight.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --repo-root "${REPO_ROOT}"
 
-bash "$SKILL_DIR/scripts/capture-state.sh" \
+"$SKILL_DIR/scripts/capture-state.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --label "preflight"
@@ -122,12 +122,12 @@ For each test step:
 
 1. Validate the manifest.
 2. Apply through the tracked script.
-3. Collect runtime artifacts with `bash "$SKILL_DIR/scripts/record-command.sh"`.
+3. Collect runtime artifacts with `"$SKILL_DIR/scripts/record-command.sh"`.
 4. Write result into the report.
 5. Update `run-status.yaml` with pass/fail counts after each group.
 
 ```bash
-bash "$SKILL_DIR/scripts/apply-tracked-manifest.sh" \
+"$SKILL_DIR/scripts/apply-tracked-manifest.sh" \
   --run-dir "${RUN_DIR}" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --manifest "<path>" \
@@ -144,19 +144,19 @@ Read `references/troubleshooting.md` for known failure modes.
 
 1. Stop progression.
 2. Re-run the failing step once to check determinism.
-3. Capture state snapshot with `bash "$SKILL_DIR/scripts/capture-state.sh"`.
+3. Capture state snapshot with `"$SKILL_DIR/scripts/capture-state.sh"`.
 4. Classify: manifest issue, environment issue, or product bug.
 5. Continue only when classification is explicit in the report.
 
 ### Phase 6: Closeout
 
 ```bash
-bash "$SKILL_DIR/scripts/capture-state.sh" \
+"$SKILL_DIR/scripts/capture-state.sh" \
   --kubeconfig "${HOME}/.kube/kind-kuma-1-config" \
   --run-dir "${RUN_DIR}" \
   --label "postrun"
 
-bash "$SKILL_DIR/scripts/report-compactness-check.sh" \
+"$SKILL_DIR/scripts/report-compactness-check.sh" \
   --report "${RUN_DIR}/reports/manual-test-report.md"
 ```
 
