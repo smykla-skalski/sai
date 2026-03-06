@@ -18,8 +18,6 @@ Repository layout:
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
-| **kuma-manual-test**    | Reproducible manual test harness for Kuma service mesh on local k3d clusters           | `claude/kuma-manual-test/`    |
-| **kuma-suite-author**   | Generate test suites for kuma-manual-test by reading Kuma source code                  | `claude/kuma-suite-author/`   |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
@@ -40,8 +38,6 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
 /plugin install sai/humanize
-/plugin install sai/kuma-manual-test
-/plugin install sai/kuma-suite-author
 /plugin install sai/promptgen
 /plugin install sai/review-claude-md
 /plugin install sai/review-skill
@@ -61,8 +57,6 @@ claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/humanize
-claude --plugin-dir /path/to/sai/claude/kuma-manual-test
-claude --plugin-dir /path/to/sai/claude/kuma-suite-author
 claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/review-skill
@@ -109,22 +103,6 @@ Make text sound natural by removing AI writing patterns. Based on Wikipedia's Si
 **Usage**: `/humanize path/to/file.md [--score-only] [--inline]`
 
 [Full documentation ->](./claude/humanize/README.md)
-
-### kuma-manual-test
-
-Reproducible manual test harness for Kuma service mesh on local k3d clusters. Tracks manifests, commands, and artifacts for full run reproducibility.
-
-**Usage**: `/kuma-manual-test [suite-path] [--profile single-zone|multi-zone] [--repo /path/to/kuma] [--run-id ID] [--resume RUN_ID]`
-
-[Full documentation ->](./claude/kuma-manual-test/README.md)
-
-### kuma-suite-author
-
-Generate test suites for kuma-manual-test by reading Kuma source code. Produces ready-to-run suites with manifests, validation steps, and expected outcomes.
-
-**Usage**: `/kuma-suite-author <feature-name> [--repo /path/to/kuma] [--mode generate|wizard] [--from-pr PR_URL] [--from-branch BRANCH]`
-
-[Full documentation ->](./claude/kuma-suite-author/README.md)
 
 ### promptgen
 
