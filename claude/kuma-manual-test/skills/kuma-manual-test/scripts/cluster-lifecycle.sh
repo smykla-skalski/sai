@@ -29,7 +29,6 @@ Performance toggles (optional env vars):
 EOF
 }
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root=""
 generated_metallb_manifests=()
 loaded_image_clusters=()

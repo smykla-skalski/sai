@@ -124,8 +124,8 @@ get_field() {
 # .claude-plugin/plugin.json. Returns empty string if not found.
 find_plugin_root() {
   local dir="$1"
-  local i
-  for i in 1 2 3 4; do
+  local _i
+  for _i in 1 2 3 4; do
     dir=$(dirname "$dir")
     if [[ -f "${dir}/.claude-plugin/plugin.json" ]]; then
       echo "$dir"
