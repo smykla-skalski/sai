@@ -10,6 +10,7 @@ Compactness rules:
 ## metadata
 
 - run id: `__RUN_ID__`
+- session id: `__SESSION_ID__`
 - created at (utc): `__CREATED_AT__`
 - operator: ``
 - feature scope: ``

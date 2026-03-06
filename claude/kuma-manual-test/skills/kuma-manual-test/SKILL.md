@@ -31,12 +31,13 @@ Parse from `$ARGUMENTS`:
 - Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/kuma-manual-test"`
 - Home: !`echo "$HOME"`
 - Timestamp: !`date +%Y%m%d-%H%M%S`
+- Session ID: ${CLAUDE_SESSION_ID}
 - Docker: !`docker info >/dev/null 2>&1 && echo "running" || echo "not running"`
 - k3d: !`command -v k3d >/dev/null 2>&1 && echo "installed" || echo "MISSING"`
 - kubectl: !`command -v kubectl >/dev/null 2>&1 && echo "installed" || echo "MISSING"`
 - helm: !`command -v helm >/dev/null 2>&1 && echo "installed" || echo "MISSING"`
 
-Use these pre-resolved values throughout the run. `DATA_DIR` is the data directory above. `HOME` is the home path above. The timestamp above becomes the default `RUN_ID` suffix. If Docker shows "not running" or any tool shows "MISSING", stop immediately and report the problem.
+Use these pre-resolved values throughout the run. `DATA_DIR` is the data directory above. `HOME` is the home path above. The timestamp above becomes the default `RUN_ID` suffix. The session ID tracks which Claude Code session produced this run. If the session ID is empty or contains literal `${`, use `standalone` instead. If Docker shows "not running" or any tool shows "MISSING", stop immediately and report the problem.
 
 ## Non-negotiable rules
 
@@ -81,7 +82,8 @@ KUMACTL="$("${CLAUDE_SKILL_DIR}/scripts/find-local-kumactl.sh" --repo-root "${RE
 ```bash
 RUNS_DIR="${DATA_DIR}/runs"
 RUN_ID="${RUN_ID:-<timestamp from Preprocessed context>-manual}"
-"${CLAUDE_SKILL_DIR}/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" "${RUN_ID}"
+SESSION_ID="<session ID from Preprocessed context, or 'standalone' if empty/unreplaced>"
+"${CLAUDE_SKILL_DIR}/scripts/init-run.sh" --runs-dir "${RUNS_DIR}" --session-id "${SESSION_ID}" "${RUN_ID}"
 RUN_DIR="${RUNS_DIR}/${RUN_ID}"
 ```
 

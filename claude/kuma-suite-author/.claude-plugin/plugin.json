@@ -1,10 +1,11 @@
 {
   "name": "kuma-suite-author",
   "description": "Generate and manage test suites for kuma-manual-test. Reads Kuma source code to produce ready-to-run test suites with manifests.",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },
   "repository": "https://github.com/smykla-skalski/sai",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": ["kuma", "test-generation", "service-mesh", "test-suite", "kubernetes", "policy", "envoy"]
 }
