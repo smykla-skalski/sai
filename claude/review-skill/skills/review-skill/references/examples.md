@@ -10,6 +10,7 @@ Good vs bad patterns for skill evaluation.
 - [Read Directives](#read-directives)
 - [Script Invocation](#script-invocation)
 - [Degrees of Freedom](#degrees-of-freedom)
+- [Secrets and credentials](#secrets-and-credentials)
 - [Grading Style](#grading-style)
 
 ---
@@ -102,6 +103,24 @@ bash "$SKILL_DIR/scripts/validate.sh" "$TARGET"
 
 **Bad** — menu of choices:
 > Output as markdown, JSON, YAML, HTML, or plain text. Choose whichever format best suits your needs.
+
+---
+
+## Secrets and credentials
+
+**Good** — uses environment variables:
+
+```text
+## Authentication
+Use the API key from the OPENAI_API_KEY environment variable.
+```
+
+**Bad** — hardcoded secret:
+
+```text
+## Authentication
+Use API key: sk-1234567890abcdef1234567890abcdef
+```
 
 ---
 

@@ -22,10 +22,11 @@ Any single failure in this tier results in an overall **FAIL** verdict. These re
 | C4  | Name field valid format and matches directory name                            | Agent Skills Spec                            |
 | C5  | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
 | C6  | Not structured as a scoring rubric with points, weights, or letter grades     | Anthropic Best Practices                     |
+| C7  | No secrets or credentials in skill files (API keys, tokens, private keys)     | Anthropic Best Practices                     |
 
 ### How to evaluate
 
-Read the SKILL.md frontmatter first. Confirm the `description` field contains both a functional summary and at least one trigger phrase (e.g., "Use when..."). Count body lines excluding the YAML frontmatter block and verify < 500. Grep for file paths referenced in the body and confirm each resolves relative to the skill directory. Verify the `name` field is kebab-case and matches the parent directory name exactly. Scan for filler instructions that restate LLM defaults — if removing a sentence changes nothing about behavior, it fails C5. Scan for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow — it fails C6.
+Read the SKILL.md frontmatter first. Confirm the `description` field contains both a functional summary and at least one trigger phrase (e.g., "Use when..."). Count body lines excluding the YAML frontmatter block and verify < 500. Grep for file paths referenced in the body and confirm each resolves relative to the skill directory. Verify the `name` field is kebab-case and matches the parent directory name exactly. Scan for filler instructions that restate LLM defaults — if removing a sentence changes nothing about behavior, it fails C5. Scan for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow — it fails C6. Scan SKILL.md and all bundled files for secrets: AWS access keys (`AKIA...`), API keys (`sk-...`, `api_key=`), bearer tokens, private key blocks (`-----BEGIN...KEY-----`), inline passwords or tokens. Any match fails C7.
 
 ---
 
@@ -58,14 +59,16 @@ Scan the SKILL.md body for second-person phrasing ("you should", "you can") — 
 
 Informational findings. These are only scored when running with `--thorough` and do not affect the pass/fail verdict.
 
-| ID  | Check                                               | Source                   |
-|:----|:----------------------------------------------------|:-------------------------|
-| P1  | Long references (>100 lines) have table of contents | Agent Skills Spec        |
-| P2  | One default + one escape hatch (not five options)   | Anthropic Best Practices |
-| P3  | SKILL.md mentions all bundled resources             | Agent Skills Spec        |
-| P4  | No time-sensitive info without deprecation plan     | Anthropic skill-creator  |
-| P5  | Description uses third-person form                  | Anthropic Best Practices |
+| ID  | Check                                                            | Source                   |
+|:----|:-----------------------------------------------------------------|:-------------------------|
+| P1  | Long references (>100 lines) have table of contents              | Agent Skills Spec        |
+| P2  | One default + one escape hatch (not five options)                | Anthropic Best Practices |
+| P3  | SKILL.md mentions all bundled resources                          | Agent Skills Spec        |
+| P4  | No time-sensitive info without deprecation plan                  | Anthropic skill-creator  |
+| P5  | Description uses third-person form                               | Anthropic Best Practices |
+| P6  | No Windows-style backslash paths in file references              | Anthropic Best Practices |
+| P7  | Scripts handle errors explicitly, no unexplained magic constants | Anthropic Best Practices |
 
 ### How to evaluate
 
-Count lines in each reference file — any over 100 lines should start with a TOC linking to its sections. For option-heavy instructions, verify there is one clear default path and at most one alternative, not a menu of choices. Cross-reference the skill directory listing against mentions in SKILL.md — every file should be referenced at least once. Flag hardcoded dates, version numbers, or URLs without a note on when to update them. Confirm the `description` frontmatter uses third-person ("Aggregates daily news...") rather than second-person ("Helps you aggregate...").
+Count lines in each reference file — any over 100 lines should start with a TOC linking to its sections. For option-heavy instructions, verify there is one clear default path and at most one alternative, not a menu of choices. Cross-reference the skill directory listing against mentions in SKILL.md — every file should be referenced at least once. Flag hardcoded dates, version numbers, or URLs without a note on when to update them. Confirm the `description` frontmatter uses third-person ("Aggregates daily news...") rather than second-person ("Helps you aggregate..."). Scan for Windows-style backslash paths (`scripts\helper.py`, `reference\guide.md`) — always use forward slashes for cross-platform compatibility. For skills with scripts, check that scripts handle expected error conditions rather than letting Claude infer fixes from raw failures ("solve, don't punt"). Flag any numeric constants without inline comments explaining the value ("voodoo constants").

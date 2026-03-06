@@ -322,6 +322,62 @@ run_structure() {
     done
   fi
 
+  # --- no secrets or credentials (C7) ---
+  # Scan SKILL.md and all bundled files for common secret patterns.
+  # Filter out obvious placeholders (sequential digits, hex patterns,
+  # placeholder words) — real secrets have high entropy.
+  local SECRET_PATTERN='AKIA[A-Z0-9]{16}|sk-[a-zA-Z0-9]{20,}|-----BEGIN[[:space:]]+(RSA |EC )?(PRIVATE )?KEY-----|Bearer[[:space:]]+[a-zA-Z0-9._-]{20,}'
+  local PLACEHOLDER_PATTERN='1234|0000|xxxx|abcdef|example|test|fake|placeholder|your_|INSERT|REPLACE|changeme'
+  local SECRET_HIT_FILES=""
+
+  local ALL_SKILL_FILES="$SKILL_MD"
+  for subdir in references scripts assets examples; do
+    if [[ -d "${SKILL_DIR}/${subdir}" ]]; then
+      for f in "${SKILL_DIR}/${subdir}"/*; do
+        [[ -f "$f" ]] && ALL_SKILL_FILES="$ALL_SKILL_FILES $f"
+      done
+    fi
+  done
+
+  for sf in $ALL_SKILL_FILES; do
+    local MATCHES
+    MATCHES=$(grep -oE "$SECRET_PATTERN" "$sf" 2>/dev/null || true)
+    if [[ -n "$MATCHES" ]]; then
+      # Check if any match looks real (not a placeholder)
+      local HAS_REAL="false"
+      while IFS= read -r match; do
+        if ! echo "$match" | grep -qiE "$PLACEHOLDER_PATTERN"; then
+          HAS_REAL="true"
+          break
+        fi
+      done <<< "$MATCHES"
+      if [[ "$HAS_REAL" == "true" ]]; then
+        SECRET_HIT_FILES="$SECRET_HIT_FILES $(basename "$sf")"
+      fi
+    fi
+  done
+
+  SECRET_HIT_FILES=$(echo "$SECRET_HIT_FILES" | xargs)
+  if [[ -n "$SECRET_HIT_FILES" ]]; then
+    emit "no-secrets" "false" "Possible secrets or credentials found in: ${SECRET_HIT_FILES}"
+  else
+    emit "no-secrets" "true" "No secrets or credentials detected"
+  fi
+
+  # --- no Windows-style backslash paths (P6) ---
+  local BACKSLASH_PATHS
+  BACKSLASH_PATHS=$(echo "$SKILL_BODY" \
+    | grep -oE '(references|scripts|assets|examples)\\[a-zA-Z0-9._-]+' \
+    || true)
+
+  if [[ -n "$BACKSLASH_PATHS" ]]; then
+    local FIRST_BP
+    FIRST_BP=$(echo "$BACKSLASH_PATHS" | head -1)
+    emit "no-backslash-paths" "false" "Windows-style backslash path found: ${FIRST_BP} — use forward slashes"
+  else
+    emit "no-backslash-paths" "true" "No Windows-style backslash paths found"
+  fi
+
   # --- no disallowed files in skill directory ---
   local DISALLOWED_FILES=("README.md" "CHANGELOG.md" "INSTALLATION_GUIDE.md")
   for f in "${DISALLOWED_FILES[@]}"; do
