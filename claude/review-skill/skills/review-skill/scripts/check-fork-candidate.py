@@ -556,19 +556,24 @@ def run_analysis(doc: SkillDocument) -> int:
 
 def _build_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
-    return argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Analyze whether a skill should use context: fork + agent field.",
     )
+    parser.add_argument(
+        "skill_directory",
+        type=Path,
+        help="Path to skill directory",
+    )
+    return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     """Run the check-fork-candidate process and output NDJSON."""
     parser = _build_parser()
-    parser.add_argument("skill_dir", type=Path, help="Path to skill directory")
     args = parser.parse_args(argv)
 
     try:
-        doc = load_skill_document(args.skill_dir)
+        doc = load_skill_document(args.skill_directory)
     except SkillLoadError as e:
         emit_error(f"Error: {e}")
         return EXIT_USAGE_ERROR
