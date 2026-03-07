@@ -23,7 +23,6 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import functools
 import re
 from pathlib import Path
 from re import Pattern
@@ -59,7 +58,6 @@ BAD_STATE_PATH_PATTERNS: Final[
 ] = compile_patterns(
     (
         r"\./findings/",
-        r"\$SKILL_DIR/findings/",
         r"\$\{CLAUDE_SKILL_DIR\}/findings/",
     ),
 )
@@ -196,7 +194,7 @@ def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
     return CheckResult(
         check=PERSISTENT_STATE_CHECK,
         passed=True,
-        detail="State references found but no relative path issues detected",
+        detail="State references found; no bad path patterns detected",
     )
 
 
@@ -272,20 +270,28 @@ def check_side_effect_guard(document: SkillDocument) -> CheckResult:
 # Orchestration
 # ---------------------------------------------------------------------------
 
+CHECK_FUNCTIONS: Final[
+    dict[str, Callable[[SkillDocument], CheckResult | None]]
+] = {
+    PERSISTENT_STATE_CHECK: check_persistent_state_xdg,
+    ALLOWED_TOOLS_CHECK: check_allowed_tools_usage,
+    SIDE_EFFECT_CHECK: check_side_effect_guard,
+}
 
-def run_checks(document: SkillDocument) -> list[CheckResult]:
+
+def run_checks(
+    document: SkillDocument,
+    selected_checks: tuple[str, ...] = (),
+) -> list[CheckResult]:
     """Run all config checks and return emitted results in order."""
+    selected = frozenset(selected_checks)
     results: list[CheckResult] = []
-
-    persistent_state_result = check_persistent_state_xdg(document)
-    if persistent_state_result is not None:
-        results.append(persistent_state_result)
-
-    allowed_tools_result = check_allowed_tools_usage(document)
-    if allowed_tools_result is not None:
-        results.append(allowed_tools_result)
-
-    results.append(check_side_effect_guard(document))
+    for check_name in CHECK_ORDER:
+        if selected and check_name not in selected:
+            continue
+        result = CHECK_FUNCTIONS[check_name](document)
+        if result is not None:
+            results.append(result)
     return results
 
 
