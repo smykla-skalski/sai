@@ -59,8 +59,8 @@ PHASE_NUMBER_RE: Final[Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 TOC_HEADING_RE: Final[Pattern[str]] = re.compile(
-    r"^#{1,2} (Contents|Table of Contents)",
-    re.MULTILINE,
+    r"^#{1,3} (Contents|Table of Contents)",
+    re.MULTILINE | re.IGNORECASE,
 )
 
 # ---------------------------------------------------------------------------

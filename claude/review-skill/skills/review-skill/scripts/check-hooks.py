@@ -44,7 +44,6 @@ from _skill_check_common import (
     EXIT_USAGE_ERROR,
     CheckRecord,
     emit_error,
-    emit_record,
     emit_results,
     parse_frontmatter_lines,
     split_frontmatter,
@@ -722,12 +721,9 @@ def main(argv: list[str] | None = None) -> int:
     frontmatter = parse_frontmatter_lines(fm_lines)
     hooks = parse_hooks(fm_lines)
 
-    # No hooks block - emit P10 if applicable, then empty summary
+    # No hooks block - emit P10 if applicable, then summary
     if not hooks:
-        p10_results = _check_p10(frontmatter, skill_dir)
-        for result in p10_results:
-            emit_record(result.payload())
-        return emit_results([])
+        return emit_results(_check_p10(frontmatter, skill_dir))
 
     return emit_results(run_checks(hooks, skill_dir))
 
