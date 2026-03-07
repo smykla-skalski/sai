@@ -34,7 +34,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | CT-no-grading | C6 | check-content.py | No scoring rubric patterns |
 | CT-no-secrets | C7 | check-content.py | No secrets in skill files |
 | CT-no-echo | I13 | check-content.py | No useless echo wrapping |
-| CT-long-prose | - | check-content.py | No prose lines over 300 chars |
+| CT-long-prose | I24 | check-content.py | No prose lines over 300 chars |
 | FR-resolves | C3 | check-file-refs.py | File references resolve to actual files |
 | FR-link-format | I15 | check-file-refs.py | References use markdown links |
 | FR-mentions-file | P3 | check-file-refs.py | SKILL.md mentions all bundled resources |
