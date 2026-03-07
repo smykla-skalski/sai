@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Final
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-from skill_check_common import (
+from _skill_check_common import (
     EXIT_USAGE_ERROR,
     RESOURCE_SUBDIRECTORIES,
     SNIPPET_WIDTH,

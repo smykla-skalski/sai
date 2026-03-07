@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Final
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
-from skill_check_common import (
+from _skill_check_common import (
     EXIT_USAGE_ERROR,
     CheckResult,
     ProseLine,
