@@ -48,7 +48,6 @@ from skill_check_common import (  # noqa: E402
     ResultCollector,
     SkillDocument,
     SkillLoadError,
-    emit_record,
     load_skill_document,
 )
 
@@ -92,7 +91,7 @@ FIELD_DMI: Final[str] = "disable-model-invocation"
 # ---------------------------------------------------------------------------
 
 
-def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
+def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa: PLR0912
     """Run name-present, name-format, name-matches-dir checks."""
     name = doc.field(FIELD_NAME)
     dir_name = doc.skill_dir.name
@@ -120,10 +119,7 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
             CheckResult(
                 check="name-matches-dir",
                 passed=False,
-                detail=(
-                    "Cannot compare name to directory: "
-                    f"{detail.lower()}"
-                ),
+                detail=(f"Cannot compare name to directory: {detail.lower()}"),
             ),
         )
         return
@@ -164,8 +160,7 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
                 check="name-format",
                 passed=True,
                 detail=(
-                    f"Name '{name}' matches pattern "
-                    f"[a-z0-9-]{{1,{NAME_MAX_LENGTH}}}"
+                    f"Name '{name}' matches pattern [a-z0-9-]{{1,{NAME_MAX_LENGTH}}}"
                 ),
             ),
         )
@@ -184,10 +179,7 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
             CheckResult(
                 check="name-matches-dir",
                 passed=False,
-                detail=(
-                    f"Name '{name}' does not match directory "
-                    f"'{dir_name}'"
-                ),
+                detail=(f"Name '{name}' does not match directory '{dir_name}'"),
             ),
         )
 
@@ -223,20 +215,14 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
             CheckResult(
                 check="description-trigger-phrases",
                 passed=False,
-                detail=(
-                    "Cannot validate trigger phrases: "
-                    f"{missing_detail.lower()}"
-                ),
+                detail=(f"Cannot validate trigger phrases: {missing_detail.lower()}"),
             ),
         )
         collector.add(
             CheckResult(
                 check="description-third-person",
                 passed=False,
-                detail=(
-                    "Cannot validate voice: "
-                    f"{missing_detail.lower()}"
-                ),
+                detail=(f"Cannot validate voice: {missing_detail.lower()}"),
             ),
         )
         return
@@ -246,7 +232,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
             check="description-present",
             passed=True,
             detail="Field 'description' is present",
-        )
+        ),
     )
 
     # length
@@ -259,7 +245,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                     f"Description is {len(description)} chars, "
                     f"exceeds {DESCRIPTION_MAX_LENGTH}-char limit"
                 ),
-            )
+            ),
         )
     else:
         collector.add(
@@ -270,7 +256,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                     f"Description is {len(description)} chars "
                     f"(limit {DESCRIPTION_MAX_LENGTH})"
                 ),
-            )
+            ),
         )
 
     # trigger phrases (skip if DMI)
@@ -281,7 +267,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                 check="description-trigger-phrases",
                 passed=True,
                 detail="Trigger phrases not required (disable-model-invocation: true)",
-            )
+            ),
         )
     elif TRIGGER_PHRASE_RE.search(description):
         collector.add(
@@ -289,7 +275,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                 check="description-trigger-phrases",
                 passed=True,
                 detail="Description includes trigger phrase (when/use/for)",
-            )
+            ),
         )
     else:
         collector.add(
@@ -300,7 +286,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                     "Description should include a trigger phrase "
                     "(when/use/for) for discoverability"
                 ),
-            )
+            ),
         )
 
     # third-person voice
@@ -312,7 +298,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                 detail=(
                     "Description should use third-person form, not 'I can' or 'You can'"
                 ),
-            )
+            ),
         )
     else:
         collector.add(
@@ -320,7 +306,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                 check="description-third-person",
                 passed=True,
                 detail="Description uses appropriate voice",
-            )
+            ),
         )
 
 
@@ -601,7 +587,7 @@ def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
                 check=check,
                 passed=passed,
                 detail=str(obj.get("detail", "")),
-            )
+            ),
         )
 
     return ParsedDelegateOutput(
@@ -661,14 +647,15 @@ def _parse_lint_output(output: str) -> ParsedLintOutput:
     )
 
 
-def _collect_delegate_output(
+def _collect_delegate_output(  # noqa: PLR0911
     script_path: Path,
     skill_dir: Path,
     extra_args: tuple[str, ...] = (),
 ) -> tuple[ParsedDelegateOutput | None, str | None]:
     """Run and validate one standard delegate output contract."""
     run_result, error = _run_and_validate_script(
-        script_path, (str(skill_dir), *extra_args),
+        script_path,
+        (str(skill_dir), *extra_args),
     )
     if error:
         return None, error
@@ -700,11 +687,7 @@ def _collect_delegate_output(
     # B2: verify passed + failed == total
     passed = _summary_int(parsed.summary, "passed")
     failed = _summary_int(parsed.summary, "failed")
-    if (
-        passed is not None
-        and failed is not None
-        and passed + failed != total
-    ):
+    if passed is not None and failed is not None and passed + failed != total:
         return (
             None,
             (
@@ -730,7 +713,7 @@ def _emit_delegate_runtime_error(
             check=check or _runtime_check_id(script),
             passed=False,
             detail=detail,
-        )
+        ),
     )
 
 
@@ -785,7 +768,9 @@ def _delegate(
 
 
 def _delegate_checks(
-    script: str, *checks: str, required: bool = True,
+    script: str,
+    *checks: str,
+    required: bool = True,
 ) -> DelegateConfig:
     """Build a DelegateConfig with --check args."""
     args: list[str] = []
@@ -798,24 +783,32 @@ def _delegate_checks(
 STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
     _delegate_checks(
         "check-references.py",
-        "body-line-count", "body-char-count",
-        "duplicate-codeblocks-info", "consistent-phase-numbering",
+        "body-line-count",
+        "body-char-count",
+        "duplicate-codeblocks-info",
+        "consistent-phase-numbering",
         "long-ref-toc",
     ),
     _delegate_checks(
         "check-file-refs.py",
-        "file-ref-resolves", "no-backslash-paths",
-        "no-disallowed-files", "refs-one-level",
-        "skill-md-mentions-file", "ref-link-format",
+        "file-ref-resolves",
+        "no-backslash-paths",
+        "no-disallowed-files",
+        "refs-one-level",
+        "skill-md-mentions-file",
+        "ref-link-format",
     ),
     _delegate("check-scripts-dir.py"),
     _delegate_checks(
         "check-content.py",
-        "no-secrets", "no-useless-echo", "no-grading-style",
+        "no-secrets",
+        "no-useless-echo",
+        "no-grading-style",
     ),
     _delegate_checks(
         "check-config.py",
-        "persistent-state-xdg", "allowed-tools-usage",
+        "persistent-state-xdg",
+        "allowed-tools-usage",
         "side-effect-guard",
     ),
     _delegate("check-read-gates.py", guard_field="refs"),
@@ -884,7 +877,7 @@ def _aggregate_lint_findings(findings: tuple[dict[str, object], ...]) -> str:
     return detail
 
 
-def _handle_lint_scripts(
+def _handle_lint_scripts(  # noqa: PLR0911
     script_dir: Path,
     skill_dir: Path,
     collector: ResultCollector,
@@ -898,7 +891,7 @@ def _handle_lint_scripts(
                 check=CHECK_SCRIPT_LINT,
                 passed=True,
                 detail="No scripts/ directory",
-            )
+            ),
         )
         return
 
@@ -909,20 +902,26 @@ def _handle_lint_scripts(
     )
     if error:
         _emit_delegate_runtime_error(
-            collector, lint_script.name, error, check=CHECK_SCRIPT_LINT,
+            collector,
+            lint_script.name,
+            error,
+            check=CHECK_SCRIPT_LINT,
         )
         return
     if run_result is None:
         _emit_delegate_runtime_error(
-            collector, lint_script.name,
-            "No result from lint-scripts.py", check=CHECK_SCRIPT_LINT,
+            collector,
+            lint_script.name,
+            "No result from lint-scripts.py",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
     parsed = _parse_lint_output(run_result.stdout)
     if parsed.invalid_lines:
         _emit_delegate_runtime_error(
-            collector, lint_script.name,
+            collector,
+            lint_script.name,
             f"Invalid NDJSON from lint-scripts.py: {parsed.invalid_lines[0]}",
             check=CHECK_SCRIPT_LINT,
         )
@@ -931,7 +930,8 @@ def _handle_lint_scripts(
     summary = parsed.summary
     if summary is None:
         _emit_delegate_runtime_error(
-            collector, lint_script.name,
+            collector,
+            lint_script.name,
             "Missing summary line from lint-scripts.py",
             check=CHECK_SCRIPT_LINT,
         )
@@ -940,7 +940,8 @@ def _handle_lint_scripts(
     lint_total = _summary_int(summary, "findings")
     if lint_total is None:
         _emit_delegate_runtime_error(
-            collector, lint_script.name,
+            collector,
+            lint_script.name,
             "Summary missing integer 'findings' in lint-scripts.py",
             check=CHECK_SCRIPT_LINT,
         )
@@ -948,7 +949,8 @@ def _handle_lint_scripts(
 
     if lint_total != len(parsed.findings):
         _emit_delegate_runtime_error(
-            collector, lint_script.name,
+            collector,
+            lint_script.name,
             (
                 "Summary findings mismatch in lint-scripts.py: "
                 f"summary={lint_total}, parsed={len(parsed.findings)}"
@@ -963,7 +965,7 @@ def _handle_lint_scripts(
                 check=CHECK_SCRIPT_LINT,
                 passed=True,
                 detail="No critical/medium findings in scripts/",
-            )
+            ),
         )
         return
 
@@ -972,9 +974,8 @@ def _handle_lint_scripts(
             check=CHECK_SCRIPT_LINT,
             passed=False,
             detail=_aggregate_lint_findings(parsed.findings),
-        )
+        ),
     )
-
 
 
 def _parse_fork_candidate_summary(
@@ -1009,7 +1010,7 @@ def _parse_fork_candidate_summary(
     return summary_obj, None
 
 
-def _handle_fork_candidate(
+def _handle_fork_candidate(  # noqa: C901, PLR0911
     script_dir: Path,
     skill_dir: Path,
     collector: ResultCollector,
@@ -1017,17 +1018,23 @@ def _handle_fork_candidate(
     """Run check-fork-candidate.py and emit single fork-candidate-info result."""
     fork_script = script_dir / "check-fork-candidate.py"
     run_result, error = _run_and_validate_script(
-        fork_script, (str(skill_dir),),
+        fork_script,
+        (str(skill_dir),),
     )
     if error:
         _emit_delegate_runtime_error(
-            collector, fork_script.name, error, check=CHECK_FORK_INFO,
+            collector,
+            fork_script.name,
+            error,
+            check=CHECK_FORK_INFO,
         )
         return
     if run_result is None:
         _emit_delegate_runtime_error(
-            collector, fork_script.name,
-            "No result from check-fork-candidate.py", check=CHECK_FORK_INFO,
+            collector,
+            fork_script.name,
+            "No result from check-fork-candidate.py",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1082,7 +1089,7 @@ def _handle_fork_candidate(
                 check=CHECK_FORK_INFO,
                 passed=True,
                 detail=f"INFO: {detail}",
-            )
+            ),
         )
         return
 
@@ -1100,7 +1107,7 @@ def _handle_fork_candidate(
                 check=CHECK_FORK_INFO,
                 passed=True,
                 detail=f"No fork recommendation - {detail}",
-            )
+            ),
         )
         return
 
@@ -1117,7 +1124,7 @@ def _handle_fork_candidate(
 # ---------------------------------------------------------------------------
 
 
-def _progress(verbose: bool, message: str) -> None:
+def _progress(*, verbose: bool, message: str) -> None:
     """Emit progress to stderr when verbose."""
     if verbose:
         sys.stderr.write(f"  {message}\n")
@@ -1133,13 +1140,13 @@ def run_structure(
     """Run all structure checks via delegation."""
     # Standard delegations
     for config in STRUCTURE_DELEGATIONS:
-        _progress(verbose, f"checking {config.script}...")
+        _progress(verbose=verbose, message=f"checking {config.script}...")
         _run_structure_delegate(config, script_dir, doc.skill_dir, collector)
 
     # Special cases
-    _progress(verbose, "checking lint-scripts.py...")
+    _progress(verbose=verbose, message="checking lint-scripts.py...")
     _handle_lint_scripts(script_dir, doc.skill_dir, collector)
-    _progress(verbose, "checking check-ask-user.py...")
+    _progress(verbose=verbose, message="checking check-ask-user.py...")
     _run_structure_delegate(
         _delegate("check-ask-user.py", guard_field="total"),
         script_dir,
@@ -1148,7 +1155,7 @@ def run_structure(
     )
 
     # Flag coverage (I22)
-    _progress(verbose, "checking check-flag-coverage.py...")
+    _progress(verbose=verbose, message="checking check-flag-coverage.py...")
     _run_structure_delegate(
         _delegate("check-flag-coverage.py"),
         script_dir,
@@ -1157,7 +1164,7 @@ def run_structure(
     )
 
     # Hooks validation (I23)
-    _progress(verbose, "checking check-hooks.py...")
+    _progress(verbose=verbose, message="checking check-hooks.py...")
     _run_structure_delegate(
         _delegate("check-hooks.py"),
         script_dir,
@@ -1166,7 +1173,7 @@ def run_structure(
     )
 
     # Fork candidate (P9, informational)
-    _progress(verbose, "checking check-fork-candidate.py...")
+    _progress(verbose=verbose, message="checking check-fork-candidate.py...")
     _handle_fork_candidate(script_dir, doc.skill_dir, collector)
 
 
@@ -1193,7 +1200,8 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Which checks to run (default: all)",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         default=False,
         help="Show progress on stderr",
@@ -1213,10 +1221,7 @@ def main(argv: list[str] | None = None) -> int:
             CheckResult(
                 check=CHECK_SKILL_EXISTS,
                 passed=False,
-                detail=(
-                    "Invalid arguments "
-                    "(usage: validate.py <skill-dir> [mode])"
-                ),
+                detail=("Invalid arguments (usage: validate.py <skill-dir> [mode])"),
             ),
         )
         collector.emit_summary()
@@ -1233,7 +1238,7 @@ def main(argv: list[str] | None = None) -> int:
                 check=CHECK_SKILL_EXISTS,
                 passed=False,
                 detail=str(error),
-            )
+            ),
         )
         collector.emit_summary()
         return EXIT_USAGE_ERROR
