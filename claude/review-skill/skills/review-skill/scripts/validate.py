@@ -130,27 +130,34 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
     name = doc.field(FIELD_NAME)
     dir_name = doc.skill_dir.name
 
+    # B1: distinguish missing vs empty
+    if not doc.has_field(FIELD_NAME):
+        detail = "Field 'name' is missing from frontmatter"
+    elif not name:
+        detail = "Field 'name' is present but empty"
+    else:
+        detail = ""
+
     if not name:
         collector.add(
-            CheckResult(
-                check="name-present",
-                passed=False,
-                detail="Field 'name' is missing from frontmatter",
-            )
+            CheckResult(check="name-present", passed=False, detail=detail),
         )
         collector.add(
             CheckResult(
                 check="name-format",
                 passed=False,
-                detail="Cannot validate format because field 'name' is missing",
-            )
+                detail=f"Cannot validate format: {detail.lower()}",
+            ),
         )
         collector.add(
             CheckResult(
                 check="name-matches-dir",
                 passed=False,
-                detail="Cannot compare name to directory because field 'name' is missing",
-            )
+                detail=(
+                    "Cannot compare name to directory: "
+                    f"{detail.lower()}"
+                ),
+            ),
         )
         return
 
@@ -159,46 +166,30 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
             check="name-present",
             passed=True,
             detail="Field 'name' is present",
-        )
+        ),
     )
 
-    # format validation
+    # B4: collect all format errors instead of elif chain
+    errors: list[str] = []
     if len(name) > NAME_MAX_LENGTH:
-        collector.add(
-            CheckResult(
-                check="name-format",
-                passed=False,
-                detail=(
-                    f"Name '{name}' exceeds {NAME_MAX_LENGTH} characters ({len(name)})"
-                ),
-            )
+        errors.append(
+            f"exceeds {NAME_MAX_LENGTH} characters ({len(name)})",
         )
-    elif not NAME_RE.match(name):
+    if not NAME_RE.match(name):
+        errors.append("contains invalid characters (only lowercase, numbers, hyphens)")
+    else:
+        if name.startswith("-") or name.endswith("-"):
+            errors.append("must not start or end with a hyphen")
+        if "--" in name:
+            errors.append("contains consecutive hyphens")
+
+    if errors:
         collector.add(
             CheckResult(
                 check="name-format",
                 passed=False,
-                detail=(
-                    f"Name '{name}' contains invalid characters "
-                    "(only lowercase, numbers, hyphens)"
-                ),
-            )
-        )
-    elif name.startswith("-") or name.endswith("-"):
-        collector.add(
-            CheckResult(
-                check="name-format",
-                passed=False,
-                detail=f"Name '{name}' must not start or end with a hyphen",
-            )
-        )
-    elif "--" in name:
-        collector.add(
-            CheckResult(
-                check="name-format",
-                passed=False,
-                detail=f"Name '{name}' contains consecutive hyphens",
-            )
+                detail=f"Name '{name}': {'; '.join(errors)}",
+            ),
         )
     else:
         collector.add(
@@ -206,9 +197,10 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
                 check="name-format",
                 passed=True,
                 detail=(
-                    f"Name '{name}' matches pattern [a-z0-9-]{{1,{NAME_MAX_LENGTH}}}"
+                    f"Name '{name}' matches pattern "
+                    f"[a-z0-9-]{{1,{NAME_MAX_LENGTH}}}"
                 ),
-            )
+            ),
         )
 
     # matches directory
@@ -218,15 +210,18 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
                 check="name-matches-dir",
                 passed=True,
                 detail=f"Name '{name}' matches directory '{dir_name}'",
-            )
+            ),
         )
     else:
         collector.add(
             CheckResult(
                 check="name-matches-dir",
                 passed=False,
-                detail=f"Name '{name}' does not match directory '{dir_name}'",
-            )
+                detail=(
+                    f"Name '{name}' does not match directory "
+                    f"'{dir_name}'"
+                ),
+            ),
         )
 
 
@@ -234,43 +229,48 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run description-present, description-length, trigger-phrases, third-person."""
     description = doc.field(FIELD_DESCRIPTION)
 
+    # B1: distinguish missing vs empty
+    if not doc.has_field(FIELD_DESCRIPTION):
+        missing_detail = "Field 'description' is missing from frontmatter"
+    elif not description:
+        missing_detail = "Field 'description' is present but empty"
+    else:
+        missing_detail = ""
+
     if not description:
         collector.add(
             CheckResult(
                 check="description-present",
                 passed=False,
-                detail="Field 'description' is missing from frontmatter",
-            )
+                detail=missing_detail,
+            ),
         )
         collector.add(
             CheckResult(
                 check="description-length",
                 passed=False,
-                detail=(
-                    "Cannot validate description length because "
-                    "field 'description' is missing"
-                ),
-            )
+                detail=f"Cannot validate length: {missing_detail.lower()}",
+            ),
         )
         collector.add(
             CheckResult(
                 check="description-trigger-phrases",
                 passed=False,
                 detail=(
-                    "Cannot validate trigger phrases because "
-                    "field 'description' is missing"
+                    "Cannot validate trigger phrases: "
+                    f"{missing_detail.lower()}"
                 ),
-            )
+            ),
         )
         collector.add(
             CheckResult(
                 check="description-third-person",
                 passed=False,
                 detail=(
-                    "Cannot validate description voice because "
-                    "field 'description' is missing"
+                    "Cannot validate voice: "
+                    f"{missing_detail.lower()}"
                 ),
-            )
+            ),
         )
         return
 
@@ -360,13 +360,20 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
 def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run allowed-tools-present check."""
     allowed_tools = doc.field(FIELD_ALLOWED_TOOLS)
+    if not doc.has_field(FIELD_ALLOWED_TOOLS):
+        detail = "Field 'allowed-tools' is missing from frontmatter"
+    elif not allowed_tools:
+        detail = "Field 'allowed-tools' is present but empty"
+    else:
+        detail = ""
+
     if not allowed_tools:
         collector.add(
             CheckResult(
                 check="allowed-tools-present",
                 passed=False,
-                detail="Field 'allowed-tools' is missing from frontmatter",
-            )
+                detail=detail,
+            ),
         )
     else:
         collector.add(
@@ -374,20 +381,28 @@ def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None
                 check="allowed-tools-present",
                 passed=True,
                 detail=f"Field 'allowed-tools' is present: {allowed_tools}",
-            )
+            ),
         )
 
 
 def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run user-invocable-present check."""
     user_invocable = doc.field(FIELD_USER_INVOCABLE).strip().lower()
-    if not user_invocable:
+    if not doc.has_field(FIELD_USER_INVOCABLE):
         collector.add(
             CheckResult(
                 check="user-invocable-present",
                 passed=False,
                 detail="Field 'user-invocable' is missing from frontmatter",
-            )
+            ),
+        )
+    elif not user_invocable:
+        collector.add(
+            CheckResult(
+                check="user-invocable-present",
+                passed=False,
+                detail="Field 'user-invocable' is present but empty",
+            ),
         )
     elif user_invocable in {"true", "false"}:
         collector.add(
@@ -395,7 +410,7 @@ def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> Non
                 check="user-invocable-present",
                 passed=True,
                 detail=f"Field 'user-invocable' is '{user_invocable}'",
-            )
+            ),
         )
     else:
         collector.add(
@@ -403,10 +418,10 @@ def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> Non
                 check="user-invocable-present",
                 passed=False,
                 detail=(
-                    "Field 'user-invocable' must be boolean (true/false), "
-                    f"got '{user_invocable}'"
+                    "Field 'user-invocable' must be boolean "
+                    f"(true/false), got '{user_invocable}'"
                 ),
-            )
+            ),
         )
 
 
@@ -658,13 +673,15 @@ def _parse_lint_output(output: str) -> ParsedLintOutput:
         check_id = obj.get("check")
         message = obj.get("message")
         severity = obj.get("severity")
-        if not isinstance(check_id, str):
+        if (
+            not isinstance(check_id, str)
+            or not isinstance(message, str)
+            or not isinstance(severity, str)
+        ):
             invalid_lines.append(_snippet(line))
             continue
-        if not isinstance(message, str):
-            invalid_lines.append(_snippet(line))
-            continue
-        if not isinstance(severity, str):
+        # B5: reject empty-string fields upfront
+        if not check_id or not message or not severity:
             invalid_lines.append(_snippet(line))
             continue
 
@@ -710,6 +727,23 @@ def _collect_delegate_output(
             (
                 f"Summary total mismatch in {script_path.name}: "
                 f"summary={total}, checks={len(parsed.checks)}"
+            ),
+        )
+
+    # B2: verify passed + failed == total
+    passed = _summary_int(parsed.summary, "passed")
+    failed = _summary_int(parsed.summary, "failed")
+    if (
+        passed is not None
+        and failed is not None
+        and passed + failed != total
+    ):
+        return (
+            None,
+            (
+                f"Summary passed+failed mismatch in "
+                f"{script_path.name}: "
+                f"{passed}+{failed} != {total}"
             ),
         )
 
@@ -869,12 +903,8 @@ def _aggregate_lint_findings(findings: tuple[dict[str, object], ...]) -> str:
             meds += 1
 
         if len(top_findings) < LINT_TOP_FINDINGS_LIMIT:
-            check_id = obj.get("check", "")
-            message = obj.get("message", "")
-            if isinstance(check_id, str) and isinstance(message, str):
-                if not check_id or not message:
-                    continue
-                top_findings.append(f"{check_id}: {message}")
+            # Parser already validates check_id and message are non-empty strings
+            top_findings.append(f"{obj['check']}: {obj['message']}")
 
     detail = f"scripts/ has {crits} critical, {meds} medium finding(s)"
     if top_findings:
@@ -996,12 +1026,14 @@ def _parse_fork_candidate_summary(
     if not objects:
         return None, "No NDJSON records from check-fork-candidate.py"
 
-    summary_obj = objects[-1]
-    if "recommendation" not in summary_obj:
-        return (
-            None,
-            "Last NDJSON record from check-fork-candidate.py is missing 'recommendation'",
-        )
+    # B6: search for the recommendation record instead of assuming last line
+    summary_obj = None
+    for obj in objects:
+        if "recommendation" in obj:
+            summary_obj = obj
+            break
+    if summary_obj is None:
+        return None, "No record with 'recommendation' field"
     return summary_obj, None
 
 
@@ -1180,7 +1212,23 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entry point and return a process exit code."""
     parser = _build_parser()
-    args = parser.parse_args(argv)
+    # B3: catch argparse's SystemExit so we emit valid NDJSON
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit:
+        collector = ResultCollector()
+        collector.add(
+            CheckResult(
+                check=CHECK_SKILL_EXISTS,
+                passed=False,
+                detail=(
+                    "Invalid arguments "
+                    "(usage: validate.py <skill-dir> [mode])"
+                ),
+            ),
+        )
+        collector.emit_summary()
+        return EXIT_USAGE_ERROR
 
     script_dir = Path(__file__).resolve().parent
 
