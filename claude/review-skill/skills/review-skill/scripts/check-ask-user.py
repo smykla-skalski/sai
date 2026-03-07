@@ -1156,7 +1156,7 @@ def run_checks(doc: ParsedSkill) -> list[CheckResult]:
     ]
 
 
-def _build_arg_parser() -> argparse.ArgumentParser:
+def _build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
         description=(
@@ -1173,7 +1173,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entry point and return a process exit code."""
-    parser = _build_arg_parser()
+    parser = _build_parser()
     args = parser.parse_args(argv)
 
     try:
