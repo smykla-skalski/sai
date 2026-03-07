@@ -76,7 +76,6 @@ ERROR_SNIPPET_LENGTH: Final[int] = 200
 # Check IDs for non-delegated checks
 CHECK_SCRIPT_LINT: Final[str] = "script-lint"
 CHECK_FORK_INFO: Final[str] = "fork-candidate-info"
-CHECK_AUQ_RUNTIME: Final[str] = "check-ask-user-runtime"
 CHECK_SKILL_EXISTS: Final[str] = "skill-md-exists"
 
 # Frontmatter field names
@@ -784,7 +783,7 @@ STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
     _delegate_checks("check-content.py", "no-grading-style"),
     _delegate_checks("check-file-refs.py", "skill-md-mentions-file"),
     _delegate_checks("check-file-refs.py", "ref-link-format"),
-    _delegate("check-read-gates.py"),
+    _delegate("check-read-gates.py", guard_field="refs"),
     _delegate_checks("check-config.py", "allowed-tools-usage"),
     _delegate_checks("check-config.py", "side-effect-guard"),
     _delegate("check-preprocessing.py", guard_field="directives"),
@@ -986,46 +985,6 @@ def _handle_lint_scripts(
     )
 
 
-def _handle_check_ask_user(
-    script_dir: Path,
-    skill_dir: Path,
-    collector: ResultCollector,
-) -> None:
-    """Run check-ask-user.py and re-emit only if total > 0."""
-    auq_script = script_dir / "check-ask-user.py"
-    parsed, error = _collect_delegate_output(auq_script, skill_dir)
-    if error:
-        _emit_delegate_runtime_error(
-            collector,
-            auq_script.name,
-            error,
-            check=CHECK_AUQ_RUNTIME,
-        )
-        return
-
-    if parsed is None or parsed.summary is None:
-        _emit_delegate_runtime_error(
-            collector,
-            auq_script.name,
-            "No parsed summary from check-ask-user.py",
-            check=CHECK_AUQ_RUNTIME,
-        )
-        return
-
-    total = _summary_int(parsed.summary, "total")
-    if total is None:
-        _emit_delegate_runtime_error(
-            collector,
-            auq_script.name,
-            "Summary missing integer 'total' in check-ask-user.py",
-            check=CHECK_AUQ_RUNTIME,
-        )
-        return
-
-    if total > 0:
-        for result in parsed.checks:
-            collector.add(result)
-
 
 def _parse_fork_candidate_summary(
     output: str,
@@ -1203,7 +1162,12 @@ def run_structure(
 
     # Special cases
     _handle_lint_scripts(script_dir, doc.skill_dir, collector)
-    _handle_check_ask_user(script_dir, doc.skill_dir, collector)
+    _run_structure_delegate(
+        _delegate("check-ask-user.py", guard_field="total"),
+        script_dir,
+        doc.skill_dir,
+        collector,
+    )
 
     # Flag coverage (I22)
     _run_structure_delegate(
