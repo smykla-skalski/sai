@@ -31,6 +31,22 @@ claude --plugin-dir /path/to/sai/claude/review-skill
 | `--verbose`    | off     | Show reasoning for each check                 |
 | `--thorough`   | off     | Include Polish tier in the report             |
 
+## Dependencies
+
+- python3 (required for I20-I23 automated checks)
+- shellcheck (optional, improves I20 script analysis for .sh files)
+- ruff (optional, improves I20 script analysis for .py files)
+
+## Development
+
+Test the plugin locally:
+
+```bash
+claude --plugin-dir claude/review-skill/
+```
+
+Bump the version in `plugin.json` for any functional change. Skip only for pure doc changes (README, comments, typos).
+
 ## License
 
 MIT - See [../../LICENSE](../../LICENSE)
