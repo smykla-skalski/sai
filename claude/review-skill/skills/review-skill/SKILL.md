@@ -72,12 +72,12 @@ The orchestrator delegates to companion scripts:
 | `check-fork-candidate.py` | P9 | Fork candidate analysis |
 | `check-preprocessing.py` | I18 | Preprocessing directive hygiene |
 | `check-read-gates.py` | I19 (7 sub) | Reference read gate analysis |
-| `lint-scripts.py` | I20 | Script static analysis (shellcheck/ruff) |
+| `check-lint.py` | I20 | Script static analysis (shellcheck/ruff) |
 | `check-ask-user.py` | I21 (9 sub) | AskUserQuestion usage validation |
 | `check-flag-coverage.py` | I22 (3 sub) | Flag documentation consistency |
 | `check-hooks.py` | I23 (11 sub) | Hooks configuration validation |
 
-Shared parsing helpers: `skill_check_common.py`.
+Shared parsing helpers: `_skill_check_common.py`.
 
 ### Phase 3: Manual Evaluation
 

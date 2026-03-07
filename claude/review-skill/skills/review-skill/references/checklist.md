@@ -158,7 +158,7 @@ Automated by `check-read-gates.py`. Runs 7 sub-checks against all `references/*.
 
 #### Automated: script lint (I20)
 
-Automated by `lint-scripts.py`. If the skill has a `scripts/` directory, runs with `--severity medium`. Detects 32 shell antipattern classes: pipe delimiters corrupting data (S01), suppressed exit codes (S02), sed range crashes on empty variables (S03), JSON output without escaping (S05-S06), space-delimited lists instead of arrays (S07), unquoted expansions (S08-S10), grep treating variables as regex (S11), missing pipefail guards (S12), heredoc/jq injection (S16-S17), mktemp without cleanup traps (S15), and more.
+Automated by `check-lint.py`. If the skill has a `scripts/` directory, runs with `--severity medium`. Detects 32 shell antipattern classes: pipe delimiters corrupting data (S01), suppressed exit codes (S02), sed range crashes on empty variables (S03), JSON output without escaping (S05-S06), space-delimited lists instead of arrays (S07), unquoted expansions (S08-S10), grep treating variables as regex (S11), missing pipefail guards (S12), heredoc/jq injection (S16-S17), mktemp without cleanup traps (S15), and more.
 
 Also runs shellcheck (if installed) at `-S warning` severity on .sh files; shellcheck errors map to critical, warnings to medium. Use `--no-shellcheck` to skip. For .py files, runs ruff (if installed); ruff E/F codes map to critical, W to medium. Use `--no-ruff` to skip. Any critical or medium finding fails the check.
 

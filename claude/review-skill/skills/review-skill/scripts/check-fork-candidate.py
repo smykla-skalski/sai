@@ -28,7 +28,7 @@ from pathlib import Path
 from re import Pattern
 from typing import Final, Literal
 
-from skill_check_common import (
+from _skill_check_common import (
     EXIT_FAILURE,
     EXIT_OK,
     EXIT_USAGE_ERROR,

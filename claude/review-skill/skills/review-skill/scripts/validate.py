@@ -42,7 +42,7 @@ from typing import Final
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 sys.dont_write_bytecode = True
 
-from skill_check_common import (  # noqa: E402
+from _skill_check_common import (  # noqa: E402
     EXIT_USAGE_ERROR,
     CheckResult,
     ResultCollector,
@@ -423,7 +423,7 @@ class ParsedDelegateOutput:
 
 @dataclass(frozen=True)
 class ParsedLintOutput:
-    """Store parsed NDJSON output from lint-scripts.py."""
+    """Store parsed NDJSON output from check-lint.py."""
 
     findings: tuple[dict[str, object], ...]
     summary: dict[str, object] | None
@@ -598,7 +598,7 @@ def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
 
 
 def _parse_lint_output(output: str) -> ParsedLintOutput:
-    """Parse lint-scripts NDJSON (finding lines + final summary).
+    """Parse check-lint NDJSON (finding lines + final summary).
 
     Shares structure with _parse_delegate_output but uses different record
     schema (findings with severity vs check results with pass/fail).
@@ -882,7 +882,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
     skill_dir: Path,
     collector: ResultCollector,
 ) -> None:
-    """Run lint-scripts.py and aggregate into a single script-lint result."""
+    """Run check-lint.py and aggregate into a single script-lint result."""
     scripts_dir = skill_dir / "scripts"
 
     if not scripts_dir.is_dir():
@@ -895,7 +895,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
         )
         return
 
-    lint_script = script_dir / "lint-scripts.py"
+    lint_script = script_dir / "check-lint.py"
     run_result, error = _run_and_validate_script(
         lint_script,
         (str(scripts_dir), "--json", "--severity", "medium"),
@@ -912,7 +912,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
         _emit_delegate_runtime_error(
             collector,
             lint_script.name,
-            "No result from lint-scripts.py",
+            "No result from check-lint.py",
             check=CHECK_SCRIPT_LINT,
         )
         return
@@ -922,7 +922,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
         _emit_delegate_runtime_error(
             collector,
             lint_script.name,
-            f"Invalid NDJSON from lint-scripts.py: {parsed.invalid_lines[0]}",
+            f"Invalid NDJSON from check-lint.py: {parsed.invalid_lines[0]}",
             check=CHECK_SCRIPT_LINT,
         )
         return
@@ -932,7 +932,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
         _emit_delegate_runtime_error(
             collector,
             lint_script.name,
-            "Missing summary line from lint-scripts.py",
+            "Missing summary line from check-lint.py",
             check=CHECK_SCRIPT_LINT,
         )
         return
@@ -942,7 +942,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
         _emit_delegate_runtime_error(
             collector,
             lint_script.name,
-            "Summary missing integer 'findings' in lint-scripts.py",
+            "Summary missing integer 'findings' in check-lint.py",
             check=CHECK_SCRIPT_LINT,
         )
         return
@@ -952,7 +952,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
             collector,
             lint_script.name,
             (
-                "Summary findings mismatch in lint-scripts.py: "
+                "Summary findings mismatch in check-lint.py: "
                 f"summary={lint_total}, parsed={len(parsed.findings)}"
             ),
             check=CHECK_SCRIPT_LINT,
@@ -1144,7 +1144,7 @@ def run_structure(
         _run_structure_delegate(config, script_dir, doc.skill_dir, collector)
 
     # Special cases
-    _progress(verbose=verbose, message="checking lint-scripts.py...")
+    _progress(verbose=verbose, message="checking check-lint.py...")
     _handle_lint_scripts(script_dir, doc.skill_dir, collector)
     _progress(verbose=verbose, message="checking check-ask-user.py...")
     _run_structure_delegate(
