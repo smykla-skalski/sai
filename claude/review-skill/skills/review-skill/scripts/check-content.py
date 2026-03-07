@@ -22,12 +22,14 @@ from typing import Final
 from skill_check_common import (
     EXIT_USAGE_ERROR,
     FENCE_RE,
+    SNIPPET_WIDTH,
     CheckResult,
     SkillDocument,
     SkillLoadError,
     emit_error,
     emit_results,
     load_skill_document,
+    read_text,
 )
 
 # ---------------------------------------------------------------------------
@@ -38,7 +40,6 @@ CHECK_NO_SECRETS: Final[str] = "no-secrets"
 CHECK_NO_USELESS_ECHO: Final[str] = "no-useless-echo"
 CHECK_NO_GRADING_STYLE: Final[str] = "no-grading-style"
 
-FIRST_SNIPPET_WIDTH: Final[int] = 80
 GRADING_SIGNAL_THRESHOLD: Final[int] = 2
 
 SHELL_FENCE_LANGUAGES: Final[frozenset[str]] = frozenset({"", "bash", "sh", "shell"})
@@ -101,14 +102,6 @@ GRADING_PATTERNS: Final[tuple[tuple[str, Pattern[str]], ...]] = (
 # ---------------------------------------------------------------------------
 
 
-def _read_text(path: Path) -> str:
-    """Read a UTF-8 text file with replacement for invalid bytes."""
-    try:
-        return path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return ""
-
-
 def _contains_real_secret(text: str) -> bool:
     """Return whether text contains a secret-like token not marked as placeholder."""
     for match in SECRET_PATTERN.finditer(text):
@@ -129,7 +122,7 @@ def check_no_secrets(document: SkillDocument) -> CheckResult:
     hit_files: list[str] = []
 
     for file_path in document.resource_files:
-        content = _read_text(file_path)
+        content = read_text(file_path)
         if not content:
             continue
         if _contains_real_secret(content):
@@ -204,7 +197,7 @@ def check_no_useless_echo(document: SkillDocument) -> CheckResult:
         if file_path.suffix.lower() != ".md":
             continue
 
-        content = _read_text(file_path)
+        content = read_text(file_path)
         if not content:
             continue
 
@@ -214,7 +207,7 @@ def check_no_useless_echo(document: SkillDocument) -> CheckResult:
 
         hit_files.append(file_path.name)
         if not first_hit:
-            first_hit = hits[0].strip()[:FIRST_SNIPPET_WIDTH]
+            first_hit = hits[0].strip()[:SNIPPET_WIDTH]
 
     if hit_files:
         file_list = " ".join(hit_files)
