@@ -21,6 +21,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | FM-desc-voice | P5 | validate.py | Description uses third-person form |
 | FM-tools-present | I9 | validate.py | allowed-tools field exists |
 | FM-invocable-present | - | validate.py | user-invocable field exists |
+| FM-compat-length | - | validate.py | Compatibility field under 500 chars (when present) |
 | CF-tools-usage | I16 | check-config.py | Listed tools are actually used in body |
 | CF-side-effect | I17 | check-config.py | Side-effect skills have DMI guard |
 | CF-state-xdg | I11 | check-config.py | Persistent state uses XDG paths |

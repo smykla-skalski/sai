@@ -59,6 +59,7 @@ from _skill_check_common import (  # noqa: E402
 NAME_MAX_LENGTH: Final[int] = 64
 NAME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9-]+$")
 DESCRIPTION_MAX_LENGTH: Final[int] = 1024
+COMPATIBILITY_MAX_LENGTH: Final[int] = 500
 TRIGGER_PHRASE_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(when|use|for)\b",
     re.IGNORECASE,
@@ -102,6 +103,7 @@ FIELD_DESCRIPTION: Final[str] = "description"
 FIELD_ALLOWED_TOOLS: Final[str] = "allowed-tools"
 FIELD_USER_INVOCABLE: Final[str] = "user-invocable"
 FIELD_DMI: Final[str] = "disable-model-invocation"
+FIELD_COMPATIBILITY: Final[str] = "compatibility"
 
 
 # ---------------------------------------------------------------------------
@@ -422,12 +424,42 @@ def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> Non
         )
 
 
+def _check_compatibility(doc: SkillDocument, collector: ResultCollector) -> None:
+    """Run compatibility field length check (optional field)."""
+    if not doc.has_field(FIELD_COMPATIBILITY):
+        return
+    compat = doc.field(FIELD_COMPATIBILITY)
+    if len(compat) > COMPATIBILITY_MAX_LENGTH:
+        collector.add(
+            CheckRecord(
+                check="FM-compat-length",
+                passed=False,
+                detail=(
+                    f"Compatibility field is {len(compat)} chars, "
+                    f"exceeds {COMPATIBILITY_MAX_LENGTH}-char limit"
+                ),
+            ),
+        )
+    else:
+        collector.add(
+            CheckRecord(
+                check="FM-compat-length",
+                passed=True,
+                detail=(
+                    f"Compatibility field is {len(compat)} chars "
+                    f"(limit {COMPATIBILITY_MAX_LENGTH})"
+                ),
+            ),
+        )
+
+
 def run_frontmatter(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run all frontmatter checks."""
     _check_name(doc, collector)
     _check_description(doc, collector)
     _check_allowed_tools(doc, collector)
     _check_user_invocable(doc, collector)
+    _check_compatibility(doc, collector)
 
 
 # ---------------------------------------------------------------------------
