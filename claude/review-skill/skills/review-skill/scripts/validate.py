@@ -9,11 +9,11 @@ Modes:
     frontmatter  - Frontmatter field checks only
     structure    - Directory structure checks only
 
-Output: One JSON object per line:
-    {"check": "<id>", "pass": true|false, "detail": "<message>"}
+Output: One JSON object per line (NDJSON):
+    {"kind":"check","check":"<id>","pass":bool,"level":"<lvl>","detail":"<msg>"}
 
 Final line is always a summary:
-    {"summary": true, "total": N, "passed": N, "failed": N}
+    {"kind": "summary", "total": N, "passed": N, "failed": N}
 
 Exit codes:
     0 - all checks pass
@@ -44,8 +44,9 @@ sys.dont_write_bytecode = True
 
 from _skill_check_common import (  # noqa: E402
     EXIT_USAGE_ERROR,
-    CheckResult,
+    CheckRecord,
     ResultCollector,
+    ResultLevel,
     SkillDocument,
     SkillLoadError,
     load_skill_document,
@@ -74,9 +75,25 @@ EXPECTED_EXIT_CODES: Final[frozenset[int]] = frozenset({0, 1})
 ERROR_SNIPPET_LENGTH: Final[int] = 200
 
 # Check IDs for non-delegated checks
-CHECK_SCRIPT_LINT: Final[str] = "script-lint"
-CHECK_FORK_INFO: Final[str] = "fork-candidate-info"
-CHECK_SKILL_EXISTS: Final[str] = "skill-md-exists"
+CHECK_SCRIPT_LINT: Final[str] = "CL-aggregate"
+CHECK_FORK_INFO: Final[str] = "FK-recommendation-info"
+CHECK_SKILL_EXISTS: Final[str] = "FM-skill-md-exists"
+
+# Script prefix mapping for runtime error IDs
+SCRIPT_PREFIX: Final[dict[str, str]] = {
+    "check-config.py": "CF",
+    "check-content.py": "CT",
+    "check-file-refs.py": "FR",
+    "check-scripts-dir.py": "SD",
+    "check-references.py": "RF",
+    "check-read-gates.py": "RG",
+    "check-preprocessing.py": "PP",
+    "check-ask-user.py": "AQ",
+    "check-flag-coverage.py": "FC",
+    "check-hooks.py": "HK",
+    "check-fork-candidate.py": "FK",
+    "check-lint.py": "CL",
+}
 
 # Frontmatter field names
 FIELD_NAME: Final[str] = "name"
@@ -106,29 +123,34 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa
 
     if not name:
         collector.add(
-            CheckResult(check="name-present", passed=False, detail=detail),
-        )
-        collector.add(
-            CheckResult(
-                check="name-format",
-                passed=False,
-                detail=f"Cannot validate format: {detail.lower()}",
+            CheckRecord(
+                check="FM-name-present", passed=False, detail=detail, tier="C4",
             ),
         )
         collector.add(
-            CheckResult(
-                check="name-matches-dir",
+            CheckRecord(
+                check="FM-name-format",
                 passed=False,
-                detail=(f"Cannot compare name to directory: {detail.lower()}"),
+                detail=f"Cannot validate format: {detail.lower()}",
+                tier="C4",
+            ),
+        )
+        collector.add(
+            CheckRecord(
+                check="FM-name-matches-dir",
+                passed=False,
+                detail=f"Cannot compare name to directory: {detail.lower()}",
+                tier="C4",
             ),
         )
         return
 
     collector.add(
-        CheckResult(
-            check="name-present",
+        CheckRecord(
+            check="FM-name-present",
             passed=True,
             detail="Field 'name' is present",
+            tier="C4",
         ),
     )
 
@@ -148,38 +170,42 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa
 
     if errors:
         collector.add(
-            CheckResult(
-                check="name-format",
+            CheckRecord(
+                check="FM-name-format",
                 passed=False,
                 detail=f"Name '{name}': {'; '.join(errors)}",
+                tier="C4",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="name-format",
+            CheckRecord(
+                check="FM-name-format",
                 passed=True,
                 detail=(
                     f"Name '{name}' matches pattern [a-z0-9-]{{1,{NAME_MAX_LENGTH}}}"
                 ),
+                tier="C4",
             ),
         )
 
     # matches directory
     if name == dir_name:
         collector.add(
-            CheckResult(
-                check="name-matches-dir",
+            CheckRecord(
+                check="FM-name-matches-dir",
                 passed=True,
                 detail=f"Name '{name}' matches directory '{dir_name}'",
+                tier="C4",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="name-matches-dir",
+            CheckRecord(
+                check="FM-name-matches-dir",
                 passed=False,
-                detail=(f"Name '{name}' does not match directory '{dir_name}'"),
+                detail=f"Name '{name}' does not match directory '{dir_name}'",
+                tier="C4",
             ),
         )
 
@@ -198,64 +224,71 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
 
     if not description:
         collector.add(
-            CheckResult(
-                check="description-present",
+            CheckRecord(
+                check="FM-desc-present",
                 passed=False,
                 detail=missing_detail,
+                tier="C1",
             ),
         )
         collector.add(
-            CheckResult(
-                check="description-length",
+            CheckRecord(
+                check="FM-desc-length",
                 passed=False,
                 detail=f"Cannot validate length: {missing_detail.lower()}",
+                tier="I25",
             ),
         )
         collector.add(
-            CheckResult(
-                check="description-trigger-phrases",
+            CheckRecord(
+                check="FM-desc-trigger",
                 passed=False,
-                detail=(f"Cannot validate trigger phrases: {missing_detail.lower()}"),
+                detail=f"Cannot validate trigger phrases: {missing_detail.lower()}",
+                tier="C1",
             ),
         )
         collector.add(
-            CheckResult(
-                check="description-third-person",
+            CheckRecord(
+                check="FM-desc-voice",
                 passed=False,
-                detail=(f"Cannot validate voice: {missing_detail.lower()}"),
+                detail=f"Cannot validate voice: {missing_detail.lower()}",
+                tier="P5",
             ),
         )
         return
 
     collector.add(
-        CheckResult(
-            check="description-present",
+        CheckRecord(
+            check="FM-desc-present",
             passed=True,
             detail="Field 'description' is present",
+            tier="C1",
         ),
     )
 
     # length
     if len(description) > DESCRIPTION_MAX_LENGTH:
         collector.add(
-            CheckResult(
-                check="description-length",
+            CheckRecord(
+                check="FM-desc-length",
                 passed=False,
                 detail=(
                     f"Description is {len(description)} chars, "
                     f"exceeds {DESCRIPTION_MAX_LENGTH}-char limit"
                 ),
+                tier="I25",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="description-length",
+            CheckRecord(
+                check="FM-desc-length",
                 passed=True,
                 detail=(
                     f"Description is {len(description)} chars "
                     f"(limit {DESCRIPTION_MAX_LENGTH})"
                 ),
+                tier="I25",
             ),
         )
 
@@ -263,49 +296,54 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
     dmi = doc.field(FIELD_DMI).strip().lower()
     if dmi == "true":
         collector.add(
-            CheckResult(
-                check="description-trigger-phrases",
+            CheckRecord(
+                check="FM-desc-trigger",
                 passed=True,
                 detail="Trigger phrases not required (disable-model-invocation: true)",
+                tier="C1",
             ),
         )
     elif TRIGGER_PHRASE_RE.search(description):
         collector.add(
-            CheckResult(
-                check="description-trigger-phrases",
+            CheckRecord(
+                check="FM-desc-trigger",
                 passed=True,
                 detail="Description includes trigger phrase (when/use/for)",
+                tier="C1",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="description-trigger-phrases",
+            CheckRecord(
+                check="FM-desc-trigger",
                 passed=False,
                 detail=(
                     "Description should include a trigger phrase "
                     "(when/use/for) for discoverability"
                 ),
+                tier="C1",
             ),
         )
 
     # third-person voice
     if NON_THIRD_PERSON_RE.search(description):
         collector.add(
-            CheckResult(
-                check="description-third-person",
+            CheckRecord(
+                check="FM-desc-voice",
                 passed=False,
                 detail=(
                     "Description should use third-person form, not 'I can' or 'You can'"
                 ),
+                tier="P5",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="description-third-person",
+            CheckRecord(
+                check="FM-desc-voice",
                 passed=True,
                 detail="Description uses appropriate voice",
+                tier="P5",
             ),
         )
 
@@ -322,18 +360,20 @@ def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None
 
     if not allowed_tools:
         collector.add(
-            CheckResult(
-                check="allowed-tools-present",
+            CheckRecord(
+                check="FM-tools-present",
                 passed=False,
                 detail=detail,
+                tier="I9",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="allowed-tools-present",
+            CheckRecord(
+                check="FM-tools-present",
                 passed=True,
                 detail=f"Field 'allowed-tools' is present: {allowed_tools}",
+                tier="I9",
             ),
         )
 
@@ -343,32 +383,32 @@ def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> Non
     user_invocable = doc.field(FIELD_USER_INVOCABLE).strip().lower()
     if not doc.has_field(FIELD_USER_INVOCABLE):
         collector.add(
-            CheckResult(
-                check="user-invocable-present",
+            CheckRecord(
+                check="FM-invocable-present",
                 passed=False,
                 detail="Field 'user-invocable' is missing from frontmatter",
             ),
         )
     elif not user_invocable:
         collector.add(
-            CheckResult(
-                check="user-invocable-present",
+            CheckRecord(
+                check="FM-invocable-present",
                 passed=False,
                 detail="Field 'user-invocable' is present but empty",
             ),
         )
     elif user_invocable in {"true", "false"}:
         collector.add(
-            CheckResult(
-                check="user-invocable-present",
+            CheckRecord(
+                check="FM-invocable-present",
                 passed=True,
                 detail=f"Field 'user-invocable' is '{user_invocable}'",
             ),
         )
     else:
         collector.add(
-            CheckResult(
-                check="user-invocable-present",
+            CheckRecord(
+                check="FM-invocable-present",
                 passed=False,
                 detail=(
                     "Field 'user-invocable' must be boolean "
@@ -416,7 +456,7 @@ class ScriptRunResult:
 class ParsedDelegateOutput:
     """Store parsed NDJSON output for standard delegate scripts."""
 
-    checks: tuple[CheckResult, ...]
+    checks: tuple[CheckRecord, ...]
     summary: dict[str, object] | None
     invalid_lines: tuple[str, ...]
 
@@ -463,7 +503,9 @@ def _snippet(text: str, *, width: int = ERROR_SNIPPET_LENGTH) -> str:
 
 def _runtime_check_id(script: str) -> str:
     """Build stable check id for delegated runtime errors."""
-    return f"delegate-{Path(script).stem}-runtime"
+    stem = Path(script).name
+    prefix = SCRIPT_PREFIX.get(stem, "XX")
+    return f"{prefix}-runtime"
 
 
 def _run_script(
@@ -556,7 +598,7 @@ def _run_and_validate_script(
 
 def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
     """Parse standard delegate NDJSON (check lines + final summary)."""
-    checks: list[CheckResult] = []
+    checks: list[CheckRecord] = []
     invalid_lines: list[str] = []
     summary: dict[str, object] | None = None
 
@@ -569,7 +611,8 @@ def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
             invalid_lines.append(_snippet(line))
             continue
 
-        if obj.get("summary") is True:
+        kind = obj.get("kind")
+        if kind == "summary" or obj.get("summary") is True:
             if summary is None:
                 summary = obj
             else:
@@ -582,13 +625,29 @@ def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
             invalid_lines.append(_snippet(line))
             continue
 
-        checks.append(
-            CheckResult(
-                check=check,
-                passed=passed,
-                detail=str(obj.get("detail", "")),
-            ),
+        raw_level = obj.get("level", "pass" if passed else "fail")
+        level: ResultLevel = (
+            raw_level
+            if raw_level in {"pass", "fail", "info", "skip"}
+            else ("pass" if passed else "fail")
         )
+        tier = obj.get("tier")
+        detail = str(obj.get("detail", ""))
+        item = obj.get("item")
+        try:
+            checks.append(
+                CheckRecord(
+                    check=check,
+                    passed=passed,
+                    detail=detail,
+                    level=level,
+                    tier=tier if isinstance(tier, str) else None,
+                    item=item if isinstance(item, str) else None,
+                ),
+            )
+        except ValueError:
+            invalid_lines.append(_snippet(line))
+            continue
 
     return ParsedDelegateOutput(
         checks=tuple(checks),
@@ -616,7 +675,8 @@ def _parse_lint_output(output: str) -> ParsedLintOutput:
             invalid_lines.append(_snippet(line))
             continue
 
-        if obj.get("summary") is True:
+        kind = obj.get("kind")
+        if kind == "summary" or obj.get("summary") is True:
             if summary is None:
                 summary = obj
             else:
@@ -709,7 +769,7 @@ def _emit_delegate_runtime_error(
 ) -> None:
     """Emit one failed runtime check record for delegated execution."""
     collector.add(
-        CheckResult(
+        CheckRecord(
             check=check or _runtime_check_id(script),
             passed=False,
             detail=detail,
@@ -783,33 +843,33 @@ def _delegate_checks(
 STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
     _delegate_checks(
         "check-references.py",
-        "body-line-count",
-        "body-char-count",
-        "duplicate-codeblocks-info",
-        "consistent-phase-numbering",
-        "long-ref-toc",
+        "RF-body-lines",
+        "RF-body-chars",
+        "RF-dup-codeblocks-info",
+        "RF-phase-numbering",
+        "RF-long-ref-toc",
     ),
     _delegate_checks(
         "check-file-refs.py",
-        "file-ref-resolves",
-        "no-backslash-paths",
-        "no-disallowed-files",
-        "refs-one-level",
-        "skill-md-mentions-file",
-        "ref-link-format",
+        "FR-resolves",
+        "FR-no-backslash",
+        "FR-no-disallowed",
+        "FR-one-level",
+        "FR-mentions-file",
+        "FR-link-format",
     ),
     _delegate("check-scripts-dir.py"),
     _delegate_checks(
         "check-content.py",
-        "no-secrets",
-        "no-useless-echo",
-        "no-grading-style",
+        "CT-no-secrets",
+        "CT-no-echo",
+        "CT-no-grading",
     ),
     _delegate_checks(
         "check-config.py",
-        "persistent-state-xdg",
-        "allowed-tools-usage",
-        "side-effect-guard",
+        "CF-state-xdg",
+        "CF-tools-usage",
+        "CF-side-effect",
     ),
     _delegate("check-read-gates.py", guard_field="refs"),
     _delegate("check-preprocessing.py", guard_field="directives"),
@@ -871,7 +931,7 @@ def _aggregate_lint_findings(findings: tuple[dict[str, object], ...]) -> str:
             # Parser already validates check_id and message are non-empty strings
             top_findings.append(f"{obj['check']}: {obj['message']}")
 
-    detail = f"scripts/ has {crits} critical, {meds} medium finding(s)"
+    detail = f"Scripts/ has {crits} critical, {meds} medium finding(s)"
     if top_findings:
         detail += " - " + "; ".join(top_findings)
     return detail
@@ -887,7 +947,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
 
     if not scripts_dir.is_dir():
         collector.add(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SCRIPT_LINT,
                 passed=True,
                 detail="No scripts/ directory",
@@ -961,7 +1021,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
 
     if lint_total == 0:
         collector.add(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SCRIPT_LINT,
                 passed=True,
                 detail="No critical/medium findings in scripts/",
@@ -970,7 +1030,7 @@ def _handle_lint_scripts(  # noqa: PLR0911
         return
 
     collector.add(
-        CheckResult(
+        CheckRecord(
             check=CHECK_SCRIPT_LINT,
             passed=False,
             detail=_aggregate_lint_findings(parsed.findings),
@@ -999,14 +1059,14 @@ def _parse_fork_candidate_summary(
     if not objects:
         return None, "No NDJSON records from check-fork-candidate.py"
 
-    # B6: search for the recommendation record instead of assuming last line
+    # B6: search for the summary/recommendation record
     summary_obj = None
     for obj in objects:
-        if "recommendation" in obj:
+        if obj.get("kind") == "summary" or "recommendation" in obj:
             summary_obj = obj
             break
     if summary_obj is None:
-        return None, "No record with 'recommendation' field"
+        return None, "No summary or recommendation record found"
     return summary_obj, None
 
 
@@ -1068,7 +1128,7 @@ def _handle_fork_candidate(  # noqa: C901, PLR0911
         )
         return
 
-    detail = str(summary_obj.get("detail", "")).strip()
+    detail = str(summary_obj.get("detail", "")).strip().rstrip(".")
     if not detail:
         detail = "No detail returned by check-fork-candidate.py"
 
@@ -1085,10 +1145,10 @@ def _handle_fork_candidate(  # noqa: C901, PLR0911
             )
             return
         collector.add(
-            CheckResult(
-                check=CHECK_FORK_INFO,
-                passed=True,
-                detail=f"INFO: {detail}",
+            CheckRecord.info(
+                CHECK_FORK_INFO,
+                detail,
+                tier="P9",
             ),
         )
         return
@@ -1098,15 +1158,15 @@ def _handle_fork_candidate(  # noqa: C901, PLR0911
             _emit_delegate_runtime_error(
                 collector,
                 fork_script.name,
-                (f"Recommendation is none but exit code is {return_code} (expected 1)"),
+                f"Recommendation is none but exit code is {return_code} (expected 1)",
                 check=CHECK_FORK_INFO,
             )
             return
         collector.add(
-            CheckResult(
-                check=CHECK_FORK_INFO,
-                passed=True,
-                detail=f"No fork recommendation - {detail}",
+            CheckRecord.info(
+                CHECK_FORK_INFO,
+                f"No fork recommendation - {detail}",
+                tier="P9",
             ),
         )
         return
@@ -1218,7 +1278,7 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit:
         collector = ResultCollector()
         collector.add(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SKILL_EXISTS,
                 passed=False,
                 detail=("Invalid arguments (usage: validate.py <skill-dir> [mode])"),
@@ -1234,7 +1294,7 @@ def main(argv: list[str] | None = None) -> int:
     except SkillLoadError as error:
         collector = ResultCollector()
         collector.add(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SKILL_EXISTS,
                 passed=False,
                 detail=str(error),

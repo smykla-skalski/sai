@@ -2,7 +2,7 @@
 """Static analysis for shell and Python scripts.
 
 This tool runs three layers of checks:
-- custom shell heuristics (`S01`..`S27`)
+- custom shell heuristics (`CL-S01`..`CL-S27`)
 - shellcheck integration (when installed)
 - ruff integration for Python files (when installed)
 
@@ -29,22 +29,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+from _skill_check_common import FindingRecord, SummaryRecord
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    Rule = Callable[["ScanContext"], list["Finding"]]
-
-
-@dataclass(frozen=True)
-class Finding:
-    """One lint finding emitted by a check or external tool."""
-
-    file: str
-    line: int
-    severity: str
-    check: str
-    message: str
-    evidence: str = ""
+    Rule = Callable[["ScanContext"], list["FindingRecord"]]
 
 
 @dataclass(frozen=True)
@@ -408,20 +398,20 @@ def _new_context(path: Path, content: str) -> ScanContext:
     )
 
 
-def _check_pipe_delimiter(context: ScanContext) -> list[Finding]:
+def _check_pipe_delimiter(context: ScanContext) -> list[FindingRecord]:
     """Flag IFS='|' with read - pipe in data corrupts parsing."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     for index, line in enumerate(context.lines):
         if _is_comment(line):
             continue
         has_pipe_ifs = "IFS='|'" in line or 'IFS="|"' in line
         if has_pipe_ifs and "read" in line:
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="critical",
-                    check="S01",
+                    check="CL-S01",
                     message=(
                         "Using | as field delimiter with read - data containing "
                         "pipes corrupts parsing"
@@ -432,19 +422,19 @@ def _check_pipe_delimiter(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_suppressed_exit_code(context: ScanContext) -> list[Finding]:
+def _check_suppressed_exit_code(context: ScanContext) -> list[FindingRecord]:
     """Flag stderr suppression before grep -c."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     for index, line in enumerate(context.lines):
         if _is_comment(line):
             continue
         if SUPPRESSED_GREP_C_RE.search(line):
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="critical",
-                    check="S02",
+                    check="CL-S02",
                     message=(
                         "Exit code suppressed (2>/dev/null) then piped to grep -c - "
                         "command failure produces count 0 (wrong default)"
@@ -455,9 +445,9 @@ def _check_suppressed_exit_code(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_sed_empty_var(context: ScanContext) -> list[Finding]:
+def _check_sed_empty_var(context: ScanContext) -> list[FindingRecord]:
     """Flag sed with variable in range that crashes if empty."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     pattern = re.compile(r"sed\s+(-n\s+)?[\"']?\$\{?(\w+)\}?.*,")
 
     for index, line in enumerate(context.lines):
@@ -483,11 +473,11 @@ def _check_sed_empty_var(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="critical",
-                check="S03",
+                check="CL-S03",
                 message=(
                     f"sed with ${{{variable}}} in range - crashes if variable is empty"
                 ),
@@ -498,9 +488,9 @@ def _check_sed_empty_var(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_template_mismatch(context: ScanContext) -> list[Finding]:
+def _check_template_mismatch(context: ScanContext) -> list[FindingRecord]:
     """Flag template placeholders that don't match script substitutions."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     placeholders = set(PLACEHOLDER_RE.findall(context.content))
     if not placeholders:
         return findings
@@ -528,11 +518,11 @@ def _check_template_mismatch(context: ScanContext) -> list[Finding]:
                 if bold_form not in line:
                     continue
                 findings.append(
-                    Finding(
+                    FindingRecord(
                         file=str(template_path),
                         line=line_index + 1,
                         severity="critical",
-                        check="S04",
+                        check="CL-S04",
                         message=(
                             f"Template uses {bold_form} but script substitutes "
                             f"__{placeholder}__"
@@ -545,9 +535,9 @@ def _check_template_mismatch(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_json_no_escape(context: ScanContext) -> list[Finding]:
+def _check_json_no_escape(context: ScanContext) -> list[FindingRecord]:
     """Flag JSON output without escape helpers."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     json_output_lines: list[int] = []
 
     for index, line in enumerate(context.lines):
@@ -578,11 +568,11 @@ def _check_json_no_escape(context: ScanContext) -> list[Finding]:
 
     first_line = json_output_lines[0]
     findings.append(
-        Finding(
+        FindingRecord(
             file=str(context.path),
             line=first_line + 1,
             severity="medium",
-            check="S05",
+            check="CL-S05",
             message=(
                 "Script outputs JSON but has no json_escape/emit helper - "
                 "user content with backslashes/quotes/newlines breaks JSON"
@@ -593,9 +583,9 @@ def _check_json_no_escape(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_json_escape_incomplete(context: ScanContext) -> list[Finding]:
+def _check_json_escape_incomplete(context: ScanContext) -> list[FindingRecord]:
     """Flag JSON escape functions missing newline/tab/CR handling."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         match = FUNCTION_DEF_RE.match(line)
@@ -614,11 +604,11 @@ def _check_json_escape_incomplete(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S06",
+                check="CL-S06",
                 message=(
                     f'JSON escaping in {function_name}() handles \\ and " but not '
                     "newlines/tabs/CRs - multi-line input breaks JSON"
@@ -630,9 +620,9 @@ def _check_json_escape_incomplete(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_space_delimited_list(context: ScanContext) -> list[Finding]:
+def _check_space_delimited_list(context: ScanContext) -> list[FindingRecord]:
     """Flag space-delimited string accumulation instead of arrays."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     pattern = re.compile(r"(\w+)=\"\$\{?\1\}?\s")
 
     for index, line in enumerate(context.lines):
@@ -644,11 +634,11 @@ def _check_space_delimited_list(context: ScanContext) -> list[Finding]:
 
         variable = match.group(1)
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S07",
+                check="CL-S07",
                 message=(
                     f"Space-delimited string accumulation for {variable} - "
                     "filenames with spaces break"
@@ -660,9 +650,9 @@ def _check_space_delimited_list(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_for_in_expansion(context: ScanContext) -> list[Finding]:
+def _check_for_in_expansion(context: ScanContext) -> list[FindingRecord]:
     """Flag for-in with unquoted command substitution."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
@@ -671,11 +661,11 @@ def _check_for_in_expansion(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S08",
+                check="CL-S08",
                 message=(
                     "for-in with unquoted $() - word-splits on spaces in filenames"
                 ),
@@ -686,12 +676,12 @@ def _check_for_in_expansion(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_empty_array_crash(context: ScanContext) -> list[Finding]:
+def _check_empty_array_crash(context: ScanContext) -> list[FindingRecord]:
     """Flag empty array expansion that crashes under set -u."""
     if not context.has_set_u:
         return []
 
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     match_re = re.compile(r"\"\$\{(\w+)\[@\]\}\"")
 
     for index, line in enumerate(context.lines):
@@ -710,11 +700,11 @@ def _check_empty_array_crash(context: ScanContext) -> list[Finding]:
                 continue
 
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="medium",
-                    check="S09",
+                    check="CL-S09",
                     message=(
                         f'"${{{array_name}[@]}}" crashes under set -u '
                         "if array is empty (bash < 4.4)"
@@ -726,9 +716,9 @@ def _check_empty_array_crash(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_unquoted_var_cmd(context: ScanContext) -> list[Finding]:
+def _check_unquoted_var_cmd(context: ScanContext) -> list[FindingRecord]:
     """Flag unquoted variable in command substitution."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
@@ -738,11 +728,11 @@ def _check_unquoted_var_cmd(context: ScanContext) -> list[Finding]:
             line,
         ):
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="medium",
-                    check="S10",
+                    check="CL-S10",
                     message=(
                         "Unquoted ${var} in command substitution - "
                         "breaks on paths with spaces"
@@ -754,9 +744,9 @@ def _check_unquoted_var_cmd(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_grep_var_no_fixed(context: ScanContext) -> list[Finding]:
+def _check_grep_var_no_fixed(context: ScanContext) -> list[FindingRecord]:
     """Flag grep with variable pattern but no -F flag."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line) or "grep" not in line:
@@ -772,11 +762,11 @@ def _check_grep_var_no_fixed(context: ScanContext) -> list[Finding]:
 
         if re.search(r"\$\{?\w+", pattern_token):
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="medium",
-                    check="S11",
+                    check="CL-S11",
                     message=(
                         "grep with variable in pattern but no -F - "
                         "variable content treated as regex"
@@ -788,12 +778,12 @@ def _check_grep_var_no_fixed(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_grep_pipe_no_guard(context: ScanContext) -> list[Finding]:
+def _check_grep_pipe_no_guard(context: ScanContext) -> list[FindingRecord]:
     """Flag grep in pipeline without || true under pipefail."""
     if not context.has_pipefail:
         return []
 
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     guard_re = re.compile(r"\|\|\s*(true|false|:|exit|return|\{)")
 
     for index, line in enumerate(context.lines):
@@ -811,11 +801,11 @@ def _check_grep_pipe_no_guard(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="low",
-                check="S12",
+                check="CL-S12",
                 message=(
                     "grep in pipeline without || true - kills script under "
                     "pipefail if no match"
@@ -827,9 +817,9 @@ def _check_grep_pipe_no_guard(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_grep_cmd_in_prose(context: ScanContext) -> list[Finding]:
+def _check_grep_cmd_in_prose(context: ScanContext) -> list[FindingRecord]:
     """Flag case-insensitive grep for common command words."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line) or "grep" not in line:
@@ -850,11 +840,11 @@ def _check_grep_cmd_in_prose(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S13",
+                check="CL-S13",
                 message=(
                     f"Case-insensitive grep for '{normalized.lower()}' matches prose"
                 ),
@@ -865,9 +855,9 @@ def _check_grep_cmd_in_prose(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_destructive_git(context: ScanContext) -> list[Finding]:
+def _check_destructive_git(context: ScanContext) -> list[FindingRecord]:
     """Flag destructive git operations without error handling."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line) or not DESTRUCTIVE_GIT_RE.search(line):
@@ -882,11 +872,11 @@ def _check_destructive_git(context: ScanContext) -> list[Finding]:
         stderr_suppressed = "2>/dev/null" in line or "2>&1" in line
         suffix = " (stderr suppressed)" if stderr_suppressed else ""
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S14",
+                check="CL-S14",
                 message=f"Destructive git operation without error handling{suffix}",
                 evidence=line.strip()[:120],
             ),
@@ -895,7 +885,7 @@ def _check_destructive_git(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_mktemp_no_trap(context: ScanContext) -> list[Finding]:
+def _check_mktemp_no_trap(context: ScanContext) -> list[FindingRecord]:
     """Flag mktemp calls without cleanup trap."""
     mktemp_lines = [
         index
@@ -912,20 +902,20 @@ def _check_mktemp_no_trap(context: ScanContext) -> list[Finding]:
 
     first_line = mktemp_lines[0] + 1
     return [
-        Finding(
+        FindingRecord(
             file=str(context.path),
             line=first_line,
             severity="medium",
-            check="S15",
+            check="CL-S15",
             message=f"{len(mktemp_lines)} mktemp call(s) but no cleanup mechanism",
             evidence="Add trap cleanup or _TMPFILES tracking",
         ),
     ]
 
 
-def _check_heredoc_injection(context: ScanContext) -> list[Finding]:
+def _check_heredoc_injection(context: ScanContext) -> list[FindingRecord]:
     """Flag interpolating heredocs that enable injection."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
@@ -951,11 +941,11 @@ def _check_heredoc_injection(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S16",
+                check="CL-S16",
                 message=(
                     f"Interpolating heredoc <<{tag} - shell variables expand inside, "
                     "enabling injection"
@@ -969,9 +959,9 @@ def _check_heredoc_injection(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_jq_injection(context: ScanContext) -> list[Finding]:
+def _check_jq_injection(context: ScanContext) -> list[FindingRecord]:
     """Flag variable interpolation in jq filters."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
@@ -987,11 +977,11 @@ def _check_jq_injection(context: ScanContext) -> list[Finding]:
                 non_self = [value for value in var_refs if value != lhs]
                 if non_self:
                     findings.append(
-                        Finding(
+                        FindingRecord(
                             file=str(context.path),
                             line=index + 1,
                             severity="medium",
-                            check="S17",
+                            check="CL-S17",
                             message=(
                                 "Variable interpolated in jq filter string - "
                                 "enables jq injection"
@@ -1021,11 +1011,11 @@ def _check_jq_injection(context: ScanContext) -> list[Finding]:
                 continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S17",
+                check="CL-S17",
                 message=(
                     "Variable interpolated in jq invocation - enables jq injection"
                 ),
@@ -1036,9 +1026,9 @@ def _check_jq_injection(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_yaml_no_quote_strip(context: ScanContext) -> list[Finding]:
+def _check_yaml_no_quote_strip(context: ScanContext) -> list[FindingRecord]:
     """Flag YAML parser functions that don't strip quotes."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         match = re.match(r"^(\w*get_field\w*)\(\)\s*\{", line)
@@ -1053,11 +1043,11 @@ def _check_yaml_no_quote_strip(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="medium",
-                check="S18",
+                check="CL-S18",
                 message=(
                     f"YAML parser {function_name}() doesn't strip quotes - "
                     'name: "foo" returns "foo" with quotes'
@@ -1069,7 +1059,7 @@ def _check_yaml_no_quote_strip(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_no_pagination(context: ScanContext) -> list[Finding]:
+def _check_no_pagination(context: ScanContext) -> list[FindingRecord]:
     """Flag API queries with fixed limit but no pagination."""
     if not LIMIT_PATTERN_RE.search(context.content):
         return []
@@ -1079,11 +1069,11 @@ def _check_no_pagination(context: ScanContext) -> list[Finding]:
     for index, line in enumerate(context.lines):
         if LIMIT_PATTERN_RE.search(line):
             return [
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="medium",
-                    check="S19",
+                    check="CL-S19",
                     message=(
                         "API query with fixed limit but no pagination - "
                         "silently drops data"
@@ -1098,9 +1088,9 @@ def _check_no_pagination(context: ScanContext) -> list[Finding]:
     return []
 
 
-def _check_no_codeblock_tracking(context: ScanContext) -> list[Finding]:
+def _check_no_codeblock_tracking(context: ScanContext) -> list[FindingRecord]:
     """Flag markdown processors counting bullets without fence tracking."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for start, end in _find_while_read_loops(context.lines):
         loop_body = "\n".join(context.lines[start : end + 1])
@@ -1110,11 +1100,11 @@ def _check_no_codeblock_tracking(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=start + 1,
                 severity="medium",
-                check="S20",
+                check="CL-S20",
                 message=(
                     "Markdown line processing counts bullets but doesn't track "
                     "fenced code block state"
@@ -1128,7 +1118,7 @@ def _check_no_codeblock_tracking(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_awk_diff_collision(context: ScanContext) -> list[Finding]:
+def _check_awk_diff_collision(context: ScanContext) -> list[FindingRecord]:
     """Flag awk matching ^--- without diff header state tracking."""
     if AWK_TRIPLE_DASH_RE.search(context.content) is None:
         return []
@@ -1140,11 +1130,11 @@ def _check_awk_diff_collision(context: ScanContext) -> list[Finding]:
             continue
         if AWK_TRIPLE_DASH_RE.search(line):
             return [
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="medium",
-                    check="S21",
+                    check="CL-S21",
                     message=(
                         "Awk matches ^--- without header state tracking - "
                         "diff body lines starting with --- confuse parser"
@@ -1159,20 +1149,20 @@ def _check_awk_diff_collision(context: ScanContext) -> list[Finding]:
     return []
 
 
-def _check_echo_wc_offbyone(context: ScanContext) -> list[Finding]:
+def _check_echo_wc_offbyone(context: ScanContext) -> list[FindingRecord]:
     """Flag echo var | wc -l off-by-one from trailing newline."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
             continue
         if ECHO_WC_L_RE.search(line):
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="low",
-                    check="S22",
+                    check="CL-S22",
                     message=(
                         'echo "$var" | wc -l - echo adds trailing newline, off-by-one'
                     ),
@@ -1183,9 +1173,9 @@ def _check_echo_wc_offbyone(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_timestamp_collision(context: ScanContext) -> list[Finding]:
+def _check_timestamp_collision(context: ScanContext) -> list[FindingRecord]:
     """Flag timestamp in filename without PID/random suffix."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     timestamp_vars: dict[str, int] = {}
 
     for index, line in enumerate(context.lines):
@@ -1220,11 +1210,11 @@ def _check_timestamp_collision(context: ScanContext) -> list[Finding]:
                 break
 
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=definition_index + 1,
                     severity="low",
-                    check="S23",
+                    check="CL-S23",
                     message=(
                         "Timestamp in filename without PID/random suffix - "
                         "same-second collision"
@@ -1237,9 +1227,9 @@ def _check_timestamp_collision(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_cut_colon_paths(context: ScanContext) -> list[Finding]:
+def _check_cut_colon_paths(context: ScanContext) -> list[FindingRecord]:
     """Flag cut -d: on path-like data."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
@@ -1255,11 +1245,11 @@ def _check_cut_colon_paths(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="low",
-                check="S24",
+                check="CL-S24",
                 message="cut -d: on path-like data - filenames with colons break",
                 evidence="Use parameter expansion: ${var%%:*} and ${var#*:}",
             ),
@@ -1268,9 +1258,9 @@ def _check_cut_colon_paths(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_fragile_output_parse(context: ScanContext) -> list[Finding]:
+def _check_fragile_output_parse(context: ScanContext) -> list[FindingRecord]:
     """Flag head/tail output parsed without format validation."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
@@ -1300,11 +1290,11 @@ def _check_fragile_output_parse(context: ScanContext) -> list[Finding]:
             continue
 
         findings.append(
-            Finding(
+            FindingRecord(
                 file=str(context.path),
                 line=index + 1,
                 severity="low",
-                check="S25",
+                check="CL-S25",
                 message=(
                     f"External command output parsed by {match.group(2)} into "
                     f"${variable} without format validation"
@@ -1316,20 +1306,20 @@ def _check_fragile_output_parse(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_deep_relative_path(context: ScanContext) -> list[Finding]:
+def _check_deep_relative_path(context: ScanContext) -> list[FindingRecord]:
     """Flag 4+ level deep relative path navigation."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         if _is_comment(line):
             continue
         if DEEP_RELATIVE_RE.search(line):
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="low",
-                    check="S26",
+                    check="CL-S26",
                     message=(
                         "Deep relative path navigation (4+ levels up) - "
                         "fragile fallback"
@@ -1341,9 +1331,9 @@ def _check_deep_relative_path(context: ScanContext) -> list[Finding]:
     return findings
 
 
-def _check_stale_global(context: ScanContext) -> list[Finding]:
+def _check_stale_global(context: ScanContext) -> list[FindingRecord]:
     """Flag global variable used in loop without per-iteration reset."""
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
 
     for index, line in enumerate(context.lines):
         match = STALE_GLOBAL_RE.match(line)
@@ -1363,11 +1353,11 @@ def _check_stale_global(context: ScanContext) -> list[Finding]:
 
         if has_loop and has_usage and not has_reset:
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(context.path),
                     line=index + 1,
                     severity="low",
-                    check="S27",
+                    check="CL-S27",
                     message=(
                         f"${variable} set once but used in loop "
                         "without per-iteration reset"
@@ -1410,7 +1400,7 @@ CUSTOM_SHELL_CHECKS: Final[tuple[Rule, ...]] = (
 )
 
 
-def _scan_shell_file(path: Path) -> list[Finding]:
+def _scan_shell_file(path: Path) -> list[FindingRecord]:
     """Run custom shell checks on one `.sh` file."""
     if path.suffix.lower() != ".sh":
         return []
@@ -1422,19 +1412,19 @@ def _scan_shell_file(path: Path) -> list[Finding]:
         return []
 
     context = _new_context(path, content)
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     for check_fn in CUSTOM_SHELL_CHECKS:
         findings.extend(check_fn(context))
     return findings
 
 
-def _run_shellcheck(files: Sequence[Path]) -> list[Finding]:
-    """Run shellcheck and map diagnostics to Finding records."""
+def _run_shellcheck(files: Sequence[Path]) -> list[FindingRecord]:
+    """Run shellcheck and map diagnostics to FindingRecord records."""
     shellcheck_path = shutil.which("shellcheck")
     if shellcheck_path is None:
         return []
 
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     for path in files:
         try:
             result = subprocess.run(  # noqa: S603
@@ -1460,11 +1450,11 @@ def _run_shellcheck(files: Sequence[Path]) -> list[Finding]:
             severity = SHELLCHECK_SEVERITY_MAP.get(level, "low")
             code = item.get("code", 0)
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(path),
                     line=int(item.get("line", 0)),
                     severity=severity,
-                    check=f"SC{code}",
+                    check=f"CL-SC{code}",
                     message=str(item.get("message", "")),
                     evidence=f"https://www.shellcheck.net/wiki/SC{code}",
                 ),
@@ -1473,13 +1463,13 @@ def _run_shellcheck(files: Sequence[Path]) -> list[Finding]:
     return findings
 
 
-def _run_ruff(files: Sequence[Path]) -> list[Finding]:
-    """Run ruff and map diagnostics to Finding records."""
+def _run_ruff(files: Sequence[Path]) -> list[FindingRecord]:
+    """Run ruff and map diagnostics to FindingRecord records."""
     ruff_path = shutil.which("ruff")
     if ruff_path is None:
         return []
 
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     for path in files:
         try:
             result = subprocess.run(  # noqa: S603
@@ -1504,11 +1494,11 @@ def _run_ruff(files: Sequence[Path]) -> list[Finding]:
             code = str(item.get("code", ""))
             location = item.get("location", {})
             findings.append(
-                Finding(
+                FindingRecord(
                     file=str(path),
                     line=int(location.get("row", 0)),
                     severity=_ruff_severity(code),
-                    check=f"RF{code}",
+                    check=f"CL-RU{code}",
                     message=str(item.get("message", "")),
                     evidence=f"https://docs.astral.sh/ruff/rules/{code}",
                 ),
@@ -1535,7 +1525,7 @@ def _collect_files(target: Path) -> tuple[list[Path], list[Path]]:
     return [], []
 
 
-def _format_text(finding: Finding) -> str:
+def _format_text(finding: FindingRecord) -> str:
     """Render one finding in compact text format."""
     label = {"critical": "CRT", "medium": "MED", "low": "LOW"}.get(
         finding.severity,
@@ -1548,19 +1538,9 @@ def _format_text(finding: Finding) -> str:
     return line
 
 
-def _format_json(finding: Finding) -> str:
+def _format_json(finding: FindingRecord) -> str:
     """Render one finding as NDJSON object string."""
-    return json.dumps(
-        {
-            "file": finding.file,
-            "line": finding.line,
-            "severity": finding.severity,
-            "check": finding.check,
-            "message": finding.message,
-            "evidence": finding.evidence,
-        },
-        ensure_ascii=False,
-    )
+    return json.dumps(finding.payload(), ensure_ascii=False)
 
 
 def _write_stdout(message: str) -> None:
@@ -1574,9 +1554,9 @@ def _write_stderr(message: str) -> None:
 
 
 def _apply_severity_filter(
-    findings: Sequence[Finding],
+    findings: Sequence[FindingRecord],
     severity: str,
-) -> list[Finding]:
+) -> list[FindingRecord]:
     """Filter findings by minimum severity (`all` disables filtering)."""
     if severity == "all":
         return list(findings)
@@ -1589,7 +1569,7 @@ def _apply_severity_filter(
     ]
 
 
-def _sort_findings(findings: list[Finding]) -> list[Finding]:
+def _sort_findings(findings: list[FindingRecord]) -> list[FindingRecord]:
     """Sort findings by severity desc, then file and line for stable output."""
     return sorted(
         findings,
@@ -1645,7 +1625,7 @@ def main(argv: list[str] | None = None) -> int:
         _write_stderr("No .sh or .py files found")
         return 0
 
-    findings: list[Finding] = []
+    findings: list[FindingRecord] = []
     for shell_file in shell_files:
         findings.extend(_scan_shell_file(shell_file))
 
@@ -1668,17 +1648,18 @@ def main(argv: list[str] | None = None) -> int:
     low_count = sum(1 for finding in filtered if finding.severity == "low")
 
     if args.json:
-        _write_stdout(
-            json.dumps(
-                {
-                    "summary": True,
-                    "findings": len(filtered),
-                    "critical": critical_count,
-                    "medium": medium_count,
-                    "low": low_count,
-                },
-            ),
+        summary = SummaryRecord(
+            total=len(filtered),
+            passed=0,
+            failed=0,
+            extras={
+                "critical": critical_count,
+                "findings": len(filtered),
+                "low": low_count,
+                "medium": medium_count,
+            },
         )
+        _write_stdout(json.dumps(summary.payload(), ensure_ascii=False))
     elif filtered:
         _write_stdout("")
         _write_stdout(f"{len(filtered)} finding(s) total.")

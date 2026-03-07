@@ -2,12 +2,12 @@
 """Validate SKILL.md file reference and path-format checks.
 
 Sub-checks:
-- `file-ref-resolves`
-- `no-backslash-paths`
-- `no-disallowed-files`
-- `refs-one-level`
-- `skill-md-mentions-file`
-- `ref-link-format`
+- `FR-resolves`
+- `FR-no-backslash`
+- `FR-no-disallowed`
+- `FR-one-level`
+- `FR-mentions-file`
+- `FR-link-format`
 
 Output is NDJSON with a summary line.
 Exit codes: 0 (all pass), 1 (any fail), 2 (usage/input error).
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 from _skill_check_common import (
     RESOURCE_SUBDIRECTORIES,
     SNIPPET_WIDTH,
-    CheckResult,
+    CheckRecord,
     SkillDocument,
     find_plugin_root,
     read_text,
@@ -37,12 +37,12 @@ from _skill_check_common import (
 # Constants
 # ---------------------------------------------------------------------------
 
-CHECK_FILE_REF_RESOLVES: Final[str] = "file-ref-resolves"
-CHECK_NO_BACKSLASH_PATHS: Final[str] = "no-backslash-paths"
-CHECK_NO_DISALLOWED_FILES: Final[str] = "no-disallowed-files"
-CHECK_REFS_ONE_LEVEL: Final[str] = "refs-one-level"
-CHECK_SKILL_MENTIONS_FILE: Final[str] = "skill-md-mentions-file"
-CHECK_REF_LINK_FORMAT: Final[str] = "ref-link-format"
+CHECK_FILE_REF_RESOLVES: Final[str] = "FR-resolves"
+CHECK_NO_BACKSLASH_PATHS: Final[str] = "FR-no-backslash"
+CHECK_NO_DISALLOWED_FILES: Final[str] = "FR-no-disallowed"
+CHECK_REFS_ONE_LEVEL: Final[str] = "FR-one-level"
+CHECK_SKILL_MENTIONS_FILE: Final[str] = "FR-mentions-file"
+CHECK_REF_LINK_FORMAT: Final[str] = "FR-link-format"
 
 DISALLOWED_FILES: Final[tuple[str, ...]] = (
     "README.md",
@@ -108,29 +108,31 @@ def _has_cross_reference(content: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def check_file_ref_resolves(document: SkillDocument) -> list[CheckResult]:
+def check_file_ref_resolves(document: SkillDocument) -> list[CheckRecord]:
     """Validate that resource references resolve from skill directory."""
     references = _extract_referenced_paths(document.prose_body)
     if not references:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_FILE_REF_RESOLVES,
                 passed=True,
                 detail="No file references found in SKILL.md",
+                tier="C3",
             ),
         ]
 
     plugin_root = find_plugin_root(document.skill_dir)
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     for reference in references:
         expected_path = document.skill_dir / reference
         if expected_path.is_file():
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_FILE_REF_RESOLVES,
                     passed=True,
                     detail=f"Reference '{reference}' resolves in skill directory",
+                    tier="C3",
                 ),
             )
             continue
@@ -138,61 +140,65 @@ def check_file_ref_resolves(document: SkillDocument) -> list[CheckResult]:
         plugin_root_path = plugin_root / reference if plugin_root is not None else None
         if plugin_root_path is not None and plugin_root_path.is_file():
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_FILE_REF_RESOLVES,
                     passed=False,
                     detail=(
                         f"Reference '{reference}' found at plugin root but not in "
                         f"skill directory - move to {expected_path}"
                     ),
+                    tier="C3",
                 ),
             )
             continue
 
         results.append(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_FILE_REF_RESOLVES,
                 passed=False,
                 detail=(
                     f"Reference '{reference}' not found - expected at {expected_path}"
                 ),
+                tier="C3",
             ),
         )
 
     return results
 
 
-def check_no_backslash_paths(document: SkillDocument) -> list[CheckResult]:
+def check_no_backslash_paths(document: SkillDocument) -> list[CheckRecord]:
     """Validate that resource paths use forward slashes."""
     hits = BACKSLASH_PATH_RE.findall(document.prose_body)
     if not hits:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_NO_BACKSLASH_PATHS,
                 passed=True,
                 detail="No Windows-style backslash paths found",
+                tier="P6",
             ),
         ]
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_NO_BACKSLASH_PATHS,
             passed=False,
             detail=f"Windows-style backslash path found: {hit} - use forward slashes",
+            tier="P6",
         )
         for hit in hits
     ]
 
 
-def check_no_disallowed_files(document: SkillDocument) -> list[CheckResult]:
+def check_no_disallowed_files(document: SkillDocument) -> list[CheckRecord]:
     """Validate that known disallowed files are absent in skill directory."""
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     for filename in DISALLOWED_FILES:
         file_path = document.skill_dir / filename
         if file_path.is_file():
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_NO_DISALLOWED_FILES,
                     passed=False,
                     detail=f"Disallowed file '{filename}' found in skill directory",
@@ -201,7 +207,7 @@ def check_no_disallowed_files(document: SkillDocument) -> list[CheckResult]:
             continue
 
         results.append(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_NO_DISALLOWED_FILES,
                 passed=True,
                 detail=f"'{filename}' not present (correct)",
@@ -211,13 +217,13 @@ def check_no_disallowed_files(document: SkillDocument) -> list[CheckResult]:
     return results
 
 
-def check_refs_one_level(document: SkillDocument) -> list[CheckResult]:
+def check_refs_one_level(document: SkillDocument) -> list[CheckRecord]:
     """Validate references files do not cross-reference each other directly."""
     references_dir = document.skill_dir / "references"
     if not references_dir.is_dir():
         return []
 
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
     for path in sorted(references_dir.iterdir()):
         if not path.is_file():
             continue
@@ -227,7 +233,7 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckResult]:
         has_xref = _has_cross_reference(read_text(path))
         if has_xref:
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_REFS_ONE_LEVEL,
                     passed=False,
                     detail=(
@@ -239,7 +245,7 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckResult]:
             continue
 
         results.append(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_REFS_ONE_LEVEL,
                 passed=True,
                 detail=(
@@ -251,9 +257,9 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckResult]:
     return results
 
 
-def check_skill_md_mentions_file(document: SkillDocument) -> list[CheckResult]:
+def check_skill_md_mentions_file(document: SkillDocument) -> list[CheckRecord]:
     """Validate that SKILL.md mentions all bundled top-level resource files."""
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     for subdir in RESOURCE_SUBDIRECTORIES:
         subdir_path = document.skill_dir / subdir
@@ -272,48 +278,52 @@ def check_skill_md_mentions_file(document: SkillDocument) -> list[CheckResult]:
             )
             if boundary_re.search(document.content):
                 results.append(
-                    CheckResult(
+                    CheckRecord(
                         check=CHECK_SKILL_MENTIONS_FILE,
                         passed=True,
                         detail=f"SKILL.md mentions '{relative_path}'",
+                        tier="P3",
                     ),
                 )
                 continue
 
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_SKILL_MENTIONS_FILE,
                     passed=False,
                     detail=(
                         f"SKILL.md does not mention '{relative_path}' - all "
                         "bundled files should be referenced"
                     ),
+                    tier="P3",
                 ),
             )
 
     return results
 
 
-def check_ref_link_format(document: SkillDocument) -> list[CheckResult]:
+def check_ref_link_format(document: SkillDocument) -> list[CheckRecord]:
     """Validate reference paths use markdown links, not inline-code paths."""
     hits = INLINE_CODE_REFERENCE_RE.findall(document.prose_body)
     if not hits:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_REF_LINK_FORMAT,
                 passed=True,
                 detail="Reference file paths use markdown link format",
+                tier="I15",
             ),
         ]
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_REF_LINK_FORMAT,
             passed=False,
             detail=(
                 "Inline code reference path - use markdown link "
                 f"[file](path) for progressive disclosure: {hit[:SNIPPET_WIDTH]}"
             ),
+            tier="I15",
         )
         for hit in hits
     ]
@@ -324,7 +334,7 @@ def check_ref_link_format(document: SkillDocument) -> list[CheckResult]:
 # ---------------------------------------------------------------------------
 
 if TYPE_CHECKING:
-    CheckRunner = Callable[[SkillDocument], list[CheckResult]]
+    CheckRunner = Callable[[SkillDocument], list[CheckRecord]]
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_FILE_REF_RESOLVES,
@@ -348,7 +358,7 @@ CHECK_RUNNERS: Final[dict[str, CheckRunner]] = {
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...],
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run selected checks in stable output order."""
     selected = frozenset(selected_checks)
     checks_to_run = [
@@ -357,7 +367,7 @@ def run_checks(
         if not selected or check_name in selected
     ]
 
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
     for check_name in checks_to_run:
         results.extend(CHECK_RUNNERS[check_name](document))
     return results

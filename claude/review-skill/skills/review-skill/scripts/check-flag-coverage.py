@@ -7,9 +7,9 @@ Compares three zones where flags are declared:
   3. Workflow/body text outside Arguments and Examples (actual usage)
 
 Sub-checks:
-  - `FC-HINT-DOC`      - every --flag in argument-hint appears in Arguments section
-  - `FC-DOC-HINT`      - every --flag in Arguments section appears in argument-hint
-  - `FC-DOC-WORKFLOW`  - every --flag in Arguments section is
+  - `FC-hint-doc`      - every --flag in argument-hint appears in Arguments section
+  - `FC-doc-hint`      - every --flag in Arguments section appears in argument-hint
+  - `FC-doc-workflow`  - every --flag in Arguments section is
                           referenced in workflow body
 
 Usage:
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    CheckResult,
+    CheckRecord,
     SkillDocument,
     build_fenced_line_indices,
     run_check_cli,
@@ -43,9 +43,9 @@ from _skill_check_common import (
 # Sub-check identifiers
 # ---------------------------------------------------------------------------
 
-CHECK_HINT_DOC: Final[str] = "FC-HINT-DOC"
-CHECK_DOC_HINT: Final[str] = "FC-DOC-HINT"
-CHECK_DOC_WORKFLOW: Final[str] = "FC-DOC-WORKFLOW"
+CHECK_HINT_DOC: Final[str] = "FC-hint-doc"
+CHECK_DOC_HINT: Final[str] = "FC-doc-hint"
+CHECK_DOC_WORKFLOW: Final[str] = "FC-doc-workflow"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_HINT_DOC,
@@ -187,7 +187,7 @@ def _get_workflow_flags(
 def _check_hint_doc(
     hint_flags: set[str],
     doc_flags: set[str],
-) -> CheckResult | None:
+) -> CheckRecord | None:
     """Check that flags in argument-hint appear in Arguments section."""
     if not hint_flags:
         return None
@@ -195,27 +195,30 @@ def _check_hint_doc(
     if doc_flags:
         missing = sorted(hint_flags - doc_flags)
         if missing:
-            return CheckResult(
+            return CheckRecord(
                 check=CHECK_HINT_DOC,
                 passed=False,
                 detail=(
                     "Flags in argument-hint not documented in Arguments section: "
                     f"{', '.join(missing)}"
                 ),
+                tier="I22",
             )
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_HINT_DOC,
             passed=True,
             detail=f"All {len(hint_flags)} argument-hint flags documented",
+            tier="I22",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_HINT_DOC,
         passed=False,
         detail=(
-            f"argument-hint has {len(hint_flags)} flags but no Arguments "
+            f"Argument-hint has {len(hint_flags)} flags but no Arguments "
             "section found in body"
         ),
+        tier="I22",
     )
 
 
@@ -223,7 +226,7 @@ def _check_doc_hint(
     doc_flags: set[str],
     hint_flags: set[str],
     hint_raw: str,
-) -> CheckResult | None:
+) -> CheckRecord | None:
     """Check that flags in Arguments section appear in argument-hint."""
     if not doc_flags:
         return None
@@ -231,67 +234,73 @@ def _check_doc_hint(
     if hint_flags:
         missing = sorted(doc_flags - hint_flags)
         if missing:
-            return CheckResult(
+            return CheckRecord(
                 check=CHECK_DOC_HINT,
                 passed=False,
                 detail=(
                     "Flags in Arguments section missing from argument-hint: "
                     f"{', '.join(missing)}"
                 ),
+                tier="I22",
             )
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_DOC_HINT,
             passed=True,
             detail=f"All {len(doc_flags)} documented flags in argument-hint",
+            tier="I22",
         )
 
     if not hint_raw:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_DOC_HINT,
             passed=False,
             detail=(
                 f"Arguments section documents {len(doc_flags)} flags but "
                 "argument-hint field is missing from frontmatter"
             ),
+            tier="I22",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_DOC_HINT,
         passed=False,
         detail=(
             f"Arguments section documents {len(doc_flags)} flags but "
             f"argument-hint has none: {', '.join(sorted(doc_flags))}"
         ),
+        tier="I22",
     )
 
 
 def _check_doc_workflow(
     doc_flags: set[str],
     workflow_flags: set[str],
-) -> CheckResult | None:
+) -> CheckRecord | None:
     """Check that flags in Arguments section are referenced in workflow body."""
     if not doc_flags:
         return None
 
     unreferenced = sorted(doc_flags - workflow_flags)
     if unreferenced:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_DOC_WORKFLOW,
             passed=False,
             detail=(
                 "Flags documented but not referenced in workflow: "
                 f"{', '.join(unreferenced)}"
             ),
+            tier="I22",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_DOC_WORKFLOW,
         passed=True,
         detail=f"All {len(doc_flags)} documented flags referenced in workflow",
+        tier="I22",
     )
 
 
 CHECK_FUNCTIONS: Final[
-    dict[str, Callable[..., CheckResult | None]]
+    dict[str, Callable[..., CheckRecord | None]]
 ] = {
     CHECK_HINT_DOC: _check_hint_doc,
     CHECK_DOC_HINT: _check_doc_hint,
@@ -307,7 +316,7 @@ CHECK_FUNCTIONS: Final[
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run flag coverage checks and return results in stable order."""
     body_lines = document.body.splitlines()
     fenced = build_fenced_line_indices(body_lines)
@@ -321,7 +330,7 @@ def run_checks(
         return []
 
     selected = frozenset(selected_checks)
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     for check_name in CHECK_ORDER:
         if selected and check_name not in selected:

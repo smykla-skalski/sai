@@ -32,8 +32,10 @@ from _skill_check_common import (
     EXIT_FAILURE,
     EXIT_OK,
     EXIT_USAGE_ERROR,
+    SignalRecord,
     SkillDocument,
     SkillLoadError,
+    SummaryRecord,
     emit_error,
     emit_record,
     load_skill_document,
@@ -130,16 +132,6 @@ N1_DESTRUCTIVE_RE: Final[Pattern[str]] = re.compile(
 
 
 @dataclass(frozen=True)
-class SignalResult:
-    """Store one signal detection result."""
-
-    signal_id: str
-    signal_type: Literal["positive", "blocker", "counter"]
-    detected: bool
-    detail: str
-
-
-@dataclass(frozen=True)
 class WebSignals:
     """Store web-related signal detection state."""
 
@@ -159,22 +151,16 @@ def _signal(
     *,
     detected: bool,
     detail: str,
-) -> SignalResult:
-    """Emit a signal as NDJSON and return the result when detected."""
-    emit_record(
-        {
-            "signal": signal_id,
-            "type": signal_type,
-            "detected": detected,
-            "detail": detail,
-        },
-    )
-    return SignalResult(
-        signal_id=signal_id,
-        signal_type=signal_type,
+) -> SignalRecord:
+    """Emit a signal as NDJSON and return the result."""
+    result = SignalRecord(
+        signal=signal_id,
+        type=signal_type,
         detected=detected,
         detail=detail,
     )
+    emit_record(result.payload())
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -182,17 +168,17 @@ def _signal(
 # ---------------------------------------------------------------------------
 
 
-def check_blockers(doc: SkillDocument) -> list[SignalResult]:
+def check_blockers(doc: SkillDocument) -> list[SignalRecord]:
     """Run all blocker signal checks and return detected results."""
-    results: list[SignalResult] = []
+    results: list[SignalRecord] = []
 
     # B1 - already forked
     if doc.field("context").lower() == "fork":
         results.append(
-            _signal("B1", "blocker", detected=True, detail="Already uses fork"),
+            _signal("FK-B1", "blocker", detected=True, detail="Already uses fork"),
         )
     else:
-        _signal("B1", "blocker", detected=False, detail="No fork frontmatter")
+        _signal("FK-B1", "blocker", detected=False, detail="No fork frontmatter")
 
     # B2 - conversation-dependent
     if B2_CONV_HITS_RE.search(doc.prose_body):
@@ -203,7 +189,7 @@ def check_blockers(doc: SkillDocument) -> list[SignalResult]:
                 break
         results.append(
             _signal(
-                "B2",
+                "FK-B2",
                 "blocker",
                 detected=True,
                 detail=f"Conversation-dependent: {first_hit}",
@@ -211,7 +197,7 @@ def check_blockers(doc: SkillDocument) -> list[SignalResult]:
         )
     else:
         _signal(
-            "B2",
+            "FK-B2",
             "blocker",
             detected=False,
             detail="No conversation-dependent phrases found",
@@ -222,7 +208,7 @@ def check_blockers(doc: SkillDocument) -> list[SignalResult]:
     if body_lines < TINY_SKILL_LINES_THRESHOLD:
         results.append(
             _signal(
-                "B3",
+                "FK-B3",
                 "blocker",
                 detected=True,
                 detail=f"Body {body_lines} lines — overhead not justified",
@@ -230,7 +216,7 @@ def check_blockers(doc: SkillDocument) -> list[SignalResult]:
         )
     else:
         _signal(
-            "B3",
+            "FK-B3",
             "blocker",
             detected=False,
             detail=f"Body is {body_lines} lines",
@@ -240,21 +226,21 @@ def check_blockers(doc: SkillDocument) -> list[SignalResult]:
     if doc.field("user-invocable").lower() == "false":
         results.append(
             _signal(
-                "B4",
+                "FK-B4",
                 "blocker",
                 detected=True,
                 detail="user-invocable: false — context enrichment, not task",
             ),
         )
     else:
-        _signal("B4", "blocker", detected=False, detail="User-invocable")
+        _signal("FK-B4", "blocker", detected=False, detail="User-invocable")
 
     return results
 
 
 def _check_positives_p1_p2(
     prose_lines: list[str],
-    results: list[SignalResult],
+    results: list[SignalRecord],
 ) -> None:
     """Check P1 (phase count) and P2 (structured output)."""
     # P1 - high phase count
@@ -262,7 +248,7 @@ def _check_positives_p1_p2(
     if phase_count >= HIGH_PHASE_COUNT_THRESHOLD:
         results.append(
             _signal(
-                "P1",
+                "FK-P1",
                 "positive",
                 detected=True,
                 detail=f"{phase_count} phases — workflow generates context",
@@ -270,7 +256,7 @@ def _check_positives_p1_p2(
         )
     else:
         _signal(
-            "P1",
+            "FK-P1",
             "positive",
             detected=False,
             detail=f"{phase_count} numbered phases (threshold: 5)",
@@ -286,7 +272,7 @@ def _check_positives_p1_p2(
         first_header = output_filtered[0][:60]
         results.append(
             _signal(
-                "P2",
+                "FK-P2",
                 "positive",
                 detected=True,
                 detail=f"Has structured output section: {first_header}",
@@ -294,7 +280,7 @@ def _check_positives_p1_p2(
         )
     else:
         _signal(
-            "P2",
+            "FK-P2",
             "positive",
             detected=False,
             detail="No structured output/report section found",
@@ -304,7 +290,7 @@ def _check_positives_p1_p2(
 def _check_positives_p3_p4(
     doc: SkillDocument,
     allowed_tools: frozenset[str],
-    results: list[SignalResult],
+    results: list[SignalRecord],
 ) -> WebSignals:
     """Check P3 (data gathering) and P4 (manual subagent). Return web state."""
     # P3 - data gathering via web tools
@@ -315,7 +301,7 @@ def _check_positives_p3_p4(
     if has_websearch_tool or has_webfetch_tool or body_web:
         results.append(
             _signal(
-                "P3",
+                "FK-P3",
                 "positive",
                 detected=True,
                 detail="Uses WebSearch/Fetch — results pollute context",
@@ -323,7 +309,7 @@ def _check_positives_p3_p4(
         )
     else:
         _signal(
-            "P3",
+            "FK-P3",
             "positive",
             detected=False,
             detail="No WebSearch/WebFetch usage detected",
@@ -338,7 +324,7 @@ def _check_positives_p3_p4(
     if has_task_tool and body_spawn:
         results.append(
             _signal(
-                "P4",
+                "FK-P4",
                 "positive",
                 detected=True,
                 detail="Task in allowed-tools + body spawns agents",
@@ -346,7 +332,7 @@ def _check_positives_p3_p4(
         )
     else:
         _signal(
-            "P4",
+            "FK-P4",
             "positive",
             detected=False,
             detail="No explicit agent spawning detected",
@@ -362,7 +348,7 @@ def _check_positives_p3_p4(
 def _check_positives_p5_p6(
     doc: SkillDocument,
     prose_lines: list[str],
-    results: list[SignalResult],
+    results: list[SignalRecord],
 ) -> None:
     """Check P5 (heavy reference loading) and P6 (self-contained inputs)."""
     # P5 - heavy reference loading
@@ -378,7 +364,7 @@ def _check_positives_p5_p6(
     if ref_count >= P5_MIN_REF_FILES and read_directives >= P5_MIN_READ_DIRECTIVES:
         results.append(
             _signal(
-                "P5",
+                "FK-P5",
                 "positive",
                 detected=True,
                 detail=f"{ref_count} refs + {read_directives} reads — heavy loading",
@@ -386,7 +372,7 @@ def _check_positives_p5_p6(
         )
     else:
         _signal(
-            "P5",
+            "FK-P5",
             "positive",
             detected=False,
             detail=f"{ref_count} reference files, {read_directives} read dirs",
@@ -399,7 +385,7 @@ def _check_positives_p5_p6(
     if has_arguments and not implicit_input:
         results.append(
             _signal(
-                "P6",
+                "FK-P6",
                 "positive",
                 detected=True,
                 detail="All input via $ARGUMENTS, no implicit dependency",
@@ -407,16 +393,16 @@ def _check_positives_p5_p6(
         )
     else:
         _signal(
-            "P6",
+            "FK-P6",
             "positive",
             detected=False,
             detail="Body relies on session context or lacks $ARGUMENTS",
         )
 
 
-def check_positives(doc: SkillDocument) -> tuple[list[SignalResult], WebSignals]:
+def check_positives(doc: SkillDocument) -> tuple[list[SignalRecord], WebSignals]:
     """Run all positive signal checks and return results + web state."""
-    results: list[SignalResult] = []
+    results: list[SignalRecord] = []
     prose_lines = doc.prose_body.splitlines()
     allowed_tools = parse_allowed_tools(doc.frontmatter)
 
@@ -427,9 +413,9 @@ def check_positives(doc: SkillDocument) -> tuple[list[SignalResult], WebSignals]
     return results, web
 
 
-def check_counters(doc: SkillDocument) -> list[SignalResult]:
+def check_counters(doc: SkillDocument) -> list[SignalRecord]:
     """Run all counter signal checks and return detected results."""
-    results: list[SignalResult] = []
+    results: list[SignalRecord] = []
 
     # N1 - side-effect skill
     dmi = doc.field("disable-model-invocation").lower() == "true"
@@ -440,14 +426,14 @@ def check_counters(doc: SkillDocument) -> list[SignalResult]:
     if dmi or side_effect_hits > 0:
         results.append(
             _signal(
-                "N1",
+                "FK-N1",
                 "counter",
                 detected=True,
                 detail=f"Side-effect ({side_effect_hits} hits) — reduces visibility",
             ),
         )
     else:
-        _signal("N1", "counter", detected=False, detail="No side-effects")
+        _signal("FK-N1", "counter", detected=False, detail="No side-effects")
 
     return results
 
@@ -459,26 +445,28 @@ def determine_agent(web: WebSignals) -> tuple[str, str]:
     return "general-purpose", "default for task execution"
 
 
-def build_summary(
-    blockers: list[SignalResult],
-    positives: list[SignalResult],
-    counters: list[SignalResult],
+def build_summary(  # noqa: PLR0913
+    blockers: list[SignalRecord],
+    positives: list[SignalRecord],
+    counters: list[SignalRecord],
     agent_type: str,
     agent_reason: str,
-) -> tuple[dict[str, str | int], int]:
+    *,
+    total_signals: int,
+) -> tuple[SummaryRecord, int]:
     """Build the summary record and determine exit code."""
     blocker_count = len(blockers)
     positive_count = len(positives)
     counter_count = len(counters)
     effective_count = max(0, positive_count - counter_count)
 
-    blocker_ids = " ".join(s.signal_id for s in blockers)
-    positive_ids = " ".join(s.signal_id for s in positives)
-    counter_ids = " ".join(s.signal_id for s in counters)
+    blocker_ids = " ".join(s.signal for s in blockers)
+    positive_ids = " ".join(s.signal for s in positives)
+    counter_ids = " ".join(s.signal for s in counters)
 
     if blocker_count > 0:
         recommendation = RECOMMENDATION_NONE
-        detail = f"Blocked by {blocker_ids}. Not a fork candidate."
+        detail = f"Blocked by {blocker_ids} - not a fork candidate"
     elif effective_count >= STRONG_CANDIDATE_THRESHOLD:
         recommendation = RECOMMENDATION_STRONG
         counter_note = (
@@ -489,7 +477,7 @@ def build_summary(
         detail = (
             f"Strong candidate for context: fork ({positive_count} signals: "
             f"{positive_ids}{counter_note}). Add to frontmatter: context: fork, "
-            f"agent: {agent_type}. {agent_reason.capitalize()}."
+            f"agent: {agent_type}. {agent_reason.capitalize()}"
         )
     elif effective_count >= SOFT_CANDIDATE_THRESHOLD:
         recommendation = RECOMMENDATION_SOFT
@@ -501,32 +489,38 @@ def build_summary(
         detail = (
             f"Consider context: fork ({positive_count} signals: "
             f"{positive_ids}{counter_note}). Fork would isolate intermediate "
-            f"work from the main context. Suggested agent: {agent_type}."
+            f"work from the main context. Suggested agent: {agent_type}"
         )
     else:
         recommendation = RECOMMENDATION_NONE
         counter_note = (
-            f" ({positive_count} positive minus N1 counter)"
+            f" ({positive_count} positive minus FK-N1 counter)"
             if counter_count > 0
             else ""
         )
         detail = (
             f"Only {effective_count} effective signal(s)"
-            f"{counter_note} — fork overhead likely not justified."
+            f"{counter_note} - fork overhead likely not justified"
         )
 
-    summary: dict[str, str | int] = {
-        "recommendation": recommendation,
-        "positive_count": positive_count,
-        "effective_count": effective_count,
-        "positive_ids": positive_ids,
-        "blocker_count": blocker_count,
-        "blocker_ids": blocker_ids,
-        "counter_count": counter_count,
-        "counter_ids": counter_ids,
-        "agent_type": agent_type,
-        "detail": detail,
-    }
+    summary = SummaryRecord(
+        total=total_signals,
+        passed=0,
+        failed=0,
+        info=total_signals,
+        extras={
+            "recommendation": recommendation,
+            "positive_count": positive_count,
+            "effective_count": effective_count,
+            "positive_ids": positive_ids,
+            "blocker_count": blocker_count,
+            "blocker_ids": blocker_ids,
+            "counter_count": counter_count,
+            "counter_ids": counter_ids,
+            "agent_type": agent_type,
+            "detail": detail,
+        },
+    )
 
     exit_code = EXIT_OK if recommendation != RECOMMENDATION_NONE else EXIT_FAILURE
     return summary, exit_code
@@ -538,14 +532,17 @@ def run_analysis(doc: SkillDocument) -> int:
     positives, web = check_positives(doc)
     counters = check_counters(doc)
     agent_type, agent_reason = determine_agent(web)
+    # All signals are always emitted (4 blockers + 6 positives + 1 counter)
+    total_signals = 4 + 6 + 1
     summary, exit_code = build_summary(
         blockers,
         positives,
         counters,
         agent_type,
         agent_reason,
+        total_signals=total_signals,
     )
-    emit_record(summary)
+    emit_record(summary.payload())
     return exit_code
 
 

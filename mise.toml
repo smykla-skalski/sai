@@ -1,0 +1,11 @@
+[tasks.test]
+description = "Run all tests"
+run = "python3 -m unittest discover -s tests -p 'test_*.py' -v"
+
+[tasks."test:validate"]
+description = "Run validate review-skill tests"
+run = "python3 -m unittest tests.test_validate_review_skill -v"
+
+[tasks."test:ruff"]
+description = "Run ruff check on review-skill scripts"
+run = "ruff check claude/review-skill/skills/review-skill/scripts/"

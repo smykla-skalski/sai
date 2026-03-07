@@ -2,9 +2,9 @@
 """Validate configuration and tool-usage checks for a skill.
 
 Sub-checks:
-  - `persistent-state-xdg` - persistent state uses XDG paths
-  - `allowed-tools-usage` - declared high-signal tools are actually referenced
-  - `side-effect-guard` - side-effect skills set `disable-model-invocation: true`
+  - `CF-state-xdg` - persistent state uses XDG paths
+  - `CF-tools-usage` - declared high-signal tools are actually referenced
+  - `CF-side-effect` - side-effect skills set `disable-model-invocation: true`
 
 Usage:
     ./check-config.py <skill-directory>
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    CheckResult,
+    CheckRecord,
     SkillDocument,
     compile_patterns,
     matches_any,
@@ -42,9 +42,9 @@ from _skill_check_common import (
 # Sub-check identifiers
 # ---------------------------------------------------------------------------
 
-PERSISTENT_STATE_CHECK: Final[str] = "persistent-state-xdg"
-ALLOWED_TOOLS_CHECK: Final[str] = "allowed-tools-usage"
-SIDE_EFFECT_CHECK: Final[str] = "side-effect-guard"
+PERSISTENT_STATE_CHECK: Final[str] = "CF-state-xdg"
+ALLOWED_TOOLS_CHECK: Final[str] = "CF-tools-usage"
+SIDE_EFFECT_CHECK: Final[str] = "CF-side-effect"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     PERSISTENT_STATE_CHECK,
@@ -169,21 +169,22 @@ def _tool_is_referenced(tool_name: str, body_text: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
+def check_persistent_state_xdg(document: SkillDocument) -> CheckRecord | None:
     """Validate that persistent state uses XDG-compliant paths."""
     body_text = document.prose_body
     if not matches_any(body_text, STATE_REFERENCE_PATTERNS):
         return None
 
     if matches_any(body_text, XDG_PATH_PATTERNS):
-        return CheckResult(
+        return CheckRecord(
             check=PERSISTENT_STATE_CHECK,
             passed=True,
             detail="Persistent state uses XDG-compliant path",
+            tier="I11",
         )
 
     if matches_any(body_text, BAD_STATE_PATH_PATTERNS):
-        return CheckResult(
+        return CheckRecord(
             check=PERSISTENT_STATE_CHECK,
             passed=False,
             detail=(
@@ -191,16 +192,18 @@ def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
                 "${CLAUDE_SKILL_DIR}/findings/) for persistent state - use "
                 "${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin}/ instead"
             ),
+            tier="I11",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=PERSISTENT_STATE_CHECK,
         passed=True,
         detail="State references found; no bad path patterns detected",
+        tier="I11",
     )
 
 
-def check_allowed_tools_usage(document: SkillDocument) -> CheckResult | None:
+def check_allowed_tools_usage(document: SkillDocument) -> CheckRecord | None:
     """Validate that declared high-signal tools are actually referenced."""
     if not document.field("allowed-tools"):
         return None
@@ -215,19 +218,21 @@ def check_allowed_tools_usage(document: SkillDocument) -> CheckResult | None:
     )
 
     if not unused_tools:
-        return CheckResult(
+        return CheckRecord(
             check=ALLOWED_TOOLS_CHECK,
             passed=True,
             detail="No unused high-signal tools detected in allowed-tools",
+            tier="I16",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=ALLOWED_TOOLS_CHECK,
         passed=False,
         detail=(
-            "allowed-tools lists unused tool(s): "
+            "Allowed-tools lists unused tool(s): "
             f"{', '.join(unused_tools)} - remove to minimize granted permissions"
         ),
+        tier="I16",
     )
 
 
@@ -240,24 +245,26 @@ def _count_side_effect_hits(body_text: str) -> int:
     )
 
 
-def check_side_effect_guard(document: SkillDocument) -> CheckResult:
+def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
     """Validate that side-effect skills set `disable-model-invocation: true`."""
     side_effect_hits = _count_side_effect_hits(document.prose_body)
     if side_effect_hits == 0:
-        return CheckResult(
+        return CheckRecord(
             check=SIDE_EFFECT_CHECK,
             passed=True,
             detail="No side-effect patterns detected",
+            tier="I17",
         )
 
     if document.field("disable-model-invocation").lower() == "true":
-        return CheckResult(
+        return CheckRecord(
             check=SIDE_EFFECT_CHECK,
             passed=True,
             detail="Side-effect skill has disable-model-invocation: true",
+            tier="I17",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=SIDE_EFFECT_CHECK,
         passed=False,
         detail=(
@@ -265,6 +272,7 @@ def check_side_effect_guard(document: SkillDocument) -> CheckResult:
             "(destructive/infrastructure commands) but lacks "
             "disable-model-invocation: true"
         ),
+        tier="I17",
     )
 
 
@@ -273,7 +281,7 @@ def check_side_effect_guard(document: SkillDocument) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 CHECK_FUNCTIONS: Final[
-    dict[str, Callable[[SkillDocument], CheckResult | None]]
+    dict[str, Callable[[SkillDocument], CheckRecord | None]]
 ] = {
     PERSISTENT_STATE_CHECK: check_persistent_state_xdg,
     ALLOWED_TOOLS_CHECK: check_allowed_tools_usage,
@@ -284,10 +292,10 @@ CHECK_FUNCTIONS: Final[
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run all config checks and return emitted results in order."""
     selected = frozenset(selected_checks)
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
     for check_name in CHECK_ORDER:
         if selected and check_name not in selected:
             continue
