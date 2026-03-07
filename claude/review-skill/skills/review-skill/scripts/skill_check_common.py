@@ -182,6 +182,10 @@ class SkillDocument:
         """Return a parsed frontmatter field or an empty string."""
         return self.frontmatter.get(name, "")
 
+    def has_field(self, name: str) -> bool:
+        """Return whether a frontmatter field is present."""
+        return name in self.frontmatter
+
     def line_number(self, body_line_index: int) -> int:
         """Return absolute file line number for a body-relative index."""
         return self.body_start_line + body_line_index

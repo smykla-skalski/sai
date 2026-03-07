@@ -592,7 +592,10 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         records: list[dict[str, object]] = []
         with (
             patch.object(validate, "emit_record", side_effect=records.append),
-            patch.object(validate, "_run_script", return_value=fake_run),
+            patch.object(
+                validate, "_run_and_validate_script",
+                return_value=(fake_run, None),
+            ),
         ):
             validate._handle_fork_candidate(SCRIPT_DIR, Path("/virtual/skill"), collector)
 
@@ -615,7 +618,10 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         records: list[dict[str, object]] = []
         with (
             patch.object(validate, "emit_record", side_effect=records.append),
-            patch.object(validate, "_run_script", return_value=fake_run),
+            patch.object(
+                validate, "_run_and_validate_script",
+                return_value=(fake_run, None),
+            ),
         ):
             validate._handle_fork_candidate(SCRIPT_DIR, Path("/virtual/skill"), collector)
 
@@ -681,14 +687,158 @@ class CliTests(unittest.TestCase):
 
 class ParseForkCandidateSummaryTests(unittest.TestCase):
     def test_recommendation_not_last_line(self) -> None:
-        """Summary is last line - verifies current behavior."""
+        """B6: recommendation record doesn't need to be last."""
         lines = [
-            json.dumps({"signal": "P1", "strength": 1.0}),
             json.dumps({"recommendation": "strong", "detail": "5 signals"}),
+            json.dumps({"signal": "P1", "strength": 1.0}),
         ]
         summary, error = validate._parse_fork_candidate_summary("\n".join(lines))
         self.assertIsNone(error)
         self.assertEqual(summary["recommendation"], "strong")
+
+    def test_no_recommendation_field(self) -> None:
+        """B6: error when no record has recommendation."""
+        lines = [
+            json.dumps({"signal": "P1", "strength": 1.0}),
+        ]
+        summary, error = validate._parse_fork_candidate_summary("\n".join(lines))
+        self.assertIsNone(summary)
+        self.assertIn("recommendation", error)
+
+
+# ---------------------------------------------------------------------------
+# B1: missing vs empty field distinction
+# ---------------------------------------------------------------------------
+
+
+class MissingVsEmptyTests(unittest.TestCase):
+    def test_name_missing_says_missing(self) -> None:
+        doc = _make_doc(frontmatter={})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "name-present")
+        self.assertIn("missing", str(check["detail"]))
+
+    def test_name_empty_says_empty(self) -> None:
+        doc = _make_doc(frontmatter={"name": ""})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "name-present")
+        self.assertIn("empty", str(check["detail"]))
+
+    def test_description_missing_says_missing(self) -> None:
+        doc = _make_doc(frontmatter={})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "description-present")
+        self.assertIn("missing", str(check["detail"]))
+
+    def test_description_empty_says_empty(self) -> None:
+        doc = _make_doc(frontmatter={"description": ""})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "description-present")
+        self.assertIn("empty", str(check["detail"]))
+
+    def test_allowed_tools_missing_says_missing(self) -> None:
+        doc = _make_doc(frontmatter={})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "allowed-tools-present")
+        self.assertIn("missing", str(check["detail"]))
+
+    def test_allowed_tools_empty_says_empty(self) -> None:
+        doc = _make_doc(frontmatter={"allowed-tools": ""})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "allowed-tools-present")
+        self.assertIn("empty", str(check["detail"]))
+
+    def test_user_invocable_missing_says_missing(self) -> None:
+        doc = _make_doc(frontmatter={})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "user-invocable-present")
+        self.assertIn("missing", str(check["detail"]))
+
+    def test_user_invocable_empty_says_empty(self) -> None:
+        doc = _make_doc(frontmatter={"user-invocable": ""})
+        _, records = _run_frontmatter(doc)
+        check = _find_check(records, "user-invocable-present")
+        self.assertIn("empty", str(check["detail"]))
+
+
+# ---------------------------------------------------------------------------
+# B2: passed+failed consistency
+# ---------------------------------------------------------------------------
+
+
+class PassedFailedConsistencyTests(unittest.TestCase):
+    def test_passed_failed_mismatch_rejected(self) -> None:
+        ndjson = "\n".join([
+            json.dumps({"check": "c1", "pass": True, "detail": "ok"}),
+            json.dumps({
+                "summary": True, "total": 1,
+                "passed": 0, "failed": 0,
+            }),
+        ])
+        fake_run = validate.ScriptRunResult(
+            ok=True, returncode=0, stdout=ndjson, stderr="",
+        )
+        with patch.object(validate, "_run_script", return_value=fake_run):
+            parsed, error = validate._collect_delegate_output(
+                Path("/virtual/script.py"), Path("/virtual/skill"),
+            )
+        self.assertIsNone(parsed)
+        self.assertIn("passed+failed mismatch", error)
+
+
+# ---------------------------------------------------------------------------
+# B3: invalid argparse mode
+# ---------------------------------------------------------------------------
+
+
+class InvalidArgparseTests(unittest.TestCase):
+    def test_invalid_mode_emits_ndjson(self) -> None:
+        records: list[dict[str, object]] = []
+        with patch.object(validate, "emit_record", side_effect=records.append):
+            exit_code = validate.main(["/virtual/skill", "invalid-mode"])
+        self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
+        self.assertTrue(len(records) > 0)
+        self.assertIn("Invalid arguments", str(records[0]["detail"]))
+
+    def test_no_args_emits_ndjson(self) -> None:
+        records: list[dict[str, object]] = []
+        with patch.object(validate, "emit_record", side_effect=records.append):
+            exit_code = validate.main([])
+        self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# B4: multiple name format errors
+# ---------------------------------------------------------------------------
+
+
+class MultipleNameErrorTests(unittest.TestCase):
+    def test_multiple_errors_joined(self) -> None:
+        # Name with both too-long AND invalid chars
+        long_bad = "A" * 65
+        doc = _make_doc(frontmatter={"name": long_bad})
+        _, records = _run_frontmatter(doc)
+        fmt = _find_check(records, "name-format")
+        self.assertFalse(fmt["pass"])
+        detail = str(fmt["detail"])
+        self.assertIn("exceeds", detail)
+        self.assertIn("invalid characters", detail)
+
+
+# ---------------------------------------------------------------------------
+# B5: empty lint fields rejected
+# ---------------------------------------------------------------------------
+
+
+class EmptyLintFieldTests(unittest.TestCase):
+    def test_empty_check_id_rejected(self) -> None:
+        lines = [
+            json.dumps({"check": "", "message": "bad", "severity": "critical"}),
+            json.dumps({"summary": True, "findings": 0}),
+        ]
+        parsed = validate._parse_lint_output("\n".join(lines))
+        self.assertEqual(len(parsed.findings), 0)
+        self.assertEqual(len(parsed.invalid_lines), 1)
 
 
 if __name__ == "__main__":
