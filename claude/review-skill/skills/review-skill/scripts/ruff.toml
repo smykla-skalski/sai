@@ -4,4 +4,5 @@ ignore = [
     "D203",  # incompatible with D211 (no-blank-line-before-class)
     "D213",  # incompatible with D212 (multi-line-summary-first-line)
     "T201",  # print is the correct output mechanism for this CLI tool
+    "INP001",  # standalone scripts, not a package
 ]
