@@ -55,29 +55,29 @@ Read [references/skill-structure.md](references/skill-structure.md) to understan
 Run the validation script and collect its JSON output:
 
 ```bash
-"${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET_DIR"
+"${CLAUDE_SKILL_DIR}/scripts/validate.py" "$TARGET_DIR"
 ```
 
 `$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line - `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts.
 
-The orchestrator sources shared helpers from `_lib.sh` and delegates to companion scripts:
+The orchestrator delegates to companion scripts:
 
 | Script | Checks | Purpose |
 | :-- | :-- | :-- |
 | `check-file-refs.py` | C3, P3, P6, I15 | File reference resolution and format |
-| `check-scripts-dir.sh` | I6, I12 | Script invocation prefix and permissions |
-| `check-references.sh` | C2, P1, P8, I14 | Body metrics and reference structure |
+| `check-scripts-dir.py` | I6, I12 | Script invocation prefix and runnable entrypoint permissions |
+| `check-references.py` | C2, P1, P8, I14 | Body metrics and reference structure |
 | `check-config.py` | I11, I16, I17 | Tool usage, XDG state, side-effect guard |
 | `check-content.py` | C6, C7, I13 | Secrets, useless echo, grading style |
-| `check-fork-candidate.sh` | P9 | Fork candidate analysis |
-| `check-preprocessing.sh` | I18 | Preprocessing directive hygiene |
-| `check-read-gates.sh` | I19 (7 sub) | Reference read gate analysis |
+| `check-fork-candidate.py` | P9 | Fork candidate analysis |
+| `check-preprocessing.py` | I18 | Preprocessing directive hygiene |
+| `check-read-gates.py` | I19 (7 sub) | Reference read gate analysis |
 | `lint-scripts.py` | I20 | Script static analysis (shellcheck/ruff) |
 | `check-ask-user.py` | I21 (9 sub) | AskUserQuestion usage validation |
 | `check-flag-coverage.py` | I22 (3 sub) | Flag documentation consistency |
 | `check-hooks.py` | I23 (11 sub) | Hooks configuration validation |
 
-Shared parsing helpers: `skill_check_common.py`, `_skill_doc.py`.
+Shared parsing helpers: `skill_check_common.py`.
 
 ### Phase 3: Manual Evaluation
 
@@ -165,11 +165,11 @@ Present all failing checks via AskUserQuestion before making changes. Options: "
 Spawn a `general-purpose` verification agent with these inputs:
 
 - Target skill directory path (with fixes applied)
-- Path to validate.sh script: `${CLAUDE_SKILL_DIR}/scripts/validate.sh`
+- Path to validate.py script: `${CLAUDE_SKILL_DIR}/scripts/validate.py`
 - Path to [references/checklist.md](references/checklist.md)
 - The `--thorough` flag value
 
-The agent re-runs validate.sh AND re-evaluates all manual checks against the fixed skill. It returns ONLY the post-fix report:
+The agent re-runs validate.py AND re-evaluates all manual checks against the fixed skill. It returns ONLY the post-fix report:
 
 ```text
 ## Post-Fix Review

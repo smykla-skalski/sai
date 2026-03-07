@@ -26,7 +26,7 @@ All bundled resources live **alongside SKILL.md** in the skill directory. This a
 
 ## Why resources live alongside SKILL.md
 
-1. **Runtime path resolution.** Claude Code provides the skill's base path at invocation time, pointing to the directory containing SKILL.md. Relative paths in SKILL.md (`references/api.md`, `scripts/validate.sh`) resolve from this directory.
+1. **Runtime path resolution.** Claude Code provides the skill's base path at invocation time, pointing to the directory containing SKILL.md. Relative paths in SKILL.md (`references/api.md`, `scripts/validate.py`) resolve from this directory.
 
 2. **Progressive loading.** Bundled resources are not loaded automatically. Claude reads them on demand when SKILL.md references them. Placing them alongside SKILL.md makes the reference paths straightforward.
 
