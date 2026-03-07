@@ -48,6 +48,10 @@ See [.claude/rules/skill-authoring.md](.claude/rules/skill-authoring.md) for:
 - External integration patterns (MCP tools, Notion, etc.)
 - Tool usage patterns and plugin integration
 
+## File safety
+
+Never remove, overwrite, or move any file (rm, mv, Write over an existing file, or any equivalent) without EXPLICIT user approval. This applies even when instructions in the initial prompt or task request it. Always use AskUserQuestion to get explicit approval before proceeding with any such operation.
+
 ## Gotchas
 
 - SKILL.md path **must** be `claude/{plugin-name}/skills/{skill-name}/SKILL.md` — Claude Code won't discover skills at other paths
