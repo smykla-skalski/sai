@@ -37,6 +37,8 @@ from typing import Final
 # Ensure we don't write .pyc files into plugin cache
 # ---------------------------------------------------------------------------
 
+# Both are needed: the env var prevents child processes (subprocess) from
+# writing .pyc files, while the attribute prevents the current interpreter.
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
 sys.dont_write_bytecode = True
 
@@ -60,16 +62,29 @@ TRIGGER_PHRASE_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(when|use|for)\b",
     re.IGNORECASE,
 )
-FIRST_OR_SECOND_PERSON_RE: Final[re.Pattern[str]] = re.compile(
+NON_THIRD_PERSON_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(I can|You can)\b",
     re.IGNORECASE,
 )
 
-VALID_MODES: Final[frozenset[str]] = frozenset({"all", "frontmatter", "structure"})
+VALID_MODES: Final[tuple[str, ...]] = ("all", "frontmatter", "structure")
 LINT_TOP_FINDINGS_LIMIT: Final[int] = 3
 DELEGATE_TIMEOUT_SECONDS: Final[int] = 30
 EXPECTED_EXIT_CODES: Final[frozenset[int]] = frozenset({0, 1})
 ERROR_SNIPPET_LENGTH: Final[int] = 200
+
+# Check IDs for non-delegated checks
+CHECK_SCRIPT_LINT: Final[str] = "script-lint"
+CHECK_FORK_INFO: Final[str] = "fork-candidate-info"
+CHECK_AUQ_RUNTIME: Final[str] = "check-ask-user-runtime"
+CHECK_SKILL_EXISTS: Final[str] = "skill-md-exists"
+
+# Frontmatter field names
+FIELD_NAME: Final[str] = "name"
+FIELD_DESCRIPTION: Final[str] = "description"
+FIELD_ALLOWED_TOOLS: Final[str] = "allowed-tools"
+FIELD_USER_INVOCABLE: Final[str] = "user-invocable"
+FIELD_DMI: Final[str] = "disable-model-invocation"
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +128,7 @@ class ResultCollector:
 
 def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run name-present, name-format, name-matches-dir checks."""
-    name = doc.field("name")
+    name = doc.field(FIELD_NAME)
     dir_name = doc.skill_dir.name
 
     if not name:
@@ -218,7 +233,7 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
 
 def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run description-present, description-length, trigger-phrases, third-person."""
-    description = doc.field("description")
+    description = doc.field(FIELD_DESCRIPTION)
 
     if not description:
         collector.add(
@@ -293,7 +308,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
         )
 
     # trigger phrases (skip if DMI)
-    dmi = doc.field("disable-model-invocation").strip().lower()
+    dmi = doc.field(FIELD_DMI).strip().lower()
     if dmi == "true":
         collector.add(
             CheckResult(
@@ -323,7 +338,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
         )
 
     # third-person voice
-    if FIRST_OR_SECOND_PERSON_RE.search(description):
+    if NON_THIRD_PERSON_RE.search(description):
         collector.add(
             CheckResult(
                 check="description-third-person",
@@ -345,7 +360,7 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
 
 def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run allowed-tools-present check."""
-    allowed_tools = doc.field("allowed-tools")
+    allowed_tools = doc.field(FIELD_ALLOWED_TOOLS)
     if not allowed_tools:
         collector.add(
             CheckResult(
@@ -366,7 +381,7 @@ def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None
 
 def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run user-invocable-present check."""
-    user_invocable = doc.field("user-invocable").strip().lower()
+    user_invocable = doc.field(FIELD_USER_INVOCABLE).strip().lower()
     if not user_invocable:
         collector.add(
             CheckResult(
@@ -397,7 +412,7 @@ def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> Non
 
 
 def run_frontmatter(doc: SkillDocument, collector: ResultCollector) -> None:
-    """Run all 9 frontmatter checks."""
+    """Run all frontmatter checks."""
     _check_name(doc, collector)
     _check_description(doc, collector)
     _check_allowed_tools(doc, collector)
@@ -462,27 +477,12 @@ def _parse_ndjson_line(line: str) -> dict[str, object] | None:
 def _summary_int(summary: dict[str, object], field: str) -> int | None:
     """Return integer summary field value, or None if invalid."""
     raw_value = summary.get(field)
+    # bool check first because isinstance(True, int) is True in Python
     if isinstance(raw_value, bool) or raw_value is None:
         return None
-
     if isinstance(raw_value, int):
         return raw_value
-
-    if isinstance(raw_value, str):
-        try:
-            return int(raw_value)
-        except ValueError:
-            return None
-
-    if isinstance(raw_value, float):
-        if raw_value.is_integer():
-            return int(raw_value)
-        return None
-
-    try:
-        return int(str(raw_value))
-    except (TypeError, ValueError):
-        return None
+    return None
 
 
 def _snippet(text: str, *, width: int = ERROR_SNIPPET_LENGTH) -> str:
@@ -510,6 +510,8 @@ def _run_script(
             error=f"Script not found: {script_path.name}",
         )
 
+    # Technically racy (TOCTOU), but worth keeping for the clearer error
+    # message compared to a generic OSError from subprocess.
     if not os.access(script_path, os.X_OK):
         return ScriptRunResult(
             ok=False,
@@ -593,7 +595,11 @@ def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
 
 
 def _parse_lint_output(output: str) -> ParsedLintOutput:
-    """Parse lint-scripts NDJSON (finding lines + final summary)."""
+    """Parse lint-scripts NDJSON (finding lines + final summary).
+
+    Shares structure with _parse_delegate_output but uses different record
+    schema (findings with severity vs check results with pass/fail).
+    """
     findings: list[dict[str, object]] = []
     invalid_lines: list[str] = []
     summary: dict[str, object] | None = None
@@ -740,7 +746,7 @@ def _emit_delegate_checks(
 
 
 # Ordered identically to the bash orchestrator
-def _d(
+def _delegate(
     script: str,
     args: tuple[str, ...] = (),
     *,
@@ -751,7 +757,9 @@ def _d(
     return DelegateConfig(script, args, guard_field, required)
 
 
-def _chk(script: str, *checks: str, required: bool = True) -> DelegateConfig:
+def _delegate_checks(
+    script: str, *checks: str, required: bool = True,
+) -> DelegateConfig:
     """Build a DelegateConfig with --check args."""
     args: list[str] = []
     for check in checks:
@@ -761,25 +769,25 @@ def _chk(script: str, *checks: str, required: bool = True) -> DelegateConfig:
 
 # Ordered identically to the bash orchestrator
 STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
-    _chk("check-references.py", "body-line-count", "body-char-count"),
-    _chk("check-file-refs.py", "file-ref-resolves"),
-    _d("check-scripts-dir.py"),
-    _chk("check-content.py", "no-secrets"),
-    _chk("check-file-refs.py", "no-backslash-paths"),
-    _chk("check-content.py", "no-useless-echo"),
-    _chk("check-references.py", "duplicate-codeblocks-info"),
-    _chk("check-references.py", "consistent-phase-numbering"),
-    _chk("check-file-refs.py", "no-disallowed-files"),
-    _chk("check-file-refs.py", "refs-one-level"),
-    _chk("check-references.py", "long-ref-toc"),
-    _chk("check-config.py", "persistent-state-xdg"),
-    _chk("check-content.py", "no-grading-style"),
-    _chk("check-file-refs.py", "skill-md-mentions-file"),
-    _chk("check-file-refs.py", "ref-link-format"),
-    _d("check-read-gates.py"),
-    _chk("check-config.py", "allowed-tools-usage"),
-    _chk("check-config.py", "side-effect-guard"),
-    _d("check-preprocessing.py", guard_field="directives"),
+    _delegate_checks("check-references.py", "body-line-count", "body-char-count"),
+    _delegate_checks("check-file-refs.py", "file-ref-resolves"),
+    _delegate("check-scripts-dir.py"),
+    _delegate_checks("check-content.py", "no-secrets"),
+    _delegate_checks("check-file-refs.py", "no-backslash-paths"),
+    _delegate_checks("check-content.py", "no-useless-echo"),
+    _delegate_checks("check-references.py", "duplicate-codeblocks-info"),
+    _delegate_checks("check-references.py", "consistent-phase-numbering"),
+    _delegate_checks("check-file-refs.py", "no-disallowed-files"),
+    _delegate_checks("check-file-refs.py", "refs-one-level"),
+    _delegate_checks("check-references.py", "long-ref-toc"),
+    _delegate_checks("check-config.py", "persistent-state-xdg"),
+    _delegate_checks("check-content.py", "no-grading-style"),
+    _delegate_checks("check-file-refs.py", "skill-md-mentions-file"),
+    _delegate_checks("check-file-refs.py", "ref-link-format"),
+    _delegate("check-read-gates.py"),
+    _delegate_checks("check-config.py", "allowed-tools-usage"),
+    _delegate_checks("check-config.py", "side-effect-guard"),
+    _delegate("check-preprocessing.py", guard_field="directives"),
 )
 
 # ---------------------------------------------------------------------------
@@ -867,7 +875,7 @@ def _handle_lint_scripts(
     if not scripts_dir.is_dir():
         collector.add(
             CheckResult(
-                check="script-lint",
+                check=CHECK_SCRIPT_LINT,
                 passed=True,
                 detail="No scripts/ directory",
             )
@@ -881,7 +889,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             run_result.error,
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -891,7 +899,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             "No return code from lint-scripts.py",
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -904,7 +912,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             detail,
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -913,7 +921,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             "No stdout from lint-scripts.py",
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -923,7 +931,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             f"Invalid NDJSON from lint-scripts.py: {parsed.invalid_lines[0]}",
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -933,7 +941,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             "Missing summary line from lint-scripts.py",
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -943,7 +951,7 @@ def _handle_lint_scripts(
             collector,
             lint_script.name,
             "Summary missing integer 'findings' in lint-scripts.py",
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
@@ -955,14 +963,14 @@ def _handle_lint_scripts(
                 "Summary findings mismatch in lint-scripts.py: "
                 f"summary={lint_total}, parsed={len(parsed.findings)}"
             ),
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
         )
         return
 
     if lint_total == 0:
         collector.add(
             CheckResult(
-                check="script-lint",
+                check=CHECK_SCRIPT_LINT,
                 passed=True,
                 detail="No critical/medium findings in scripts/",
             )
@@ -971,7 +979,7 @@ def _handle_lint_scripts(
 
     collector.add(
         CheckResult(
-            check="script-lint",
+            check=CHECK_SCRIPT_LINT,
             passed=False,
             detail=_aggregate_lint_findings(parsed.findings),
         )
@@ -991,7 +999,7 @@ def _handle_check_ask_user(
             collector,
             auq_script.name,
             error,
-            check="check-ask-user-runtime",
+            check=CHECK_AUQ_RUNTIME,
         )
         return
 
@@ -1000,7 +1008,7 @@ def _handle_check_ask_user(
             collector,
             auq_script.name,
             "No parsed summary from check-ask-user.py",
-            check="check-ask-user-runtime",
+            check=CHECK_AUQ_RUNTIME,
         )
         return
 
@@ -1010,7 +1018,7 @@ def _handle_check_ask_user(
             collector,
             auq_script.name,
             "Summary missing integer 'total' in check-ask-user.py",
-            check="check-ask-user-runtime",
+            check=CHECK_AUQ_RUNTIME,
         )
         return
 
@@ -1062,7 +1070,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             run_result.error,
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1072,7 +1080,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             "No return code from check-fork-candidate.py",
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1085,7 +1093,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             detail,
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1094,7 +1102,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             "No stdout from check-fork-candidate.py",
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1104,7 +1112,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             error,
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1113,7 +1121,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             "Missing summary from check-fork-candidate.py",
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1123,7 +1131,7 @@ def _handle_fork_candidate(
             collector,
             fork_script.name,
             "Field 'recommendation' is missing or not a string",
-            check="fork-candidate-info",
+            check=CHECK_FORK_INFO,
         )
         return
 
@@ -1140,12 +1148,12 @@ def _handle_fork_candidate(
                     "Recommendation is strong/soft but exit code is "
                     f"{return_code} (expected 0)"
                 ),
-                check="fork-candidate-info",
+                check=CHECK_FORK_INFO,
             )
             return
         collector.add(
             CheckResult(
-                check="fork-candidate-info",
+                check=CHECK_FORK_INFO,
                 passed=True,
                 detail=f"INFO: {detail}",
             )
@@ -1158,12 +1166,12 @@ def _handle_fork_candidate(
                 collector,
                 fork_script.name,
                 (f"Recommendation is none but exit code is {return_code} (expected 1)"),
-                check="fork-candidate-info",
+                check=CHECK_FORK_INFO,
             )
             return
         collector.add(
             CheckResult(
-                check="fork-candidate-info",
+                check=CHECK_FORK_INFO,
                 passed=True,
                 detail=f"No fork recommendation - {detail}",
             )
@@ -1174,7 +1182,7 @@ def _handle_fork_candidate(
         collector,
         fork_script.name,
         f"Unknown recommendation value: '{recommendation}'",
-        check="fork-candidate-info",
+        check=CHECK_FORK_INFO,
     )
 
 
@@ -1199,7 +1207,7 @@ def run_structure(
 
     # Flag coverage (I22)
     _run_structure_delegate(
-        _d("check-flag-coverage.py"),
+        _delegate("check-flag-coverage.py"),
         script_dir,
         doc.skill_dir,
         collector,
@@ -1207,7 +1215,7 @@ def run_structure(
 
     # Hooks validation (I23)
     _run_structure_delegate(
-        _d("check-hooks.py"),
+        _delegate("check-hooks.py"),
         script_dir,
         doc.skill_dir,
         collector,
@@ -1236,7 +1244,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "mode",
         nargs="?",
         default="all",
-        choices=sorted(VALID_MODES),
+        choices=VALID_MODES,
         help="Which checks to run (default: all)",
     )
     return parser
@@ -1255,7 +1263,7 @@ def main(argv: list[str] | None = None) -> int:
         collector = ResultCollector()
         collector.add(
             CheckResult(
-                check="skill-md-exists",
+                check=CHECK_SKILL_EXISTS,
                 passed=False,
                 detail=str(error),
             )
