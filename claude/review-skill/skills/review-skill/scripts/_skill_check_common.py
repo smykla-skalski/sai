@@ -133,7 +133,7 @@ def format_hit(
     width: int = SNIPPET_WIDTH,
 ) -> str:
     """Format one matching line as ``L<line>: <excerpt>``."""
-    snippet = text.strip()[:width]
+    snippet = text.strip()[:width].rstrip(".")
     return f"L{body_start_line + index}: {snippet}"
 
 
@@ -247,8 +247,12 @@ class CheckRecord:
     ) -> CheckRecord:
         """Create a passing check record."""
         return CheckRecord(
-            check=check, passed=True, detail=detail,
-            level="pass", tier=tier, item=item,
+            check=check,
+            passed=True,
+            detail=detail,
+            level="pass",
+            tier=tier,
+            item=item,
         )
 
     @staticmethod
@@ -261,8 +265,12 @@ class CheckRecord:
     ) -> CheckRecord:
         """Create a failing check record."""
         return CheckRecord(
-            check=check, passed=False, detail=detail,
-            level="fail", tier=tier, item=item,
+            check=check,
+            passed=False,
+            detail=detail,
+            level="fail",
+            tier=tier,
+            item=item,
         )
 
     @staticmethod
@@ -277,8 +285,12 @@ class CheckRecord:
         if not detail.startswith("INFO: "):
             detail = f"INFO: {detail}"
         return CheckRecord(
-            check=check, passed=True, detail=detail,
-            level="info", tier=tier, item=item,
+            check=check,
+            passed=True,
+            detail=detail,
+            level="info",
+            tier=tier,
+            item=item,
         )
 
     @staticmethod
@@ -291,8 +303,12 @@ class CheckRecord:
     ) -> CheckRecord:
         """Create a skipped check record (preconditions not met)."""
         return CheckRecord(
-            check=check, passed=True, detail=detail,
-            level="skip", tier=tier, item=item,
+            check=check,
+            passed=True,
+            detail=detail,
+            level="skip",
+            tier=tier,
+            item=item,
         )
 
     def payload(self) -> dict[str, object]:
@@ -444,7 +460,8 @@ class ResultCollector:
     skipped: int = field(default=0, init=False)
     info: int = field(default=0, init=False)
     delegate_warnings: list[tuple[str, str]] = field(
-        default_factory=list, init=False,
+        default_factory=list,
+        init=False,
     )
 
     def add(self, result: CheckRecord) -> None:
@@ -468,13 +485,15 @@ class ResultCollector:
     def emit_summary(self) -> None:
         """Emit delegate warnings (if any) then the final summary line."""
         for script, reason in self.delegate_warnings:
-            emit_record({
-                "kind": "check",
-                "check": "helper-runtime-warning",
-                "pass": True,
-                "level": "info",
-                "detail": f"Delegate {script} skipped: {reason}",
-            })
+            emit_record(
+                {
+                    "kind": "check",
+                    "check": "helper-runtime-warning",
+                    "pass": True,
+                    "level": "info",
+                    "detail": f"Delegate {script} skipped: {reason}",
+                },
+            )
         summary = SummaryRecord(
             total=self.total,
             passed=self.passed,
@@ -946,7 +965,7 @@ def try_parse_table_row(
 
 
 _BULLET_ARG_RE: Final[Pattern[str]] = re.compile(
-    r"^-\s+`(--[\w-]+)`"
+    r"^-\s+`(--[\w-]+)`",
 )
 
 
@@ -961,7 +980,7 @@ def try_parse_bullet_row(stripped_line: str) -> SkillArgument | None:
     if not m:
         return None
     name = m.group(1)
-    rest = stripped_line[m.end():].strip()
+    rest = stripped_line[m.end() :].strip()
     default = ""
     default_match = re.search(r"\(default:\s*(.+?)\)", rest)
     if default_match:

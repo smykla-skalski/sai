@@ -254,10 +254,11 @@ def check_long_prose_lines(document: SkillDocument) -> CheckRecord:
     Ignores fenced code blocks, table rows, and URL-dominated lines.
     """
     body = document.body
-    fenced = build_fenced_line_indices(body)
+    body_lines = body.splitlines()
+    fenced = build_fenced_line_indices(body_lines)
     long_lines: list[tuple[int, int]] = []
 
-    for i, line in enumerate(body.splitlines()):
+    for i, line in enumerate(body_lines):
         if i in fenced:
             continue
         if TABLE_ROW_RE.match(line):

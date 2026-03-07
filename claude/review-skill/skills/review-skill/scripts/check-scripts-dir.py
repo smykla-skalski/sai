@@ -5,6 +5,7 @@ Sub-checks:
 - `SD-invocation-prefix`
 - `SD-no-bash`
 - `SD-executable`
+- `SD-legacy-bash-info`
 
 Output is NDJSON with one final summary line.
 Exit codes:
@@ -41,11 +42,13 @@ from _skill_check_common import (
 CHECK_SCRIPT_INVOCATION_PREFIX: Final[str] = "SD-invocation-prefix"
 CHECK_NO_BASH_PREFIX: Final[str] = "SD-no-bash"
 CHECK_SCRIPT_EXECUTABLE: Final[str] = "SD-executable"
+CHECK_LEGACY_BASH_INFO: Final[str] = "SD-legacy-bash-info"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_SCRIPT_INVOCATION_PREFIX,
     CHECK_NO_BASH_PREFIX,
     CHECK_SCRIPT_EXECUTABLE,
+    CHECK_LEGACY_BASH_INFO,
 )
 
 # ---------------------------------------------------------------------------
@@ -412,6 +415,38 @@ def check_script_executable(document: SkillDocument) -> list[CheckRecord]:
     ]
 
 
+def check_legacy_bash_info(document: SkillDocument) -> list[CheckRecord]:
+    """Emit informational signal when top-level legacy .sh scripts exist."""
+    scripts_dir = document.skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+
+    legacy_scripts = sorted(
+        path.name for path in scripts_dir.glob("*.sh") if path.is_file()
+    )
+    if not legacy_scripts:
+        return [
+            CheckRecord(
+                check=CHECK_LEGACY_BASH_INFO,
+                passed=True,
+                detail="No top-level legacy .sh scripts found in scripts/",
+                tier="P16",
+            ),
+        ]
+
+    return [
+        CheckRecord.info(
+            CHECK_LEGACY_BASH_INFO,
+            (
+                f"Found {len(legacy_scripts)} top-level legacy .sh "
+                "script(s) in scripts/: "
+                f"{_format_examples(legacy_scripts)}"
+            ),
+            tier="P16",
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -420,6 +455,7 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] 
     CHECK_SCRIPT_INVOCATION_PREFIX: check_script_invocation_prefix,
     CHECK_NO_BASH_PREFIX: check_no_bash_prefix,
     CHECK_SCRIPT_EXECUTABLE: check_script_executable,
+    CHECK_LEGACY_BASH_INFO: check_legacy_bash_info,
 }
 
 

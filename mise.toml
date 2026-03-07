@@ -1,11 +1,33 @@
 [tasks.test]
-description = "Run all tests"
-run = "python3 -m unittest discover -s tests -p 'test_*.py' -v"
+description = "Run all tests, or specific tests: mise run test <module.Class.method>"
+run = """
+if [ $# -gt 0 ]; then
+  python3 -m unittest "$@" -v
+else
+  python3 -m unittest discover -s tests -p 'test_*.py' -v && python3 tests/run_review_skill_fixture_tests.py
+fi
+"""
 
 [tasks."test:validate"]
 description = "Run validate review-skill tests"
 run = "python3 -m unittest tests.test_validate_review_skill -v"
 
+[tasks."test:review-skill-fixtures"]
+description = "Run review-skill fixture regression tests"
+run = "python3 tests/run_review_skill_fixture_tests.py"
+
+[tasks."test:review-skill-scripts"]
+description = "Run review-skill checker behavior tests"
+run = "python3 -m unittest tests.test_review_skill_scripts_behavior -v"
+
+[tasks."test:best-practices"]
+description = "Run best-practices checker behavior tests only"
+run = "python3 -m unittest tests.test_review_skill_scripts_behavior.BestPracticesScriptBehaviorTests -v"
+
 [tasks."test:ruff"]
 description = "Run ruff check on review-skill scripts"
-run = "ruff check claude/review-skill/skills/review-skill/scripts/"
+run = "ruff check claude/review-skill/skills/review-skill/scripts/ tests/run_review_skill_fixture_tests.py"
+
+[tasks."test:mypy"]
+description = "Run mypy type checks"
+run = "uvx mypy --config-file mypy.ini"

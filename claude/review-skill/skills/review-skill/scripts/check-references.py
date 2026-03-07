@@ -5,6 +5,7 @@ Implemented checks:
 - `RF-body-lines`
 - `RF-body-chars`
 - `RF-dup-codeblocks-info` (informational)
+- `RF-dup-tables-info` (informational)
 - `RF-phase-numbering`
 - `RF-long-ref-toc`
 
@@ -40,13 +41,14 @@ from _skill_check_common import (
 
 LINE_LIMIT: Final[int] = 500
 CHAR_LIMIT: Final[int] = 20_000
-MIN_DUPLICATE_BLOCK_LINES: Final[int] = 3
+MIN_DUPLICATE_CONTENT_LINES: Final[int] = 3
 MIN_PHASE_COUNT: Final[int] = 2
 LONG_REFERENCE_THRESHOLD: Final[int] = 100
 
 CHECK_BODY_LINES: Final[str] = "RF-body-lines"
 CHECK_BODY_CHARS: Final[str] = "RF-body-chars"
 CHECK_DUP_CODEBLOCKS: Final[str] = "RF-dup-codeblocks-info"
+CHECK_DUP_TABLES: Final[str] = "RF-dup-tables-info"
 CHECK_PHASE_NUMBERING: Final[str] = "RF-phase-numbering"
 CHECK_LONG_REF_TOC: Final[str] = "RF-long-ref-toc"
 
@@ -62,10 +64,18 @@ TOC_HEADING_RE: Final[Pattern[str]] = re.compile(
     r"^#{1,3} (Contents|Table of Contents)",
     re.MULTILINE | re.IGNORECASE,
 )
+TABLE_ROW_RE: Final[Pattern[str]] = re.compile(r"^\s*\|")
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _digest_block(lines: list[str], min_lines: int) -> str | None:
+    """Return SHA256 digest if lines meet minimum threshold, else None."""
+    if len(lines) < min_lines:
+        return None
+    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()
 
 
 def _hash_code_blocks(text: str) -> set[str]:
@@ -77,11 +87,8 @@ def _hash_code_blocks(text: str) -> set[str]:
     for line in text.splitlines():
         if FENCE_RE.match(line):
             if in_block:
-                if len(block_lines) >= MIN_DUPLICATE_BLOCK_LINES:
-                    normalized = "\n".join(block_lines)
-                    digest = hashlib.sha256(
-                        normalized.encode("utf-8"),
-                    ).hexdigest()
+                digest = _digest_block(block_lines, MIN_DUPLICATE_CONTENT_LINES)
+                if digest:
                     hashes.add(digest)
                 in_block = False
                 block_lines = []
@@ -106,6 +113,40 @@ def _extract_phase_numbers(text: str) -> list[int]:
             phases.add(int(match.group(1)))
 
     return sorted(phases)
+
+
+def _hash_markdown_tables(text: str) -> set[str]:
+    """Return SHA256 hashes of markdown tables with 3+ consecutive rows."""
+    hashes: set[str] = set()
+    table_lines: list[str] = []
+    in_fence = False
+
+    for line in text.splitlines():
+        if FENCE_RE.match(line):
+            in_fence = not in_fence
+            digest = _digest_block(table_lines, MIN_DUPLICATE_CONTENT_LINES)
+            if digest:
+                hashes.add(digest)
+            table_lines = []
+            continue
+
+        if in_fence:
+            continue
+
+        if TABLE_ROW_RE.match(line):
+            table_lines.append(line.strip())
+            continue
+
+        digest = _digest_block(table_lines, MIN_DUPLICATE_CONTENT_LINES)
+        if digest:
+            hashes.add(digest)
+        table_lines = []
+
+    digest = _digest_block(table_lines, MIN_DUPLICATE_CONTENT_LINES)
+    if digest:
+        hashes.add(digest)
+
+    return hashes
 
 
 # ---------------------------------------------------------------------------
@@ -191,20 +232,68 @@ def _check_duplicate_codeblocks(document: SkillDocument) -> list[CheckRecord]:
 
     if duplicate_refs:
         refs_joined = " ".join(duplicate_refs)
-        detail = (
-            f"INFO: {duplicate_count} code block(s) (3+ lines) shared "
-            f"between SKILL.md and references: {refs_joined} - review whether "
-            "each is intentional for progressive disclosure"
-        )
-    else:
-        detail = "No shared code blocks between SKILL.md and references"
+        return [
+            CheckRecord.info(
+                CHECK_DUP_CODEBLOCKS,
+                (
+                    f"{duplicate_count} code block(s) (3+ lines) shared "
+                    f"between SKILL.md and references: {refs_joined} - review "
+                    "whether each is intentional for progressive disclosure"
+                ),
+                tier="P8",
+            ),
+        ]
 
     return [
         CheckRecord(
             check=CHECK_DUP_CODEBLOCKS,
             passed=True,
-            detail=detail,
+            detail="No shared code blocks between SKILL.md and references",
             tier="P8",
+        ),
+    ]
+
+
+def _check_duplicate_tables(document: SkillDocument) -> list[CheckRecord]:
+    """Build informational result for shared markdown tables."""
+    references_dir = document.skill_dir / "references"
+    if not references_dir.is_dir():
+        return []
+
+    skill_hashes = _hash_markdown_tables(document.body)
+    duplicate_count = 0
+    duplicate_refs: list[str] = []
+
+    for reference_file in sorted(references_dir.glob("*.md")):
+        if not reference_file.is_file():
+            continue
+
+        reference_hashes = _hash_markdown_tables(read_text(reference_file))
+        match_count = len(skill_hashes & reference_hashes)
+        if match_count > 0:
+            duplicate_count += match_count
+            duplicate_refs.append(reference_file.name)
+
+    if duplicate_refs:
+        refs_joined = " ".join(duplicate_refs)
+        return [
+            CheckRecord.info(
+                CHECK_DUP_TABLES,
+                (
+                    f"{duplicate_count} markdown table(s) (3+ rows) shared "
+                    f"between SKILL.md and references: {refs_joined} - review "
+                    "whether duplication is intentional"
+                ),
+                tier="P15",
+            ),
+        ]
+
+    return [
+        CheckRecord(
+            check=CHECK_DUP_TABLES,
+            passed=True,
+            detail="No shared markdown tables between SKILL.md and references",
+            tier="P15",
         ),
     ]
 
@@ -329,16 +418,16 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_BODY_LINES,
     CHECK_BODY_CHARS,
     CHECK_DUP_CODEBLOCKS,
+    CHECK_DUP_TABLES,
     CHECK_PHASE_NUMBERING,
     CHECK_LONG_REF_TOC,
 )
 
-CHECK_FUNCTIONS: Final[
-    dict[str, Callable[[SkillDocument], list[CheckRecord]]]
-] = {
+CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] = {
     CHECK_BODY_LINES: _check_body_line_count,
     CHECK_BODY_CHARS: _check_body_char_count,
     CHECK_DUP_CODEBLOCKS: _check_duplicate_codeblocks,
+    CHECK_DUP_TABLES: _check_duplicate_tables,
     CHECK_PHASE_NUMBERING: _check_phase_numbering,
     CHECK_LONG_REF_TOC: _check_long_ref_toc,
 }

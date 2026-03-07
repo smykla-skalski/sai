@@ -453,8 +453,7 @@ def check_counters(doc: SkillDocument) -> list[SignalRecord]:
     # N3 - Write/Edit actively used (fork results are summarized, not written)
     write_tools = {"Edit", "Write"}
     has_write_tools = any(
-        t.strip() in write_tools
-        for t in doc.field("allowed-tools").split(",")
+        t.strip() in write_tools for t in doc.field("allowed-tools").split(",")
     )
     write_in_body = "Edit" in doc.body or "Write" in doc.body
     if has_write_tools and write_in_body:
@@ -463,7 +462,9 @@ def check_counters(doc: SkillDocument) -> list[SignalRecord]:
                 "FK-N3",
                 "counter",
                 detected=True,
-                detail="Write/Edit actively used — fork output is summarized, not direct",
+                detail=(
+                    "Write/Edit actively used - fork output is summarized, not direct"
+                ),
             ),
         )
     else:
