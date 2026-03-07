@@ -273,7 +273,7 @@ Blocked: body references "conversation history" — fork subagents have no conve
 
 ```yaml
 ---
-name: stage-hunk
+name: git-stage-hunk
 disable-model-invocation: true
 # No context: fork — user needs real-time visibility during staging
 allowed-tools: Bash, AskUserQuestion

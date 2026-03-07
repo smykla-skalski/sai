@@ -23,24 +23,24 @@ claude --plugin-dir /path/to/sai/claude/git-stage-hunk/
 
 ## Skills
 
-### stage-hunk
+### git-stage-hunk
 
 Non-interactive hunk staging for selective `git add`. Lists hunks with stable IDs, then stages by ID, pattern, file, or line range. Supports splitting large hunks into sub-hunks when multiple changes got merged by git's default context.
 
 ```
-/stage-hunk --list --table
-/stage-hunk --list --file src/auth.ts --table
-/stage-hunk --list --split --table
-/stage-hunk --split H3
-/stage-hunk --hunk H1,H3 --table
-/stage-hunk --hunk H3.1,H3.2 --table
-/stage-hunk --hunk H3:5-10 --table
-/stage-hunk --hunk H1,H3.2,H5:10-15 --table
-/stage-hunk --hunk H2 --dry-run --table
-/stage-hunk --pattern 'handleAuth' --table
-/stage-hunk --file src/auth.ts --table
-/stage-hunk --range src/auth.ts:45-60 --table
-/stage-hunk --verify --table
+/git-stage-hunk --list --table
+/git-stage-hunk --list --file src/auth.ts --table
+/git-stage-hunk --list --split --table
+/git-stage-hunk --split H3
+/git-stage-hunk --hunk H1,H3 --table
+/git-stage-hunk --hunk H3.1,H3.2 --table
+/git-stage-hunk --hunk H3:5-10 --table
+/git-stage-hunk --hunk H1,H3.2,H5:10-15 --table
+/git-stage-hunk --hunk H2 --dry-run --table
+/git-stage-hunk --pattern 'handleAuth' --table
+/git-stage-hunk --file src/auth.ts --table
+/git-stage-hunk --range src/auth.ts:45-60 --table
+/git-stage-hunk --verify --table
 ```
 
 | Flag                  | Purpose                                          |

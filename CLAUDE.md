@@ -78,7 +78,7 @@ Never remove, overwrite, or move any file (rm, mv, Write over an existing file, 
 
 ## Claude Code skills
 
-The `git-stage-hunk` SAI plugin stages partial file changes without a TTY. Use `/stage-hunk` when only some changes in a file belong in the current commit, multiple sessions modified the same file, or `git add -p` is unavailable.
+The `git-stage-hunk` SAI plugin stages partial file changes without a TTY. Use `/git-stage-hunk` when only some changes in a file belong in the current commit, multiple sessions modified the same file, or `git add -p` is unavailable.
 
 Install: `claude --plugin-dir ~/Projects/github.com/smykla-skalski/sai/claude/git-stage-hunk/`
 Modes: `--list`, `--hunk H1,H2`, `--pattern REGEX`, `--file PATH`, `--range FILE:S-E`, `--verify`, `--dry-run`

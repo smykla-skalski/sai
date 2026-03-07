@@ -2,18 +2,18 @@
 """Non-interactive hunk staging for selective git add without TTY.
 
 Usage:
-    ./stage-hunk.py --check-deps
-    ./stage-hunk.py --list [--table] [--fallback]
-    ./stage-hunk.py --list --file PATH [--table] [--fallback]
-    ./stage-hunk.py --list --split [--table] [--fallback]
-    ./stage-hunk.py --split H3 [--fallback]
-    ./stage-hunk.py --hunk H1,H2 [--dry-run] [--table] [--fallback]
-    ./stage-hunk.py --hunk H3.1,H3.2 [--dry-run] [--table] [--fallback]
-    ./stage-hunk.py --hunk H3:5-10 [--dry-run] [--table] [--fallback]
-    ./stage-hunk.py --pattern REGEX [--dry-run] [--table]
-    ./stage-hunk.py --file PATH [--dry-run] [--table] [--fallback]
-    ./stage-hunk.py --range FILE:START-END [--dry-run] [--table]
-    ./stage-hunk.py --verify [--table]
+    ./git-stage-hunk.py --check-deps
+    ./git-stage-hunk.py --list [--table] [--fallback]
+    ./git-stage-hunk.py --list --file PATH [--table] [--fallback]
+    ./git-stage-hunk.py --list --split [--table] [--fallback]
+    ./git-stage-hunk.py --split H3 [--fallback]
+    ./git-stage-hunk.py --hunk H1,H2 [--dry-run] [--table] [--fallback]
+    ./git-stage-hunk.py --hunk H3.1,H3.2 [--dry-run] [--table] [--fallback]
+    ./git-stage-hunk.py --hunk H3:5-10 [--dry-run] [--table] [--fallback]
+    ./git-stage-hunk.py --pattern REGEX [--dry-run] [--table]
+    ./git-stage-hunk.py --file PATH [--dry-run] [--table] [--fallback]
+    ./git-stage-hunk.py --range FILE:START-END [--dry-run] [--table]
+    ./git-stage-hunk.py --verify [--table]
 
 Modes:
     --check-deps         Check required dependencies, output JSON status
