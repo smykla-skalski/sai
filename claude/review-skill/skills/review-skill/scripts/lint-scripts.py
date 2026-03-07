@@ -13,22 +13,23 @@ Usage:
 Exit codes: 0 = no findings, 1 = findings exist, 2 = usage error.
 """
 
-import sys
-import os
+from __future__ import annotations
+
+import argparse
+import json
 import re
-import json as jsonmod
 import shutil
 import subprocess
-from pathlib import Path
+import sys
 from dataclasses import dataclass
-from typing import List, Tuple
-
+from pathlib import Path
+from typing import Final
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
-@dataclass
+@dataclass(frozen=True)
 class Finding:
     file: str
     line: int
@@ -38,7 +39,7 @@ class Finding:
     evidence: str = ""
 
 
-SEVERITY_RANK = {"critical": 3, "medium": 2, "low": 1}
+SEVERITY_RANK: Final[dict[str, int]] = {"critical": 3, "medium": 2, "low": 1}
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ def has_pipefail(content: str) -> bool:
     return "pipefail" in content
 
 
-def extract_function_body(lines: List[str], func_line: int, max_lines: int = 30) -> str:
+def extract_function_body(lines: list[str], func_line: int, max_lines: int = 30) -> str:
     """Extract function body starting from func_line (0-indexed)."""
     depth = 0
     body_lines = []
@@ -71,7 +72,7 @@ def extract_function_body(lines: List[str], func_line: int, max_lines: int = 30)
     return "\n".join(body_lines)
 
 
-def find_while_read_loops(lines: List[str]) -> List[Tuple[int, int]]:
+def find_while_read_loops(lines: list[str]) -> list[tuple[int, int]]:
     """Find (start, end) line indices of while-read loops."""
     loops = []
     i = 0
@@ -101,7 +102,7 @@ def find_while_read_loops(lines: List[str]) -> List[Tuple[int, int]]:
 # S01: Pipe delimiter — IFS='|' with read
 # Bug class: #1
 # ---------------------------------------------------------------------------
-def check_pipe_delimiter(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_pipe_delimiter(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -119,7 +120,7 @@ def check_pipe_delimiter(path: str, content: str, lines: List[str]) -> List[Find
 # S02: Command exit code suppressed then piped to grep -c
 # Bug class: #2
 # ---------------------------------------------------------------------------
-def check_suppressed_exit_code(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_suppressed_exit_code(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -138,7 +139,7 @@ def check_suppressed_exit_code(path: str, content: str, lines: List[str]) -> Lis
 # S03: sed with potentially empty variable in range expression
 # Bug class: #5
 # ---------------------------------------------------------------------------
-def check_sed_empty_var(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_sed_empty_var(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -151,7 +152,7 @@ def check_sed_empty_var(path: str, content: str, lines: List[str]) -> List[Findi
         # Check if guarded in preceding 5 lines (skip comments)
         start = max(0, i - 5)
         context = "\n".join(ln for ln in lines[start:i + 1] if not is_comment(ln))
-        if re.search(rf'\[\[.*-n.*\${{?{var}}}?|if\s+\[\[.*-n.*{var}', context):
+        if re.search(rf'\[[\[]*.*-n.*\${{?{var}}}?|if\s+\[[\[]*.*-n.*{var}', context):
             continue
         findings.append(Finding(
             path, i + 1, "critical", "S03",
@@ -165,7 +166,7 @@ def check_sed_empty_var(path: str, content: str, lines: List[str]) -> List[Findi
 # S04: Template placeholder mismatch (**X** vs __X__)
 # Bug class: #4
 # ---------------------------------------------------------------------------
-def check_template_mismatch(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_template_mismatch(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     # Find __PLACEHOLDER__ patterns in the script
     placeholders = set(re.findall(r"__([A-Z_]+)__", content))
@@ -197,7 +198,7 @@ def check_template_mismatch(path: str, content: str, lines: List[str]) -> List[F
 # S05: Script outputs JSON but has no escaping function
 # Bug classes: #6, #34
 # ---------------------------------------------------------------------------
-def check_json_no_escape(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_json_no_escape(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     # Find echo lines that output JSON (have { and escaped quotes)
     json_output_lines = []
@@ -233,7 +234,7 @@ def check_json_no_escape(path: str, content: str, lines: List[str]) -> List[Find
 # S06: JSON escaping function misses control characters
 # Bug class: #9
 # ---------------------------------------------------------------------------
-def check_json_escape_incomplete(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_json_escape_incomplete(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     # Find function definitions
     for i, line in enumerate(lines):
@@ -262,7 +263,7 @@ def check_json_escape_incomplete(path: str, content: str, lines: List[str]) -> L
 # S07: Space-delimited file list accumulation
 # Bug class: #7
 # ---------------------------------------------------------------------------
-def check_space_delimited_list(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_space_delimited_list(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -284,7 +285,7 @@ def check_space_delimited_list(path: str, content: str, lines: List[str]) -> Lis
 # S08: for f in $(...) - word-splitting on filenames
 # Bug class: #13
 # ---------------------------------------------------------------------------
-def check_for_in_expansion(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_for_in_expansion(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -302,7 +303,7 @@ def check_for_in_expansion(path: str, content: str, lines: List[str]) -> List[Fi
 # S09: "${arr[@]}" without + guard under set -u
 # Bug classes: #14, #15
 # ---------------------------------------------------------------------------
-def check_empty_array_crash(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_empty_array_crash(path: str, content: str, lines: list[str]) -> list[Finding]:
     if not has_set_u(content):
         return []
     findings = []
@@ -332,7 +333,7 @@ def check_empty_array_crash(path: str, content: str, lines: List[str]) -> List[F
 # S10: Unquoted variable in command position
 # Bug class: #16
 # ---------------------------------------------------------------------------
-def check_unquoted_var_cmd(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_unquoted_var_cmd(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -351,7 +352,7 @@ def check_unquoted_var_cmd(path: str, content: str, lines: List[str]) -> List[Fi
 # S11: grep with variable in pattern but no -F
 # Bug classes: #3, #22, #24
 # ---------------------------------------------------------------------------
-def check_grep_var_no_fixed(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_grep_var_no_fixed(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -394,7 +395,7 @@ def check_grep_var_no_fixed(path: str, content: str, lines: List[str]) -> List[F
 # S12: grep in pipeline without || true under pipefail
 # Bug class: #26
 # ---------------------------------------------------------------------------
-def check_grep_pipe_no_guard(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_grep_pipe_no_guard(path: str, content: str, lines: list[str]) -> list[Finding]:
     if not has_pipefail(content):
         return []
     findings = []
@@ -406,7 +407,7 @@ def check_grep_pipe_no_guard(path: str, content: str, lines: List[str]) -> List[
             continue
         stripped = line.lstrip()
         # Skip if has || true or || :
-        if re.search(r"\|\|\s*(true|:|\{)", line):
+        if re.search(r"\|\|\s*(true|false|:|exit|return|\{)", line):
             continue
         # Skip if inside if/while/elif condition
         if re.match(r"\s*(if|while|elif)\s", line):
@@ -429,7 +430,7 @@ def check_grep_pipe_no_guard(path: str, content: str, lines: List[str]) -> List[
 # S13: Case-insensitive grep for command names matching prose
 # Bug classes: #19, #33
 # ---------------------------------------------------------------------------
-def check_grep_cmd_in_prose(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_grep_cmd_in_prose(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -441,12 +442,15 @@ def check_grep_cmd_in_prose(path: str, content: str, lines: List[str]) -> List[F
         if not re.search(r"grep\s+[^|]*-[a-zA-Z]*i", line):
             continue
         # Has a command name that's also an English word
-        if re.search(r"\\bmake\\b|['\"]make['\"]", line, re.IGNORECASE):
-            findings.append(Finding(
-                path, i + 1, "medium", "S13",
-                "Case-insensitive grep for 'make' matches prose (e.g., 'Make sure...')",
-                "Use case-sensitive grep or anchor to command context"
-            ))
+        prose_commands = ("make", "test", "find", "sort", "head", "cut")
+        for cmd in prose_commands:
+            if re.search(rf"\\b{cmd}\\b|['\"{cmd}'\"]", line, re.IGNORECASE):
+                findings.append(Finding(
+                    path, i + 1, "medium", "S13",
+                    f"Case-insensitive grep for '{cmd}' matches prose",
+                    "Use case-sensitive grep or anchor to command context",
+                ))
+                break
     return findings
 
 
@@ -454,7 +458,7 @@ def check_grep_cmd_in_prose(path: str, content: str, lines: List[str]) -> List[F
 # S14: Destructive git op without error handling
 # Bug class: #21
 # ---------------------------------------------------------------------------
-def check_destructive_git(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_destructive_git(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     destructive = re.compile(
         r"git\s+(branch\s+-[dD]|worktree\s+remove|reset\s+--hard|clean\s+-[fd])"
@@ -489,7 +493,7 @@ def check_destructive_git(path: str, content: str, lines: List[str]) -> List[Fin
 # S15: mktemp without EXIT trap
 # Bug class: #10
 # ---------------------------------------------------------------------------
-def check_mktemp_no_trap(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_mktemp_no_trap(path: str, content: str, lines: list[str]) -> list[Finding]:
     mktemp_lines = [
         i for i, line in enumerate(lines)
         if "mktemp" in line and not is_comment(line)
@@ -510,7 +514,7 @@ def check_mktemp_no_trap(path: str, content: str, lines: List[str]) -> List[Find
 # S16: Interpolating heredoc with shell variable expansion
 # Bug class: #17
 # ---------------------------------------------------------------------------
-def check_heredoc_injection(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_heredoc_injection(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -544,7 +548,7 @@ def check_heredoc_injection(path: str, content: str, lines: List[str]) -> List[F
 # S17: jq filter with interpolated variables
 # Bug class: #35
 # ---------------------------------------------------------------------------
-def check_jq_injection(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_jq_injection(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -600,7 +604,7 @@ def check_jq_injection(path: str, content: str, lines: List[str]) -> List[Findin
 # S18: YAML parser get_field() doesn't strip quotes
 # Bug class: #8
 # ---------------------------------------------------------------------------
-def check_yaml_no_quote_strip(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_yaml_no_quote_strip(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         m = re.match(r"^(\w*get_field\w*)\(\)\s*\{", line)
@@ -627,7 +631,7 @@ def check_yaml_no_quote_strip(path: str, content: str, lines: List[str]) -> List
 # S19: API query with fixed limit, no pagination
 # Bug class: #18
 # ---------------------------------------------------------------------------
-def check_no_pagination(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_no_pagination(path: str, content: str, lines: list[str]) -> list[Finding]:
     limit_pattern = re.compile(r"first:\s*\d+|per_page|[?&]limit=\d+")
     pagination_pattern = re.compile(
         r"hasNextPage|next_page|cursor|pageInfo|page_info|pagination",
@@ -653,7 +657,7 @@ def check_no_pagination(path: str, content: str, lines: List[str]) -> List[Findi
 # S20: While-read loop processing markdown without code block tracking
 # Bug class: #20
 # ---------------------------------------------------------------------------
-def check_no_codeblock_tracking(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_no_codeblock_tracking(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     loops = find_while_read_loops(lines)
     for start, end in loops:
@@ -678,7 +682,7 @@ def check_no_codeblock_tracking(path: str, content: str, lines: List[str]) -> Li
 # S21: Awk diff parser matching ^--- without header state
 # Bug class: #12
 # ---------------------------------------------------------------------------
-def check_awk_diff_collision(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_awk_diff_collision(path: str, content: str, lines: list[str]) -> list[Finding]:
     # Check if file has awk with ^--- pattern
     if not re.search(r"awk.*\^---|/\^---/", content):
         return []
@@ -700,7 +704,7 @@ def check_awk_diff_collision(path: str, content: str, lines: List[str]) -> List[
 # S22: echo "$var" | wc -l off-by-one
 # Bug class: #28
 # ---------------------------------------------------------------------------
-def check_echo_wc_offbyone(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_echo_wc_offbyone(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -718,7 +722,7 @@ def check_echo_wc_offbyone(path: str, content: str, lines: List[str]) -> List[Fi
 # S23: Timestamp without uniqueness suffix in filename
 # Bug class: #29
 # ---------------------------------------------------------------------------
-def check_timestamp_collision(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_timestamp_collision(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     # Find timestamp assignments
     ts_vars = {}
@@ -757,7 +761,7 @@ def check_timestamp_collision(path: str, content: str, lines: List[str]) -> List
 # S24: cut -d: on path-like data
 # Bug class: #25
 # ---------------------------------------------------------------------------
-def check_cut_colon_paths(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_cut_colon_paths(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -782,7 +786,7 @@ def check_cut_colon_paths(path: str, content: str, lines: List[str]) -> List[Fin
 # S25: Fragile external command output parsing
 # Bug class: #27
 # ---------------------------------------------------------------------------
-def check_fragile_output_parse(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_fragile_output_parse(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -818,7 +822,7 @@ def check_fragile_output_parse(path: str, content: str, lines: List[str]) -> Lis
 # S26: Deep relative path navigation
 # Bug class: #30
 # ---------------------------------------------------------------------------
-def check_deep_relative_path(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_deep_relative_path(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     for i, line in enumerate(lines):
         if is_comment(line):
@@ -837,7 +841,7 @@ def check_deep_relative_path(path: str, content: str, lines: List[str]) -> List[
 # S27: Stale global variable not reset in loop
 # Bug class: #32
 # ---------------------------------------------------------------------------
-def check_stale_global(path: str, content: str, lines: List[str]) -> List[Finding]:
+def check_stale_global(path: str, content: str, lines: list[str]) -> list[Finding]:
     findings = []
     # Find global VAR="" assignments (uppercase with STDERR/OUTPUT/RESULT/ERR suffix)
     for i, line in enumerate(lines):
@@ -864,7 +868,7 @@ def check_stale_global(path: str, content: str, lines: List[str]) -> List[Findin
 # All checks
 # ---------------------------------------------------------------------------
 
-ALL_CHECKS = [
+ALL_CHECKS: Final[list[object]] = [
     # Critical
     check_pipe_delimiter,        # S01 - Bug #1
     check_suppressed_exit_code,  # S02 - Bug #2
@@ -907,7 +911,7 @@ ALL_CHECKS = [
 # File scanning
 # ---------------------------------------------------------------------------
 
-def scan_file(path: str) -> List[Finding]:
+def scan_file(path: str) -> list[Finding]:
     """Run custom S01-S27 checks on shell scripts. Skips non-.sh files."""
     if not path.endswith(".sh"):
         return []
@@ -931,7 +935,7 @@ def scan_file(path: str) -> List[Finding]:
 # Shellcheck integration
 # ---------------------------------------------------------------------------
 
-SHELLCHECK_SEVERITY_MAP = {
+SHELLCHECK_SEVERITY_MAP: Final[dict[str, str]] = {
     "error": "critical",
     "warning": "medium",
     "info": "low",
@@ -939,7 +943,7 @@ SHELLCHECK_SEVERITY_MAP = {
 }
 
 
-def run_shellcheck(files: List[str]) -> List[Finding]:
+def run_shellcheck(files: list[str]) -> list[Finding]:
     """Run shellcheck on files and convert output to Findings."""
     sc = shutil.which("shellcheck")
     if not sc:
@@ -956,8 +960,8 @@ def run_shellcheck(files: List[str]) -> List[Finding]:
         if not result.stdout.strip():
             continue
         try:
-            items = jsonmod.loads(result.stdout)
-        except jsonmod.JSONDecodeError:
+            items = json.loads(result.stdout)
+        except json.JSONDecodeError:
             continue
         for item in items:
             sev = SHELLCHECK_SEVERITY_MAP.get(item.get("level", ""), "low")
@@ -975,24 +979,47 @@ def run_shellcheck(files: List[str]) -> List[Finding]:
 # Ruff integration
 # ---------------------------------------------------------------------------
 
-RUFF_SEVERITY_MAP = {
-    "E": "critical",   # error
-    "F": "critical",   # fatal / pyflakes
-    "W": "medium",     # warning
-    "C": "low",        # convention
-    "I": "low",        # isort
-    "N": "low",        # pep8-naming
+RUFF_SEVERITY_MAP: Final[dict[str, str]] = {
+    "PLE": "critical",   # pylint error
+    "E": "critical",     # pycodestyle error
+    "F": "critical",     # pyflakes
+    "S": "critical",     # flake8-bandit (security)
+    "PLW": "medium",     # pylint warning
+    "B": "medium",       # flake8-bugbear
+    "W": "medium",       # pycodestyle warning
+    "C": "low",          # convention
+    "I": "low",          # isort
+    "N": "low",          # pep8-naming
+    "D": "low",          # pydocstyle
+    "UP": "low",         # pyupgrade
+    "ANN": "low",        # flake8-annotations
+    "A": "low",          # flake8-builtins
+    "FBT": "low",        # flake8-boolean-trap
+    "T": "low",          # flake8-print
+    "SIM": "low",        # flake8-simplify
+    "PTH": "low",        # flake8-use-pathlib
+    "PLR": "low",        # pylint refactor
+    "RUF": "low",        # ruff-specific
+    "ARG": "low",        # flake8-unused-arguments
+    "ERA": "low",        # eradicate
+    "TRY": "low",        # tryceratops
+    "PERF": "low",       # perflint
 }
 
 
 def _ruff_severity(code: str) -> str:
     """Map a ruff rule code (e.g. 'E741') to a severity level."""
-    if code:
-        return RUFF_SEVERITY_MAP.get(code[0], "low")
+    if not code:
+        return "low"
+    # Longest-prefix matching: try 4-char, 3-char, 2-char, 1-char
+    for length in (4, 3, 2, 1):
+        prefix = code[:length]
+        if prefix in RUFF_SEVERITY_MAP:
+            return RUFF_SEVERITY_MAP[prefix]
     return "low"
 
 
-def run_ruff(files: List[str]) -> List[Finding]:
+def run_ruff(files: list[str]) -> list[Finding]:
     """Run ruff on Python files and convert output to Findings."""
     rf = shutil.which("ruff")
     if not rf:
@@ -1009,8 +1036,8 @@ def run_ruff(files: List[str]) -> List[Finding]:
         if not result.stdout.strip():
             continue
         try:
-            items = jsonmod.loads(result.stdout)
-        except jsonmod.JSONDecodeError:
+            items = json.loads(result.stdout)
+        except json.JSONDecodeError:
             continue
         for item in items:
             code = item.get("code", "")
@@ -1025,7 +1052,7 @@ def run_ruff(files: List[str]) -> List[Finding]:
     return findings
 
 
-def collect_files(target: str) -> Tuple[List[str], List[str]]:
+def collect_files(target: str) -> tuple[list[str], list[str]]:
     """Collect shell and Python files. Returns (sh_files, py_files)."""
     p = Path(target)
     if p.is_file():
@@ -1038,20 +1065,16 @@ def collect_files(target: str) -> Tuple[List[str], List[str]]:
         py = sorted(str(f) for f in p.rglob("*.py") if f.is_file())
         return sh, py
     print(f"Error: {target} is not a file or directory", file=sys.stderr)
-    sys.exit(2)
+    return [], []
 
 
 # ---------------------------------------------------------------------------
 # Output
 # ---------------------------------------------------------------------------
 
-def json_escape(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
-
-
 def format_finding_text(f: Finding) -> str:
     label = {"critical": "CRT", "medium": "MED", "low": "LOW"}.get(f.severity, "???")
-    basename = os.path.basename(f.file)
+    basename = Path(f.file).name
     out = f"[{label}] {f.check}: {basename}:{f.line} -- {f.message}"
     if f.evidence:
         out += f"\n       {f.evidence}"
@@ -1059,7 +1082,7 @@ def format_finding_text(f: Finding) -> str:
 
 
 def format_finding_json(f: Finding) -> str:
-    return jsonmod.dumps({
+    return json.dumps({
         "file": f.file,
         "line": f.line,
         "severity": f.severity,
@@ -1073,37 +1096,43 @@ def format_finding_json(f: Finding) -> str:
 # Main
 # ---------------------------------------------------------------------------
 
-def main():
-    import argparse
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Static analysis linter for shell and Python scripts"
+        description="Static analysis linter for shell and Python scripts",
     )
     parser.add_argument("target", help="File or directory to scan")
     parser.add_argument("--json", action="store_true", help="Output NDJSON")
     parser.add_argument(
         "--severity", default="all",
         choices=["critical", "medium", "low", "all"],
-        help="Minimum severity to show (default: all)"
+        help="Minimum severity to show (default: all)",
     )
     parser.add_argument(
         "--no-shellcheck", action="store_true",
-        help="Skip shellcheck even if installed"
+        help="Skip shellcheck even if installed",
     )
     parser.add_argument(
         "--no-ruff", action="store_true",
-        help="Skip ruff even if installed"
+        help="Skip ruff even if installed",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
 
     sh_files, py_files = collect_files(args.target)
     all_files = sh_files + py_files
     if not all_files:
+        if not Path(args.target).exists():
+            return 2
         print("No .sh or .py files found", file=sys.stderr)
-        sys.exit(0)
+        return 0
 
     filter_rank = SEVERITY_RANK.get(args.severity, 0)
 
-    all_findings = []
+    all_findings: list[Finding] = []
     for f in all_files:
         all_findings.extend(scan_file(f))
 
@@ -1129,15 +1158,15 @@ def main():
 
     # Summary
     if args.json:
-        print(jsonmod.dumps({"summary": True, "findings": len(all_findings)}))
+        print(json.dumps({"summary": True, "findings": len(all_findings)}))
     else:
         if all_findings:
             print(f"\n{len(all_findings)} finding(s) total.")
         else:
             print("No findings.")
 
-    sys.exit(1 if all_findings else 0)
+    return 1 if all_findings else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
