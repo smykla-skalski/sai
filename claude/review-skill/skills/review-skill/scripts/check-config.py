@@ -24,15 +24,21 @@ from __future__ import annotations
 
 import argparse
 import functools
-import json
 import re
-import sys
-from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Any, Final
+from typing import Final
 
-from skill_check_common import SkillDocument, SkillLoadError, load_skill_document
+from skill_check_common import (
+    CheckResult,
+    SkillDocument,
+    SkillLoadError,
+    emit_error,
+    emit_results,
+    load_skill_document,
+    matches_any,
+    parse_allowed_tools,
+)
 
 EXIT_OK: Final[int] = 0
 EXIT_FAILURE: Final[int] = 1
@@ -116,46 +122,6 @@ SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
 )
 
 
-@dataclass(frozen=True)
-class CheckResult:
-    """Store the result of one validation check."""
-
-    check: str
-    passed: bool
-    detail: str
-
-    def payload(self) -> dict[str, Any]:
-        """Serialize the result into the NDJSON output format."""
-        return {
-            "check": self.check,
-            "pass": self.passed,
-            "detail": self.detail,
-        }
-
-
-def _emit_json_line(payload: Any) -> None:
-    """Write one JSON object to stdout as a single line."""
-    print(json.dumps(payload, ensure_ascii=False), file=sys.stdout)
-
-
-def _emit_error(message: str) -> None:
-    """Write one error line to stderr."""
-    print(message, file=sys.stderr)
-
-
-def _matches_any(text: str, patterns: tuple[Pattern[str], ...]) -> bool:
-    """Return whether any compiled pattern matches the text."""
-    return any(pattern.search(text) for pattern in patterns)
-
-
-def _parse_declared_tools(raw_tools: str) -> tuple[str, ...]:
-    """Parse a comma-separated `allowed-tools` field in stable order."""
-    ordered_unique_tools = dict.fromkeys(
-        tool.strip() for tool in raw_tools.split(",") if tool.strip()
-    )
-    return tuple(ordered_unique_tools)
-
-
 @functools.lru_cache(maxsize=32)
 def _get_tool_reference_pattern(tool_name: str) -> Pattern[str]:
     """Compile and cache the regex pattern for a specific tool."""
@@ -176,23 +142,23 @@ def _tool_is_referenced(tool_name: str, body_text: str) -> bool:
     implied_patterns = HIGH_SIGNAL_TOOL_RULES.get(tool_name)
     if implied_patterns is None:
         return False
-    return _matches_any(body_text, implied_patterns)
+    return matches_any(body_text, implied_patterns)
 
 
 def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
     """Validate that persistent state uses XDG-compliant paths."""
     body_text = document.prose_body
-    if not _matches_any(body_text, STATE_REFERENCE_PATTERNS):
+    if not matches_any(body_text, STATE_REFERENCE_PATTERNS):
         return None
 
-    if _matches_any(body_text, XDG_PATH_PATTERNS):
+    if matches_any(body_text, XDG_PATH_PATTERNS):
         return CheckResult(
             check=PERSISTENT_STATE_CHECK,
             passed=True,
             detail="Persistent state uses XDG-compliant path",
         )
 
-    if _matches_any(body_text, BAD_STATE_PATH_PATTERNS):
+    if matches_any(body_text, BAD_STATE_PATH_PATTERNS):
         return CheckResult(
             check=PERSISTENT_STATE_CHECK,
             passed=False,
@@ -212,17 +178,16 @@ def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
 
 def check_allowed_tools_usage(document: SkillDocument) -> CheckResult | None:
     """Validate that declared high-signal tools are actually referenced."""
-    raw_allowed_tools = document.field("allowed-tools")
-    if not raw_allowed_tools:
+    if not document.field("allowed-tools"):
         return None
 
-    declared_tools = _parse_declared_tools(raw_allowed_tools)
-    unused_tools = [
+    declared_tools = parse_allowed_tools(document.frontmatter)
+    unused_tools = sorted(
         tool_name
         for tool_name in declared_tools
         if tool_name in HIGH_SIGNAL_TOOL_RULES
         and not _tool_is_referenced(tool_name, document.body)
-    ]
+    )
 
     if not unused_tools:
         return CheckResult(
@@ -294,28 +259,6 @@ def run_checks(document: SkillDocument) -> list[CheckResult]:
     return results
 
 
-def emit_results(results: list[CheckResult]) -> int:
-    """Emit check results and return the process exit code."""
-    passed = sum(1 for result in results if result.passed)
-    failed = len(results) - passed
-
-    for result in results:
-        _emit_json_line(result.payload())
-
-    _emit_json_line(
-        {
-            "summary": True,
-            "total": len(results),
-            "passed": passed,
-            "failed": failed,
-        },
-    )
-
-    if failed > 0:
-        return EXIT_FAILURE
-    return EXIT_OK
-
-
 def _build_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
     parser = argparse.ArgumentParser(
@@ -337,7 +280,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         document = load_skill_document(args.skill_directory)
     except SkillLoadError as error:
-        _emit_error(f"Error: {error}")
+        emit_error(f"Error: {error}")
         return EXIT_USAGE_ERROR
 
     return emit_results(run_checks(document))
