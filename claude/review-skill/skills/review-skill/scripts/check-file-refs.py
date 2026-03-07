@@ -24,14 +24,22 @@ from typing import Final
 
 from skill_check_common import (
     EXIT_USAGE_ERROR,
+    RESOURCE_SUBDIRECTORIES,
+    SNIPPET_WIDTH,
     CheckResult,
     SkillDocument,
     SkillLoadError,
     emit_error,
     emit_results,
+    find_plugin_root,
     load_skill_document,
+    read_text,
     strip_fenced_code_blocks,
 )
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 CHECK_FILE_REF_RESOLVES: Final[str] = "file-ref-resolves"
 CHECK_NO_BACKSLASH_PATHS: Final[str] = "no-backslash-paths"
@@ -40,17 +48,15 @@ CHECK_REFS_ONE_LEVEL: Final[str] = "refs-one-level"
 CHECK_SKILL_MENTIONS_FILE: Final[str] = "skill-md-mentions-file"
 CHECK_REF_LINK_FORMAT: Final[str] = "ref-link-format"
 
-RESOURCE_DIRS: Final[tuple[str, ...]] = (
-    "references",
-    "scripts",
-    "assets",
-    "examples",
-)
 DISALLOWED_FILES: Final[tuple[str, ...]] = (
     "README.md",
     "CHANGELOG.md",
     "INSTALLATION_GUIDE.md",
 )
+
+# ---------------------------------------------------------------------------
+# Patterns
+# ---------------------------------------------------------------------------
 
 RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
     r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+",
@@ -65,35 +71,17 @@ INLINE_CODE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
     r"`(?:references|examples)/[a-zA-Z0-9._-]+`",
 )
 
-BARE_REFERENCE_PARENS_RE: Final[Pattern[str]] = re.compile(
-    r"\(references/[a-zA-Z0-9._-]+\)",
+CROSS_REFERENCE_RE: Final[Pattern[str]] = re.compile(
+    r"references/[a-zA-Z0-9._-]+",
 )
-MARKDOWN_LINK_RE: Final[Pattern[str]] = re.compile(r"\]\(references/")
 DOUBLE_QUOTED_RE: Final[Pattern[str]] = re.compile(r'"[^"]*"')
 INLINE_CODE_RE: Final[Pattern[str]] = re.compile(r"`[^`]*`")
 
-FIRST_HIT_WIDTH: Final[int] = 80
+PATH_CHAR_RE: Final[str] = r"[a-zA-Z0-9._-]"
 
-
-def _read_text(path: Path) -> str:
-    """Read text from a file using UTF-8 with replacement."""
-    try:
-        return path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return ""
-
-
-def _find_plugin_root(skill_dir: Path, *, max_depth: int = 4) -> Path | None:
-    """Find plugin root by walking up for `.claude-plugin/plugin.json`."""
-    search_dir = skill_dir.resolve()
-
-    for _ in range(max_depth):
-        search_dir = search_dir.parent
-        plugin_manifest = search_dir / ".claude-plugin" / "plugin.json"
-        if plugin_manifest.is_file():
-            return search_dir
-
-    return None
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 
 def _extract_referenced_paths(prose_body: str) -> tuple[str, ...]:
@@ -104,6 +92,24 @@ def _extract_referenced_paths(prose_body: str) -> tuple[str, ...]:
         if not IGNORE_REFERENCE_RE.search(match)
     }
     return tuple(sorted(references))
+
+
+def _remove_non_signal_segments(text: str) -> str:
+    """Remove quoted and inline-code segments from reference text."""
+    without_quotes = DOUBLE_QUOTED_RE.sub("", text)
+    return INLINE_CODE_RE.sub("", without_quotes)
+
+
+def _has_cross_reference(content: str) -> bool:
+    """Return whether prose contains any references/ path cross-reference."""
+    stripped = strip_fenced_code_blocks(content)
+    normalized = _remove_non_signal_segments(stripped)
+    return bool(CROSS_REFERENCE_RE.search(normalized))
+
+
+# ---------------------------------------------------------------------------
+# Check functions
+# ---------------------------------------------------------------------------
 
 
 def check_file_ref_resolves(document: SkillDocument) -> list[CheckResult]:
@@ -118,12 +124,12 @@ def check_file_ref_resolves(document: SkillDocument) -> list[CheckResult]:
             ),
         ]
 
-    plugin_root = _find_plugin_root(document.skill_dir)
+    plugin_root = find_plugin_root(document.skill_dir)
     results: list[CheckResult] = []
 
     for reference in references:
         expected_path = document.skill_dir / reference
-        if expected_path.exists():
+        if expected_path.is_file():
             results.append(
                 CheckResult(
                     check=CHECK_FILE_REF_RESOLVES,
@@ -134,7 +140,7 @@ def check_file_ref_resolves(document: SkillDocument) -> list[CheckResult]:
             continue
 
         plugin_root_path = plugin_root / reference if plugin_root is not None else None
-        if plugin_root_path is not None and plugin_root_path.exists():
+        if plugin_root_path is not None and plugin_root_path.is_file():
             results.append(
                 CheckResult(
                     check=CHECK_FILE_REF_RESOLVES,
@@ -162,8 +168,8 @@ def check_file_ref_resolves(document: SkillDocument) -> list[CheckResult]:
 
 def check_no_backslash_paths(document: SkillDocument) -> list[CheckResult]:
     """Validate that resource paths use forward slashes."""
-    first_hit = BACKSLASH_PATH_RE.search(document.prose_body)
-    if first_hit is None:
+    hits = BACKSLASH_PATH_RE.findall(document.prose_body)
+    if not hits:
         return [
             CheckResult(
                 check=CHECK_NO_BACKSLASH_PATHS,
@@ -176,11 +182,9 @@ def check_no_backslash_paths(document: SkillDocument) -> list[CheckResult]:
         CheckResult(
             check=CHECK_NO_BACKSLASH_PATHS,
             passed=False,
-            detail=(
-                "Windows-style backslash path found: "
-                f"{first_hit.group(0)} - use forward slashes"
-            ),
-        ),
+            detail=f"Windows-style backslash path found: {hit} - use forward slashes",
+        )
+        for hit in hits
     ]
 
 
@@ -211,27 +215,6 @@ def check_no_disallowed_files(document: SkillDocument) -> list[CheckResult]:
     return results
 
 
-def _remove_non_signal_segments(text: str) -> str:
-    """Remove quoted and inline-code segments from reference text."""
-    without_quotes = DOUBLE_QUOTED_RE.sub("", text)
-    return INLINE_CODE_RE.sub("", without_quotes)
-
-
-def _contains_cross_reference(content: str) -> bool:
-    """Return whether prose contains bare `(references/...)` paths."""
-    stripped = strip_fenced_code_blocks(content)
-    normalized = _remove_non_signal_segments(stripped)
-
-    for line in normalized.splitlines():
-        if not BARE_REFERENCE_PARENS_RE.search(line):
-            continue
-        if MARKDOWN_LINK_RE.search(line):
-            continue
-        return True
-
-    return False
-
-
 def check_refs_one_level(document: SkillDocument) -> list[CheckResult]:
     """Validate references files do not cross-reference each other directly."""
     references_dir = document.skill_dir / "references"
@@ -242,9 +225,11 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckResult]:
     for path in sorted(references_dir.iterdir()):
         if not path.is_file():
             continue
+        if path.name.startswith("."):
+            continue
 
-        has_cross_reference = _contains_cross_reference(_read_text(path))
-        if has_cross_reference:
+        has_xref = _has_cross_reference(read_text(path))
+        if has_xref:
             results.append(
                 CheckResult(
                     check=CHECK_REFS_ONE_LEVEL,
@@ -274,7 +259,7 @@ def check_skill_md_mentions_file(document: SkillDocument) -> list[CheckResult]:
     """Validate that SKILL.md mentions all bundled top-level resource files."""
     results: list[CheckResult] = []
 
-    for subdir in RESOURCE_DIRS:
+    for subdir in RESOURCE_SUBDIRECTORIES:
         subdir_path = document.skill_dir / subdir
         if not subdir_path.is_dir():
             continue
@@ -282,9 +267,14 @@ def check_skill_md_mentions_file(document: SkillDocument) -> list[CheckResult]:
         for path in sorted(subdir_path.iterdir()):
             if not path.is_file():
                 continue
+            if path.name.startswith("."):
+                continue
 
             relative_path = f"{subdir}/{path.name}"
-            if relative_path in document.content:
+            boundary_re = re.compile(
+                rf"(?<!{PATH_CHAR_RE}){re.escape(relative_path)}(?!{PATH_CHAR_RE})",
+            )
+            if boundary_re.search(document.content):
                 results.append(
                     CheckResult(
                         check=CHECK_SKILL_MENTIONS_FILE,
@@ -320,18 +310,22 @@ def check_ref_link_format(document: SkillDocument) -> list[CheckResult]:
             ),
         ]
 
-    first_hit = hits[0][:FIRST_HIT_WIDTH]
     return [
         CheckResult(
             check=CHECK_REF_LINK_FORMAT,
             passed=False,
             detail=(
-                f"Found {len(hits)} inline code reference(s) - use markdown "
-                f"links [file](path) for progressive disclosure - first: {first_hit}"
+                "Inline code reference path - use markdown link "
+                f"[file](path) for progressive disclosure: {hit[:SNIPPET_WIDTH]}"
             ),
-        ),
+        )
+        for hit in hits
     ]
 
+
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
 
 CheckRunner = Callable[[SkillDocument], list[CheckResult]]
 
@@ -370,6 +364,11 @@ def run_checks(
     for check_name in checks_to_run:
         results.extend(CHECK_RUNNERS[check_name](document))
     return results
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def _build_parser() -> argparse.ArgumentParser:
