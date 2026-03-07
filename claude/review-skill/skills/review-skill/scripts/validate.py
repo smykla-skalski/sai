@@ -31,7 +31,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
 # ---------------------------------------------------------------------------
 # Ensure we don't write .pyc files into plugin cache
@@ -627,8 +627,9 @@ def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
 
         raw_level = obj.get("level", "pass" if passed else "fail")
         level: ResultLevel = (
-            raw_level
-            if raw_level in {"pass", "fail", "info", "skip"}
+            cast("ResultLevel", raw_level)
+            if isinstance(raw_level, str)
+            and raw_level in {"pass", "fail", "info", "skip"}
             else ("pass" if passed else "fail")
         )
         tier = obj.get("tier")

@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
-from _skill_check_common import FindingRecord, SummaryRecord
+from _skill_check_common import FindingRecord, FindingSeverity, SummaryRecord
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -54,7 +54,7 @@ SEVERITY_RANK: Final[dict[str, int]] = {
     "low": 1,
 }
 
-SHELLCHECK_SEVERITY_MAP: Final[dict[str, str]] = {
+SHELLCHECK_SEVERITY_MAP: Final[dict[str, FindingSeverity]] = {
     "error": "critical",
     "warning": "medium",
     "info": "low",
@@ -62,7 +62,7 @@ SHELLCHECK_SEVERITY_MAP: Final[dict[str, str]] = {
 }
 
 # Longest-prefix match. Keep specific prefixes before broad ones.
-RUFF_PREFIX_SEVERITY: Final[tuple[tuple[str, str], ...]] = (
+RUFF_PREFIX_SEVERITY: Final[tuple[tuple[str, FindingSeverity], ...]] = (
     ("E501", "low"),
     ("PLE", "critical"),
     ("PLW", "medium"),
@@ -378,7 +378,7 @@ def _grep_ignore_case(tokens: Sequence[str]) -> bool:
     return False
 
 
-def _ruff_severity(rule_code: str) -> str:
+def _ruff_severity(rule_code: str) -> FindingSeverity:
     """Map a Ruff rule code to severity using longest-prefix matching."""
     for prefix, severity in RUFF_PREFIX_SEVERITY:
         if rule_code.startswith(prefix):

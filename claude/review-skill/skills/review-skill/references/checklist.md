@@ -2,6 +2,8 @@
 
 Binary checklist for evaluating Claude Code skill definitions. Each check is pass/fail.
 
+The NDJSON column shows check IDs emitted by validation scripts in JSON output. IDs follow `{PREFIX}-{slug}` format (e.g., `FM-name-present`). Wildcard entries like `PP-*` represent multiple sub-checks. Manual checks show `-`.
+
 ## Table of contents
 
 - [Critical checks](#critical-checks)
@@ -30,15 +32,15 @@ Binary checklist for evaluating Claude Code skill definitions. Each check is pas
 
 Any single failure in this tier results in an overall **FAIL** verdict. These represent hard requirements from the Agent Skills specification and Anthropic best practices.
 
-| ID | Check | Source |
-| :-- | :-- | :-- |
-| C1 | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) | Anthropic Best Practices, Agent Skills Spec |
-| C2 | SKILL.md body under 500 lines (excluding frontmatter); see I24 for character limit | Agent Skills Spec, Claude Code Docs |
-| C3 | All file references in SKILL.md resolve to actual files | Agent Skills Spec |
-| C4 | Name field valid format and matches directory name | Agent Skills Spec |
-| C5 | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
-| C6 | Not structured as a scoring rubric with points, weights, or letter grades | Anthropic Best Practices |
-| C7 | No secrets or credentials in skill files (API keys, tokens, private keys) | Anthropic Best Practices |
+| ID | NDJSON | Check | Source |
+| :-- | :-- | :-- | :-- |
+| C1 | FM-desc-present, FM-desc-trigger | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) | Anthropic Best Practices, Agent Skills Spec |
+| C2 | RF-body-lines | SKILL.md body under 500 lines (excluding frontmatter); see I24 for character limit | Agent Skills Spec, Claude Code Docs |
+| C3 | FR-resolves | All file references in SKILL.md resolve to actual files | Agent Skills Spec |
+| C4 | FM-name-* | Name field valid format and matches directory name | Agent Skills Spec |
+| C5 | - | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
+| C6 | CT-no-grading | Not structured as a scoring rubric with points, weights, or letter grades | Anthropic Best Practices |
+| C7 | CT-no-secrets | No secrets or credentials in skill files (API keys, tokens, private keys) | Anthropic Best Practices |
 
 ### How to evaluate
 
@@ -62,33 +64,33 @@ Read the SKILL.md frontmatter first. Confirm the `description` field contains bo
 
 Three or more failures in this tier results in a **NEEDS WORK** verdict. These reflect best practices that materially affect skill quality.
 
-| ID | Check | Source |
-| :-- | :-- | :-- |
-| I1 | Imperative form throughout ("Parse input" not "You should parse") | Anthropic skill-creator |
-| I2 | Progressive disclosure - complex skills use references/ for details | Agent Skills Spec, Context Engineering |
-| I3 | Concrete examples showing inputs → outputs | Anthropic Best Practices, Context Engineering |
-| I4 | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
-| I5 | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding |
-| I6 | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention |
-| I7 | Appropriate degrees of freedom (guardrails match task fragility) | Anthropic Best Practices |
-| I8 | Feedback loops for quality-critical steps | Anthropic Best Practices |
-| I9 | allowed-tools not over-broad (only tools actually needed) | Anthropic Best Practices |
-| I10 | Consistent terminology (same concept = same word) | Anthropic Best Practices |
-| I11 | Persistent state uses XDG paths, not relative or cache-relative paths | SAI Convention, Plugin Cache Architecture |
-| I12 | All runnable entrypoints in scripts/ have executable bit set | SAI Convention |
-| I13 | No useless echo wrapping literals (`$(echo "text")`, not `$(echo "${VAR}")`) | ShellCheck SC2116 |
-| I14 | Consistent phase/step numbering between SKILL.md and references | Anthropic Best Practices |
-| I15 | Reference file paths use markdown links, not inline code, for progressive disclosure | Agent Skills Spec, Progressive Disclosure |
-| I16 | allowed-tools only lists tools actually referenced in the skill body | Anthropic Best Practices |
-| I17 | Side-effect skills have `disable-model-invocation: true` in frontmatter | Anthropic Best Practices |
-| I18 | Preprocessing directives follow best practices (error handling, output limits, no secrets, no mutations, no slow/hanging commands) | Claude Code Docs, Community Best Practices |
-| I19 | Reference read gate analysis: gate presence, passive mentions, orphan files, dead bundled-only listings, use-before-gate ordering, gate purpose text, multi-flow coverage | Empirical finding, I5 automated complement |
-| I20 | Bundled scripts pass static analysis (shellcheck for .sh, ruff for .py; critical/medium severity) | SAI Script Audit, ShellCheck, Ruff |
-| I21 | AskUserQuestion declared when body implies user interaction, not used in spawned agents, required args have ask-or-fallback | SAI Convention, Skill Authoring Guide |
-| I22 | Flag coverage: every --flag in argument-hint documented in Arguments, every documented flag in argument-hint, every documented flag referenced in workflow | SAI Convention |
-| I23 | Hooks configuration: valid events, correct structure, scripts exist/executable, hook patterns (stdin parsing, stop guard, exit codes, error prefix consistency) | SAI Convention, Skill Authoring Guide |
-| I24 | SKILL.md body under 20,000 characters (roughly 5,000 tokens) | Skills Research, Context Engineering |
-| I25 | Description field under 1,024 characters | Agent Skills Spec |
+| ID | NDJSON | Check | Source |
+| :-- | :-- | :-- | :-- |
+| I1 | - | Imperative form throughout ("Parse input" not "You should parse") | Anthropic skill-creator |
+| I2 | - | Progressive disclosure - complex skills use references/ for details | Agent Skills Spec, Context Engineering |
+| I3 | - | Concrete examples showing inputs → outputs | Anthropic Best Practices, Context Engineering |
+| I4 | - | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
+| I5 | - | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding |
+| I6 | SD-invocation-prefix, SD-no-bash | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention |
+| I7 | - | Appropriate degrees of freedom (guardrails match task fragility) | Anthropic Best Practices |
+| I8 | - | Feedback loops for quality-critical steps | Anthropic Best Practices |
+| I9 | FM-tools-present | allowed-tools not over-broad (only tools actually needed) | Anthropic Best Practices |
+| I10 | - | Consistent terminology (same concept = same word) | Anthropic Best Practices |
+| I11 | CF-state-xdg | Persistent state uses XDG paths, not relative or cache-relative paths | SAI Convention, Plugin Cache Architecture |
+| I12 | SD-executable | All runnable entrypoints in scripts/ have executable bit set | SAI Convention |
+| I13 | CT-no-echo | No useless echo wrapping literals (`$(echo "text")`, not `$(echo "${VAR}")`) | ShellCheck SC2116 |
+| I14 | RF-phase-numbering | Consistent phase/step numbering between SKILL.md and references | Anthropic Best Practices |
+| I15 | FR-link-format | Reference file paths use markdown links, not inline code, for progressive disclosure | Agent Skills Spec, Progressive Disclosure |
+| I16 | CF-tools-usage | allowed-tools only lists tools actually referenced in the skill body | Anthropic Best Practices |
+| I17 | CF-side-effect | Side-effect skills have `disable-model-invocation: true` in frontmatter | Anthropic Best Practices |
+| I18 | PP-* | Preprocessing directives follow best practices (error handling, output limits, no secrets, no mutations, no slow/hanging commands) | Claude Code Docs, Community Best Practices |
+| I19 | RG-* | Reference read gate analysis: gate presence, passive mentions, orphan files, dead bundled-only listings, use-before-gate ordering, gate purpose text, multi-flow coverage | Empirical finding, I5 automated complement |
+| I20 | CL-aggregate | Bundled scripts pass static analysis (shellcheck for .sh, ruff for .py; critical/medium severity) | SAI Script Audit, ShellCheck, Ruff |
+| I21 | AQ-* | AskUserQuestion declared when body implies user interaction, not used in spawned agents, required args have ask-or-fallback | SAI Convention, Skill Authoring Guide |
+| I22 | FC-* | Flag coverage: every --flag in argument-hint documented in Arguments, every documented flag in argument-hint, every documented flag referenced in workflow | SAI Convention |
+| I23 | HK-* | Hooks configuration: valid events, correct structure, scripts exist/executable, hook patterns (stdin parsing, stop guard, exit codes, error prefix consistency) | SAI Convention, Skill Authoring Guide |
+| I24 | RF-body-chars | SKILL.md body under 20,000 characters (roughly 5,000 tokens) | Skills Research, Context Engineering |
+| I25 | FM-desc-length | Description field under 1,024 characters | Agent Skills Spec |
 
 ### How to evaluate
 
@@ -136,25 +138,26 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 
 Automated by `check-preprocessing.py`. If the skill uses `` !`command` `` preprocessing directives (outside fenced code blocks), the script validates each directive for:
 
-- **P-ERR:** Error handling on commands that depend on external state
-- **P-OUT:** Output limiting on commands that could produce large output
-- **P-SEC:** No secret-revealing env var expansion like `$API_KEY` or `$DB_PASSWORD`
-- **P-MUT:** No state-changing commands at load time like `git commit` or `kubectl apply`
-- **P-SLOW:** No slow commands that block loading like `npm test` or `docker build`
-- **P-DUP:** No redundant `` !`echo "${CLAUDE_SKILL_DIR}..."` `` wrapping since CLAUDE_SKILL_DIR is already a load-time substitution
-- **P-HANG:** No interactive commands that hang like `ssh` or `sudo` without `-n`
+- **PP-syntax:** Preprocessing directive syntax is valid
+- **PP-err-handling:** Error handling on commands that depend on external state
+- **PP-output-limit:** Output limiting on commands that could produce large output
+- **PP-secret-leak:** No secret-revealing env var expansion like `$API_KEY` or `$DB_PASSWORD`
+- **PP-mutation:** No state-changing commands at load time like `git commit` or `kubectl apply`
+- **PP-slow-cmd:** No slow commands that block loading like `npm test` or `docker build`
+- **PP-redundant-dir:** No redundant `` !`echo "${CLAUDE_SKILL_DIR}..."` `` wrapping since CLAUDE_SKILL_DIR is already a load-time substitution
+- **PP-interactive:** No interactive commands that hang like `ssh` or `sudo` without `-n`
 
 #### Automated: read gates (I19)
 
 Automated by `check-read-gates.py`. Runs 7 sub-checks against all `references/*.md` and `examples/*.md` files:
 
-- **RG-GATE:** Every markdown-linked reference has an explicit load directive (Read, Contents of, path to, Load)
-- **RG-PASSIVE:** No passive weak mentions (See, are in, Consult, per, from, available in, described in, defined in, documented in) appear before the reference's gate line
-- **RG-ORPHAN:** No files on disk are missing from SKILL.md entirely
-- **RG-DEAD:** No references appear only in the bundled resources section without being used in the workflow
-- **RG-ORDER:** No reference is cited in the workflow before its read gate appears (line number comparison)
-- **RG-PURPOSE:** Read gates explain why (not bare gates ending with just the ref path)
-- **RG-FLOW:** For multi-flow skills (multiple `## Workflow` headers), each flow that references a file has its own gate
+- **RG-gate-present:** Every markdown-linked reference has an explicit load directive (Read, Contents of, path to, Load)
+- **RG-passive:** No passive weak mentions (See, are in, Consult, per, from, available in, described in, defined in, documented in) appear before the reference's gate line
+- **RG-orphan:** No files on disk are missing from SKILL.md entirely
+- **RG-dead:** No references appear only in the bundled resources section without being used in the workflow
+- **RG-use-order:** No reference is cited in the workflow before its read gate appears (line number comparison)
+- **RG-purpose:** Read gates explain why (not bare gates ending with just the ref path)
+- **RG-flow:** For multi-flow skills (multiple `## Workflow` headers), each flow that references a file has its own gate
 
 #### Automated: script lint (I20)
 
@@ -166,23 +169,23 @@ Also runs shellcheck (if installed) at `-S warning` severity on .sh files; shell
 
 Automated by `check-ask-user.py`. Runs 9 sub-checks covering AskUserQuestion usage consistency:
 
-- **AUQ-DECL:** AskUserQuestion appears in `allowed-tools` if and only if the body references it (directly or via implicit patterns)
-- **AUQ-IMPLICIT:** Natural-language phrases like "ask the user", "prompt the user", "let the user choose" imply user interaction but AskUserQuestion is missing from allowed-tools
-- **AUQ-REQUIRED-ARG:** Required positional arguments with no default have an ask/prompt mechanism or fallback when AskUserQuestion is declared
-- **AUQ-SPAWNED:** AskUserQuestion not mentioned inside spawned agent instruction sections (agents cannot interact with users)
-- **AUQ-OPTION-STRUCTURE:** AskUserQuestion usage sites have options/choices documented nearby
-- **AUQ-DESTRUCTIVE:** Side-effect skills (`disable-model-invocation: true`) with destructive command patterns have a confirmation mechanism
-- **AUQ-AMBIGUITY:** Ambiguous situations described in the body have resolution mechanisms within 5 lines
-- **AUQ-MULTISELECT** (informational): `multiSelect` usage has grouping guidance
-- **AUQ-WIZARD** (informational): Confirmation wizard patterns have explicit loop termination
+- **AQ-declaration:** AskUserQuestion appears in `allowed-tools` if and only if the body references it (directly or via implicit patterns)
+- **AQ-implicit:** Natural-language phrases like "ask the user", "prompt the user", "let the user choose" imply user interaction but AskUserQuestion is missing from allowed-tools
+- **AQ-required-arg:** Required positional arguments with no default have an ask/prompt mechanism or fallback when AskUserQuestion is declared
+- **AQ-spawned-agent:** AskUserQuestion not mentioned inside spawned agent instruction sections (agents cannot interact with users)
+- **AQ-option-structure:** AskUserQuestion usage sites have options/choices documented nearby
+- **AQ-destructive:** Side-effect skills (`disable-model-invocation: true`) with destructive command patterns have a confirmation mechanism
+- **AQ-ambiguity:** Ambiguous situations described in the body have resolution mechanisms within 5 lines
+- **AQ-multiselect** (informational): `multiSelect` usage has grouping guidance
+- **AQ-wizard** (informational): Confirmation wizard patterns have explicit loop termination
 
 #### Automated: flag coverage (I22)
 
 Automated by `check-flag-coverage.py`. Compares three zones of flag declaration:
 
-- **FC-HINT-DOC:** Every `--flag` in the `argument-hint` frontmatter field must appear in the Arguments section body
-- **FC-DOC-HINT:** Every `--flag` in the Arguments section must appear in `argument-hint`
-- **FC-DOC-WORKFLOW:** Every `--flag` in the Arguments section must be referenced somewhere in the workflow body (excluding the Arguments section itself and Example Invocations)
+- **FC-hint-doc:** Every `--flag` in the `argument-hint` frontmatter field must appear in the Arguments section body
+- **FC-doc-hint:** Every `--flag` in the Arguments section must appear in `argument-hint`
+- **FC-doc-workflow:** Every `--flag` in the Arguments section must be referenced somewhere in the workflow body (excluding the Arguments section itself and Example Invocations)
 
 Section detection skips fenced code block headers to avoid false positives from bash comments. Only `--flag` style arguments are checked; positional arguments are not validated.
 
@@ -190,17 +193,17 @@ Section detection skips fenced code block headers to avoid false positives from 
 
 Automated by `check-hooks.py`. Runs 11 sub-checks against the hooks frontmatter block and all referenced hook scripts:
 
-- **HK-EVENTS:** All event names must be from the valid set (PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop, Stop)
-- **HK-STRUCTURE:** Matcher-based events (all except Stop) must have a `matcher:` field; Stop must not
-- **HK-TYPE:** Every hook entry needs `type: "command"` with a non-empty `command:` field
-- **HK-RESOLVE:** All command paths resolve to existing files after `${CLAUDE_SKILL_DIR}` substitution
-- **HK-EXEC:** All resolved scripts have the executable bit set
-- **HK-DUPLICATE:** No duplicate event+matcher combinations
-- **HK-STDIN:** Every hook script parses stdin JSON (e.g., `input="$(cat)"`)
-- **HK-LOOP:** Stop and SubagentStop scripts must check `stop_hook_active` to prevent infinite recursion
-- **HK-EXIT:** PreToolUse scripts must not use `exit 2` (which discards all JSON output including deny reasons)
-- **HK-PERM:** PostToolUse/PostToolUseFailure scripts must not output `permissionDecision` (not supported for post hooks)
-- **HK-PREFIX:** All error codes across hook scripts use a single consistent `[PREFIX###]` format
+- **HK-events:** All event names must be from the valid set (PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop, Stop)
+- **HK-structure:** Matcher-based events (all except Stop) must have a `matcher:` field; Stop must not
+- **HK-type:** Every hook entry needs `type: "command"` with a non-empty `command:` field
+- **HK-resolve:** All command paths resolve to existing files after `${CLAUDE_SKILL_DIR}` substitution
+- **HK-exec:** All resolved scripts have the executable bit set
+- **HK-duplicate:** No duplicate event+matcher combinations
+- **HK-stdin:** Every hook script parses stdin JSON (e.g., `input="$(cat)"`)
+- **HK-loop:** Stop and SubagentStop scripts must check `stop_hook_active` to prevent infinite recursion
+- **HK-exit:** PreToolUse scripts must not use `exit 2` (which discards all JSON output including deny reasons)
+- **HK-perm:** PostToolUse/PostToolUseFailure scripts must not output `permissionDecision` (not supported for post hooks)
+- **HK-prefix:** All error codes across hook scripts use a single consistent `[PREFIX###]` format
 
 Skills with no `hooks:` frontmatter emit `total: 0` and skip.
 
@@ -218,18 +221,18 @@ Automated by `check-references.py` (I24) and `validate.py` frontmatter checks (I
 
 Informational findings. These are only scored when running with `--thorough` and do not affect the pass/fail verdict.
 
-| ID | Check | Source |
-| :-- | :-- | :-- |
-| P1 | Long references (>100 lines) have table of contents | Agent Skills Spec |
-| P2 | One default + one escape hatch (not five options) | Anthropic Best Practices |
-| P3 | SKILL.md mentions all bundled resources | Agent Skills Spec |
-| P4 | No time-sensitive info without deprecation plan | Anthropic skill-creator |
-| P5 | Description uses third-person form | Anthropic Best Practices |
-| P6 | No Windows-style backslash paths in file references | Anthropic Best Practices |
-| P7 | Scripts handle errors explicitly, no unexplained magic constants | Anthropic Best Practices |
-| P8 | No duplicated code blocks (3+ lines) between SKILL.md and references | Anthropic Best Practices |
-| P9 | Consider `context: fork` + `agent` field for context isolation | Agent Skills Spec |
-| P10 | Side-effect skills without hooks could benefit from hook-based guardrails | SAI Convention |
+| ID | NDJSON | Check | Source |
+| :-- | :-- | :-- | :-- |
+| P1 | RF-long-ref-toc | Long references (>100 lines) have table of contents | Agent Skills Spec |
+| P2 | - | One default + one escape hatch (not five options) | Anthropic Best Practices |
+| P3 | FR-mentions-file | SKILL.md mentions all bundled resources | Agent Skills Spec |
+| P4 | - | No time-sensitive info without deprecation plan | Anthropic skill-creator |
+| P5 | FM-desc-voice | Description uses third-person form | Anthropic Best Practices |
+| P6 | FR-no-backslash | No Windows-style backslash paths in file references | Anthropic Best Practices |
+| P7 | - | Scripts handle errors explicitly, no unexplained magic constants | Anthropic Best Practices |
+| P8 | RF-dup-codeblocks-info | No duplicated code blocks (3+ lines) between SKILL.md and references | Anthropic Best Practices |
+| P9 | FK-recommendation-info | Consider `context: fork` + `agent` field for context isolation | Agent Skills Spec |
+| P10 | HK-suggestion-info | Side-effect skills without hooks could benefit from hook-based guardrails | SAI Convention |
 
 ### How to evaluate
 

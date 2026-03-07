@@ -62,20 +62,20 @@ Run the validation script and collect its JSON output:
 
 The orchestrator delegates to companion scripts:
 
-| Script | Checks | Purpose |
-| :-- | :-- | :-- |
-| `check-file-refs.py` | C3, P3, P6, I15 | File reference resolution and format |
-| `check-scripts-dir.py` | I6, I12 | Script invocation prefix and runnable entrypoint permissions |
-| `check-references.py` | C2, P1, P8, I14 | Body metrics and reference structure |
-| `check-config.py` | I11, I16, I17 | Tool usage, XDG state, side-effect guard |
-| `check-content.py` | C6, C7, I13 | Secrets, useless echo, grading style |
-| `check-fork-candidate.py` | P9 | Fork candidate analysis |
-| `check-preprocessing.py` | I18 | Preprocessing directive hygiene |
-| `check-read-gates.py` | I19 (7 sub) | Reference read gate analysis |
-| `check-lint.py` | I20 | Script static analysis (shellcheck/ruff) |
-| `check-ask-user.py` | I21 (9 sub) | AskUserQuestion usage validation |
-| `check-flag-coverage.py` | I22 (3 sub) | Flag documentation consistency |
-| `check-hooks.py` | I23 (11 sub) | Hooks configuration validation |
+| Script | Checks | NDJSON | Purpose |
+| :-- | :-- | :-- | :-- |
+| `check-file-refs.py` | C3, P3, P6, I15 | FR-* | File reference resolution and format |
+| `check-scripts-dir.py` | I6, I12 | SD-* | Script invocation prefix and runnable entrypoint permissions |
+| `check-references.py` | C2, P1, P8, I14 | RF-* | Body metrics and reference structure |
+| `check-config.py` | I11, I16, I17 | CF-* | Tool usage, XDG state, side-effect guard |
+| `check-content.py` | C6, C7, I13 | CT-* | Secrets, useless echo, grading style |
+| `check-fork-candidate.py` | P9 | FK-* | Fork candidate analysis |
+| `check-preprocessing.py` | I18 | PP-* | Preprocessing directive hygiene |
+| `check-read-gates.py` | I19 (7 sub) | RG-* | Reference read gate analysis |
+| `check-lint.py` | I20 | CL-* | Script static analysis (shellcheck/ruff) |
+| `check-ask-user.py` | I21 (9 sub) | AQ-* | AskUserQuestion usage validation |
+| `check-flag-coverage.py` | I22 (3 sub) | FC-* | Flag documentation consistency |
+| `check-hooks.py` | I23 (11 sub) | HK-* | Hooks configuration validation |
 
 Shared parsing helpers: `_skill_check_common.py`.
 
