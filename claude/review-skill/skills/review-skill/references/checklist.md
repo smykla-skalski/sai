@@ -75,7 +75,7 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 | I9 | allowed-tools not over-broad (only tools actually needed) | Anthropic Best Practices |
 | I10 | Consistent terminology (same concept = same word) | Anthropic Best Practices |
 | I11 | Persistent state uses XDG paths, not relative or cache-relative paths | SAI Convention, Plugin Cache Architecture |
-| I12 | All scripts in scripts/ have executable bit set | SAI Convention |
+| I12 | All runnable entrypoints in scripts/ have executable bit set | SAI Convention |
 | I13 | No useless echo wrapping literals (`$(echo "text")`, not `$(echo "${VAR}")`) | ShellCheck SC2116 |
 | I14 | Consistent phase/step numbering between SKILL.md and references | Anthropic Best Practices |
 | I15 | Reference file paths use markdown links, not inline code, for progressive disclosure | Agent Skills Spec, Progressive Disclosure |
@@ -118,7 +118,7 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 
 **I6 (script prefix):** Check script invocations use `"${CLAUDE_SKILL_DIR}/scripts/..."` directly without a `bash` prefix.
 
-**I12 (executable bit):** Verify all scripts in scripts/ have the executable bit set.
+**I12 (executable bit):** Verify all runnable entrypoints in scripts/ have the executable bit set.
 
 **I13 (useless echo):** Scan bash/sh code blocks for useless echo wrapping literal strings - `VAR="$(echo "text")"` should be `VAR="text"` (ShellCheck SC2116). Do NOT flag `$(echo "${VAR:-default}")` - in a skills context, the agent interprets code blocks as intent descriptions (see [GitHub #23813](https://github.com/anthropics/claude-code/issues/23813)), and the subshell wrapper can affect agent behavior even when it is a no-op in bash.
 
@@ -134,7 +134,7 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 
 #### Automated: preprocessing (I18)
 
-Automated by `check-preprocessing.sh`. If the skill uses `` !`command` `` preprocessing directives (outside fenced code blocks), the script validates each directive for:
+Automated by `check-preprocessing.py`. If the skill uses `` !`command` `` preprocessing directives (outside fenced code blocks), the script validates each directive for:
 
 - **P-ERR:** Error handling on commands that depend on external state
 - **P-OUT:** Output limiting on commands that could produce large output
@@ -146,7 +146,7 @@ Automated by `check-preprocessing.sh`. If the skill uses `` !`command` `` prepro
 
 #### Automated: read gates (I19)
 
-Automated by `check-read-gates.sh`. Runs 7 sub-checks against all `references/*.md` and `examples/*.md` files:
+Automated by `check-read-gates.py`. Runs 7 sub-checks against all `references/*.md` and `examples/*.md` files:
 
 - **RG-GATE:** Every markdown-linked reference has an explicit load directive (Read, Contents of, path to, Load)
 - **RG-PASSIVE:** No passive weak mentions (See, are in, Consult, per, from, available in, described in, defined in, documented in) appear before the reference's gate line
@@ -206,7 +206,7 @@ Skills with no `hooks:` frontmatter emit `total: 0` and skip.
 
 #### Automated: size checks (I24-I25)
 
-Automated by `check-references.sh` (I24) and `validate.sh` frontmatter checks (I25).
+Automated by `check-references.py` (I24) and `validate.py` frontmatter checks (I25).
 
 **I24:** SKILL.md body must be under 20,000 characters. The ~5,000 token limit matters more than line count for how much context the agent retains from skill content. Skills exceeding this limit should extract content to reference files.
 
@@ -255,7 +255,7 @@ Informational findings. These are only scored when running with `--thorough` and
 
 #### Fork candidate analysis (P9)
 
-Automated by `check-fork-candidate.sh`. Analyzes six positive signals (high phase count, structured output, data gathering, manual subagent usage, heavy reference loading, self-contained inputs), four blockers (already forked, conversation-dependent, tiny skill, background knowledge), and one counter-signal (side-effect skill).
+Automated by `check-fork-candidate.py`. Analyzes six positive signals (high phase count, structured output, data gathering, manual subagent usage, heavy reference loading, self-contained inputs), four blockers (already forked, conversation-dependent, tiny skill, background knowledge), and one counter-signal (side-effect skill).
 
 A "strong" recommendation means 3+ effective positive signals with no blockers - suggest adding `context: fork` and `agent` to frontmatter. A "soft" recommendation (2 effective) means fork is worth considering. Report the recommendation and detected signals.
 

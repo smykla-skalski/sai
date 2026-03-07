@@ -110,19 +110,19 @@ The reference is gated in generate mode but only passively mentioned in wizard m
 **Good** — direct execution with `${CLAUDE_SKILL_DIR}` prefix and executable bit set:
 
 ```bash
-"${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET"
+"${CLAUDE_SKILL_DIR}/scripts/validate.py" "$TARGET"
 ```
 
 **Bad** — `bash` prefix (scripts must have executable bit, no `bash` needed):
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/validate.sh" "$TARGET"
+bash "${CLAUDE_SKILL_DIR}/scripts/validate.py" "$TARGET"
 ```
 
 **Bad** — bare path without `${CLAUDE_SKILL_DIR}`:
 
 ```bash
-./scripts/validate.sh "$TARGET"
+./scripts/validate.py "$TARGET"
 ```
 
 ---

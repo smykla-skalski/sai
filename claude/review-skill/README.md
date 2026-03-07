@@ -33,7 +33,7 @@ claude --plugin-dir /path/to/sai/claude/review-skill
 
 ## Dependencies
 
-- python3 (required for I20-I23 automated checks)
+- python3 (required - orchestrator and all checks are Python)
 - shellcheck (optional, improves I20 script analysis for .sh files)
 - ruff (optional, improves I20 script analysis for .py files)
 
