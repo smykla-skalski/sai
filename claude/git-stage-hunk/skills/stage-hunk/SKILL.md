@@ -177,18 +177,36 @@ Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchu
 
 ## Example invocations
 
+<example>
+List and inspect hunks:
+
 ```
 /stage-hunk --list --table
 /stage-hunk --list --file src/auth.ts --table
 /stage-hunk --list --split --table
 /stage-hunk --split H3
+```
+</example>
+
+<example>
+Stage by hunk ID (plain, sub-hunk, line-select, mixed):
+
+```
 /stage-hunk --hunk H1,H3 --table
 /stage-hunk --hunk H2 --dry-run --table
 /stage-hunk --hunk H3.1,H3.2 --table
 /stage-hunk --hunk H3:5-10 --table
 /stage-hunk --hunk H1,H3.2,H5:10-15 --table
+```
+</example>
+
+<example>
+Bulk selection and verification:
+
+```
 /stage-hunk --pattern 'TODO|FIXME' --table
 /stage-hunk --file src/auth.ts,src/db.ts --table
 /stage-hunk --range src/auth.ts:45-60 --table
 /stage-hunk --verify --table
 ```
+</example>

@@ -2,8 +2,9 @@
 name: humanize
 description: Identify and remove AI writing patterns to make text sound natural and human-written. Use when humanizing commit messages, PR descriptions, review comments, docs, changelogs, or release notes. Also for de-slopping text that sounds robotic, has AI vibes, or reads like ChatGPT output.
 argument-hint: "[file-path] [--score-only] [--dry-run]"
-allowed-tools: AskUserQuestion, Edit, Grep, Read, Task, Write
+allowed-tools: AskUserQuestion, Edit, Read, Task, Write
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # Humanize
@@ -159,6 +160,7 @@ If `--score-only`, stop here.
 
 ## Example
 
+<example>
 **Input:**
 > Additionally, this groundbreaking framework serves as a testament to the team's commitment to fostering innovation, showcasing how modern tools can enhance developer productivity in today's rapidly evolving landscape.
 
@@ -166,3 +168,20 @@ If `--score-only`, stop here.
 > The framework speeds up common tasks like scaffolding and test generation. The team built it after noticing developers spent 40% of sprint time on boilerplate.
 
 **Patterns fixed:** AI vocabulary (Additionally, groundbreaking, enhance), significance inflation (testament, commitment to fostering), copula avoidance (serves as), superficial -ing (showcasing), promotional language (rapidly evolving landscape)
+</example>
+
+<example>
+Score-only mode (no rewriting):
+
+```bash
+/humanize docs/architecture.md --score-only
+```
+</example>
+
+<example>
+Dry-run preview:
+
+```bash
+/humanize CHANGELOG.md --dry-run
+```
+</example>

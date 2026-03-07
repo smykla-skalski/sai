@@ -104,13 +104,26 @@ Dry-run header: `**Dry Run Preview**` with "Would delete/remove" phrasing.
 
 ## Example Invocations
 
+<example>
+Full cleanup:
+
 ```bash
-# Full cleanup
 /git-clean-gone
+```
+</example>
 
-# Preview what would be deleted
+<example>
+Preview what would be deleted:
+
+```bash
 /git-clean-gone --dry-run
+```
+</example>
 
-# Only delete gone branches, no worktree removal
+<example>
+Branches only, no worktree removal:
+
+```bash
 /git-clean-gone --no-worktrees
 ```
+</example>
