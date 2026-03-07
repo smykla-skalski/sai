@@ -4,6 +4,11 @@ All script output is NDJSON (one JSON object per line). The final line is
 always a summary with `"summary":true`. When `--table` is passed, output
 is a pre-formatted markdown table instead.
 
+## Table of contents
+
+- [NDJSON schemas](#ndjson-schemas)
+- [Table output (--table)](#table-output---table)
+
 ## NDJSON schemas
 
 ### List mode
