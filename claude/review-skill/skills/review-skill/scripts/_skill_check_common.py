@@ -16,7 +16,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from re import Pattern
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -47,6 +47,20 @@ RESOURCE_SUBDIRECTORIES: Final[tuple[str, ...]] = (
     "assets",
     "examples",
 )
+
+# ---------------------------------------------------------------------------
+# NDJSON output format types and constants
+# ---------------------------------------------------------------------------
+
+ResultLevel = Literal["pass", "fail", "info", "skip"]
+SignalType = Literal["blocker", "positive", "counter"]
+FindingSeverity = Literal["critical", "medium", "low"]
+
+CHECK_ID_RE: Final[Pattern[str]] = re.compile(
+    r"^[A-Z]{2}-[a-z][a-z0-9-]*(-info)?$",
+)
+TIER_RE: Final[Pattern[str]] = re.compile(r"^[CIP]\d{1,2}$")
+DETAIL_MAX_LENGTH: Final[int] = 500
 
 
 def read_text(path: Path) -> str:
@@ -194,6 +208,198 @@ class SkillDocument:
     def line_number(self, body_line_index: int) -> int:
         """Return absolute file line number for a body-relative index."""
         return self.body_start_line + body_line_index
+
+
+# ---------------------------------------------------------------------------
+# NDJSON record types (standardized output format)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CheckRecord:
+    """One check output record with standardized NDJSON format.
+
+    Use static constructors ``ok()``, ``fail()``, ``info()``, ``skip()``
+    instead of direct construction.
+    """
+
+    check: str
+    passed: bool
+    detail: str
+    level: ResultLevel = "pass"
+    tier: str | None = None
+    item: str | None = None
+
+    def __post_init__(self) -> None:
+        # Derive level from passed boolean (direct construction fallback)
+        if self.level == "pass" and not self.passed:
+            object.__setattr__(self, "level", "fail")
+
+        if not CHECK_ID_RE.match(self.check):
+            msg = f"Invalid check ID: {self.check!r}"
+            raise ValueError(msg)
+        if not self.detail:
+            msg = "Detail must not be empty"
+            raise ValueError(msg)
+        if len(self.detail) > DETAIL_MAX_LENGTH:
+            msg = f"Detail exceeds {DETAIL_MAX_LENGTH} chars ({len(self.detail)})"
+            raise ValueError(msg)
+        if self.detail[0].islower():
+            msg = f"Detail must start with uppercase: {self.detail[:40]!r}"
+            raise ValueError(msg)
+        if self.detail.endswith("."):
+            msg = f"Detail must not end with period: ...{self.detail[-40:]!r}"
+            raise ValueError(msg)
+        if self.tier is not None and not TIER_RE.match(self.tier):
+            msg = f"Invalid tier: {self.tier!r}"
+            raise ValueError(msg)
+
+    @staticmethod
+    def ok(
+        check: str,
+        detail: str,
+        *,
+        tier: str | None = None,
+        item: str | None = None,
+    ) -> CheckRecord:
+        """Create a passing check record."""
+        return CheckRecord(
+            check=check, passed=True, detail=detail,
+            level="pass", tier=tier, item=item,
+        )
+
+    @staticmethod
+    def fail(
+        check: str,
+        detail: str,
+        *,
+        tier: str | None = None,
+        item: str | None = None,
+    ) -> CheckRecord:
+        """Create a failing check record."""
+        return CheckRecord(
+            check=check, passed=False, detail=detail,
+            level="fail", tier=tier, item=item,
+        )
+
+    @staticmethod
+    def info(
+        check: str,
+        detail: str,
+        *,
+        tier: str | None = None,
+        item: str | None = None,
+    ) -> CheckRecord:
+        """Create an informational check record (never fails)."""
+        if not detail.startswith("INFO: "):
+            detail = f"INFO: {detail}"
+        return CheckRecord(
+            check=check, passed=True, detail=detail,
+            level="info", tier=tier, item=item,
+        )
+
+    @staticmethod
+    def skip(
+        check: str,
+        detail: str,
+        *,
+        tier: str | None = None,
+        item: str | None = None,
+    ) -> CheckRecord:
+        """Create a skipped check record (preconditions not met)."""
+        return CheckRecord(
+            check=check, passed=True, detail=detail,
+            level="skip", tier=tier, item=item,
+        )
+
+    def payload(self) -> dict[str, object]:
+        """Return a serializable payload with stable key ordering."""
+        result: dict[str, object] = {
+            "kind": "check",
+            "check": self.check,
+            "pass": self.passed,
+            "level": self.level,
+        }
+        if self.tier is not None:
+            result["tier"] = self.tier
+        result["detail"] = self.detail
+        if self.item is not None:
+            result["item"] = self.item
+        return result
+
+
+@dataclass(frozen=True)
+class SignalRecord:
+    """One signal detection record for fork-candidate analysis."""
+
+    signal: str
+    type: SignalType
+    detected: bool
+    detail: str
+
+    def payload(self) -> dict[str, object]:
+        """Return a serializable payload with stable key ordering."""
+        return {
+            "kind": "signal",
+            "signal": self.signal,
+            "type": self.type,
+            "detected": self.detected,
+            "detail": self.detail,
+        }
+
+
+@dataclass(frozen=True)
+class FindingRecord:
+    """One lint finding record from static analysis."""
+
+    file: str
+    line: int
+    check: str
+    severity: FindingSeverity
+    message: str
+    evidence: str = ""
+
+    def payload(self) -> dict[str, object]:
+        """Return a serializable payload with stable key ordering."""
+        result: dict[str, object] = {
+            "kind": "finding",
+            "file": self.file,
+            "line": self.line,
+            "check": self.check,
+            "severity": self.severity,
+            "message": self.message,
+        }
+        if self.evidence:
+            result["evidence"] = self.evidence
+        return result
+
+
+@dataclass(frozen=True)
+class SummaryRecord:
+    """Summary record emitted as the final NDJSON line."""
+
+    total: int
+    passed: int
+    failed: int
+    skipped: int = 0
+    info: int = 0
+    extras: dict[str, object] = field(default_factory=dict)
+
+    def payload(self) -> dict[str, object]:
+        """Return a serializable payload with stable key ordering."""
+        result: dict[str, object] = {
+            "kind": "summary",
+            "total": self.total,
+            "passed": self.passed,
+            "failed": self.failed,
+        }
+        if self.skipped > 0:
+            result["skipped"] = self.skipped
+        if self.info > 0:
+            result["info"] = self.info
+        for key in sorted(self.extras):
+            result[key] = self.extras[key]
+        return result
 
 
 # ---------------------------------------------------------------------------
