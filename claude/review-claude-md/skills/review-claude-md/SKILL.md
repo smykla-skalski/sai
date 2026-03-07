@@ -20,14 +20,9 @@ Parse from `$ARGUMENTS`:
 - `--verbose` — Show chain-of-thought reasoning for each check
 - `--thorough` — Include Polish tier in the report
 
-## Verdict Logic
+## Verdict logic
 
-```text
-Any Critical fails              → FAIL
-3+ Important fails              → NEEDS WORK
-All Critical pass, ≤2 Important → PASS
-Polish checks                   → informational (with --thorough)
-```
+See [references/rubric.md](references/rubric.md) for the full tiered checklist and verdict thresholds (Critical, Important, Polish tiers).
 
 ## Workflow
 
@@ -42,9 +37,9 @@ Polish checks                   → informational (with --thorough)
 
 Spawn an `Explore` agent to scan the target repository. Pass the agent: the repo root path.
 
-The agent reads: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml, CI configs (.github/workflows/, .gitlab-ci.yml), README.md, test configs (jest.config, pytest.ini, vitest.config), lint configs (.eslintrc, biome.json, .prettierrc, rustfmt.toml), top-level directory structure, `git log --oneline -20`, and `.claude/rules/` contents.
+Agent reads: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml, CI configs (.github/workflows/, .gitlab-ci.yml), README.md, test configs (jest.config, pytest.ini, vitest.config), lint configs (.eslintrc, biome.json, .prettierrc, rustfmt.toml), top-level directory structure, `git log --oneline -20`, and `.claude/rules/` contents.
 
-The agent returns ONLY a structured summary with these fields:
+Agent returns ONLY a structured summary with these fields:
 
 - Build system and commands found
 - Test framework and test commands
@@ -65,7 +60,7 @@ Spawn a `general-purpose` agent to run validation scripts. Pass the agent: targe
 "${CLAUDE_SKILL_DIR}/scripts/validate-commands.sh" "$TARGET_DIR"
 ```
 
-The agent runs both scripts, parses the JSON output, and returns ONLY an array of `{check, pass, detail}` results. Each `pass: false` result maps to the corresponding checklist criterion.
+Run both scripts, parse the JSON output, and return ONLY an array of `{check, pass, detail}` results. Each `pass: false` result maps to the corresponding checklist criterion.
 
 Use these results directly in Phase 5 (Synthesize Verdict). Do not re-run the scripts in the main context.
 
@@ -101,14 +96,7 @@ Read [references/output-format.md](references/output-format.md) for the verdict 
 If `--score-only` was NOT passed (`--fix` mode, the default):
 
 1. Address every failing Critical and Important check
-2. Apply these principles when rewriting:
-   - Every line must pass "would removing this cause mistakes?"
-   - Bullets over paragraphs
-   - `file:line` references over embedded code
-   - "Use Y instead of X" over "Never use X"
-   - Only non-obvious info — skip what Claude infers from code
-   - Commands are the highest-value items
-   - No README content duplication
+2. Read [references/sources.md](references/sources.md) for rewriting principles (brevity, pointers over copies, commands as highest-value items)
 3. Create `.claude/rules/` files if root exceeds 150 lines
 4. Target: under 150 lines (ideally 50-100 for root)
 
@@ -116,25 +104,18 @@ If `--score-only` was NOT passed (`--fix` mode, the default):
 
 Spawn a `general-purpose` agent to re-evaluate the fixed CLAUDE.md. Pass the agent: paths to the fixed CLAUDE.md, both validation scripts, `$TARGET_DIR`, the Phase 2 codebase summary, and a link to [references/rubric.md](references/rubric.md).
 
-The agent:
+Agent instructions:
 
-1. Re-runs both automated check scripts and parses JSON output
-2. Re-evaluates manual checks from [references/rubric.md](references/rubric.md)
-3. Applies the verdict logic and produces a post-fix report per [references/output-format.md](references/output-format.md)
-
-The agent returns ONLY the post-fix verdict report.
+1. Re-run both automated check scripts and parse JSON output
+2. Re-evaluate manual checks from [references/rubric.md](references/rubric.md)
+3. Apply the verdict logic and produce a post-fix report per [references/output-format.md](references/output-format.md)
+4. Return ONLY the post-fix verdict report
 
 If the verdict is still not PASS, iterate in the main context: fix remaining issues using Edit, then spawn a new evaluation agent.
 
 ## Good vs Bad Examples
 
-Read [references/examples.md](references/examples.md) for detailed comparison pairs. Key patterns:
-
-**Commands** — Good: Specific commands with focused-test variant (`npm test -- --testPathPattern="auth"`). Bad: "Run tests" with no actual command.
-
-**Architecture** — Good: Component relationships with file:line pointers (`src/services/` calls `src/db/`, never imports from `src/api/`). Bad: Plain file tree with no relationship explanations.
-
-**Gotchas** — Good: "Payment service uses eventual consistency — check `transaction.status` before assuming completion (see `services/payment.ts:45`)." Bad: "Handle errors gracefully."
+Read [references/examples.md](references/examples.md) for good vs bad comparison pairs covering commands, architecture, gotchas, and format sections.
 
 ## Example Invocations
 
