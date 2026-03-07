@@ -6,7 +6,7 @@
 - [Sub-hunk ID scheme](#sub-hunk-id-scheme)
 - [Line-select semantics](#line-select-semantics)
 - [Header recalculation](#header-recalculation)
-- [The split-hunk.py helper](#the-split-hunkpy-helper)
+- [The split_hunk.py helper](#the-split_hunkpy-helper)
 - [Edge cases](#edge-cases)
 - [Apply flags](#apply-flags)
 
@@ -138,7 +138,7 @@ new_count = 2 (context) + 1 (addition) = 3
 
 Result: `@@ -10,3 +10,3 @@`.
 
-## The split-hunk.py helper
+## The split_hunk.py helper
 
 Three modes, all invoked via the script path:
 

@@ -17,10 +17,10 @@ disable-model-invocation: true
 
 Non-interactive hunk staging for selective `git add` without a TTY. Replaces `git add -p` in scripted and multi-agent environments.
 
-This skill has `disable-model-invocation: true` - it is only invoked by the user. The heavy lifting happens in the shell script. Your first action MUST be Bash - call the script directly, then present the output. Do not re-implement git diff/apply logic yourself.
+This skill has `disable-model-invocation: true` - it is only invoked by the user. The heavy lifting happens in the Python script. Your first action MUST be Bash - call the script directly, then present the output. Do not re-implement git diff/apply logic yourself.
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --list --table
 ```
 
 ## Quick workflow
@@ -28,13 +28,13 @@ This skill has `disable-model-invocation: true` - it is only invoked by the user
 1. List hunks:
 
    ```
-   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --table
+   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --list --table
    ```
 
 2. Stage the ones you want:
 
    ```
-   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3 --table
+   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --hunk H1,H3 --table
    ```
 
 3. Commit, then re-list to see what remains.
@@ -44,7 +44,7 @@ This skill has `disable-model-invocation: true` - it is only invoked by the user
 Filter the listing to one file:
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --file src/auth.ts --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --list --file src/auth.ts --table
 ```
 
 ## Preprocessed context
@@ -84,14 +84,14 @@ Parse from `$ARGUMENTS`:
 1. Run the script with `--check-deps`:
 
    ```
-   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --check-deps
+   "${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --check-deps
    ```
 
 2. Parse the NDJSON output. Each line is a dependency status.
 3. If the script exits with code 3 (patchutils missing), use AskUserQuestion:
    - Question: "patchutils is not installed. Install it now?"
    - Option 1: "Yes, install" - "Full hunk filtering with grepdiff/filterdiff. Most reliable."
-   - Option 2: "No, use fallback" - "Pure-bash parsing. --pattern and --range modes unavailable."
+   - Option 2: "No, use fallback" - "Pure-Python parsing. --pattern and --range modes unavailable."
 4. If user chooses install, use the OS value from Preprocessed context:
    - Darwin: `brew install patchutils`
    - Linux: `sudo apt-get install -y patchutils`
@@ -104,18 +104,18 @@ Parse from `$ARGUMENTS`:
 Run the script with the user's requested mode. Always pass `--table` for human-readable output:
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --file src/auth.ts --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --list --split --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --split H3
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3 --dry-run --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H1,H3 --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H3.1,H3.2 --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --hunk H3:5-10 --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --pattern 'handleAuth' --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --file src/auth.ts --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --range src/auth.ts:45-60 --table
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --verify --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --list --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --list --file src/auth.ts --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --list --split --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --split H3
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --hunk H1,H3 --dry-run --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --hunk H1,H3 --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --hunk H3.1,H3.2 --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --hunk H3:5-10 --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --pattern 'handleAuth' --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --file src/auth.ts --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --range src/auth.ts:45-60 --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --verify --table
 ```
 
 Add `--fallback` if the user declined patchutils in Phase 2.
@@ -135,7 +135,7 @@ If the summary includes `"fallback":true`, note that `--pattern` and `--range` m
 After staging, optionally run `--verify` to show what ended up staged vs unstaged:
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.sh" --verify --table
+"${CLAUDE_SKILL_DIR}/scripts/stage-hunk.py" --verify --table
 ```
 
 ## Hunk ID scheme
@@ -170,7 +170,7 @@ Read [references/split-hunk-guide.md](references/split-hunk-guide.md) for splitt
 ## Dependencies
 
 - git (required)
-- python3 (required, for JSON encoding and `scripts/split-hunk.py` sub-hunk extraction)
+- python3 (required, for `scripts/stage-hunk.py` and `scripts/split_hunk.py`)
 - patchutils (optional, provides lsdiff/filterdiff/grepdiff)
 
 Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils usage details.
