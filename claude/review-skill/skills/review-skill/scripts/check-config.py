@@ -24,10 +24,12 @@ from __future__ import annotations
 
 import argparse
 import re
-from collections.abc import Callable
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from skill_check_common import (
     EXIT_USAGE_ERROR,
