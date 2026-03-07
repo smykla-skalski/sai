@@ -73,7 +73,7 @@ def _extract_flags(text: str) -> set[str]:
 def _find_section(
     lines: list[str],
     pattern: str,
-    fenced: set[int],
+    fenced: frozenset[int],
 ) -> tuple[int | None, int | None]:
     """Find section by header regex, return (start_idx, end_idx).
 
@@ -103,7 +103,7 @@ def _find_section(
 def _find_all_sections(
     lines: list[str],
     pattern: str,
-    fenced: set[int],
+    fenced: frozenset[int],
 ) -> list[tuple[int, int]]:
     """Find all sections matching pattern, return list of (start, end) tuples."""
     sections: list[tuple[int, int]] = []
@@ -138,7 +138,7 @@ def _find_all_sections(
 
 def _get_arguments_section_flags(
     body_lines: list[str],
-    fenced: set[int],
+    fenced: frozenset[int],
 ) -> set[str]:
     """Extract --flag patterns from the Arguments section."""
     start, end = _find_section(body_lines, r"\barguments\b", fenced)
@@ -150,7 +150,7 @@ def _get_arguments_section_flags(
 
 def _get_workflow_flags(
     body_lines: list[str],
-    fenced: set[int],
+    fenced: frozenset[int],
 ) -> set[str]:
     """Extract --flag patterns from body excluding Arguments and Example sections."""
     args_start, args_end = _find_section(
