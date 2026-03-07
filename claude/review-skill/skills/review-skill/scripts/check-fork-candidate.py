@@ -435,6 +435,40 @@ def check_counters(doc: SkillDocument) -> list[SignalRecord]:
     else:
         _signal("FK-N1", "counter", detected=False, detail="No side-effects")
 
+    # N2 - AskUserQuestion actively used (forked agents can't interact)
+    auq_in_tools = "AskUserQuestion" in doc.field("allowed-tools")
+    auq_in_body = "AskUserQuestion" in doc.body
+    if auq_in_tools and auq_in_body:
+        results.append(
+            _signal(
+                "FK-N2",
+                "counter",
+                detected=True,
+                detail="AskUserQuestion actively used — forked agents cannot interact",
+            ),
+        )
+    else:
+        _signal("FK-N2", "counter", detected=False, detail="No AskUserQuestion usage")
+
+    # N3 - Write/Edit actively used (fork results are summarized, not written)
+    write_tools = {"Edit", "Write"}
+    has_write_tools = any(
+        t.strip() in write_tools
+        for t in doc.field("allowed-tools").split(",")
+    )
+    write_in_body = "Edit" in doc.body or "Write" in doc.body
+    if has_write_tools and write_in_body:
+        results.append(
+            _signal(
+                "FK-N3",
+                "counter",
+                detected=True,
+                detail="Write/Edit actively used — fork output is summarized, not direct",
+            ),
+        )
+    else:
+        _signal("FK-N3", "counter", detected=False, detail="No Write/Edit usage")
+
     return results
 
 
@@ -494,7 +528,7 @@ def build_summary(  # noqa: PLR0913
     else:
         recommendation = RECOMMENDATION_NONE
         counter_note = (
-            f" ({positive_count} positive minus FK-N1 counter)"
+            f" ({positive_count} positive minus {counter_count} counter(s))"
             if counter_count > 0
             else ""
         )
@@ -532,8 +566,8 @@ def run_analysis(doc: SkillDocument) -> int:
     positives, web = check_positives(doc)
     counters = check_counters(doc)
     agent_type, agent_reason = determine_agent(web)
-    # All signals are always emitted (4 blockers + 6 positives + 1 counter)
-    total_signals = 4 + 6 + 1
+    # All signals are always emitted (4 blockers + 6 positives + 3 counters)
+    total_signals = 4 + 6 + 3
     summary, exit_code = build_summary(
         blockers,
         positives,

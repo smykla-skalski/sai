@@ -443,6 +443,9 @@ class ResultCollector:
     failed: int = field(default=0, init=False)
     skipped: int = field(default=0, init=False)
     info: int = field(default=0, init=False)
+    delegate_warnings: list[tuple[str, str]] = field(
+        default_factory=list, init=False,
+    )
 
     def add(self, result: CheckRecord) -> None:
         """Record one result and emit it immediately."""
@@ -458,8 +461,20 @@ class ResultCollector:
             self.info += 1
         emit_record(result.payload())
 
+    def record_delegate_warning(self, script: str, reason: str) -> None:
+        """Track a delegate that was skipped or failed."""
+        self.delegate_warnings.append((script, reason))
+
     def emit_summary(self) -> None:
-        """Emit the final summary line."""
+        """Emit delegate warnings (if any) then the final summary line."""
+        for script, reason in self.delegate_warnings:
+            emit_record({
+                "kind": "check",
+                "check": "helper-runtime-warning",
+                "pass": True,
+                "level": "info",
+                "detail": f"Delegate {script} skipped: {reason}",
+            })
         summary = SummaryRecord(
             total=self.total,
             passed=self.passed,
@@ -930,9 +945,34 @@ def try_parse_table_row(
     )
 
 
-def parse_arguments(body: str) -> tuple[SkillArgument, ...]:
-    """Parse the Arguments markdown table into structured data."""
-    section_lines = extract_arguments_section_lines(body)
+_BULLET_ARG_RE: Final[Pattern[str]] = re.compile(
+    r"^-\s+`(--[\w-]+)`"
+)
+
+
+def try_parse_bullet_row(stripped_line: str) -> SkillArgument | None:
+    """Parse one bullet-list line into a SkillArgument.
+
+    Matches patterns like:
+    - `--flag` -- description
+    - `--flag` - description (default: value)
+    """
+    m = _BULLET_ARG_RE.match(stripped_line)
+    if not m:
+        return None
+    name = m.group(1)
+    rest = stripped_line[m.end():].strip()
+    default = ""
+    default_match = re.search(r"\(default:\s*(.+?)\)", rest)
+    if default_match:
+        default = default_match.group(1).strip()
+    return SkillArgument(name=name, default=default)
+
+
+def _parse_arguments_table(
+    section_lines: list[str],
+) -> list[SkillArgument]:
+    """Parse Arguments section in markdown table format."""
     table_started = False
     separator_seen = False
     arguments: list[SkillArgument] = []
@@ -958,6 +998,30 @@ def parse_arguments(body: str) -> tuple[SkillArgument, ...]:
         if argument is not None:
             arguments.append(argument)
 
+    return arguments
+
+
+def _parse_arguments_bullets(
+    section_lines: list[str],
+) -> list[SkillArgument]:
+    """Parse Arguments section in bullet-list format."""
+    arguments: list[SkillArgument] = []
+    for stripped_line in section_lines:
+        argument = try_parse_bullet_row(stripped_line)
+        if argument is not None:
+            arguments.append(argument)
+    return arguments
+
+
+def parse_arguments(body: str) -> tuple[SkillArgument, ...]:
+    """Parse the Arguments section into structured data.
+
+    Tries table format first, falls back to bullet-list format.
+    """
+    section_lines = extract_arguments_section_lines(body)
+    arguments = _parse_arguments_table(section_lines)
+    if not arguments:
+        arguments = _parse_arguments_bullets(section_lines)
     return tuple(arguments)
 
 

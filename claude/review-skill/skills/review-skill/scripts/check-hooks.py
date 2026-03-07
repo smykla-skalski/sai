@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
 from os import X_OK, access
 from pathlib import Path
 from re import Pattern
@@ -79,6 +80,16 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
     where each hook has 'type' and 'command'.
 
     Returns empty dict if no hooks: block found.
+
+    Supported YAML subset (limitations):
+    - Block mapping only (no flow syntax like {key: value})
+    - Fixed indentation levels: 2 (event), 4 (entry list), 6 (entry
+      keys), 8 (hook list), 10 (hook keys)
+    - No anchors (&), aliases (*), or merge keys (<<)
+    - No multi-line strings (| or >)
+    - Values may be bare or double-quoted; single quotes not stripped
+    - Only 'matcher', 'hooks', 'type', 'command' keys are recognized
+    - Unexpected indentation levels are silently skipped
     """
     hooks_start: int | None = None
     for i, line in enumerate(fm_lines):
@@ -167,6 +178,15 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
                 if m:
                     current_hook["type"] = m.group(1).strip()
             continue
+
+        # Unexpected indentation - warn on stderr
+        expected = {2, 4, 6, 8, 10}
+        if indent not in expected:
+            print(
+                f"check-hooks: unexpected indent {indent} in hooks block: "
+                f"{stripped.strip()!r}",
+                file=sys.stderr,
+            )
 
     return result
 
