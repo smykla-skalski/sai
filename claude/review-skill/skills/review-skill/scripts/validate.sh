@@ -2,7 +2,7 @@
 # validate.sh — Validate SKILL.md frontmatter fields and directory structure.
 #
 # Usage:
-#   bash validate.sh <skill-directory> [mode]
+#   ./validate.sh <skill-directory> [mode]
 #
 # Modes:
 #   all          — Run all checks (default)
@@ -32,6 +32,7 @@
 #
 # Dependencies: bash 4+, awk, grep, sed, wc
 set -euo pipefail
+export PYTHONDONTWRITEBYTECODE=1
 
 # ========================
 # ARGUMENT PARSING
@@ -55,25 +56,15 @@ source "${SCRIPT_DIR}/_lib.sh"
 # ========================
 source "${SCRIPT_DIR}/check-file-refs.sh"
 source "${SCRIPT_DIR}/check-scripts-dir.sh"
-source "${SCRIPT_DIR}/check-content.sh"
 source "${SCRIPT_DIR}/check-references.sh"
 
 # ========================
 # DELEGATION HELPER
 # ========================
-# Re-emit JSON results from an existing standalone companion script.
-# Args: script_path, guard_field (skip if guard field is 0 or absent)
-delegate_script() {
-  local script="$1" guard_field="${2:-}"
-  [[ -x "$script" ]] || return 0
-  local output
-  output=$("$script" "$SKILL_DIR" 2>/dev/null || true)
-  [[ -n "$output" ]] || return 0
-  if [[ -n "$guard_field" ]]; then
-    local guard_val
-    guard_val=$(echo "$output" | tail -1 | sed -n "s/.*\"${guard_field}\": \([0-9]*\).*/\1/p")
-    [[ "${guard_val:-0}" -gt 0 ]] || return 0
-  fi
+# Re-emit JSON results from a companion script's NDJSON output.
+# Args: output_string
+reemit_delegate_output() {
+  local output="$1"
   while IFS= read -r line; do
     [[ "$line" == *'"summary"'* ]] && continue
     local chk pss dtl
@@ -83,6 +74,42 @@ delegate_script() {
     [[ -z "$chk" ]] && continue
     emit "$chk" "$pss" "$dtl"
   done <<< "$output"
+}
+
+# Re-emit JSON results from an existing standalone companion script.
+# Args: script_path, guard_field (skip if guard field is 0 or absent)
+delegate_script() {
+  local script="$1" guard_field="${2:-}"
+  [[ -x "$script" ]] || return 0
+  local output stderr_file
+  stderr_file=$(mktemp); _TMPFILES+=("$stderr_file")
+  output=$("$script" "$SKILL_DIR" 2>"$stderr_file" || true)
+  if [[ -z "$output" ]]; then
+    local stderr_msg
+    stderr_msg=$(head -1 "$stderr_file" 2>/dev/null || true)
+    if [[ -n "$stderr_msg" ]]; then
+      emit "helper-runtime" "true" "WARN: $(basename "$script") produced no output — ${stderr_msg}"
+    fi
+    return 0
+  fi
+  if [[ -n "$guard_field" ]]; then
+    local guard_val
+    guard_val=$(echo "$output" | tail -1 | sed -n "s/.*\"${guard_field}\": \([0-9]*\).*/\1/p")
+    [[ "${guard_val:-0}" -gt 0 ]] || return 0
+  fi
+  reemit_delegate_output "$output"
+}
+
+# Re-emit JSON results from a script with extra CLI args.
+# Args: script_path, [script args...]
+delegate_script_args() {
+  local script="$1"
+  shift
+  [[ -x "$script" ]] || return 0
+  local output
+  output=$("$script" "$SKILL_DIR" "$@" 2>/dev/null || true)
+  [[ -n "$output" ]] || return 0
+  reemit_delegate_output "$output"
 }
 
 # Re-emit one check from check-config.py while preserving current output order.
@@ -157,6 +184,12 @@ run_frontmatter() {
   else
     emit "description-present" "true" "Field 'description' is present"
 
+    if [[ ${#DESCRIPTION} -gt 1024 ]]; then
+      emit "description-length" "false" "Description is ${#DESCRIPTION} chars, exceeds 1024-char limit"
+    else
+      emit "description-length" "true" "Description is ${#DESCRIPTION} chars (limit 1024)"
+    fi
+
     local DMI
     DMI=$(get_field "disable-model-invocation")
     if [[ "$DMI" == "true" ]]; then
@@ -207,22 +240,31 @@ run_frontmatter() {
 # STRUCTURE CHECKS
 # ========================
 run_structure() {
+  local HAS_PYTHON3=1
+  if ! command -v python3 &>/dev/null; then
+    HAS_PYTHON3=0
+    emit "helper-runtime" "true" "WARN: python3 not found — I20, I21, I22, I23 checks skipped"
+  fi
+
+  local CONTENT_SCRIPT
+  CONTENT_SCRIPT="${SCRIPT_DIR}/check-content.py"
+
   # Function calls in exact current emission order
   check_body_line_count
   check_file_ref_resolves
   check_script_invocation_prefix
   check_no_bash_prefix
   check_script_executable
-  check_no_secrets
+  delegate_script_args "$CONTENT_SCRIPT" --check no-secrets
   check_no_backslash_paths
-  check_no_useless_echo
+  delegate_script_args "$CONTENT_SCRIPT" --check no-useless-echo
   check_duplicate_codeblocks
   check_consistent_phase_numbering
   check_no_disallowed_files
   check_refs_one_level
   check_long_ref_toc
   delegate_config_check "persistent-state-xdg"
-  check_no_grading_style
+  delegate_script_args "$CONTENT_SCRIPT" --check no-grading-style
   check_skill_md_mentions_file
   check_ref_link_format
 
@@ -238,7 +280,9 @@ run_structure() {
   local LINT_SCRIPT SCRIPTS_DIR
   LINT_SCRIPT="${SCRIPT_DIR}/lint-scripts.py"
   SCRIPTS_DIR="${SKILL_DIR}/scripts"
-  if [[ ! -d "$SCRIPTS_DIR" ]]; then
+  if [[ "$HAS_PYTHON3" -eq 0 ]]; then
+    :  # skipped (no python3)
+  elif [[ ! -d "$SCRIPTS_DIR" ]]; then
     emit "script-lint" "true" "No scripts/ directory"
   elif [[ -x "$LINT_SCRIPT" ]]; then
     local LINT_OUTPUT LINT_SUMMARY LINT_CRITS LINT_MEDS LINT_TOTAL
@@ -267,7 +311,9 @@ run_structure() {
   # --- AskUserQuestion usage validation (I21) ---
   local AUQ_SCRIPT
   AUQ_SCRIPT="${SCRIPT_DIR}/check-ask-user.py"
-  if [[ -x "$AUQ_SCRIPT" ]]; then
+  if [[ "$HAS_PYTHON3" -eq 0 ]]; then
+    :  # skipped (no python3)
+  elif [[ -x "$AUQ_SCRIPT" ]]; then
     local AUQ_OUTPUT AUQ_SUMMARY AUQ_TOTAL
     AUQ_OUTPUT=$(python3 "$AUQ_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
     AUQ_SUMMARY=$(echo "$AUQ_OUTPUT" | tail -1)
@@ -290,7 +336,9 @@ run_structure() {
   # --- flag coverage (I22) ---
   local FC_SCRIPT
   FC_SCRIPT="${SCRIPT_DIR}/check-flag-coverage.py"
-  if [[ -x "$FC_SCRIPT" ]]; then
+  if [[ "$HAS_PYTHON3" -eq 0 ]]; then
+    :  # skipped (no python3)
+  elif [[ -x "$FC_SCRIPT" ]]; then
     local FC_OUTPUT FC_SUMMARY FC_TOTAL
     FC_OUTPUT=$(python3 "$FC_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
     FC_SUMMARY=$(echo "$FC_OUTPUT" | tail -1)
@@ -311,7 +359,9 @@ run_structure() {
   fi
 
   # --- hooks validation (I23) ---
-  delegate_script "${SCRIPT_DIR}/check-hooks.py"
+  if [[ "$HAS_PYTHON3" -eq 1 ]]; then
+    delegate_script "${SCRIPT_DIR}/check-hooks.py"
+  fi
 
   # --- fork candidate analysis (P9, informational) ---
   local FORK_SCRIPT
