@@ -17,10 +17,12 @@ from __future__ import annotations
 
 import argparse
 import re
-from collections.abc import Callable
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from skill_check_common import (
     EXIT_USAGE_ERROR,
@@ -327,7 +329,8 @@ def check_ref_link_format(document: SkillDocument) -> list[CheckResult]:
 # Orchestration
 # ---------------------------------------------------------------------------
 
-CheckRunner = Callable[[SkillDocument], list[CheckResult]]
+if TYPE_CHECKING:
+    CheckRunner = Callable[[SkillDocument], list[CheckResult]]
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_FILE_REF_RESOLVES,

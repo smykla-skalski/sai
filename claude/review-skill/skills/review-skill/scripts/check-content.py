@@ -14,10 +14,12 @@ from __future__ import annotations
 
 import argparse
 import re
-from collections.abc import Callable
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from skill_check_common import (
     EXIT_USAGE_ERROR,
@@ -266,7 +268,8 @@ def check_no_grading_style(document: SkillDocument) -> CheckResult:
 # Orchestration
 # ---------------------------------------------------------------------------
 
-CheckFunction = Callable[[SkillDocument], CheckResult]
+if TYPE_CHECKING:
+    CheckFunction = Callable[[SkillDocument], CheckResult]
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_NO_SECRETS,
