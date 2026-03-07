@@ -1117,18 +1117,29 @@ def _handle_fork_candidate(
 # ---------------------------------------------------------------------------
 
 
+def _progress(verbose: bool, message: str) -> None:
+    """Emit progress to stderr when verbose."""
+    if verbose:
+        sys.stderr.write(f"  {message}\n")
+
+
 def run_structure(
     doc: SkillDocument,
     script_dir: Path,
     collector: ResultCollector,
+    *,
+    verbose: bool = False,
 ) -> None:
     """Run all structure checks via delegation."""
     # Standard delegations
     for config in STRUCTURE_DELEGATIONS:
+        _progress(verbose, f"checking {config.script}...")
         _run_structure_delegate(config, script_dir, doc.skill_dir, collector)
 
     # Special cases
+    _progress(verbose, "checking lint-scripts.py...")
     _handle_lint_scripts(script_dir, doc.skill_dir, collector)
+    _progress(verbose, "checking check-ask-user.py...")
     _run_structure_delegate(
         _delegate("check-ask-user.py", guard_field="total"),
         script_dir,
@@ -1137,6 +1148,7 @@ def run_structure(
     )
 
     # Flag coverage (I22)
+    _progress(verbose, "checking check-flag-coverage.py...")
     _run_structure_delegate(
         _delegate("check-flag-coverage.py"),
         script_dir,
@@ -1145,6 +1157,7 @@ def run_structure(
     )
 
     # Hooks validation (I23)
+    _progress(verbose, "checking check-hooks.py...")
     _run_structure_delegate(
         _delegate("check-hooks.py"),
         script_dir,
@@ -1153,6 +1166,7 @@ def run_structure(
     )
 
     # Fork candidate (P9, informational)
+    _progress(verbose, "checking check-fork-candidate.py...")
     _handle_fork_candidate(script_dir, doc.skill_dir, collector)
 
 
@@ -1177,6 +1191,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default="all",
         choices=VALID_MODES,
         help="Which checks to run (default: all)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        default=False,
+        help="Show progress on stderr",
     )
     return parser
 
@@ -1223,7 +1243,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.mode in {"all", "frontmatter"}:
         run_frontmatter(doc, collector)
     if args.mode in {"all", "structure"}:
-        run_structure(doc, script_dir, collector)
+        run_structure(doc, script_dir, collector, verbose=args.verbose)
 
     collector.emit_summary()
     return 1 if collector.failed > 0 else 0
