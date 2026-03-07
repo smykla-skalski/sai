@@ -29,7 +29,7 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
@@ -45,6 +45,7 @@ sys.dont_write_bytecode = True
 from skill_check_common import (  # noqa: E402
     EXIT_USAGE_ERROR,
     CheckResult,
+    ResultCollector,
     SkillDocument,
     SkillLoadError,
     emit_record,
@@ -84,40 +85,6 @@ FIELD_DESCRIPTION: Final[str] = "description"
 FIELD_ALLOWED_TOOLS: Final[str] = "allowed-tools"
 FIELD_USER_INVOCABLE: Final[str] = "user-invocable"
 FIELD_DMI: Final[str] = "disable-model-invocation"
-
-
-# ---------------------------------------------------------------------------
-# Result collector (replaces bash TOTAL/PASSED/FAILED globals)
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class ResultCollector:
-    """Collect check results and stream them as NDJSON."""
-
-    total: int = field(default=0, init=False)
-    passed: int = field(default=0, init=False)
-    failed: int = field(default=0, init=False)
-
-    def add(self, result: CheckResult) -> None:
-        """Record one result and emit it immediately."""
-        self.total += 1
-        if result.passed:
-            self.passed += 1
-        else:
-            self.failed += 1
-        emit_record(result.payload())
-
-    def emit_summary(self) -> None:
-        """Emit the final summary line."""
-        emit_record(
-            {
-                "summary": True,
-                "total": self.total,
-                "passed": self.passed,
-                "failed": self.failed,
-            }
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -829,24 +796,29 @@ def _delegate_checks(
 
 # Ordered identically to the bash orchestrator
 STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
-    _delegate_checks("check-references.py", "body-line-count", "body-char-count"),
-    _delegate_checks("check-file-refs.py", "file-ref-resolves"),
+    _delegate_checks(
+        "check-references.py",
+        "body-line-count", "body-char-count",
+        "duplicate-codeblocks-info", "consistent-phase-numbering",
+        "long-ref-toc",
+    ),
+    _delegate_checks(
+        "check-file-refs.py",
+        "file-ref-resolves", "no-backslash-paths",
+        "no-disallowed-files", "refs-one-level",
+        "skill-md-mentions-file", "ref-link-format",
+    ),
     _delegate("check-scripts-dir.py"),
-    _delegate_checks("check-content.py", "no-secrets"),
-    _delegate_checks("check-file-refs.py", "no-backslash-paths"),
-    _delegate_checks("check-content.py", "no-useless-echo"),
-    _delegate_checks("check-references.py", "duplicate-codeblocks-info"),
-    _delegate_checks("check-references.py", "consistent-phase-numbering"),
-    _delegate_checks("check-file-refs.py", "no-disallowed-files"),
-    _delegate_checks("check-file-refs.py", "refs-one-level"),
-    _delegate_checks("check-references.py", "long-ref-toc"),
-    _delegate_checks("check-config.py", "persistent-state-xdg"),
-    _delegate_checks("check-content.py", "no-grading-style"),
-    _delegate_checks("check-file-refs.py", "skill-md-mentions-file"),
-    _delegate_checks("check-file-refs.py", "ref-link-format"),
+    _delegate_checks(
+        "check-content.py",
+        "no-secrets", "no-useless-echo", "no-grading-style",
+    ),
+    _delegate_checks(
+        "check-config.py",
+        "persistent-state-xdg", "allowed-tools-usage",
+        "side-effect-guard",
+    ),
     _delegate("check-read-gates.py", guard_field="refs"),
-    _delegate_checks("check-config.py", "allowed-tools-usage"),
-    _delegate_checks("check-config.py", "side-effect-guard"),
     _delegate("check-preprocessing.py", guard_field="directives"),
 )
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from re import Pattern
 from typing import Final
@@ -231,6 +231,35 @@ def emit_results(
     if failed:
         return EXIT_FAILURE
     return EXIT_OK
+
+
+@dataclass
+class ResultCollector:
+    """Collect check results and stream them as NDJSON."""
+
+    total: int = field(default=0, init=False)
+    passed: int = field(default=0, init=False)
+    failed: int = field(default=0, init=False)
+
+    def add(self, result: CheckResult) -> None:
+        """Record one result and emit it immediately."""
+        self.total += 1
+        if result.passed:
+            self.passed += 1
+        else:
+            self.failed += 1
+        emit_record(result.payload())
+
+    def emit_summary(self) -> None:
+        """Emit the final summary line."""
+        emit_record(
+            {
+                "summary": True,
+                "total": self.total,
+                "passed": self.passed,
+                "failed": self.failed,
+            },
+        )
 
 
 # ---------------------------------------------------------------------------
