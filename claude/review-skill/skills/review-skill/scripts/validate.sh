@@ -52,11 +52,6 @@ SCRIPT_DIR="$(dirname "$0")"
 source "${SCRIPT_DIR}/_lib.sh"
 
 # ========================
-# LOAD CHECK FUNCTION LIBRARIES (function defs only)
-# ========================
-source "${SCRIPT_DIR}/check-scripts-dir.sh"
-
-# ========================
 # DELEGATION HELPER
 # ========================
 # Re-emit JSON results from a companion script's NDJSON output.
@@ -226,12 +221,15 @@ run_structure() {
   local REFS_SCRIPT
   REFS_SCRIPT="${SCRIPT_DIR}/check-references.py"
 
+  local SCRIPTS_DIR_SCRIPT
+  SCRIPTS_DIR_SCRIPT="${SCRIPT_DIR}/check-scripts-dir.py"
+
   # Function calls in exact current emission order
   delegate_script_args "$REFS_SCRIPT" --check body-line-count --check body-char-count
   delegate_script_args "$FILE_REFS_SCRIPT" --check file-ref-resolves
-  check_script_invocation_prefix
-  check_no_bash_prefix
-  check_script_executable
+  delegate_script_args "$SCRIPTS_DIR_SCRIPT" --check script-invocation-prefix
+  delegate_script_args "$SCRIPTS_DIR_SCRIPT" --check no-bash-prefix
+  delegate_script_args "$SCRIPTS_DIR_SCRIPT" --check script-executable
   delegate_script_args "$CONTENT_SCRIPT" --check no-secrets
   delegate_script_args "$FILE_REFS_SCRIPT" --check no-backslash-paths
   delegate_script_args "$CONTENT_SCRIPT" --check no-useless-echo
