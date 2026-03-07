@@ -3,20 +3,22 @@
 #
 # Usage:
 #   ./stage-hunk.sh --check-deps
-#   ./stage-hunk.sh --list [--fallback]
-#   ./stage-hunk.sh --list --split [--fallback]
+#   ./stage-hunk.sh --list [--table] [--fallback]
+#   ./stage-hunk.sh --list --file PATH [--table] [--fallback]
+#   ./stage-hunk.sh --list --split [--table] [--fallback]
 #   ./stage-hunk.sh --split H3 [--fallback]
-#   ./stage-hunk.sh --hunk H1,H2 [--dry-run] [--fallback]
-#   ./stage-hunk.sh --hunk H3.1,H3.2 [--dry-run] [--fallback]
-#   ./stage-hunk.sh --hunk H3:5-10 [--dry-run] [--fallback]
-#   ./stage-hunk.sh --pattern REGEX [--dry-run]
-#   ./stage-hunk.sh --file PATH [--dry-run] [--fallback]
-#   ./stage-hunk.sh --range FILE:START-END [--dry-run]
-#   ./stage-hunk.sh --verify
+#   ./stage-hunk.sh --hunk H1,H2 [--dry-run] [--table] [--fallback]
+#   ./stage-hunk.sh --hunk H3.1,H3.2 [--dry-run] [--table] [--fallback]
+#   ./stage-hunk.sh --hunk H3:5-10 [--dry-run] [--table] [--fallback]
+#   ./stage-hunk.sh --pattern REGEX [--dry-run] [--table]
+#   ./stage-hunk.sh --file PATH [--dry-run] [--table] [--fallback]
+#   ./stage-hunk.sh --range FILE:START-END [--dry-run] [--table]
+#   ./stage-hunk.sh --verify [--table]
 #
 # Modes:
 #   --check-deps       Check required dependencies, output JSON status
 #   --list             List all unstaged hunks with IDs and previews
+#   --list --file PATH Filter listing to specific file(s) (comma-separated)
 #   --list --split     List all hunks with sub-hunk breakdown
 #   --split H3         Show sub-hunks for one specific hunk
 #   --hunk H1,H2,...   Stage specific hunks by global sequential ID
@@ -28,10 +30,12 @@
 #   --verify           Show staged vs unstaged summary
 #
 # Flags:
+#   --table            Output as markdown table instead of NDJSON
 #   --dry-run          Preview staging without applying
 #   --fallback         Force fallback mode (no patchutils)
 #
 # Output: NDJSON (one JSON object per line), final line always a summary.
+#         With --table, output is a pre-formatted markdown table.
 #
 # Exit codes:
 #   0  Success
@@ -82,6 +86,45 @@ json_str_raw() {
   python3 -c "import json,sys; print(json.dumps(sys.argv[1])[1:-1])" "$1"
 }
 
+# ========================
+# TABLE FORMATTING
+# ========================
+
+table_list_header() {
+  echo "| ID | File | Lines | +/- | Preview |"
+  echo "|:---|:-----|:------|:----|:--------|"
+}
+
+table_list_row() {
+  local id="$1" file="$2" ns="$3" nc="$4" added="$5" removed="$6" preview="$7"
+  local end=$((ns + nc - 1))
+  local lines="${ns}-${end}"
+  local pm="+${added}/-${removed}"
+  # Truncate preview to 50 chars
+  preview="${preview:0:50}"
+  printf '| %s | %s | %s | %s | %s |\n' "$id" "$file" "$lines" "$pm" "$preview"
+}
+
+table_stage_header() {
+  echo "| ID | File | Status |"
+  echo "|:---|:-----|:-------|"
+}
+
+table_stage_row() {
+  local id="$1" file="$2" status="$3"
+  printf '| %s | %s | %s |\n' "$id" "$file" "$status"
+}
+
+table_verify_header() {
+  echo "| File | Staged | Unstaged |"
+  echo "|:-----|:-------|:---------|"
+}
+
+table_verify_row() {
+  local file="$1" staged="$2" unstaged="$3"
+  printf '| %s | %s | %s |\n' "$file" "$staged" "$unstaged"
+}
+
 # Parse a hunk header line, output: old_start old_count new_start new_count
 # Input: @@ -45,8 +45,12 @@ optional context
 parse_hunk_header() {
@@ -100,6 +143,8 @@ SPLIT=false
 SPLIT_TARGET=""
 DRY_RUN=false
 FALLBACK=false
+TABLE=false
+FILE_FILTER=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -116,14 +161,28 @@ while [[ $# -gt 0 ]]; do
       ;;
     --hunk)       MODE="hunk"; HUNK_IDS="${2:-}"; shift 2 || die "missing hunk IDs" 2 ;;
     --pattern)    MODE="pattern"; PATTERN="${2:-}"; shift 2 || die "missing pattern" 2 ;;
-    --file)       MODE="file"; FILE_PATHS="${2:-}"; shift 2 || die "missing file path" 2 ;;
+    --file)
+      if [[ "$MODE" == "list" ]]; then
+        FILE_FILTER="${2:-}"
+        shift 2 || die "missing file path" 2
+      else
+        MODE="file"; FILE_PATHS="${2:-}"; shift 2 || die "missing file path" 2
+      fi
+      ;;
     --range)      MODE="range"; RANGE_SPEC="${2:-}"; shift 2 || die "missing range spec" 2 ;;
     --verify)     MODE="verify"; shift ;;
+    --table)      TABLE=true; shift ;;
     --dry-run)    DRY_RUN=true; shift ;;
     --fallback)   FALLBACK=true; shift ;;
     *)            die "unknown flag: $1" 2 ;;
   esac
 done
+
+# Resolve --file as filter when combined with --list (handles --file PATH --list order)
+if [[ "$MODE" == "list" && -n "$FILE_PATHS" ]]; then
+  FILE_FILTER="$FILE_PATHS"
+  FILE_PATHS=""
+fi
 
 # Resolve combined modes: --split with a target is its own mode, --list --split is list-split
 if [[ "$SPLIT" == "true" ]]; then
@@ -340,17 +399,57 @@ fi
 TOTAL_HUNKS=$(wc -l <<< "$HUNK_INDEX" | tr -d ' ')
 
 # ========================
+# FILE FILTER (--list --file)
+# ========================
+if [[ -n "$FILE_FILTER" ]]; then
+  IFS=',' read -ra filter_files <<< "$FILE_FILTER"
+  filtered=""
+  for ff in "${filter_files[@]}"; do
+    ff=$(echo "$ff" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    entries=$(echo "$HUNK_INDEX" | awk -F"$FS" -v f="$ff" '$2 == f' || true)
+    [[ -n "$entries" ]] && filtered="${filtered:+${filtered}
+}${entries}"
+  done
+  if [[ -z "$filtered" ]]; then
+    if [[ "$TABLE" == "true" ]]; then
+      echo "No unstaged hunks match the file filter."
+    else
+      emit '{"error":"no_hunks_for_file","detail":"no unstaged hunks match the file filter"}'
+      emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"mode\":\"list\",\"filtered\":0}"
+    fi
+    exit 0
+  fi
+  HUNK_INDEX="$filtered"
+  TOTAL_HUNKS=$(wc -l <<< "$HUNK_INDEX" | tr -d ' ')
+fi
+
+# ========================
 # LIST MODE
 # ========================
 if [[ "$MODE" == "list" ]]; then
-  while IFS="$FS" read -r id file hunk_num os oc ns nc added removed preview; do
-    local_file=$(json_str "$file")
-    local_preview=$(json_str "$preview")
-    emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview}}"
-  done <<< "$HUNK_INDEX"
-  fb="false"
-  [[ "$FALLBACK" == "true" ]] && fb="true"
-  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"mode\":\"list\",\"fallback\":${fb}}"
+  if [[ "$TABLE" == "true" ]]; then
+    table_list_header
+    file_set=""
+    while IFS="$FS" read -r id file hunk_num os oc ns nc added removed preview; do
+      table_list_row "$id" "$file" "$ns" "$nc" "$added" "$removed" "$preview"
+      if ! echo "$file_set" | grep -qxF "$file" 2>/dev/null; then
+        file_set="${file_set:+${file_set}
+}${file}"
+      fi
+    done <<< "$HUNK_INDEX"
+    file_count=$(echo "$file_set" | grep -c . || true)
+    echo ""
+    echo "${TOTAL_HUNKS} hunks across ${file_count} files"
+  else
+    while IFS="$FS" read -r id file hunk_num os oc ns nc added removed preview; do
+      local_file=$(json_str "$file")
+      local_preview=$(json_str "$preview")
+      emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview}}"
+    done <<< "$HUNK_INDEX"
+    fb="false"
+    [[ "$FALLBACK" == "true" ]] && fb="true"
+    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"mode\":\"list\",\"fallback\":${fb}}"
+  fi
   exit 0
 fi
 
@@ -395,6 +494,11 @@ if [[ "$MODE" == "list-split" ]]; then
   splittable_count=0
   total_sub_hunks=0
 
+  if [[ "$TABLE" == "true" ]]; then
+    table_list_header
+    file_set=""
+  fi
+
   while IFS="$FS" read -r id file hunk_num os oc ns nc added removed preview; do
     # Try to find sub-hunks for each parent hunk
     subhunk_output=$(printf '%s\x00%s' "$DIFF" "$FINE_DIFF" | python3 "${SCRIPT_DIR}/split-hunk.py" \
@@ -412,17 +516,55 @@ if [[ "$MODE" == "list-split" ]]; then
       sub_count=$(echo "$subhunk_output" | { grep -E '"summary":\s*true' || true; } | python3 -c "import json,sys; print(json.loads(sys.stdin.readline())['sub_hunks'])" 2>/dev/null) || sub_count=0
       splittable_count=$((splittable_count + 1))
       total_sub_hunks=$((total_sub_hunks + sub_count))
-      emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":true,\"sub_hunks\":${sub_count}}"
-      # Emit the sub-hunk detail lines (skip the summary and non-splittable marker)
-      echo "$subhunk_output" | { grep -vE '"summary":\s*true' || true; } | { grep -vE '"splittable":\s*false' || true; }
+
+      if [[ "$TABLE" == "true" ]]; then
+        table_list_row "$id" "$file" "$ns" "$nc" "$added" "$removed" "$preview"
+        if ! echo "$file_set" | grep -qxF "$file" 2>/dev/null; then
+          file_set="${file_set:+${file_set}
+}${file}"
+        fi
+        # Extract sub-hunk details and render as indented rows
+        sub_lines=$(echo "$subhunk_output" | { grep -vE '"summary":\s*true' || true; } | { grep -vE '"splittable":\s*false' || true; })
+        if [[ -n "$sub_lines" ]]; then
+          while IFS= read -r sline; do
+            [[ -z "$sline" ]] && continue
+            s_id=$(echo "$sline" | python3 -c "import json,sys; d=json.loads(sys.stdin.readline()); print(d.get('id',''))" 2>/dev/null) || continue
+            s_ns=$(echo "$sline" | python3 -c "import json,sys; d=json.loads(sys.stdin.readline()); print(d.get('new_start',0))" 2>/dev/null) || s_ns=0
+            s_nc=$(echo "$sline" | python3 -c "import json,sys; d=json.loads(sys.stdin.readline()); print(d.get('new_count',0))" 2>/dev/null) || s_nc=0
+            s_added=$(echo "$sline" | python3 -c "import json,sys; d=json.loads(sys.stdin.readline()); print(d.get('added',0))" 2>/dev/null) || s_added=0
+            s_removed=$(echo "$sline" | python3 -c "import json,sys; d=json.loads(sys.stdin.readline()); print(d.get('removed',0))" 2>/dev/null) || s_removed=0
+            s_preview=$(echo "$sline" | python3 -c "import json,sys; d=json.loads(sys.stdin.readline()); print(d.get('preview',''))" 2>/dev/null) || s_preview=""
+            [[ -z "$s_id" ]] && continue
+            table_list_row "  ${s_id}" "$file" "$s_ns" "$s_nc" "$s_added" "$s_removed" "$s_preview"
+          done <<< "$sub_lines"
+        fi
+      else
+        emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":true,\"sub_hunks\":${sub_count}}"
+        # Emit the sub-hunk detail lines (skip the summary and non-splittable marker)
+        echo "$subhunk_output" | { grep -vE '"summary":\s*true' || true; } | { grep -vE '"splittable":\s*false' || true; }
+      fi
     else
-      emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":false,\"sub_hunks\":0}"
+      if [[ "$TABLE" == "true" ]]; then
+        table_list_row "$id" "$file" "$ns" "$nc" "$added" "$removed" "(not splittable)"
+        if ! echo "$file_set" | grep -qxF "$file" 2>/dev/null; then
+          file_set="${file_set:+${file_set}
+}${file}"
+        fi
+      else
+        emit "{\"id\":\"${id}\",\"file\":${local_file},\"hunk_num\":${hunk_num},\"old_start\":${os},\"old_count\":${oc},\"new_start\":${ns},\"new_count\":${nc},\"added\":${added},\"removed\":${removed},\"preview\":${local_preview},\"splittable\":false,\"sub_hunks\":0}"
+      fi
     fi
   done <<< "$HUNK_INDEX"
 
-  fb="false"
-  [[ "$FALLBACK" == "true" ]] && fb="true"
-  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"splittable_hunks\":${splittable_count},\"total_sub_hunks\":${total_sub_hunks},\"mode\":\"list-split\",\"fallback\":${fb}}"
+  if [[ "$TABLE" == "true" ]]; then
+    file_count=$(echo "$file_set" | grep -c . || true)
+    echo ""
+    echo "${TOTAL_HUNKS} hunks across ${file_count} files, ${splittable_count} splittable (${total_sub_hunks} sub-hunks)"
+  else
+    fb="false"
+    [[ "$FALLBACK" == "true" ]] && fb="true"
+    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"splittable_hunks\":${splittable_count},\"total_sub_hunks\":${total_sub_hunks},\"mode\":\"list-split\",\"fallback\":${fb}}"
+  fi
   exit 0
 fi
 
@@ -446,9 +588,16 @@ if [[ "$MODE" == "verify" ]]; then
   # Unstaged hunks count
   unstaged_hunks=$(echo "$DIFF" | grep -c '^@@ ' || true)
 
-  emit "{\"staged_files\":${staged_count},\"unstaged_files\":${unstaged_count},\"staged_hunks\":${staged_hunks},\"unstaged_hunks\":${unstaged_hunks}}"
+  if [[ "$TABLE" != "true" ]]; then
+    emit "{\"staged_files\":${staged_count},\"unstaged_files\":${unstaged_count},\"staged_hunks\":${staged_hunks},\"unstaged_hunks\":${unstaged_hunks}}"
+  else
+    table_verify_header
+  fi
 
   # Per-file detail
+  total_s=0
+  total_u=0
+  file_count=0
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
     s_hunks=0
@@ -462,11 +611,23 @@ if [[ "$MODE" == "verify" ]]; then
       fi
     fi
     u_hunks=$(echo "$DIFF" | awk -v target="$f" '/^diff --git/{found=0; f=$0; sub(/^diff --git a\//,"",f); sub(/ b\/.*/,"",f); if(f==target)found=1} found && /^@@ /{c++} END{print c+0}')
-    local_f=$(json_str "$f")
-    emit "{\"file\":${local_f},\"staged_hunks\":${s_hunks},\"unstaged_hunks\":${u_hunks}}"
+    if [[ "$TABLE" == "true" ]]; then
+      table_verify_row "$f" "$s_hunks" "$u_hunks"
+      total_s=$((total_s + s_hunks))
+      total_u=$((total_u + u_hunks))
+      file_count=$((file_count + 1))
+    else
+      local_f=$(json_str "$f")
+      emit "{\"file\":${local_f},\"staged_hunks\":${s_hunks},\"unstaged_hunks\":${u_hunks}}"
+    fi
   done < <(echo -e "${staged_files}\n${unstaged_files}" | sort -u)
 
-  emit "{\"summary\":true,\"mode\":\"verify\"}"
+  if [[ "$TABLE" == "true" ]]; then
+    echo ""
+    echo "${total_s} staged, ${total_u} unstaged across ${file_count} files"
+  else
+    emit "{\"summary\":true,\"mode\":\"verify\"}"
+  fi
   exit 0
 fi
 
@@ -552,10 +713,33 @@ apply_patch() {
 }
 
 # Stage a list of hunk entries (from HUNK_INDEX format).
-# Outputs NDJSON per hunk result.
+# Outputs NDJSON per hunk result (or collects table rows when TABLE=true).
 # Returns number of failures via global STAGE_FAILED.
 STAGE_FAILED=0
 STAGE_OK=0
+TABLE_ROWS=()
+
+# Emit a staging result - NDJSON when not in table mode, table row when in table mode
+emit_stage() {
+  local json="$1" id="$2" file="$3" status="$4"
+  if [[ "$TABLE" == "true" ]]; then
+    TABLE_ROWS+=("$(table_stage_row "$id" "$file" "$status")")
+  else
+    emit "$json"
+  fi
+}
+
+# Emit collected table rows with header and footer
+emit_stage_table() {
+  if [[ ${#TABLE_ROWS[@]} -gt 0 ]]; then
+    table_stage_header
+    for row in "${TABLE_ROWS[@]}"; do
+      echo "$row"
+    done
+    echo ""
+    echo "${STAGE_OK} staged, ${STAGE_FAILED} failed"
+  fi
+}
 
 stage_hunks() {
   local entries="$1"
@@ -581,7 +765,7 @@ stage_hunks() {
       # Dry run - just report what would happen
       while IFS="$FS" read -r id f hn os oc ns nc added removed preview; do
         local_f=$(json_str "$f")
-        emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}"
+        emit_stage "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}" "$id" "$f" "dry_run"
         STAGE_OK=$((STAGE_OK + 1))
       done <<< "$file_entries"
       continue
@@ -598,7 +782,7 @@ stage_hunks() {
         bulk_ok=true
         while IFS="$FS" read -r id f hn os oc ns nc added removed preview; do
           local_f=$(json_str "$f")
-          emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+          emit_stage "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}" "$id" "$f" "ok"
           STAGE_OK=$((STAGE_OK + 1))
         done <<< "$file_entries"
       fi
@@ -612,12 +796,12 @@ stage_hunks() {
         local hunk_patch
         hunk_patch=$(extract_hunk_patch "$f" "$hn")
         if [[ -n "$hunk_patch" ]] && apply_patch "$hunk_patch"; then
-          emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+          emit_stage "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}" "$id" "$f" "ok"
           STAGE_OK=$((STAGE_OK + 1))
         else
           local err_detail
           err_detail=$(json_str "$APPLY_STDERR")
-          emit "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}"
+          emit_stage "{\"id\":\"${id}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}" "$id" "$f" "FAILED"
           STAGE_FAILED=$((STAGE_FAILED + 1))
         fi
       done <<< "$file_entries"
@@ -742,7 +926,7 @@ ${entry}"
 
       if [[ -z "$patch" ]]; then
         local_f=$(json_str "$p_file")
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"sub-hunk extraction failed\"}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"sub-hunk extraction failed\"}" "$ref" "$p_file" "FAILED"
         STAGE_FAILED=$((STAGE_FAILED + 1))
         continue
       fi
@@ -750,18 +934,18 @@ ${entry}"
       local_f=$(json_str "$p_file")
 
       if [[ "$DRY_RUN" == "true" ]]; then
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}" "$ref" "$p_file" "dry_run"
         STAGE_OK=$((STAGE_OK + 1))
         continue
       fi
 
       APPLY_STDERR=""
       if apply_patch "$patch" "--unidiff-zero"; then
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}" "$ref" "$p_file" "ok"
         STAGE_OK=$((STAGE_OK + 1))
       else
         err_detail=$(json_str "$APPLY_STDERR")
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}" "$ref" "$p_file" "FAILED"
         STAGE_FAILED=$((STAGE_FAILED + 1))
       fi
     done
@@ -795,7 +979,7 @@ ${entry}"
 
       if [[ -z "$patch" ]]; then
         local_f=$(json_str "$p_file")
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"line-select patch construction failed\"}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":\"line-select patch construction failed\"}" "$ref" "$p_file" "FAILED"
         STAGE_FAILED=$((STAGE_FAILED + 1))
         continue
       fi
@@ -803,18 +987,18 @@ ${entry}"
       local_f=$(json_str "$p_file")
 
       if [[ "$DRY_RUN" == "true" ]]; then
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"would_stage\",\"status\":\"dry_run\"}" "$ref" "$p_file" "dry_run"
         STAGE_OK=$((STAGE_OK + 1))
         continue
       fi
 
       APPLY_STDERR=""
       if apply_patch "$patch"; then
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"staged\",\"status\":\"ok\"}" "$ref" "$p_file" "ok"
         STAGE_OK=$((STAGE_OK + 1))
       else
         err_detail=$(json_str "$APPLY_STDERR")
-        emit "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}"
+        emit_stage "{\"id\":\"${ref}\",\"file\":${local_f},\"action\":\"stage_failed\",\"status\":\"error\",\"detail\":${err_detail}}" "$ref" "$p_file" "FAILED"
         STAGE_FAILED=$((STAGE_FAILED + 1))
       fi
     done
@@ -822,13 +1006,21 @@ ${entry}"
 
   total_requested=$(( ${#plain_ids[@]} + ${#subhunk_refs[@]} + ${#linesel_refs[@]} ))
   if [[ "$total_requested" -eq 0 ]]; then
-    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":0,\"failed\":0,\"dry_run\":${DRY_RUN},\"error\":\"no valid hunk IDs\"}"
+    if [[ "$TABLE" == "true" ]]; then
+      echo "No valid hunk IDs."
+    else
+      emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":0,\"failed\":0,\"dry_run\":${DRY_RUN},\"error\":\"no valid hunk IDs\"}"
+    fi
     exit 1
   fi
 
-  fb="false"
-  [[ "$FALLBACK" == "true" ]] && fb="true"
-  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":${fb}}"
+  if [[ "$TABLE" == "true" ]]; then
+    emit_stage_table
+  else
+    fb="false"
+    [[ "$FALLBACK" == "true" ]] && fb="true"
+    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":${fb}}"
+  fi
   [[ "$STAGE_FAILED" -eq 0 ]]
   exit
 fi
@@ -872,9 +1064,13 @@ ${entries}"
 
   stage_hunks "$matched_entries"
 
-  fb="false"
-  [[ "$FALLBACK" == "true" ]] && fb="true"
-  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":${fb}}"
+  if [[ "$TABLE" == "true" ]]; then
+    emit_stage_table
+  else
+    fb="false"
+    [[ "$FALLBACK" == "true" ]] && fb="true"
+    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":${fb}}"
+  fi
   [[ "$STAGE_FAILED" -eq 0 ]]
   exit
 fi
@@ -911,7 +1107,11 @@ if [[ "$MODE" == "pattern" ]]; then
 
   stage_hunks "$final_entries"
 
-  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":false}"
+  if [[ "$TABLE" == "true" ]]; then
+    emit_stage_table
+  else
+    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":false}"
+  fi
   [[ "$STAGE_FAILED" -eq 0 ]]
   exit
 fi
@@ -953,7 +1153,11 @@ if [[ "$MODE" == "range" ]]; then
 
   stage_hunks "$final_entries"
 
-  emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":false}"
+  if [[ "$TABLE" == "true" ]]; then
+    emit_stage_table
+  else
+    emit "{\"summary\":true,\"total_hunks\":${TOTAL_HUNKS},\"staged\":${STAGE_OK},\"failed\":${STAGE_FAILED},\"dry_run\":${DRY_RUN},\"fallback\":false}"
+  fi
   [[ "$STAGE_FAILED" -eq 0 ]]
   exit
 fi
