@@ -119,6 +119,13 @@ CONSTRAINT_REFRESH_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     ),
 )
 
+REFRESH_FALSE_POSITIVE_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bthe\s+(rewritten|output|result|generated)\b",
+        r"\byour\s+(output|result|rewrite)\b",
+    ),
+)
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -148,6 +155,23 @@ def _build_example_line_indices(
             in_example = False
 
     return frozenset(indices)
+
+
+def _has_constraint_refresh(prose_body: str) -> bool:
+    """Check for genuine constraint refresh language, filtering false positives.
+
+    Excludes lines that contain negative instruction patterns (DO NOT re-read)
+    and output-reading contexts (Re-read the rewritten text).
+    """
+    for line in prose_body.splitlines():
+        if not any(p.search(line) for p in CONSTRAINT_REFRESH_PATTERNS):
+            continue
+        if any(p.search(line) for p in NEGATIVE_INSTR_PATTERNS):
+            continue
+        if any(p.search(line) for p in REFRESH_FALSE_POSITIVE_PATTERNS):
+            continue
+        return True
+    return False
 
 
 def _is_ignored_line(
@@ -351,9 +375,7 @@ def check_constraint_refresh_info(document: SkillDocument) -> CheckRecord:
             tier="P14",
         )
 
-    if any(
-        pattern.search(document.prose_body) for pattern in CONSTRAINT_REFRESH_PATTERNS
-    ):
+    if _has_constraint_refresh(document.prose_body):
         return CheckRecord.ok(
             CHECK_CONSTRAINT_REFRESH,
             (

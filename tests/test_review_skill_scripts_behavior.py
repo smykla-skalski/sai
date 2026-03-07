@@ -419,6 +419,67 @@ class BestPracticesScriptBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
         self.assertIn("INFO:", str(record.get("detail")))
 
+    def test_constraint_refresh_ignores_negative_instruction_context(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "### Phase 1\n\n1. Load state\n\n"
+            "### Phase 2\n\n1. Process\n\n"
+            "### Phase 3\n\n1. Dedup\n\n"
+            "DO NOT re-read or update the file.\n\n"
+            "### Phase 4\n\n1. Output"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-constraint-refresh-info",),
+            )
+
+        record = self.one_check(records, "BP-constraint-refresh-info")
+        self.assertIn("INFO:", str(record.get("detail")))
+
+    def test_constraint_refresh_ignores_output_reading_context(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "### Phase 1\n\n1. Gather\n\n"
+            "### Phase 2\n\n1. Rewrite\n\n"
+            "### Phase 3\n\n1. Verify\n\n"
+            "Re-read the rewritten text and check:\n\n"
+            "### Phase 4\n\n1. Output"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-constraint-refresh-info",),
+            )
+
+        record = self.one_check(records, "BP-constraint-refresh-info")
+        self.assertIn("INFO:", str(record.get("detail")))
+
+    def test_constraint_refresh_detects_genuine_refresh(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "### Phase 1\n\n1. Gather\n\n"
+            "### Phase 2\n\n1. Process\n\n"
+            "### Phase 3\n\n1. Validate\n\n"
+            "Re-read the checklist section to avoid drift.\n\n"
+            "### Phase 4\n\n1. Output"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-constraint-refresh-info",),
+            )
+
+        record = self.one_check(records, "BP-constraint-refresh-info")
+        self.assertNotIn("INFO:", str(record.get("detail")))
+        self.assertEqual(record.get("level"), "pass")
+
     def test_error_section_signal_detects_heading(self) -> None:
         body = "# Skill\n\n## Error handling\n\n- Report parsing errors"
         with tempfile.TemporaryDirectory() as tmp:
