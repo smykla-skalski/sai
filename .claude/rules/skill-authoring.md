@@ -309,6 +309,10 @@ NOT available as env vars in hook scripts (body-only string substitution):
 
 SubagentStop and Stop hooks must check `stop_hook_active` from stdin JSON. If true, exit 0 immediately to prevent recursive hook firing.
 
+## Script language policy
+
+All new scripts MUST be written in Python (.py). Never create new bash/sh/zsh scripts. Existing .sh scripts are legacy and still work, but any new automation - skill scripts, hook scripts, validators, helpers - goes in Python. Use `#!/usr/bin/env python3` shebang and set the executable bit.
+
 ## Plugin Integration
 
 - Install: `claude --plugin-dir claude/{plugin-name}/`
