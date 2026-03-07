@@ -43,6 +43,15 @@ RESOURCE_SUBDIRECTORIES: Final[tuple[str, ...]] = (
     "examples",
 )
 
+
+def read_text(path: Path) -> str:
+    """Read text from a file using UTF-8 with replacement."""
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
 # ---------------------------------------------------------------------------
 # Compiled regex patterns
 # ---------------------------------------------------------------------------
@@ -77,17 +86,15 @@ def compile_patterns(
     return tuple(re.compile(p, flags) for p in raw_patterns)
 
 
-AGENT_SECTION_START_PATTERNS: Final[tuple[Pattern[str], ...]] = (
-    compile_patterns(
-        (
-            r"spawn\s+(a|an)\s+",
-            r"create\s+the\s+agent\s+with",
-            r"agent\s+instructions:",
-            r"the\s+agent\s+must:",
-            r"instruct\s+the\s+agent\s+to",
-            r"pass\s+the\s+agent:",
-        ),
-    )
+AGENT_SECTION_START_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"spawn\s+(a|an)\s+",
+        r"create\s+the\s+agent\s+with",
+        r"agent\s+instructions:",
+        r"the\s+agent\s+must:",
+        r"instruct\s+the\s+agent\s+to",
+        r"pass\s+the\s+agent:",
+    ),
 )
 
 
@@ -310,11 +317,7 @@ def split_csv_like(value: str) -> list[str]:
             buffer.append(char)
             continue
 
-        if (
-            char == ","
-            and not in_single_quote
-            and not in_double_quote
-        ):
+        if char == "," and not in_single_quote and not in_double_quote:
             part = "".join(buffer).strip()
             if part:
                 parts.append(part)
@@ -501,8 +504,7 @@ def extract_prose_lines(body: str) -> tuple[ProseLine, ...]:
 def is_section_exit(stripped_line: str) -> bool:
     """Return whether a line starts a new level-two section."""
     return bool(
-        HEADING_L2_RE.match(stripped_line)
-        and not HEADING_L3_RE.match(stripped_line),
+        HEADING_L2_RE.match(stripped_line) and not HEADING_L3_RE.match(stripped_line),
     )
 
 
@@ -562,10 +564,7 @@ def find_agent_indices(
             if not stripped:
                 blank_count += 1
                 continue
-            if (
-                blank_count > 0
-                and starts_new_paragraph(line.text)
-            ):
+            if blank_count > 0 and starts_new_paragraph(line.text):
                 in_agent = False
                 blank_count = 0
             else:
@@ -669,6 +668,23 @@ def parse_arguments(body: str) -> tuple[SkillArgument, ...]:
 # ---------------------------------------------------------------------------
 # Skill document loading
 # ---------------------------------------------------------------------------
+
+
+def find_plugin_root(
+    skill_dir: Path,
+    *,
+    max_depth: int = 4,
+) -> Path | None:
+    """Find plugin root by walking up for `.claude-plugin/plugin.json`."""
+    search_dir = Path(skill_dir).resolve()
+
+    for _ in range(max_depth):
+        search_dir = search_dir.parent
+        plugin_manifest = search_dir / ".claude-plugin" / "plugin.json"
+        if plugin_manifest.is_file():
+            return search_dir
+
+    return None
 
 
 def _collect_resource_files(
