@@ -14,8 +14,9 @@ SCRIPT_DIR = (
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+import skill_check_common  # noqa: E402
 import validate  # noqa: E402
-from skill_check_common import CheckResult, SkillDocument, SkillLoadError  # noqa: E402
+from skill_check_common import CheckResult, ResultCollector, SkillDocument, SkillLoadError  # noqa: E402
 
 
 def _make_doc(
@@ -40,7 +41,7 @@ def _run_frontmatter(doc: SkillDocument) -> tuple[validate.ResultCollector, list
     """Run frontmatter checks and return collector + emitted records."""
     collector = validate.ResultCollector()
     records: list[dict[str, object]] = []
-    with patch.object(validate, "emit_record", side_effect=records.append):
+    with patch.object(skill_check_common, "emit_record", side_effect=records.append):
         validate.run_frontmatter(doc, collector)
     return collector, records
 
@@ -80,7 +81,7 @@ class ValidateScriptTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
 
-        with patch.object(validate, "emit_record", side_effect=records.append):
+        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
             validate._run_structure_delegate(
                 config,
                 SCRIPT_DIR,
@@ -114,7 +115,7 @@ class ValidateScriptTests(unittest.TestCase):
             )
 
             with (
-                patch.object(validate, "emit_record", side_effect=records.append),
+                patch.object(skill_check_common, "emit_record", side_effect=records.append),
                 patch.object(
                     validate, "_run_and_validate_script",
                     return_value=(fake_run, None),
@@ -131,7 +132,7 @@ class ValidateScriptTests(unittest.TestCase):
         records: list[dict[str, object]] = []
 
         with (
-            patch.object(validate, "emit_record", side_effect=records.append),
+            patch.object(skill_check_common, "emit_record", side_effect=records.append),
             patch.object(
                 validate,
                 "load_skill_document",
@@ -160,7 +161,7 @@ class ValidateScriptTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
 
-        with patch.object(validate, "emit_record", side_effect=records.append):
+        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
             validate._emit_delegate_checks(
                 parsed,
                 collector,
@@ -474,7 +475,7 @@ class EmitDelegateChecksTests(unittest.TestCase):
         )
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
-        with patch.object(validate, "emit_record", side_effect=records.append):
+        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
             validate._emit_delegate_checks(
                 parsed, collector, script="test.py", guard_field="refs",
             )
@@ -491,7 +492,7 @@ class EmitDelegateChecksTests(unittest.TestCase):
         )
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
-        with patch.object(validate, "emit_record", side_effect=records.append):
+        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
             validate._emit_delegate_checks(
                 parsed, collector, script="test.py", guard_field="refs",
             )
@@ -513,7 +514,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
 
             collector = validate.ResultCollector()
             records: list[dict[str, object]] = []
-            with patch.object(validate, "emit_record", side_effect=records.append):
+            with patch.object(skill_check_common, "emit_record", side_effect=records.append):
                 validate._handle_lint_scripts(SCRIPT_DIR, skill_dir, collector)
 
         self.assertEqual(collector.total, 1)
@@ -534,7 +535,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
             collector = validate.ResultCollector()
             records: list[dict[str, object]] = []
             with (
-                patch.object(validate, "emit_record", side_effect=records.append),
+                patch.object(skill_check_common, "emit_record", side_effect=records.append),
                 patch.object(
                     validate, "_run_and_validate_script",
                     return_value=(fake_run, None),
@@ -563,7 +564,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
             collector = validate.ResultCollector()
             records: list[dict[str, object]] = []
             with (
-                patch.object(validate, "emit_record", side_effect=records.append),
+                patch.object(skill_check_common, "emit_record", side_effect=records.append),
                 patch.object(
                     validate, "_run_and_validate_script",
                     return_value=(fake_run, None),
@@ -591,7 +592,7 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
         with (
-            patch.object(validate, "emit_record", side_effect=records.append),
+            patch.object(skill_check_common, "emit_record", side_effect=records.append),
             patch.object(
                 validate, "_run_and_validate_script",
                 return_value=(fake_run, None),
@@ -617,7 +618,7 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
         with (
-            patch.object(validate, "emit_record", side_effect=records.append),
+            patch.object(skill_check_common, "emit_record", side_effect=records.append),
             patch.object(
                 validate, "_run_and_validate_script",
                 return_value=(fake_run, None),
@@ -647,7 +648,7 @@ class CliTests(unittest.TestCase):
         )
         records: list[dict[str, object]] = []
         with (
-            patch.object(validate, "emit_record", side_effect=records.append),
+            patch.object(skill_check_common, "emit_record", side_effect=records.append),
             patch.object(validate, "load_skill_document", return_value=doc),
         ):
             exit_code = validate.main(["/virtual/fake-skill", "frontmatter"])
@@ -662,7 +663,7 @@ class CliTests(unittest.TestCase):
         doc = _make_doc(frontmatter={})
         records: list[dict[str, object]] = []
         with (
-            patch.object(validate, "emit_record", side_effect=records.append),
+            patch.object(skill_check_common, "emit_record", side_effect=records.append),
             patch.object(validate, "load_skill_document", return_value=doc),
             patch.object(validate, "run_structure"),
         ):
@@ -794,7 +795,7 @@ class PassedFailedConsistencyTests(unittest.TestCase):
 class InvalidArgparseTests(unittest.TestCase):
     def test_invalid_mode_emits_ndjson(self) -> None:
         records: list[dict[str, object]] = []
-        with patch.object(validate, "emit_record", side_effect=records.append):
+        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
             exit_code = validate.main(["/virtual/skill", "invalid-mode"])
         self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
         self.assertTrue(len(records) > 0)
@@ -802,7 +803,7 @@ class InvalidArgparseTests(unittest.TestCase):
 
     def test_no_args_emits_ndjson(self) -> None:
         records: list[dict[str, object]] = []
-        with patch.object(validate, "emit_record", side_effect=records.append):
+        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
             exit_code = validate.main([])
         self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
 
