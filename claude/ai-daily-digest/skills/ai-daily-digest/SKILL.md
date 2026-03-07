@@ -2,8 +2,9 @@
 name: ai-daily-digest
 description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
 argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion]"
-allowed-tools: AskUserQuestion, Bash, Glob, Read, Task, ToolSearch, WebFetch, WebSearch, Write
+allowed-tools: AskUserQuestion, Bash, Read, Task, ToolSearch, WebFetch, WebSearch, Write
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # AI Daily Digest Skill
@@ -94,7 +95,10 @@ Example:
 1. Read [references/sources.md](references/sources.md) for source URLs and tiers
 2. Read [references/output-template.md](references/output-template.md) for digest format
 3. Parse arguments for `--focus` area and `--notion-page-id`
-4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode). Otherwise check in order: `--notion-page-id` arg → Notion page ID from preprocessed context → prompt user interactively. Store resolved value as `notion_page_id` for Phase 18. If the preprocessed value is empty and user declines to provide an ID, skip Notion publishing (archive-only mode).
+4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode).
+   Otherwise check in order: `--notion-page-id` arg → Notion page ID from preprocessed context → prompt user interactively.
+   Store resolved value as `notion_page_id` for Phase 18.
+   If the preprocessed value is empty and user declines to provide an ID, skip Notion publishing (archive-only mode).
 5. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
 6. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context
 7. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
@@ -104,7 +108,9 @@ Example:
 
 **CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full for all search queries, source-specific patterns, and the Friday Weekly Recap section.**
 
-Spawn a `general-purpose` research agent for each phase (or batch of independent phases). Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md). Phases 2-5 are independent - spawn them in parallel. Subsequent phases can be batched as appropriate.
+Spawn a `general-purpose` research agent for each phase (or batch of independent phases).
+Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md).
+Phases 2-5 are independent - spawn them in parallel. Subsequent phases can be batched as appropriate.
 
 Each agent executes all web searches for its phase and returns ONLY a list of story items: title, URL, 1-line summary, and story_id. No analysis, no ranking - that happens in Phase 16.
 
@@ -154,7 +160,9 @@ Filter out stories where:
 
 **Step 5: Categorize** into template sections and select Top 5 from filtered content.
 
-**Step 6: Completeness check** — compare categorized items against the Length Guidelines table in [references/output-template.md](references/output-template.md). If any section is below its target minimum, return to the corresponding research phase and run additional searches from [references/search-patterns.md](references/search-patterns.md) to fill the gap. Every section in the template must have content before proceeding.
+**Step 6: Completeness check** — compare categorized items against the Length Guidelines table in [references/output-template.md](references/output-template.md).
+If any section is below its target minimum, return to the corresponding research phase and run additional searches from [references/search-patterns.md](references/search-patterns.md) to fill the gap.
+Every section in the template must have content before proceeding.
 
 ### Phase 17: Generate Digest
 
@@ -232,12 +240,29 @@ Story items use `- [ ]` checkbox format for newsletter curation. User checks sto
 
 ## Example Invocations
 
+<example>
+Default digest with all focus areas:
+
 ```bash
 /ai-digest
+```
+</example>
+
+<example>
+Focus on a single area:
+
+```bash
 /ai-digest --focus technical
 /ai-digest --focus business
+```
+</example>
+
+<example>
+Explicit Notion page or archive-only mode:
+
+```bash
 /ai-digest --notion-page-id 12345678-abcd-1234-efgh-123456789abc
-/ai-digest --focus technical --notion-page-id 12345678-abcd-1234-efgh-123456789abc
 /ai-digest --no-notion
 /ai-digest --focus technical --no-notion
 ```
+</example>

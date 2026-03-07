@@ -2,8 +2,9 @@
 name: gh-review-comments
 description: List, reply to, resolve, and create GitHub PR review comment threads using gh CLI scripts. Use when managing code review feedback, replying to reviewer remarks, resolving review conversations, creating reviews with line-level comments, or bulk-processing threads by author.
 argument-hint: "<owner/repo> <pr-number> [--author <login>] [--reply <message>] [--resolve] [--unresolve] [--create-review] [--thread-id <id>] [--unresolved-only]"
-allowed-tools: AskUserQuestion, Bash, Glob, Grep, Read, Task
+allowed-tools: AskUserQuestion, Bash, Read, Task
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # GH Review Comments
@@ -162,7 +163,8 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
 6. The script returns `comment_count` from the submitted payload (not from the API response). If the script exits 0, the review and all comments were submitted atomically - treat it as fully successful
 7. Report the created review URL and comment count
 
-**NEVER re-run `create-review.sh` after it exits 0.** The GitHub review creation API is atomic: if the call succeeds, the review body and all inline comments were attached. Running it again creates a duplicate review. There is no partial success - it either all works or the script fails with a non-zero exit.
+**NEVER re-run `create-review.sh` after it exits 0.** The GitHub review creation API is atomic: if the call succeeds, the review body and all inline comments were attached.
+Running it again creates a duplicate review. There is no partial success - it either all works or the script fails with a non-zero exit.
 
 ### Phase 4: Verify and Summarize
 
@@ -185,7 +187,10 @@ Display the agent's verification summary to the user along with:
 - Actions taken (replies sent, threads resolved/unresolved)
 - Link to the PR on GitHub
 
-**For create-review:** do NOT spawn a verification agent. Do NOT re-list threads. The `create-review.sh` script output is the sole source of truth. If it exited 0 and returned a `comment_count` and `html_url`, the review was created with all comments attached. Do not second-guess this result. Report the review URL and comment count directly.
+**For create-review:** do NOT spawn a verification agent. Do NOT re-list threads.
+The `create-review.sh` script output is the sole source of truth.
+If it exited 0 and returned a `comment_count` and `html_url`, the review was created with all comments attached.
+Report the review URL and comment count directly.
 
 ## Error Handling
 
@@ -195,31 +200,32 @@ Display the agent's verification summary to the user along with:
 
 ## Example Invocations
 
+<example>
+List threads (read-only):
+
 ```bash
-# List all review threads on a PR
 /gh-review-comments smykla-skalski/sai 4
-
-# List only unresolved threads
 /gh-review-comments smykla-skalski/sai 4 --unresolved-only
-
-# List threads from a specific reviewer
 /gh-review-comments smykla-skalski/sai 4 --author Automaat
+```
+</example>
 
-# Reply to all unresolved threads from a reviewer
+<example>
+Reply and resolve:
+
+```bash
 /gh-review-comments smykla-skalski/sai 4 --author Automaat --reply "Fixed in latest push"
-
-# Reply and resolve all threads from a reviewer
 /gh-review-comments smykla-skalski/sai 4 --author bartsmykla --reply "Done" --resolve
-
-# Resolve a specific thread without replying
 /gh-review-comments smykla-skalski/sai 4 --thread-id PRRT_kwDOCnTGG85tgSD3 --resolve
-
-# Reply to and resolve a specific thread
 /gh-review-comments smykla-skalski/sai 4 --thread-id PRRT_kwDOCnTGG85tgSD3 --reply "Done, thanks!" --resolve
+```
+</example>
 
-# Unresolve a thread (reopen it)
+<example>
+Unresolve or create a new review:
+
+```bash
 /gh-review-comments smykla-skalski/sai 4 --thread-id PRRT_kwDOCnTGG85tgSD3 --unresolve
-
-# Create a review with line-level comments
 /gh-review-comments smykla-skalski/sai 4 --create-review
 ```
+</example>

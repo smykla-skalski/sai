@@ -2,8 +2,9 @@
 name: review-claude-md
 description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md".
 argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
-allowed-tools: Bash, Edit, Glob, Grep, Read, Task, Write
+allowed-tools: Bash, Edit, Glob, Read, Task, Write
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # Review CLAUDE.md
@@ -22,7 +23,7 @@ Parse from `$ARGUMENTS`:
 
 ## Verdict logic
 
-See [references/rubric.md](references/rubric.md) for the full tiered checklist and verdict thresholds (Critical, Important, Polish tiers).
+Read [references/rubric.md](references/rubric.md) for the full tiered checklist and verdict thresholds (Critical, Important, Polish tiers).
 
 ## Workflow
 
@@ -37,7 +38,8 @@ See [references/rubric.md](references/rubric.md) for the full tiered checklist a
 
 Spawn an `Explore` agent to scan the target repository. Pass the agent: the repo root path.
 
-Agent reads: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml, CI configs (.github/workflows/, .gitlab-ci.yml), README.md, test configs (jest.config, pytest.ini, vitest.config), lint configs (.eslintrc, biome.json, .prettierrc, rustfmt.toml), top-level directory structure, `git log --oneline -20`, and `.claude/rules/` contents.
+Agent reads: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml, CI configs (.github/workflows/, .gitlab-ci.yml), README.md, test configs (jest.config, pytest.ini, vitest.config), lint configs (.eslintrc, biome.json, .prettierrc, rustfmt.toml).
+Also reads: top-level directory structure, `git log --oneline -20`, `.claude/rules/` contents.
 
 Agent returns ONLY a structured summary with these fields:
 
@@ -119,19 +121,28 @@ Read [references/examples.md](references/examples.md) for good vs bad comparison
 
 ## Example Invocations
 
+<example>
+Default audit (current directory):
+
 ```bash
-# Default audit
 /review-claude-md
+```
+</example>
 
-# Specific repo, verbose
+<example>
+Specific repo with verbose output:
+
+```bash
 /review-claude-md /path/to/repo --verbose
+```
+</example>
 
-# Verdict only, no fixes
+<example>
+Score-only and thorough modes:
+
+```bash
 /review-claude-md --score-only
-
-# Include Polish tier
 /review-claude-md --thorough
-
-# Combine flags
 /review-claude-md /path/to/repo --verbose --thorough
 ```
+</example>
