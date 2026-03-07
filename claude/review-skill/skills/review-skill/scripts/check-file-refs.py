@@ -233,9 +233,8 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckRecord]:
         has_xref = _has_cross_reference(read_text(path))
         if has_xref:
             results.append(
-                CheckRecord(
+                CheckRecord.info(
                     check=CHECK_REFS_ONE_LEVEL,
-                    passed=False,
                     detail=(
                         f"Reference '{path.name}' cross-references other "
                         "reference files"
@@ -269,14 +268,19 @@ def check_skill_md_mentions_file(document: SkillDocument) -> list[CheckRecord]:
         for path in sorted(subdir_path.iterdir()):
             if not path.is_file():
                 continue
-            if path.name.startswith("."):
+            if path.name.startswith(".") or path.name.startswith("_"):
+                continue
+            if path.suffix in {".toml", ".cfg", ".ini"}:
                 continue
 
             relative_path = f"{subdir}/{path.name}"
-            boundary_re = re.compile(
+            full_re = re.compile(
                 rf"(?<!{PATH_CHAR_RE}){re.escape(relative_path)}(?!{PATH_CHAR_RE})",
             )
-            if boundary_re.search(document.content):
+            bare_re = re.compile(
+                rf"(?<!{PATH_CHAR_RE}){re.escape(path.name)}(?!{PATH_CHAR_RE})",
+            )
+            if full_re.search(document.content) or bare_re.search(document.content):
                 results.append(
                     CheckRecord(
                         check=CHECK_SKILL_MENTIONS_FILE,

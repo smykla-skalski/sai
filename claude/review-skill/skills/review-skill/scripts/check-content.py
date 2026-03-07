@@ -163,6 +163,8 @@ def check_no_useless_echo(document: SkillDocument) -> CheckRecord:
     for file_path in document.resource_files:
         if file_path.suffix.lower() != ".md":
             continue
+        if file_path.name == "examples.md":
+            continue
 
         content = read_text(file_path)
         if not content:
