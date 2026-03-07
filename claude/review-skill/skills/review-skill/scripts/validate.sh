@@ -55,7 +55,6 @@ source "${SCRIPT_DIR}/_lib.sh"
 # LOAD CHECK FUNCTION LIBRARIES (function defs only)
 # ========================
 source "${SCRIPT_DIR}/check-scripts-dir.sh"
-source "${SCRIPT_DIR}/check-references.sh"
 
 # ========================
 # DELEGATION HELPER
@@ -224,8 +223,11 @@ run_structure() {
   local CONFIG_SCRIPT
   CONFIG_SCRIPT="${SCRIPT_DIR}/check-config.py"
 
+  local REFS_SCRIPT
+  REFS_SCRIPT="${SCRIPT_DIR}/check-references.py"
+
   # Function calls in exact current emission order
-  check_body_line_count
+  delegate_script_args "$REFS_SCRIPT" --check body-line-count --check body-char-count
   delegate_script_args "$FILE_REFS_SCRIPT" --check file-ref-resolves
   check_script_invocation_prefix
   check_no_bash_prefix
@@ -233,11 +235,11 @@ run_structure() {
   delegate_script_args "$CONTENT_SCRIPT" --check no-secrets
   delegate_script_args "$FILE_REFS_SCRIPT" --check no-backslash-paths
   delegate_script_args "$CONTENT_SCRIPT" --check no-useless-echo
-  check_duplicate_codeblocks
-  check_consistent_phase_numbering
+  delegate_script_args "$REFS_SCRIPT" --check duplicate-codeblocks-info
+  delegate_script_args "$REFS_SCRIPT" --check consistent-phase-numbering
   delegate_script_args "$FILE_REFS_SCRIPT" --check no-disallowed-files
   delegate_script_args "$FILE_REFS_SCRIPT" --check refs-one-level
-  check_long_ref_toc
+  delegate_script_args "$REFS_SCRIPT" --check long-ref-toc
   delegate_script_args "$CONFIG_SCRIPT" --check persistent-state-xdg
   delegate_script_args "$CONTENT_SCRIPT" --check no-grading-style
   delegate_script_args "$FILE_REFS_SCRIPT" --check skill-md-mentions-file
