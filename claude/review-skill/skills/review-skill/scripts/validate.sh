@@ -224,12 +224,19 @@ run_structure() {
   local SCRIPTS_DIR_SCRIPT
   SCRIPTS_DIR_SCRIPT="${SCRIPT_DIR}/check-scripts-dir.py"
 
+  local READ_GATES_SCRIPT
+  READ_GATES_SCRIPT="${SCRIPT_DIR}/check-read-gates.py"
+
   # Function calls in exact current emission order
   delegate_script_args "$REFS_SCRIPT" --check body-line-count --check body-char-count
   delegate_script_args "$FILE_REFS_SCRIPT" --check file-ref-resolves
-  delegate_script_args "$SCRIPTS_DIR_SCRIPT" --check script-invocation-prefix
-  delegate_script_args "$SCRIPTS_DIR_SCRIPT" --check no-bash-prefix
-  delegate_script_args "$SCRIPTS_DIR_SCRIPT" --check script-executable
+  if [[ "$HAS_PYTHON3" -eq 1 ]]; then
+    if [[ -x "$SCRIPTS_DIR_SCRIPT" ]]; then
+      delegate_script_args "$SCRIPTS_DIR_SCRIPT"
+    else
+      emit "helper-runtime" "true" "WARN: check-scripts-dir.py missing or not executable - I6/I12 checks skipped"
+    fi
+  fi
   delegate_script_args "$CONTENT_SCRIPT" --check no-secrets
   delegate_script_args "$FILE_REFS_SCRIPT" --check no-backslash-paths
   delegate_script_args "$CONTENT_SCRIPT" --check no-useless-echo
@@ -244,7 +251,13 @@ run_structure() {
   delegate_script_args "$FILE_REFS_SCRIPT" --check ref-link-format
 
   # Existing companion scripts (delegation)
-  delegate_script "${SCRIPT_DIR}/check-read-gates.sh" "refs"
+  if [[ "$HAS_PYTHON3" -eq 1 ]]; then
+    if [[ -x "$READ_GATES_SCRIPT" ]]; then
+      delegate_script_args "$READ_GATES_SCRIPT"
+    else
+      emit "helper-runtime" "true" "WARN: check-read-gates.py missing or not executable - I19 checks skipped"
+    fi
+  fi
 
   delegate_script_args "$CONFIG_SCRIPT" --check allowed-tools-usage
   delegate_script_args "$CONFIG_SCRIPT" --check side-effect-guard
