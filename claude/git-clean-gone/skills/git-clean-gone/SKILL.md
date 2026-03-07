@@ -29,7 +29,7 @@ Parse from `$ARGUMENTS`:
 
 ## Constraints
 
-- First action MUST be Bash — no text output before executing the script
+- First action MUST be Bash — preamble text wastes a turn and delays the actual cleanup
 - Never delete the current branch — skip and report in summary
 - Never remove the main worktree — only feature/task worktrees
 - Execute `"${CLAUDE_SKILL_DIR}/scripts/clean-gone.sh"` as a single Bash invocation
