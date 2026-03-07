@@ -2,11 +2,11 @@
 """Validate SKILL.md body and references structure checks.
 
 Implemented checks:
-- `body-line-count`
-- `body-char-count`
-- `duplicate-codeblocks-info` (informational)
-- `consistent-phase-numbering`
-- `long-ref-toc`
+- `RF-body-lines`
+- `RF-body-chars`
+- `RF-dup-codeblocks-info` (informational)
+- `RF-phase-numbering`
+- `RF-long-ref-toc`
 
 Output is NDJSON with a final summary line.
 Exit codes:
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 from _skill_check_common import (
     FENCE_RE,
-    CheckResult,
+    CheckRecord,
     SkillDocument,
     read_text,
     run_check_cli,
@@ -44,11 +44,11 @@ MIN_DUPLICATE_BLOCK_LINES: Final[int] = 3
 MIN_PHASE_COUNT: Final[int] = 2
 LONG_REFERENCE_THRESHOLD: Final[int] = 100
 
-CHECK_BODY_LINES: Final[str] = "body-line-count"
-CHECK_BODY_CHARS: Final[str] = "body-char-count"
-CHECK_DUP_CODEBLOCKS: Final[str] = "duplicate-codeblocks-info"
-CHECK_PHASE_NUMBERING: Final[str] = "consistent-phase-numbering"
-CHECK_LONG_REF_TOC: Final[str] = "long-ref-toc"
+CHECK_BODY_LINES: Final[str] = "RF-body-lines"
+CHECK_BODY_CHARS: Final[str] = "RF-body-chars"
+CHECK_DUP_CODEBLOCKS: Final[str] = "RF-dup-codeblocks-info"
+CHECK_PHASE_NUMBERING: Final[str] = "RF-phase-numbering"
+CHECK_LONG_REF_TOC: Final[str] = "RF-long-ref-toc"
 
 # ---------------------------------------------------------------------------
 # Pattern constants
@@ -113,14 +113,15 @@ def _extract_phase_numbers(text: str) -> list[int]:
 # ---------------------------------------------------------------------------
 
 
-def _check_body_line_count(document: SkillDocument) -> list[CheckResult]:
+def _check_body_line_count(document: SkillDocument) -> list[CheckRecord]:
     """Check body line count against limit."""
     if document.body_start_line <= 1:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_BODY_LINES,
                 passed=False,
                 detail="Could not locate frontmatter closing delimiter",
+                tier="C2",
             ),
         ]
 
@@ -128,7 +129,7 @@ def _check_body_line_count(document: SkillDocument) -> list[CheckResult]:
     body_lines = total_lines - (document.body_start_line - 1)
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_BODY_LINES,
             passed=body_lines <= LINE_LIMIT,
             detail=(
@@ -139,11 +140,12 @@ def _check_body_line_count(document: SkillDocument) -> list[CheckResult]:
                     f"exceeds {LINE_LIMIT}-line limit"
                 )
             ),
+            tier="C2",
         ),
     ]
 
 
-def _check_body_char_count(document: SkillDocument) -> list[CheckResult]:
+def _check_body_char_count(document: SkillDocument) -> list[CheckRecord]:
     """Check body character count against limit."""
     if document.body_start_line <= 1:
         return []
@@ -151,7 +153,7 @@ def _check_body_char_count(document: SkillDocument) -> list[CheckResult]:
     body_chars = len(document.body.encode("utf-8"))
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_BODY_CHARS,
             passed=body_chars <= CHAR_LIMIT,
             detail=(
@@ -162,11 +164,12 @@ def _check_body_char_count(document: SkillDocument) -> list[CheckResult]:
                     f"exceeds {CHAR_LIMIT}-char limit (~5000 tokens)"
                 )
             ),
+            tier="I24",
         ),
     ]
 
 
-def _check_duplicate_codeblocks(document: SkillDocument) -> list[CheckResult]:
+def _check_duplicate_codeblocks(document: SkillDocument) -> list[CheckRecord]:
     """Build informational result for shared code blocks."""
     references_dir = document.skill_dir / "references"
     if not references_dir.is_dir():
@@ -197,15 +200,16 @@ def _check_duplicate_codeblocks(document: SkillDocument) -> list[CheckResult]:
         detail = "No shared code blocks between SKILL.md and references"
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_DUP_CODEBLOCKS,
             passed=True,
             detail=detail,
+            tier="P8",
         ),
     ]
 
 
-def _check_phase_numbering(document: SkillDocument) -> list[CheckResult]:
+def _check_phase_numbering(document: SkillDocument) -> list[CheckRecord]:
     """Build consistency results for phase numbering in references."""
     references_dir = document.skill_dir / "references"
     if not references_dir.is_dir():
@@ -215,7 +219,7 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckResult]:
     if len(skill_phases) < MIN_PHASE_COUNT:
         return []
 
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
     skill_phase_set = set(skill_phases)
 
     for reference_file in sorted(references_dir.glob("*.md")):
@@ -232,23 +236,25 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckResult]:
 
         if overlap_count == 0:
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_PHASE_NUMBERING,
                     passed=True,
                     detail=(
                         f"Phase ranges in '{reference_file.name}' and SKILL.md "
                         "are complementary (no overlap)"
                     ),
+                    tier="I14",
                 ),
             )
             continue
 
         if skill_phases == reference_phases:
             results.append(
-                CheckResult(
+                CheckRecord(
                     check=CHECK_PHASE_NUMBERING,
                     passed=True,
                     detail=f"Phase numbers in '{reference_file.name}' match SKILL.md",
+                    tier="I14",
                 ),
             )
             continue
@@ -256,7 +262,7 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckResult]:
         skill_list = ",".join(str(value) for value in skill_phases)
         reference_list = ",".join(str(value) for value in reference_phases)
         results.append(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_PHASE_NUMBERING,
                 passed=False,
                 detail=(
@@ -264,19 +270,20 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckResult]:
                     f"[{skill_list}] but {reference_file.name} has "
                     f"[{reference_list}] (overlapping phases differ)"
                 ),
+                tier="I14",
             ),
         )
 
     return results
 
 
-def _check_long_ref_toc(document: SkillDocument) -> list[CheckResult]:
+def _check_long_ref_toc(document: SkillDocument) -> list[CheckRecord]:
     """Build checks for table of contents in long reference files."""
     references_dir = document.skill_dir / "references"
     if not references_dir.is_dir():
         return []
 
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     for reference_file in sorted(references_dir.glob("*.md")):
         if not reference_file.is_file():
@@ -303,7 +310,12 @@ def _check_long_ref_toc(document: SkillDocument) -> list[CheckResult]:
             passed = False
 
         results.append(
-            CheckResult(check=CHECK_LONG_REF_TOC, passed=passed, detail=detail),
+            CheckRecord(
+                check=CHECK_LONG_REF_TOC,
+                passed=passed,
+                detail=detail,
+                tier="P1",
+            ),
         )
 
     return results
@@ -322,7 +334,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
 )
 
 CHECK_FUNCTIONS: Final[
-    dict[str, Callable[[SkillDocument], list[CheckResult]]]
+    dict[str, Callable[[SkillDocument], list[CheckRecord]]]
 ] = {
     CHECK_BODY_LINES: _check_body_line_count,
     CHECK_BODY_CHARS: _check_body_char_count,
@@ -335,10 +347,10 @@ CHECK_FUNCTIONS: Final[
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run selected checks in stable output order."""
     selected = frozenset(selected_checks)
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
     for check_name in CHECK_ORDER:
         if selected and check_name not in selected:
             continue

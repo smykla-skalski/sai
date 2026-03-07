@@ -2,13 +2,13 @@
 """Validate reference file read gates in SKILL.md.
 
 Sub-checks:
-- `ref-gate-present` - every linked ref has an explicit load directive
-- `ref-passive-mention` - no passive weak mentions before gates
-- `ref-orphan-file` - no disk files missing from SKILL.md
-- `ref-dead-listing` - no refs listed only in bundled section
-- `ref-use-before-gate` - no ref cited before its gate appears
-- `ref-gate-purpose` - read gates explain why (not bare path-only)
-- `ref-flow-coverage` - multi-flow skills gate refs in each flow
+- `RG-gate-present` - every linked ref has an explicit load directive
+- `RG-passive` - no passive weak mentions before gates
+- `RG-orphan` - no disk files missing from SKILL.md
+- `RG-dead` - no refs listed only in bundled section
+- `RG-use-order` - no ref cited before its gate appears
+- `RG-purpose` - read gates explain why (not bare path-only)
+- `RG-flow` - multi-flow skills gate refs in each flow
 
 Output format is NDJSON, ending with a summary line that includes
 a `refs` count for compatibility with orchestration guards.
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from _skill_check_common import (
-    CheckResult,
+    CheckRecord,
     ProseLine,
     SkillDocument,
     extract_prose_lines,
@@ -42,13 +42,13 @@ from _skill_check_common import (
 # Sub-check identifiers
 # ---------------------------------------------------------------------------
 
-CHECK_GATE: Final[str] = "ref-gate-present"
-CHECK_PASSIVE: Final[str] = "ref-passive-mention"
-CHECK_ORPHAN: Final[str] = "ref-orphan-file"
-CHECK_DEAD: Final[str] = "ref-dead-listing"
-CHECK_USE_ORDER: Final[str] = "ref-use-before-gate"
-CHECK_PURPOSE: Final[str] = "ref-gate-purpose"
-CHECK_FLOW: Final[str] = "ref-flow-coverage"
+CHECK_GATE: Final[str] = "RG-gate-present"
+CHECK_PASSIVE: Final[str] = "RG-passive"
+CHECK_ORPHAN: Final[str] = "RG-orphan"
+CHECK_DEAD: Final[str] = "RG-dead"
+CHECK_USE_ORDER: Final[str] = "RG-use-order"
+CHECK_PURPOSE: Final[str] = "RG-purpose"
+CHECK_FLOW: Final[str] = "RG-flow"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_GATE,
@@ -381,7 +381,7 @@ def _count_flow_coverage(
 def _check_gate(
     inventory: RefInventory,
     analyses: dict[str, RefAnalysis],
-) -> CheckResult:
+) -> CheckRecord:
     """RG-GATE: every linked ref has an explicit load directive."""
     fails = [
         a.ref
@@ -389,19 +389,21 @@ def _check_gate(
         if a.ref in inventory.linked_refs and a.gate_index is None
     ]
     if not fails:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_GATE,
             passed=True,
             detail="All linked references have explicit load directives",
+            tier="I19",
         )
     refs_str = " ".join(fails)
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_GATE,
         passed=False,
         detail=(
             f"{len(fails)} reference(s) linked without explicit load directive"
             f" (Read, Contents of, path to, Load): {refs_str}"
         ),
+        tier="I19",
     )
 
 
@@ -409,7 +411,7 @@ def _check_passive(
     inventory: RefInventory,
     analyses: dict[str, RefAnalysis],
     document: SkillDocument,
-) -> CheckResult:
+) -> CheckRecord:
     """RG-PASSIVE: no passive weak mentions before gates."""
     detail_parts: list[str] = []
     seen_refs: set[str] = set()
@@ -423,38 +425,42 @@ def _check_passive(
             detail_parts.append(f"{analysis.ref}:L{first_line}")
 
     if not detail_parts:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_PASSIVE,
             passed=True,
             detail="No passive weak mentions found before gates",
+            tier="I19",
         )
     details_str = " ".join(detail_parts)
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_PASSIVE,
         passed=False,
         detail=(
             f"{len(seen_refs)} reference(s) have passive mentions"
             f" before their gate: {details_str}"
         ),
+        tier="I19",
     )
 
 
-def _check_orphan(orphan_refs: frozenset[str]) -> CheckResult:
+def _check_orphan(orphan_refs: frozenset[str]) -> CheckRecord:
     """RG-ORPHAN: no disk files missing from SKILL.md entirely."""
     if not orphan_refs:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_ORPHAN,
             passed=True,
             detail="All disk files are mentioned in SKILL.md",
+            tier="I19",
         )
     refs_str = " ".join(sorted(orphan_refs))
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_ORPHAN,
         passed=False,
         detail=(
             f"{len(orphan_refs)} file(s) on disk not mentioned"
             f" in SKILL.md: {refs_str}"
         ),
+        tier="I19",
     )
 
 
@@ -464,13 +470,14 @@ def _check_dead(
     orphan_refs: frozenset[str],
     bundled_indices: frozenset[int],
     prose_lines: tuple[ProseLine, ...],
-) -> CheckResult:
+) -> CheckRecord:
     """RG-DEAD: no refs listed only in bundled resources section."""
     if not bundled_indices:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_DEAD,
             passed=True,
             detail="No dead bundled-only listings found",
+            tier="I19",
         )
 
     fails: list[str] = []
@@ -489,19 +496,21 @@ def _check_dead(
             fails.append(ref)
 
     if not fails:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_DEAD,
             passed=True,
             detail="No dead bundled-only listings found",
+            tier="I19",
         )
     refs_str = " ".join(fails)
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_DEAD,
         passed=False,
         detail=(
             f"{len(fails)} reference(s) only appear in bundled resources"
             f" section, never used in workflow: {refs_str}"
         ),
+        tier="I19",
     )
 
 
@@ -523,7 +532,7 @@ def _check_use_order(
     inventory: RefInventory,
     analyses: dict[str, RefAnalysis],
     document: SkillDocument,
-) -> CheckResult:
+) -> CheckRecord:
     """RG-ORDER: no ref cited before its gate appears."""
     detail_parts: list[str] = []
 
@@ -543,18 +552,20 @@ def _check_use_order(
             )
 
     if not detail_parts:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_USE_ORDER,
             passed=True,
             detail="All references are gated before first use",
+            tier="I19",
         )
     details_str = " ".join(detail_parts)
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_USE_ORDER,
         passed=False,
         detail=(
             f"{len(detail_parts)} reference(s) cited before their gate: {details_str}"
         ),
+        tier="I19",
     )
 
 
@@ -562,7 +573,7 @@ def _check_purpose(
     inventory: RefInventory,
     analyses: dict[str, RefAnalysis],
     prose_lines: tuple[ProseLine, ...],
-) -> CheckResult:
+) -> CheckRecord:
     """RG-PURPOSE: read gates explain why (not bare path-only gates)."""
     prose_by_index = {line.index: line.text for line in prose_lines}
     fails: list[str] = []
@@ -579,16 +590,18 @@ def _check_purpose(
             fails.append(analysis.ref)
 
     if not fails:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_PURPOSE,
             passed=True,
             detail="All read gates explain their purpose",
+            tier="I19",
         )
     refs_str = " ".join(fails)
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_PURPOSE,
         passed=False,
         detail=(f"{len(fails)} gate(s) lack purpose text (why to read): {refs_str}"),
+        tier="I19",
     )
 
 
@@ -597,21 +610,23 @@ def _check_flow(
     analyses: dict[str, RefAnalysis],
     prose_lines: tuple[ProseLine, ...],
     bundled_indices: frozenset[int],
-) -> CheckResult:
+) -> CheckRecord:
     """RG-FLOW: multi-flow skills gate refs in each flow."""
     if not _is_multi_flow(prose_lines):
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_FLOW,
             passed=True,
             detail="Single-flow skill, flow coverage check not applicable",
+            tier="I19",
         )
 
     flow_sections = _detect_flow_sections(prose_lines)
     if not flow_sections:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_FLOW,
             passed=True,
             detail="Single-flow skill, flow coverage check not applicable",
+            tier="I19",
         )
 
     detail_parts: list[str] = []
@@ -641,19 +656,21 @@ def _check_flow(
             )
 
     if not detail_parts:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_FLOW,
             passed=True,
             detail="All references gated in each workflow flow",
+            tier="I19",
         )
     details_str = " ".join(detail_parts)
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_FLOW,
         passed=False,
         detail=(
             f"{len(detail_parts)} reference(s) not gated in all"
             f" workflow flows: {details_str}"
         ),
+        tier="I19",
     )
 
 
@@ -665,7 +682,7 @@ def _check_flow(
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> tuple[list[CheckResult], dict[str, object]]:
+) -> tuple[list[CheckRecord], dict[str, object]]:
     """Build inventory, run checks, return results and extra summary."""
     inventory = _build_inventory(document)
 
@@ -692,7 +709,7 @@ def run_checks(
 
     selected = frozenset(selected_checks)
 
-    check_results: dict[str, CheckResult] = {
+    check_results: dict[str, CheckRecord] = {
         CHECK_GATE: _check_gate(inventory, analyses),
         CHECK_PASSIVE: _check_passive(inventory, analyses, document),
         CHECK_ORPHAN: _check_orphan(orphan_refs),

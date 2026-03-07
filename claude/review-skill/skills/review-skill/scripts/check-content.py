@@ -2,9 +2,9 @@
 """Validate content-quality checks for SKILL.md and bundled files.
 
 Sub-checks:
-- no-secrets
-- no-useless-echo
-- no-grading-style
+- CT-no-secrets
+- CT-no-echo
+- CT-no-grading
 
 Output is NDJSON, one object per line, with a summary on the final line.
 Exit codes: 0 when all pass, 1 when any fail, 2 for usage/input errors.
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 from _skill_check_common import (
     SNIPPET_WIDTH,
-    CheckResult,
+    CheckRecord,
     SkillDocument,
     iter_fence_lines,
     read_text,
@@ -32,9 +32,9 @@ from _skill_check_common import (
 # Constants
 # ---------------------------------------------------------------------------
 
-CHECK_NO_SECRETS: Final[str] = "no-secrets"
-CHECK_NO_USELESS_ECHO: Final[str] = "no-useless-echo"
-CHECK_NO_GRADING_STYLE: Final[str] = "no-grading-style"
+CHECK_NO_SECRETS: Final[str] = "CT-no-secrets"
+CHECK_NO_USELESS_ECHO: Final[str] = "CT-no-echo"
+CHECK_NO_GRADING_STYLE: Final[str] = "CT-no-grading"
 
 GRADING_SIGNAL_THRESHOLD: Final[int] = 2
 
@@ -113,7 +113,7 @@ def _contains_real_secret(text: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def check_no_secrets(document: SkillDocument) -> CheckResult:
+def check_no_secrets(document: SkillDocument) -> CheckRecord:
     """Detect likely secrets or credentials in skill files."""
     hit_files: list[str] = []
 
@@ -126,16 +126,18 @@ def check_no_secrets(document: SkillDocument) -> CheckResult:
 
     if hit_files:
         file_list = " ".join(hit_files)
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_NO_SECRETS,
             passed=False,
             detail=f"Possible secrets or credentials found in: {file_list}",
+            tier="C7",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_NO_SECRETS,
         passed=True,
         detail="No secrets or credentials detected",
+        tier="C7",
     )
 
 
@@ -153,7 +155,7 @@ def _find_useless_echo_hits(markdown_text: str) -> list[str]:
     return hits
 
 
-def check_no_useless_echo(document: SkillDocument) -> CheckResult:
+def check_no_useless_echo(document: SkillDocument) -> CheckRecord:
     """Detect SC2116-like `$(echo ...)` patterns in shell code fences."""
     hit_files: list[str] = []
     first_hit = ""
@@ -176,19 +178,21 @@ def check_no_useless_echo(document: SkillDocument) -> CheckResult:
 
     if hit_files:
         file_list = " ".join(hit_files)
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_NO_USELESS_ECHO,
             passed=False,
             detail=(
                 "Useless echo (SC2116) in code blocks: "
                 f"{file_list} - first: {first_hit}"
             ),
+            tier="I13",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_NO_USELESS_ECHO,
         passed=True,
         detail="No useless echo patterns in code blocks",
+        tier="I13",
     )
 
 
@@ -203,14 +207,14 @@ def _grading_evidence(prose_body: str) -> list[str]:
     return evidence
 
 
-def check_no_grading_style(document: SkillDocument) -> CheckResult:
+def check_no_grading_style(document: SkillDocument) -> CheckRecord:
     """Detect grading/rubric-style language in prose workflow guidance."""
     evidence = _grading_evidence(document.prose_body)
     signal_count = len(evidence)
 
     if signal_count >= GRADING_SIGNAL_THRESHOLD:
         evidence_text = " ".join(evidence)
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_NO_GRADING_STYLE,
             passed=False,
             detail=(
@@ -218,12 +222,14 @@ def check_no_grading_style(document: SkillDocument) -> CheckResult:
                 f"({signal_count} signals: {evidence_text}) - "
                 "restructure as imperative workflow"
             ),
+            tier="C6",
         )
 
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_NO_GRADING_STYLE,
         passed=True,
         detail="No grading/rubric style detected",
+        tier="C6",
     )
 
 
@@ -232,7 +238,7 @@ def check_no_grading_style(document: SkillDocument) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 if TYPE_CHECKING:
-    CheckFunction = Callable[[SkillDocument], CheckResult]
+    CheckFunction = Callable[[SkillDocument], CheckRecord]
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_NO_SECRETS,
@@ -250,7 +256,7 @@ CHECK_FUNCTIONS: Final[dict[str, CheckFunction]] = {
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...],
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run selected checks in stable output order."""
     selected = frozenset(selected_checks)
     checks_to_run = [

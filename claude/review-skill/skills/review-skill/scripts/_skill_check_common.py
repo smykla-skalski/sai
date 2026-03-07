@@ -152,23 +152,6 @@ class SkillLoadError(ValueError):
 
 
 @dataclass(frozen=True)
-class CheckResult:
-    """Store one check output record."""
-
-    check: str
-    passed: bool
-    detail: str
-
-    def payload(self) -> dict[str, bool | str]:
-        """Return a serializable payload for NDJSON output."""
-        return {
-            "check": self.check,
-            "pass": self.passed,
-            "detail": self.detail,
-        }
-
-
-@dataclass(frozen=True)
 class ProseLine:
     """Store one prose line from the SKILL.md body."""
 
@@ -418,26 +401,33 @@ def emit_error(message: str) -> None:
 
 
 def emit_results(
-    results: list[CheckResult],
+    results: list[CheckRecord],
     *,
     extra_summary: dict[str, object] | None = None,
 ) -> int:
     """Emit all check records and summary, then return exit code."""
-    passed = sum(1 for result in results if result.passed)
-    failed = len(results) - passed
-
+    failed = 0
+    skipped = 0
+    info = 0
     for result in results:
         emit_record(result.payload())
+        if result.level == "fail":
+            failed += 1
+        elif result.level == "skip":
+            skipped += 1
+        elif result.level == "info":
+            info += 1
 
-    summary: dict[str, object] = {
-        "summary": True,
-        "total": len(results),
-        "passed": passed,
-        "failed": failed,
-    }
-    if extra_summary:
-        summary.update(extra_summary)
-    emit_record(summary)
+    passed = len(results) - failed
+    summary = SummaryRecord(
+        total=len(results),
+        passed=passed,
+        failed=failed,
+        skipped=skipped,
+        info=info,
+        extras=extra_summary or {},
+    )
+    emit_record(summary.payload())
 
     if failed:
         return EXIT_FAILURE
@@ -451,26 +441,33 @@ class ResultCollector:
     total: int = field(default=0, init=False)
     passed: int = field(default=0, init=False)
     failed: int = field(default=0, init=False)
+    skipped: int = field(default=0, init=False)
+    info: int = field(default=0, init=False)
 
-    def add(self, result: CheckResult) -> None:
+    def add(self, result: CheckRecord) -> None:
         """Record one result and emit it immediately."""
         self.total += 1
-        if result.passed:
-            self.passed += 1
-        else:
+        level = result.level
+        if level == "fail":
             self.failed += 1
+        else:
+            self.passed += 1
+        if level == "skip":
+            self.skipped += 1
+        elif level == "info":
+            self.info += 1
         emit_record(result.payload())
 
     def emit_summary(self) -> None:
         """Emit the final summary line."""
-        emit_record(
-            {
-                "summary": True,
-                "total": self.total,
-                "passed": self.passed,
-                "failed": self.failed,
-            },
+        summary = SummaryRecord(
+            total=self.total,
+            passed=self.passed,
+            failed=self.failed,
+            skipped=self.skipped,
+            info=self.info,
         )
+        emit_record(summary.payload())
 
 
 # ---------------------------------------------------------------------------
@@ -1078,7 +1075,7 @@ def run_check_cli(
     check_order: tuple[str, ...],
     run_checks_fn: Callable[
         ...,
-        list[CheckResult] | tuple[list[CheckResult], dict[str, object]],
+        list[CheckRecord] | tuple[list[CheckRecord], dict[str, object]],
     ],
     argv: list[str] | None = None,
 ) -> int:

@@ -31,7 +31,7 @@ from typing import Final
 
 from _skill_check_common import (
     EXIT_USAGE_ERROR,
-    CheckResult,
+    CheckRecord,
     ProseLine,
     SkillArgument,
     SkillLoadError,
@@ -55,15 +55,15 @@ from _skill_check_common import (
 
 TOOL_NAME: Final[str] = "AskUserQuestion"
 
-CHECK_DECLARATION: Final[str] = "auq-declaration-match"
-CHECK_IMPLICIT: Final[str] = "auq-implicit-interaction"
-CHECK_REQUIRED_ARG: Final[str] = "auq-required-arg-fallback"
-CHECK_SPAWNED: Final[str] = "auq-spawned-agent"
-CHECK_OPTION: Final[str] = "auq-option-structure"
-CHECK_DESTRUCTIVE: Final[str] = "auq-destructive-no-confirm"
-CHECK_AMBIGUITY: Final[str] = "auq-ambiguity-unresolved"
-CHECK_MULTISELECT: Final[str] = "auq-multiselect-grouping"
-CHECK_WIZARD: Final[str] = "auq-wizard-loop"
+CHECK_DECLARATION: Final[str] = "AQ-declaration"
+CHECK_IMPLICIT: Final[str] = "AQ-implicit"
+CHECK_REQUIRED_ARG: Final[str] = "AQ-required-arg"
+CHECK_SPAWNED: Final[str] = "AQ-spawned-agent"
+CHECK_OPTION: Final[str] = "AQ-option-structure"
+CHECK_DESTRUCTIVE: Final[str] = "AQ-destructive"
+CHECK_AMBIGUITY: Final[str] = "AQ-ambiguity"
+CHECK_MULTISELECT: Final[str] = "AQ-multiselect"
+CHECK_WIZARD: Final[str] = "AQ-wizard"
 
 MEDIUM_SIGNAL_THRESHOLD: Final[int] = 2
 AMBIGUITY_PREVIEW_WIDTH: Final[int] = 60
@@ -394,11 +394,12 @@ def _format_signal_detail(
 ) -> str:
     """Build a compact detail string for implicit interaction hits."""
     samples = [*strong_hits, *medium_hits][:SUMMARY_HIT_LIMIT]
-    return (
+    result = (
         f"{len(strong_hits)} strong, "
         f"{len(medium_hits)} medium signal(s): "
         + "; ".join(samples)
     )
+    return result.rstrip(".")
 
 
 def parse_skill(skill_dir: Path) -> ParsedSkill:
@@ -662,7 +663,7 @@ def check_declaration_match(
     doc: ParsedSkill,
     *,
     has_implicit: bool,
-) -> CheckResult:
+) -> CheckRecord:
     """Check whether declaration and valid usage agree."""
     declared = doc.declares_auq
     body_uses = (
@@ -676,21 +677,23 @@ def check_declaration_match(
     )
 
     if declared and body_uses:
-        return CheckResult(
+        return CheckRecord(
             CHECK_DECLARATION,
             passed=True,
             detail=f"{TOOL_NAME} declared and used in body",
+            tier="I21",
         )
 
     if not declared and not body_uses:
-        return CheckResult(
+        return CheckRecord(
             CHECK_DECLARATION,
             passed=True,
             detail=f"{TOOL_NAME} not declared and not used",
+            tier="I21",
         )
 
     if declared:
-        return CheckResult(
+        return CheckRecord(
             CHECK_DECLARATION,
             passed=False,
             detail=(
@@ -698,9 +701,10 @@ def check_declaration_match(
                 "in valid workflow prose - phantom declaration, "
                 "remove from allowed-tools"
             ),
+            tier="I21",
         )
 
-    return CheckResult(
+    return CheckRecord(
         CHECK_DECLARATION,
         passed=False,
         detail=(
@@ -708,12 +712,13 @@ def check_declaration_match(
             f"interaction but {TOOL_NAME} missing from "
             "allowed-tools"
         ),
+        tier="I21",
     )
 
 
 def check_implicit_interaction(
     doc: ParsedSkill,
-) -> tuple[CheckResult, bool]:
+) -> tuple[CheckRecord, bool]:
     """Check for natural-language user interaction patterns."""
     strong_hits: list[str] = []
     medium_hits: list[str] = []
@@ -756,7 +761,7 @@ def check_implicit_interaction(
                 "user interaction patterns detected"
             )
         return (
-            CheckResult(CHECK_IMPLICIT, passed=True, detail=detail),
+            CheckRecord(CHECK_IMPLICIT, passed=True, detail=detail, tier="I21"),
             has_implicit,
         )
 
@@ -770,12 +775,12 @@ def check_implicit_interaction(
         else:
             detail = "No implicit user interaction patterns detected"
         return (
-            CheckResult(CHECK_IMPLICIT, passed=True, detail=detail),
+            CheckRecord(CHECK_IMPLICIT, passed=True, detail=detail, tier="I21"),
             False,
         )
 
     return (
-        CheckResult(
+        CheckRecord(
             CHECK_IMPLICIT,
             passed=False,
             detail=(
@@ -783,6 +788,7 @@ def check_implicit_interaction(
                 f"{TOOL_NAME} not in allowed-tools: "
                 + _format_signal_detail(strong_hits, medium_hits)
             ),
+            tier="I21",
         ),
         True,
     )
@@ -790,26 +796,28 @@ def check_implicit_interaction(
 
 def check_required_arg_fallback(
     doc: ParsedSkill,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Check that required arguments have prompting or fallback."""
     if not doc.arguments:
         return [
-            CheckResult(
+            CheckRecord(
                 CHECK_REQUIRED_ARG,
                 passed=True,
                 detail="No argument table found - skipped",
+                tier="I21",
             ),
         ]
 
     if not doc.declares_auq:
         return [
-            CheckResult(
+            CheckRecord(
                 CHECK_REQUIRED_ARG,
                 passed=True,
                 detail=(
                     f"{TOOL_NAME} not in allowed-tools - "
                     "skip required-arg check"
                 ),
+                tier="I21",
             ),
         ]
 
@@ -821,17 +829,18 @@ def check_required_arg_fallback(
     ]
     if not required_arguments:
         return [
-            CheckResult(
+            CheckRecord(
                 CHECK_REQUIRED_ARG,
                 passed=True,
                 detail="No required arguments (all have defaults)",
+                tier="I21",
             ),
         ]
 
     search_units = _build_search_units(
         doc.relevant_lines(exclude_agents=True),
     )
-    failures: list[CheckResult] = []
+    failures: list[CheckRecord] = []
 
     for argument in required_arguments:
         normalized = _normalize_argument_name(argument.name)
@@ -840,7 +849,7 @@ def check_required_arg_fallback(
         if _has_fallback_mechanism(normalized, search_units):
             continue
         failures.append(
-            CheckResult(
+            CheckRecord(
                 CHECK_REQUIRED_ARG,
                 passed=False,
                 detail=(
@@ -849,6 +858,7 @@ def check_required_arg_fallback(
                     f"{TOOL_NAME} is available but not used "
                     "for missing input"
                 ),
+                tier="I21",
             ),
         )
 
@@ -856,34 +866,37 @@ def check_required_arg_fallback(
         return failures
 
     return [
-        CheckResult(
+        CheckRecord(
             CHECK_REQUIRED_ARG,
             passed=True,
             detail=(
                 f"All {len(required_arguments)} required arg(s) "
                 "have ask or fallback paths"
             ),
+            tier="I21",
         ),
     ]
 
 
-def check_spawned_agent(doc: ParsedSkill) -> CheckResult:
+def check_spawned_agent(doc: ParsedSkill) -> CheckRecord:
     """Check that spawned-agent sections do not use AUQ."""
     if doc.is_fork:
-        return CheckResult(
+        return CheckRecord(
             CHECK_SPAWNED,
             passed=True,
             detail=(
                 "context: fork - entire skill is a subagent, "
                 "check skipped"
             ),
+            tier="I21",
         )
 
     if not doc.agent_indices:
-        return CheckResult(
+        return CheckRecord(
             CHECK_SPAWNED,
             passed=True,
             detail="No spawned agent sections detected",
+            tier="I21",
         )
 
     violations = [
@@ -893,13 +906,14 @@ def check_spawned_agent(doc: ParsedSkill) -> CheckResult:
         and _is_spawned_agent_violation(line.text)
     ]
     if not violations:
-        return CheckResult(
+        return CheckRecord(
             CHECK_SPAWNED,
             passed=True,
             detail=f"No {TOOL_NAME} in spawned agent sections",
+            tier="I21",
         )
 
-    return CheckResult(
+    return CheckRecord(
         CHECK_SPAWNED,
         passed=False,
         detail=(
@@ -907,16 +921,18 @@ def check_spawned_agent(doc: ParsedSkill) -> CheckResult:
             "cannot interact with users): "
             + ", ".join(violations)
         ),
+        tier="I21",
     )
 
 
-def check_option_structure(doc: ParsedSkill) -> CheckResult:
+def check_option_structure(doc: ParsedSkill) -> CheckRecord:
     """Check that AUQ usage sites show nearby choices."""
     if not doc.declares_auq:
-        return CheckResult(
+        return CheckRecord(
             CHECK_OPTION,
             passed=True,
             detail=f"{TOOL_NAME} not in allowed-tools - skipped",
+            tier="I21",
         )
 
     usage_sites = [
@@ -925,13 +941,14 @@ def check_option_structure(doc: ParsedSkill) -> CheckResult:
         if _is_auq_workflow_line(line.text)
     ]
     if not usage_sites:
-        return CheckResult(
+        return CheckRecord(
             CHECK_OPTION,
             passed=True,
             detail=(
                 f"No explicit {TOOL_NAME} mentions "
                 "in workflow prose"
             ),
+            tier="I21",
         )
 
     prose = doc.prose_map()
@@ -945,34 +962,37 @@ def check_option_structure(doc: ParsedSkill) -> CheckResult:
             violations.append(f"L{doc.line_number(site_index)}")
 
     if not violations:
-        return CheckResult(
+        return CheckRecord(
             CHECK_OPTION,
             passed=True,
             detail=(
                 f"All {len(usage_sites)} {TOOL_NAME} site(s) "
                 "have option structure"
             ),
+            tier="I21",
         )
 
-    return CheckResult(
+    return CheckRecord(
         CHECK_OPTION,
         passed=False,
         detail=(
             f"{TOOL_NAME} mentioned without nearby "
             "options/choices: " + ", ".join(violations)
         ),
+        tier="I21",
     )
 
 
-def check_destructive(doc: ParsedSkill) -> CheckResult:
+def check_destructive(doc: ParsedSkill) -> CheckRecord:
     """Check that destructive steps have nearby confirmation."""
     if not doc.is_side_effect:
-        return CheckResult(
+        return CheckRecord(
             CHECK_DESTRUCTIVE,
             passed=True,
             detail=(
-                "disable-model-invocation not true - skipped"
+                "Disable-model-invocation not true - skipped"
             ),
+            tier="I21",
         )
 
     destructive_hits: list[str] = []
@@ -998,23 +1018,25 @@ def check_destructive(doc: ParsedSkill) -> CheckResult:
             )
 
     if not destructive_hits:
-        return CheckResult(
+        return CheckRecord(
             CHECK_DESTRUCTIVE,
             passed=True,
             detail="No destructive patterns detected",
+            tier="I21",
         )
 
     if not missing_confirmation:
-        return CheckResult(
+        return CheckRecord(
             CHECK_DESTRUCTIVE,
             passed=True,
             detail=(
                 "Destructive patterns present and each one has "
                 "nearby confirmation guidance"
             ),
+            tier="I21",
         )
 
-    return CheckResult(
+    return CheckRecord(
         CHECK_DESTRUCTIVE,
         passed=False,
         detail=(
@@ -1024,10 +1046,11 @@ def check_destructive(doc: ParsedSkill) -> CheckResult:
                 missing_confirmation[:DETAIL_LIMIT],
             )
         ),
+        tier="I21",
     )
 
 
-def check_ambiguity(doc: ParsedSkill) -> CheckResult:
+def check_ambiguity(doc: ParsedSkill) -> CheckRecord:
     """Check that ambiguity guidance has a nearby resolution path."""
     violations: list[str] = []
 
@@ -1047,50 +1070,56 @@ def check_ambiguity(doc: ParsedSkill) -> CheckResult:
         )
 
     if not violations:
-        return CheckResult(
+        return CheckRecord(
             CHECK_AMBIGUITY,
             passed=True,
             detail="No unresolved ambiguity patterns",
+            tier="I21",
         )
 
-    return CheckResult(
+    raw_detail = (
+        "Ambiguity without resolution mechanism: "
+        + "; ".join(violations[:DETAIL_LIMIT])
+    )
+    return CheckRecord(
         CHECK_AMBIGUITY,
         passed=False,
-        detail=(
-            "Ambiguity without resolution mechanism: "
-            + "; ".join(violations[:DETAIL_LIMIT])
-        ),
+        detail=raw_detail.rstrip("."),
+        tier="I21",
     )
 
 
-def check_multiselect(doc: ParsedSkill) -> CheckResult:
+def check_multiselect(doc: ParsedSkill) -> CheckRecord:
     """Check that multiSelect usage includes grouping guidance."""
     relevant_text = doc.relevant_text(exclude_agents=True)
     if not MULTISELECT_RE.search(relevant_text):
-        return CheckResult(
+        return CheckRecord(
             CHECK_MULTISELECT,
             passed=True,
             detail="No multiSelect usage - skipped",
+            tier="I21",
         )
 
     if matches_any(relevant_text, GROUPING_PATTERNS):
-        return CheckResult(
+        return CheckRecord(
             CHECK_MULTISELECT,
             passed=True,
-            detail="multiSelect usage has grouping guidance",
+            detail="MultiSelect usage has grouping guidance",
+            tier="I21",
         )
 
-    return CheckResult(
+    return CheckRecord(
         CHECK_MULTISELECT,
         passed=False,
         detail=(
-            "multiSelect used without grouping guidance "
+            "MultiSelect used without grouping guidance "
             "(group by strength/confidence recommended)"
         ),
+        tier="I21",
     )
 
 
-def check_wizard(doc: ParsedSkill) -> CheckResult:
+def check_wizard(doc: ParsedSkill) -> CheckRecord:
     """Check that wizard loops have explicit termination."""
     relevant_text = doc.relevant_text(exclude_agents=True)
     has_wizard = (
@@ -1104,29 +1133,32 @@ def check_wizard(doc: ParsedSkill) -> CheckResult:
         and bool(WIZARD_LOOP_RE.search(relevant_text))
     )
     if not has_wizard:
-        return CheckResult(
+        return CheckRecord(
             CHECK_WIZARD,
             passed=True,
             detail=(
                 "No confirmation wizard pattern detected "
                 "- skipped"
             ),
+            tier="I21",
         )
 
     if matches_any(relevant_text, WIZARD_TERMINATION_PATTERNS):
-        return CheckResult(
+        return CheckRecord(
             CHECK_WIZARD,
             passed=True,
             detail="Wizard pattern has explicit loop termination",
+            tier="I21",
         )
 
-    return CheckResult(
+    return CheckRecord(
         CHECK_WIZARD,
         passed=False,
         detail=(
             "Wizard pattern detected without explicit "
             "loop termination"
         ),
+        tier="I21",
     )
 
 
@@ -1135,7 +1167,7 @@ def check_wizard(doc: ParsedSkill) -> CheckResult:
 # ---------------------------------------------------------------------------
 
 
-def run_checks(doc: ParsedSkill) -> list[CheckResult]:
+def run_checks(doc: ParsedSkill) -> list[CheckRecord]:
     """Run all AskUserQuestion checks in stable output order."""
     implicit_result, has_implicit = check_implicit_interaction(doc)
     declaration_result = check_declaration_match(

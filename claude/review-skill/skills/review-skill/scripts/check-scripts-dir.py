@@ -2,9 +2,9 @@
 """Validate script invocation and runnable script permissions for a skill.
 
 Sub-checks:
-- `script-invocation-prefix`
-- `no-bash-prefix`
-- `script-executable`
+- `SD-invocation-prefix`
+- `SD-no-bash`
+- `SD-executable`
 
 Output is NDJSON with one final summary line.
 Exit codes:
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 from _skill_check_common import (
-    CheckResult,
+    CheckRecord,
     ProseLine,
     SkillDocument,
     extract_prose_lines,
@@ -38,9 +38,9 @@ from _skill_check_common import (
 # Sub-check identifiers
 # ---------------------------------------------------------------------------
 
-CHECK_SCRIPT_INVOCATION_PREFIX: Final[str] = "script-invocation-prefix"
-CHECK_NO_BASH_PREFIX: Final[str] = "no-bash-prefix"
-CHECK_SCRIPT_EXECUTABLE: Final[str] = "script-executable"
+CHECK_SCRIPT_INVOCATION_PREFIX: Final[str] = "SD-invocation-prefix"
+CHECK_NO_BASH_PREFIX: Final[str] = "SD-no-bash"
+CHECK_SCRIPT_EXECUTABLE: Final[str] = "SD-executable"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_SCRIPT_INVOCATION_PREFIX,
@@ -254,7 +254,7 @@ def _format_examples(items: list[str]) -> str:
 # ---------------------------------------------------------------------------
 
 
-def check_script_invocation_prefix(document: SkillDocument) -> list[CheckResult]:
+def check_script_invocation_prefix(document: SkillDocument) -> list[CheckRecord]:
     """Validate `${CLAUDE_SKILL_DIR}` prefix usage for script invocations."""
     if not _has_scripts_dir(document):
         return []
@@ -273,7 +273,7 @@ def check_script_invocation_prefix(document: SkillDocument) -> list[CheckResult]
 
     if violations:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SCRIPT_INVOCATION_PREFIX,
                 passed=False,
                 detail=(
@@ -282,19 +282,21 @@ def check_script_invocation_prefix(document: SkillDocument) -> list[CheckResult]
                     '"${CLAUDE_SKILL_DIR}/scripts/..." - '
                     f"first: {violations[0]}"
                 ),
+                tier="I6",
             ),
         ]
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_SCRIPT_INVOCATION_PREFIX,
             passed=True,
             detail="All detected script invocations use ${CLAUDE_SKILL_DIR} prefix",
+            tier="I6",
         ),
     ]
 
 
-def check_no_bash_prefix(document: SkillDocument) -> list[CheckResult]:
+def check_no_bash_prefix(document: SkillDocument) -> list[CheckRecord]:
     """Validate that script invocations do not start with `bash` prefix."""
     if not _has_scripts_dir(document):
         return []
@@ -316,7 +318,7 @@ def check_no_bash_prefix(document: SkillDocument) -> list[CheckResult]:
 
     if violations:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_NO_BASH_PREFIX,
                 passed=False,
                 detail=(
@@ -325,19 +327,21 @@ def check_no_bash_prefix(document: SkillDocument) -> list[CheckResult]:
                     '"${CLAUDE_SKILL_DIR}/scripts/..." and set executable bit '
                     f"- first: {violations[0]}"
                 ),
+                tier="I6",
             ),
         ]
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_NO_BASH_PREFIX,
             passed=True,
             detail="No bash-prefixed script invocations found",
+            tier="I6",
         ),
     ]
 
 
-def check_script_executable(document: SkillDocument) -> list[CheckResult]:
+def check_script_executable(document: SkillDocument) -> list[CheckRecord]:
     """Validate executable bits for runnable script entrypoints only."""
     scripts_dir = document.skill_dir / "scripts"
     if not scripts_dir.is_dir():
@@ -359,13 +363,13 @@ def check_script_executable(document: SkillDocument) -> list[CheckResult]:
     issues: list[str] = []
     if read_errors:
         issues.append(
-            "unable to read "
+            "Unable to read "
             f"{len(read_errors)} script file(s) for shebang detection: "
             f"{_format_examples(list(read_errors))}",
         )
     if stat_errors:
         issues.append(
-            "unable to stat "
+            "Unable to stat "
             f"{len(stat_errors)} runnable script(s): "
             f"{_format_examples(stat_errors)}",
         )
@@ -377,30 +381,33 @@ def check_script_executable(document: SkillDocument) -> list[CheckResult]:
 
     if issues:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SCRIPT_EXECUTABLE,
                 passed=False,
                 detail="; ".join(issues),
+                tier="I12",
             ),
         ]
 
     if not runnable_scripts:
         return [
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SCRIPT_EXECUTABLE,
                 passed=True,
                 detail="No runnable script entrypoints found in scripts/",
+                tier="I12",
             ),
         ]
 
     return [
-        CheckResult(
+        CheckRecord(
             check=CHECK_SCRIPT_EXECUTABLE,
             passed=True,
             detail=(
                 f"All {len(runnable_scripts)} runnable script entrypoint(s) "
                 "in scripts/ have executable bit set"
             ),
+            tier="I12",
         ),
     ]
 
@@ -409,7 +416,7 @@ def check_script_executable(document: SkillDocument) -> list[CheckResult]:
 # Orchestration
 # ---------------------------------------------------------------------------
 
-CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckResult]]]] = {
+CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] = {
     CHECK_SCRIPT_INVOCATION_PREFIX: check_script_invocation_prefix,
     CHECK_NO_BASH_PREFIX: check_no_bash_prefix,
     CHECK_SCRIPT_EXECUTABLE: check_script_executable,
@@ -419,10 +426,10 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckResult]]]] 
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run all script-dir checks and return results in stable order."""
     selected = frozenset(selected_checks)
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     for check_name in CHECK_ORDER:
         if selected and check_name not in selected:

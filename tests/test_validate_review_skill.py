@@ -14,9 +14,9 @@ SCRIPT_DIR = (
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-import skill_check_common  # noqa: E402
+import _skill_check_common  # noqa: E402
 import validate  # noqa: E402
-from skill_check_common import CheckResult, ResultCollector, SkillDocument, SkillLoadError  # noqa: E402
+from _skill_check_common import CheckRecord, ResultCollector, SkillDocument, SkillLoadError  # noqa: E402
 
 
 def _make_doc(
@@ -41,7 +41,7 @@ def _run_frontmatter(doc: SkillDocument) -> tuple[validate.ResultCollector, list
     """Run frontmatter checks and return collector + emitted records."""
     collector = validate.ResultCollector()
     records: list[dict[str, object]] = []
-    with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+    with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
         validate.run_frontmatter(doc, collector)
     return collector, records
 
@@ -67,11 +67,11 @@ class ValidateScriptTests(unittest.TestCase):
         self.assertEqual(collector.total, 9)
         self.assertEqual(len(records), 9)
         self.assertEqual(
-            sum(1 for record in records if record["check"] == "name-format"), 1
+            sum(1 for record in records if record["check"] == "FM-name-format"), 1
         )
         self.assertEqual(
             sum(
-                1 for record in records if record["check"] == "description-third-person"
+                1 for record in records if record["check"] == "FM-desc-voice"
             ),
             1,
         )
@@ -81,7 +81,7 @@ class ValidateScriptTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
 
-        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
             validate._run_structure_delegate(
                 config,
                 SCRIPT_DIR,
@@ -90,7 +90,7 @@ class ValidateScriptTests(unittest.TestCase):
             )
 
         self.assertEqual(collector.failed, 1)
-        self.assertEqual(records[0]["check"], "delegate-does-not-exist-runtime")
+        self.assertEqual(records[0]["check"], "XX-runtime")
         self.assertIn("Script not found", str(records[0]["detail"]))
 
     def test_lint_malformed_summary_fails_script_lint(self) -> None:
@@ -115,7 +115,7 @@ class ValidateScriptTests(unittest.TestCase):
             )
 
             with (
-                patch.object(skill_check_common, "emit_record", side_effect=records.append),
+                patch.object(_skill_check_common, "emit_record", side_effect=records.append),
                 patch.object(
                     validate, "_run_and_validate_script",
                     return_value=(fake_run, None),
@@ -124,7 +124,7 @@ class ValidateScriptTests(unittest.TestCase):
                 validate._handle_lint_scripts(script_dir, skill_dir, collector)
 
         self.assertEqual(collector.failed, 1)
-        self.assertEqual(records[0]["check"], "script-lint")
+        self.assertEqual(records[0]["check"], "CL-aggregate")
         self.assertIs(records[0]["pass"], False)
         self.assertIn("Summary missing integer 'findings'", str(records[0]["detail"]))
 
@@ -132,19 +132,19 @@ class ValidateScriptTests(unittest.TestCase):
         records: list[dict[str, object]] = []
 
         with (
-            patch.object(skill_check_common, "emit_record", side_effect=records.append),
+            patch.object(_skill_check_common, "emit_record", side_effect=records.append),
             patch.object(
                 validate,
                 "load_skill_document",
-                side_effect=SkillLoadError("custom load failure"),
+                side_effect=validate.SkillLoadError("Custom load failure"),
             ),
         ):
             exit_code = validate.main(["/virtual/missing"])
 
         self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
-        self.assertEqual(records[0]["check"], "skill-md-exists")
-        self.assertIn("custom load failure", str(records[0]["detail"]))
-        self.assertTrue(bool(records[-1]["summary"]))
+        self.assertEqual(records[0]["check"], "FM-skill-md-exists")
+        self.assertIn("Custom load failure", str(records[0]["detail"]))
+        self.assertEqual(records[-1].get("kind"), "summary")
 
     def test_invalid_guard_field_emits_runtime_failure(self) -> None:
         parsed = validate.ParsedDelegateOutput(
@@ -161,7 +161,7 @@ class ValidateScriptTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
 
-        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
             validate._emit_delegate_checks(
                 parsed,
                 collector,
@@ -170,7 +170,7 @@ class ValidateScriptTests(unittest.TestCase):
             )
 
         self.assertEqual(collector.failed, 1)
-        self.assertEqual(records[0]["check"], "delegate-check-preprocessing-runtime")
+        self.assertEqual(records[0]["check"], "PP-runtime")
         self.assertIn("not an integer", str(records[0]["detail"]))
 
 
@@ -186,9 +186,9 @@ class NameCheckTests(unittest.TestCase):
             skill_dir="/virtual/fake-skill",
         )
         _, records = _run_frontmatter(doc)
-        present = _find_check(records, "name-present")
-        fmt = _find_check(records, "name-format")
-        match = _find_check(records, "name-matches-dir")
+        present = _find_check(records, "FM-name-present")
+        fmt = _find_check(records, "FM-name-format")
+        match = _find_check(records, "FM-name-matches-dir")
         self.assertTrue(present["pass"])
         self.assertTrue(fmt["pass"])
         self.assertTrue(match["pass"])
@@ -197,21 +197,21 @@ class NameCheckTests(unittest.TestCase):
         long_name = "a" * 65
         doc = _make_doc(frontmatter={"name": long_name})
         _, records = _run_frontmatter(doc)
-        fmt = _find_check(records, "name-format")
+        fmt = _find_check(records, "FM-name-format")
         self.assertFalse(fmt["pass"])
         self.assertIn("exceeds", str(fmt["detail"]))
 
     def test_name_invalid_chars(self) -> None:
         doc = _make_doc(frontmatter={"name": "Bad_Name"})
         _, records = _run_frontmatter(doc)
-        fmt = _find_check(records, "name-format")
+        fmt = _find_check(records, "FM-name-format")
         self.assertFalse(fmt["pass"])
         self.assertIn("invalid characters", str(fmt["detail"]))
 
     def test_name_leading_trailing_hyphen(self) -> None:
         doc = _make_doc(frontmatter={"name": "-bad-name-"})
         _, records = _run_frontmatter(doc)
-        fmt = _find_check(records, "name-format")
+        fmt = _find_check(records, "FM-name-format")
         self.assertFalse(fmt["pass"])
         # The regex catches this as invalid chars first (uppercase pattern)
         # since -bad-name- does match [a-z0-9-]+, it should hit the hyphen check
@@ -220,7 +220,7 @@ class NameCheckTests(unittest.TestCase):
     def test_name_consecutive_hyphens(self) -> None:
         doc = _make_doc(frontmatter={"name": "bad--name"})
         _, records = _run_frontmatter(doc)
-        fmt = _find_check(records, "name-format")
+        fmt = _find_check(records, "FM-name-format")
         self.assertFalse(fmt["pass"])
         self.assertIn("consecutive", str(fmt["detail"]))
 
@@ -230,7 +230,7 @@ class NameCheckTests(unittest.TestCase):
             skill_dir="/virtual/fake-skill",
         )
         _, records = _run_frontmatter(doc)
-        match = _find_check(records, "name-matches-dir")
+        match = _find_check(records, "FM-name-matches-dir")
         self.assertFalse(match["pass"])
         self.assertIn("does not match", str(match["detail"]))
 
@@ -246,9 +246,9 @@ class DescriptionCheckTests(unittest.TestCase):
             frontmatter={"description": "Generate reports. Use when auditing."},
         )
         _, records = _run_frontmatter(doc)
-        present = _find_check(records, "description-present")
-        length = _find_check(records, "description-length")
-        trigger = _find_check(records, "description-trigger-phrases")
+        present = _find_check(records, "FM-desc-present")
+        length = _find_check(records, "FM-desc-length")
+        trigger = _find_check(records, "FM-desc-trigger")
         self.assertTrue(present["pass"])
         self.assertTrue(length["pass"])
         self.assertTrue(trigger["pass"])
@@ -257,7 +257,7 @@ class DescriptionCheckTests(unittest.TestCase):
         long_desc = "x" * 1025
         doc = _make_doc(frontmatter={"description": long_desc})
         _, records = _run_frontmatter(doc)
-        length = _find_check(records, "description-length")
+        length = _find_check(records, "FM-desc-length")
         self.assertFalse(length["pass"])
         self.assertIn("exceeds", str(length["detail"]))
 
@@ -266,7 +266,7 @@ class DescriptionCheckTests(unittest.TestCase):
             frontmatter={"description": "Generate daily reports from data"},
         )
         _, records = _run_frontmatter(doc)
-        trigger = _find_check(records, "description-trigger-phrases")
+        trigger = _find_check(records, "FM-desc-trigger")
         self.assertFalse(trigger["pass"])
         self.assertIn("trigger phrase", str(trigger["detail"]))
 
@@ -278,7 +278,7 @@ class DescriptionCheckTests(unittest.TestCase):
             },
         )
         _, records = _run_frontmatter(doc)
-        trigger = _find_check(records, "description-trigger-phrases")
+        trigger = _find_check(records, "FM-desc-trigger")
         self.assertTrue(trigger["pass"])
         self.assertIn("disable-model-invocation", str(trigger["detail"]))
 
@@ -287,7 +287,7 @@ class DescriptionCheckTests(unittest.TestCase):
             frontmatter={"description": "I can generate reports for you"},
         )
         _, records = _run_frontmatter(doc)
-        voice = _find_check(records, "description-third-person")
+        voice = _find_check(records, "FM-desc-voice")
         self.assertFalse(voice["pass"])
 
     def test_description_second_person_fails(self) -> None:
@@ -295,7 +295,7 @@ class DescriptionCheckTests(unittest.TestCase):
             frontmatter={"description": "You can use this to generate reports"},
         )
         _, records = _run_frontmatter(doc)
-        voice = _find_check(records, "description-third-person")
+        voice = _find_check(records, "FM-desc-voice")
         self.assertFalse(voice["pass"])
 
 
@@ -308,13 +308,13 @@ class AllowedToolsTests(unittest.TestCase):
     def test_allowed_tools_present(self) -> None:
         doc = _make_doc(frontmatter={"allowed-tools": "Bash, Read"})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "allowed-tools-present")
+        check = _find_check(records, "FM-tools-present")
         self.assertTrue(check["pass"])
 
     def test_allowed_tools_missing(self) -> None:
         doc = _make_doc(frontmatter={})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "allowed-tools-present")
+        check = _find_check(records, "FM-tools-present")
         self.assertFalse(check["pass"])
 
 
@@ -322,13 +322,13 @@ class UserInvocableTests(unittest.TestCase):
     def test_user_invocable_valid(self) -> None:
         doc = _make_doc(frontmatter={"user-invocable": "true"})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "user-invocable-present")
+        check = _find_check(records, "FM-invocable-present")
         self.assertTrue(check["pass"])
 
     def test_user_invocable_invalid_value(self) -> None:
         doc = _make_doc(frontmatter={"user-invocable": "maybe"})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "user-invocable-present")
+        check = _find_check(records, "FM-invocable-present")
         self.assertFalse(check["pass"])
         self.assertIn("must be boolean", str(check["detail"]))
 
@@ -390,19 +390,24 @@ class SnippetTests(unittest.TestCase):
 class ParseDelegateOutputTests(unittest.TestCase):
     def test_valid_output(self) -> None:
         lines = [
-            json.dumps({"check": "c1", "pass": True, "detail": "ok"}),
-            json.dumps({"summary": True, "total": 1, "passed": 1, "failed": 0}),
+            json.dumps({
+                "kind": "check", "check": "XX-test", "pass": True,
+                "level": "pass", "detail": "Test passed",
+            }),
+            json.dumps({
+                "kind": "summary", "total": 1, "passed": 1, "failed": 0,
+            }),
         ]
         parsed = validate._parse_delegate_output("\n".join(lines))
         self.assertEqual(len(parsed.checks), 1)
-        self.assertEqual(parsed.checks[0].check, "c1")
+        self.assertEqual(parsed.checks[0].check, "XX-test")
         self.assertIsNotNone(parsed.summary)
         self.assertEqual(len(parsed.invalid_lines), 0)
 
     def test_duplicate_summary(self) -> None:
         lines = [
-            json.dumps({"summary": True, "total": 0, "passed": 0, "failed": 0}),
-            json.dumps({"summary": True, "total": 0, "passed": 0, "failed": 0}),
+            json.dumps({"kind": "summary", "total": 0, "passed": 0, "failed": 0}),
+            json.dumps({"kind": "summary", "total": 0, "passed": 0, "failed": 0}),
         ]
         parsed = validate._parse_delegate_output("\n".join(lines))
         self.assertIsNotNone(parsed.summary)
@@ -412,8 +417,12 @@ class ParseDelegateOutputTests(unittest.TestCase):
 class ParseLintOutputTests(unittest.TestCase):
     def test_valid_output(self) -> None:
         lines = [
-            json.dumps({"check": "S01", "message": "issue", "severity": "critical"}),
-            json.dumps({"summary": True, "findings": 1}),
+            json.dumps({
+                "kind": "finding", "check": "CL-S01",
+                "message": "Issue found", "severity": "critical",
+                "file": "test.sh", "line": 1,
+            }),
+            json.dumps({"kind": "summary", "findings": 1}),
         ]
         parsed = validate._parse_lint_output("\n".join(lines))
         self.assertEqual(len(parsed.findings), 1)
@@ -450,8 +459,13 @@ class CollectDelegateOutputTests(unittest.TestCase):
 
     def test_total_mismatch(self) -> None:
         ndjson = "\n".join([
-            json.dumps({"check": "c1", "pass": True, "detail": "ok"}),
-            json.dumps({"summary": True, "total": 5, "passed": 5, "failed": 0}),
+            json.dumps({
+                "kind": "check", "check": "XX-test", "pass": True,
+                "level": "pass", "detail": "Test passed",
+            }),
+            json.dumps({
+                "kind": "summary", "total": 5, "passed": 5, "failed": 0,
+            }),
         ])
         fake_run = validate.ScriptRunResult(
             ok=True, returncode=0, stdout=ndjson, stderr="",
@@ -468,14 +482,17 @@ class EmitDelegateChecksTests(unittest.TestCase):
     def test_guard_zero_skips(self) -> None:
         parsed = validate.ParsedDelegateOutput(
             checks=(
-                CheckResult(check="c1", passed=True, detail="ok"),
+                CheckRecord(check="XX-test", passed=True, detail="Test passed"),
             ),
-            summary={"summary": True, "total": 1, "passed": 1, "failed": 0, "refs": 0},
+            summary={
+                "kind": "summary", "total": 1, "passed": 1,
+                "failed": 0, "refs": 0,
+            },
             invalid_lines=(),
         )
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
-        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
             validate._emit_delegate_checks(
                 parsed, collector, script="test.py", guard_field="refs",
             )
@@ -485,19 +502,22 @@ class EmitDelegateChecksTests(unittest.TestCase):
     def test_guard_positive_emits(self) -> None:
         parsed = validate.ParsedDelegateOutput(
             checks=(
-                CheckResult(check="c1", passed=True, detail="ok"),
+                CheckRecord(check="XX-test", passed=True, detail="Test passed"),
             ),
-            summary={"summary": True, "total": 1, "passed": 1, "failed": 0, "refs": 2},
+            summary={
+                "kind": "summary", "total": 1, "passed": 1,
+                "failed": 0, "refs": 2,
+            },
             invalid_lines=(),
         )
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
-        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
             validate._emit_delegate_checks(
                 parsed, collector, script="test.py", guard_field="refs",
             )
         self.assertEqual(collector.total, 1)
-        self.assertEqual(records[0]["check"], "c1")
+        self.assertEqual(records[0]["check"], "XX-test")
 
 
 # ---------------------------------------------------------------------------
@@ -514,11 +534,11 @@ class LintScriptsHandlerTests(unittest.TestCase):
 
             collector = validate.ResultCollector()
             records: list[dict[str, object]] = []
-            with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+            with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
                 validate._handle_lint_scripts(SCRIPT_DIR, skill_dir, collector)
 
         self.assertEqual(collector.total, 1)
-        check = _find_check(records, "script-lint")
+        check = _find_check(records, "CL-aggregate")
         self.assertTrue(check["pass"])
 
     def test_zero_findings_passes(self) -> None:
@@ -528,14 +548,16 @@ class LintScriptsHandlerTests(unittest.TestCase):
 
             fake_run = validate.ScriptRunResult(
                 ok=True, returncode=0,
-                stdout=json.dumps({"summary": True, "findings": 0}) + "\n",
+                stdout=json.dumps({
+                    "kind": "summary", "findings": 0,
+                }) + "\n",
                 stderr="",
             )
 
             collector = validate.ResultCollector()
             records: list[dict[str, object]] = []
             with (
-                patch.object(skill_check_common, "emit_record", side_effect=records.append),
+                patch.object(_skill_check_common, "emit_record", side_effect=records.append),
                 patch.object(
                     validate, "_run_and_validate_script",
                     return_value=(fake_run, None),
@@ -543,7 +565,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
             ):
                 validate._handle_lint_scripts(SCRIPT_DIR, skill_dir, collector)
 
-        check = _find_check(records, "script-lint")
+        check = _find_check(records, "CL-aggregate")
         self.assertTrue(check["pass"])
 
     def test_findings_present_fails(self) -> None:
@@ -551,10 +573,14 @@ class LintScriptsHandlerTests(unittest.TestCase):
             skill_dir = Path(tmp_dir) / "skill"
             (skill_dir / "scripts").mkdir(parents=True)
 
-            finding = json.dumps(
-                {"check": "S01", "message": "bad", "severity": "critical"},
-            )
-            summary = json.dumps({"summary": True, "findings": 1})
+            finding = json.dumps({
+                "kind": "finding", "check": "CL-S01",
+                "message": "Bad pattern", "severity": "critical",
+                "file": "test.sh", "line": 1,
+            })
+            summary = json.dumps({
+                "kind": "summary", "findings": 1,
+            })
             fake_run = validate.ScriptRunResult(
                 ok=True, returncode=1,
                 stdout=f"{finding}\n{summary}\n",
@@ -564,7 +590,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
             collector = validate.ResultCollector()
             records: list[dict[str, object]] = []
             with (
-                patch.object(skill_check_common, "emit_record", side_effect=records.append),
+                patch.object(_skill_check_common, "emit_record", side_effect=records.append),
                 patch.object(
                     validate, "_run_and_validate_script",
                     return_value=(fake_run, None),
@@ -572,7 +598,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
             ):
                 validate._handle_lint_scripts(SCRIPT_DIR, skill_dir, collector)
 
-        check = _find_check(records, "script-lint")
+        check = _find_check(records, "CL-aggregate")
         self.assertFalse(check["pass"])
         self.assertIn("critical", str(check["detail"]))
 
@@ -580,6 +606,7 @@ class LintScriptsHandlerTests(unittest.TestCase):
 class ForkCandidateHandlerTests(unittest.TestCase):
     def test_strong_recommendation_passes(self) -> None:
         summary_line = json.dumps({
+            "kind": "summary",
             "recommendation": "strong",
             "detail": "5 signals detected",
         })
@@ -592,7 +619,7 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
         with (
-            patch.object(skill_check_common, "emit_record", side_effect=records.append),
+            patch.object(_skill_check_common, "emit_record", side_effect=records.append),
             patch.object(
                 validate, "_run_and_validate_script",
                 return_value=(fake_run, None),
@@ -600,12 +627,13 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         ):
             validate._handle_fork_candidate(SCRIPT_DIR, Path("/virtual/skill"), collector)
 
-        check = _find_check(records, "fork-candidate-info")
+        check = _find_check(records, "FK-recommendation-info")
         self.assertTrue(check["pass"])
         self.assertIn("INFO:", str(check["detail"]))
 
     def test_none_recommendation_passes(self) -> None:
         summary_line = json.dumps({
+            "kind": "summary",
             "recommendation": "none",
             "detail": "No fork signals",
         })
@@ -618,7 +646,7 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         collector = validate.ResultCollector()
         records: list[dict[str, object]] = []
         with (
-            patch.object(skill_check_common, "emit_record", side_effect=records.append),
+            patch.object(_skill_check_common, "emit_record", side_effect=records.append),
             patch.object(
                 validate, "_run_and_validate_script",
                 return_value=(fake_run, None),
@@ -626,7 +654,7 @@ class ForkCandidateHandlerTests(unittest.TestCase):
         ):
             validate._handle_fork_candidate(SCRIPT_DIR, Path("/virtual/skill"), collector)
 
-        check = _find_check(records, "fork-candidate-info")
+        check = _find_check(records, "FK-recommendation-info")
         self.assertTrue(check["pass"])
         self.assertIn("No fork recommendation", str(check["detail"]))
 
@@ -648,7 +676,7 @@ class CliTests(unittest.TestCase):
         )
         records: list[dict[str, object]] = []
         with (
-            patch.object(skill_check_common, "emit_record", side_effect=records.append),
+            patch.object(_skill_check_common, "emit_record", side_effect=records.append),
             patch.object(validate, "load_skill_document", return_value=doc),
         ):
             exit_code = validate.main(["/virtual/fake-skill", "frontmatter"])
@@ -663,7 +691,7 @@ class CliTests(unittest.TestCase):
         doc = _make_doc(frontmatter={})
         records: list[dict[str, object]] = []
         with (
-            patch.object(skill_check_common, "emit_record", side_effect=records.append),
+            patch.object(_skill_check_common, "emit_record", side_effect=records.append),
             patch.object(validate, "load_skill_document", return_value=doc),
             patch.object(validate, "run_structure"),
         ):
@@ -674,8 +702,8 @@ class CliTests(unittest.TestCase):
         fm_checks = [
             r for r in check_records
             if r["check"] in {
-                "name-present", "name-format", "name-matches-dir",
-                "description-present",
+                "FM-name-present", "FM-name-format", "FM-name-matches-dir",
+                "FM-desc-present",
             }
         ]
         self.assertEqual(len(fm_checks), 0)
@@ -690,21 +718,32 @@ class ParseForkCandidateSummaryTests(unittest.TestCase):
     def test_recommendation_not_last_line(self) -> None:
         """B6: recommendation record doesn't need to be last."""
         lines = [
-            json.dumps({"recommendation": "strong", "detail": "5 signals"}),
-            json.dumps({"signal": "P1", "strength": 1.0}),
+            json.dumps({
+                "kind": "summary", "recommendation": "strong",
+                "detail": "5 signals",
+            }),
+            json.dumps({
+                "kind": "signal", "signal": "FK-P1",
+                "type": "positive", "detected": True,
+                "detail": "Phase count",
+            }),
         ]
         summary, error = validate._parse_fork_candidate_summary("\n".join(lines))
         self.assertIsNone(error)
         self.assertEqual(summary["recommendation"], "strong")
 
     def test_no_recommendation_field(self) -> None:
-        """B6: error when no record has recommendation."""
+        """B6: error when no record has recommendation or kind=summary."""
         lines = [
-            json.dumps({"signal": "P1", "strength": 1.0}),
+            json.dumps({
+                "kind": "signal", "signal": "FK-P1",
+                "type": "positive", "detected": True,
+                "detail": "Phase count",
+            }),
         ]
         summary, error = validate._parse_fork_candidate_summary("\n".join(lines))
         self.assertIsNone(summary)
-        self.assertIn("recommendation", error)
+        self.assertIn("summary", error)
 
 
 # ---------------------------------------------------------------------------
@@ -716,49 +755,49 @@ class MissingVsEmptyTests(unittest.TestCase):
     def test_name_missing_says_missing(self) -> None:
         doc = _make_doc(frontmatter={})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "name-present")
+        check = _find_check(records, "FM-name-present")
         self.assertIn("missing", str(check["detail"]))
 
     def test_name_empty_says_empty(self) -> None:
         doc = _make_doc(frontmatter={"name": ""})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "name-present")
+        check = _find_check(records, "FM-name-present")
         self.assertIn("empty", str(check["detail"]))
 
     def test_description_missing_says_missing(self) -> None:
         doc = _make_doc(frontmatter={})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "description-present")
+        check = _find_check(records, "FM-desc-present")
         self.assertIn("missing", str(check["detail"]))
 
     def test_description_empty_says_empty(self) -> None:
         doc = _make_doc(frontmatter={"description": ""})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "description-present")
+        check = _find_check(records, "FM-desc-present")
         self.assertIn("empty", str(check["detail"]))
 
     def test_allowed_tools_missing_says_missing(self) -> None:
         doc = _make_doc(frontmatter={})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "allowed-tools-present")
+        check = _find_check(records, "FM-tools-present")
         self.assertIn("missing", str(check["detail"]))
 
     def test_allowed_tools_empty_says_empty(self) -> None:
         doc = _make_doc(frontmatter={"allowed-tools": ""})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "allowed-tools-present")
+        check = _find_check(records, "FM-tools-present")
         self.assertIn("empty", str(check["detail"]))
 
     def test_user_invocable_missing_says_missing(self) -> None:
         doc = _make_doc(frontmatter={})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "user-invocable-present")
+        check = _find_check(records, "FM-invocable-present")
         self.assertIn("missing", str(check["detail"]))
 
     def test_user_invocable_empty_says_empty(self) -> None:
         doc = _make_doc(frontmatter={"user-invocable": ""})
         _, records = _run_frontmatter(doc)
-        check = _find_check(records, "user-invocable-present")
+        check = _find_check(records, "FM-invocable-present")
         self.assertIn("empty", str(check["detail"]))
 
 
@@ -770,9 +809,12 @@ class MissingVsEmptyTests(unittest.TestCase):
 class PassedFailedConsistencyTests(unittest.TestCase):
     def test_passed_failed_mismatch_rejected(self) -> None:
         ndjson = "\n".join([
-            json.dumps({"check": "c1", "pass": True, "detail": "ok"}),
             json.dumps({
-                "summary": True, "total": 1,
+                "kind": "check", "check": "XX-test", "pass": True,
+                "level": "pass", "detail": "Test passed",
+            }),
+            json.dumps({
+                "kind": "summary", "total": 1,
                 "passed": 0, "failed": 0,
             }),
         ])
@@ -795,7 +837,7 @@ class PassedFailedConsistencyTests(unittest.TestCase):
 class InvalidArgparseTests(unittest.TestCase):
     def test_invalid_mode_emits_ndjson(self) -> None:
         records: list[dict[str, object]] = []
-        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
             exit_code = validate.main(["/virtual/skill", "invalid-mode"])
         self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
         self.assertTrue(len(records) > 0)
@@ -803,7 +845,7 @@ class InvalidArgparseTests(unittest.TestCase):
 
     def test_no_args_emits_ndjson(self) -> None:
         records: list[dict[str, object]] = []
-        with patch.object(skill_check_common, "emit_record", side_effect=records.append):
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
             exit_code = validate.main([])
         self.assertEqual(exit_code, validate.EXIT_USAGE_ERROR)
 
@@ -819,7 +861,7 @@ class MultipleNameErrorTests(unittest.TestCase):
         long_bad = "A" * 65
         doc = _make_doc(frontmatter={"name": long_bad})
         _, records = _run_frontmatter(doc)
-        fmt = _find_check(records, "name-format")
+        fmt = _find_check(records, "FM-name-format")
         self.assertFalse(fmt["pass"])
         detail = str(fmt["detail"])
         self.assertIn("exceeds", detail)
@@ -835,7 +877,7 @@ class EmptyLintFieldTests(unittest.TestCase):
     def test_empty_check_id_rejected(self) -> None:
         lines = [
             json.dumps({"check": "", "message": "bad", "severity": "critical"}),
-            json.dumps({"summary": True, "findings": 0}),
+            json.dumps({"kind": "summary", "findings": 0}),
         ]
         parsed = validate._parse_lint_output("\n".join(lines))
         self.assertEqual(len(parsed.findings), 0)

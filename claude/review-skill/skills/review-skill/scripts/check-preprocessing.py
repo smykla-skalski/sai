@@ -2,14 +2,14 @@
 """Validate `!` preprocessing directives in SKILL.md prose.
 
 Sub-checks:
-  - `preproc-syntax`              - malformed directive markers
-  - `preproc-err-handling`        - error handling or safe commands
-  - `preproc-output-limit`        - bounded output or limiting
-  - `preproc-secret-leak`         - no secret leakage patterns
-  - `preproc-mutation`            - no state-changing at load time
-  - `preproc-slow-cmd`            - no slow commands blocking loading
-  - `preproc-redundant-skilldir`  - no redundant CLAUDE_SKILL_DIR echo
-  - `preproc-interactive`         - no interactive/hanging commands
+  - `PP-syntax`        - malformed directive markers
+  - `PP-err-handling`  - error handling or safe commands
+  - `PP-output-limit`  - bounded output or limiting
+  - `PP-secret-leak`   - no secret leakage patterns
+  - `PP-mutation`      - no state-changing at load time
+  - `PP-slow-cmd`      - no slow commands blocking loading
+  - `PP-redundant-dir` - no redundant CLAUDE_SKILL_DIR echo
+  - `PP-interactive`   - no interactive/hanging commands
 
 Output format is NDJSON, ending with a summary line that includes
 `directives` count for compatibility with orchestration guards.
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    CheckResult,
+    CheckRecord,
     SkillDocument,
     run_check_cli,
 )
@@ -39,14 +39,14 @@ from _skill_check_common import (
 # Sub-check identifiers
 # ---------------------------------------------------------------------------
 
-CHECK_SYNTAX: Final[str] = "preproc-syntax"
-CHECK_ERR: Final[str] = "preproc-err-handling"
-CHECK_OUT: Final[str] = "preproc-output-limit"
-CHECK_SEC: Final[str] = "preproc-secret-leak"
-CHECK_MUT: Final[str] = "preproc-mutation"
-CHECK_SLOW: Final[str] = "preproc-slow-cmd"
-CHECK_DUP: Final[str] = "preproc-redundant-skilldir"
-CHECK_HANG: Final[str] = "preproc-interactive"
+CHECK_SYNTAX: Final[str] = "PP-syntax"
+CHECK_ERR: Final[str] = "PP-err-handling"
+CHECK_OUT: Final[str] = "PP-output-limit"
+CHECK_SEC: Final[str] = "PP-secret-leak"
+CHECK_MUT: Final[str] = "PP-mutation"
+CHECK_SLOW: Final[str] = "PP-slow-cmd"
+CHECK_DUP: Final[str] = "PP-redundant-dir"
+CHECK_HANG: Final[str] = "PP-interactive"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_SYNTAX,
@@ -380,9 +380,9 @@ def _extract_directive_commands(prose_body: str) -> tuple[str, ...]:
 # ---------------------------------------------------------------------------
 
 
-def _check_syntax(prose_body: str) -> list[CheckResult]:
+def _check_syntax(prose_body: str) -> list[CheckRecord]:
     """Run syntax checks for malformed directive markers."""
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     unclosed_lines = [
         index
@@ -391,26 +391,28 @@ def _check_syntax(prose_body: str) -> list[CheckResult]:
     ]
     if unclosed_lines:
         results.append(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SYNTAX,
                 passed=False,
                 detail=(
                     "Unclosed preprocessing directive near body line "
                     f"{unclosed_lines[0]} - missing closing backtick"
                 ),
+                tier="I18",
             ),
         )
 
     empty_count = len(EMPTY_DIRECTIVE_RE.findall(prose_body))
     if empty_count > 0:
         results.append(
-            CheckResult(
+            CheckRecord(
                 check=CHECK_SYNTAX,
                 passed=False,
                 detail=(
                     f"Found {empty_count} empty preprocessing directive(s) - "
                     "!`` contains no command"
                 ),
+                tier="I18",
             ),
         )
 
@@ -418,102 +420,111 @@ def _check_syntax(prose_body: str) -> list[CheckResult]:
 
 
 # ---------------------------------------------------------------------------
-# Category checks (each takes commands tuple, returns CheckResult)
+# Category checks (each takes commands tuple, returns CheckRecord)
 # ---------------------------------------------------------------------------
 
 
-def _check_err_handling(commands: tuple[str, ...]) -> CheckResult:
+def _check_err_handling(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for error handling."""
     failures = [cmd for cmd in commands if not _has_error_handling(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_ERR,
             passed=True,
             detail=(
                 "All preprocessing directives have error handling"
                 " or use safe commands"
             ),
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_ERR,
         passed=False,
         detail=(
             f"{len(failures)} directive(s) lack error handling "
             f"(2>/dev/null, || echo fallback) - first: {failures[0]}"
         ),
+        tier="I18",
     )
 
 
-def _check_output_limit(commands: tuple[str, ...]) -> CheckResult:
+def _check_output_limit(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for bounded output."""
     failures = [cmd for cmd in commands if not _has_bounded_output(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_OUT,
             passed=True,
             detail=(
                 "All preprocessing directives produce bounded"
                 " output or use limiting"
             ),
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_OUT,
         passed=False,
         detail=(
             f"{len(failures)} directive(s) could produce large output without limiting "
             f"(| head, | tail) - first: {failures[0]}"
         ),
+        tier="I18",
     )
 
 
-def _check_secret_leak(commands: tuple[str, ...]) -> CheckResult:
+def _check_secret_leak(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for secret leakage."""
     failures = [cmd for cmd in commands if not _is_secret_safe(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_SEC,
             passed=True,
             detail="No secret-leaking patterns detected in preprocessing directives",
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_SEC,
         passed=False,
         detail=(
             f"{len(failures)} directive(s) may leak secrets via env var expansion "
             f"- first: {failures[0]}"
         ),
+        tier="I18",
     )
 
 
-def _check_mutation(commands: tuple[str, ...]) -> CheckResult:
+def _check_mutation(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for state-changing commands."""
     failures = [cmd for cmd in commands if not _is_non_mutating(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_MUT,
             passed=True,
             detail="No state-changing commands in preprocessing directives",
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_MUT,
         passed=False,
         detail=(
             f"{len(failures)} directive(s) contain state-changing commands "
             f"that run at load time - first: {failures[0]}"
         ),
+        tier="I18",
     )
 
 
-def _check_slow_cmd(commands: tuple[str, ...]) -> CheckResult:
+def _check_slow_cmd(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for slow commands."""
     failures = [cmd for cmd in commands if not _is_fast_enough(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_SLOW,
             passed=True,
             detail="No slow commands detected in preprocessing directives",
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_SLOW,
         passed=False,
         detail=(
@@ -521,49 +532,54 @@ def _check_slow_cmd(commands: tuple[str, ...]) -> CheckResult:
             " that block skill loading "
             f"- first: {failures[0]}"
         ),
+        tier="I18",
     )
 
 
-def _check_redundant_skilldir(commands: tuple[str, ...]) -> CheckResult:
+def _check_redundant_skilldir(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for redundant CLAUDE_SKILL_DIR echo."""
     failures = [cmd for cmd in commands if not _has_no_redundant_skill_dir_echo(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_DUP,
             passed=True,
             detail="No redundant CLAUDE_SKILL_DIR wrapping in preprocessing directives",
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_DUP,
         passed=False,
         detail=(
             f"{len(failures)} directive(s) wrap CLAUDE_SKILL_DIR in echo - redundant, "
             "already a load-time substitution"
         ),
+        tier="I18",
     )
 
 
-def _check_interactive(commands: tuple[str, ...]) -> CheckResult:
+def _check_interactive(commands: tuple[str, ...]) -> CheckRecord:
     """Check all directives for interactive/hanging commands."""
     failures = [cmd for cmd in commands if not _is_non_interactive(cmd)]
     if not failures:
-        return CheckResult(
+        return CheckRecord(
             check=CHECK_HANG,
             passed=True,
             detail="No interactive/hanging commands in preprocessing directives",
+            tier="I18",
         )
-    return CheckResult(
+    return CheckRecord(
         check=CHECK_HANG,
         passed=False,
         detail=(
             f"{len(failures)} directive(s) may hang waiting for input "
             f"- first: {failures[0]}"
         ),
+        tier="I18",
     )
 
 
 CHECK_FUNCTIONS: Final[
-    dict[str, Callable[[tuple[str, ...]], CheckResult]]
+    dict[str, Callable[[tuple[str, ...]], CheckRecord]]
 ] = {
     CHECK_ERR: _check_err_handling,
     CHECK_OUT: _check_output_limit,
@@ -583,7 +599,7 @@ CHECK_FUNCTIONS: Final[
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> tuple[list[CheckResult], dict[str, object]]:
+) -> tuple[list[CheckRecord], dict[str, object]]:
     """Run preprocessing checks, return results and extra summary."""
     prose_body = document.prose_body
     directive_commands = _extract_directive_commands(prose_body)
@@ -593,7 +609,7 @@ def run_checks(
         return [], {"directives": directive_count}
 
     selected = frozenset(selected_checks)
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
 
     if not selected or CHECK_SYNTAX in selected:
         results.extend(_check_syntax(prose_body))

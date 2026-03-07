@@ -5,20 +5,20 @@ Checks hooks frontmatter structure and referenced hook scripts for
 correctness against the Skill Authoring Guide conventions.
 
 Sub-checks:
-  HK-EVENTS:    All event names are valid
-  HK-STRUCTURE: Matcher-based events have matcher field; Stop has none
-  HK-TYPE:      Every hook entry has type: "command" with non-empty command
-  HK-RESOLVE:   All command paths resolve to existing files
-  HK-EXEC:      All resolved hook scripts are executable
-  HK-DUPLICATE: No duplicate event+matcher combinations
-  HK-STDIN:     Hook scripts parse stdin JSON
-  HK-LOOP:      Stop/SubagentStop scripts check stop_hook_active
-  HK-EXIT:      PreToolUse scripts never use exit 2
-  HK-PERM:      PostToolUse/PostToolUseFailure scripts don't output permissionDecision
-  HK-PREFIX:    Error codes use consistent prefix within the skill
+  HK-events:    All event names are valid
+  HK-structure: Matcher-based events have matcher field; Stop has none
+  HK-type:      Every hook entry has type: "command" with non-empty command
+  HK-resolve:   All command paths resolve to existing files
+  HK-exec:      All resolved hook scripts are executable
+  HK-duplicate: No duplicate event+matcher combinations
+  HK-stdin:     Hook scripts parse stdin JSON
+  HK-loop:      Stop/SubagentStop scripts check stop_hook_active
+  HK-exit:      PreToolUse scripts never use exit 2
+  HK-perm:      PostToolUse/PostToolUseFailure scripts don't output permissionDecision
+  HK-prefix:    Error codes use consistent prefix within the skill
 
 P10 (informational):
-  Side-effect skills with scripts/ but no hooks could benefit from guardrails.
+  HK-suggestion-info: Side-effect skills with scripts/ but no hooks.
 
 Usage:
     ./check-hooks.py <skill-directory>
@@ -42,7 +42,7 @@ from typing import Final
 
 from _skill_check_common import (
     EXIT_USAGE_ERROR,
-    CheckResult,
+    CheckRecord,
     emit_error,
     emit_record,
     emit_results,
@@ -271,25 +271,27 @@ PREFIX_RE: Final[Pattern[str]] = re.compile(r"\[([A-Z]+)\d{3}\]")
 
 def _check_events(
     hooks: dict[str, list[dict[str, object]]],
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-EVENTS: all event names must be valid."""
     invalid = sorted(set(hooks.keys()) - VALID_EVENTS)
     if invalid:
-        return [CheckResult(
-            check="HK-EVENTS",
+        return [CheckRecord(
+            check="HK-events",
             passed=False,
             detail=f"Invalid event names: {', '.join(invalid)}",
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-EVENTS",
+    return [CheckRecord(
+        check="HK-events",
         passed=True,
         detail=f"All {len(hooks)} event names valid",
+        tier="I23",
     )]
 
 
 def _check_structure(
     hooks: dict[str, list[dict[str, object]]],
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-STRUCTURE: matcher-based events have matcher; Stop has none."""
     problems: list[str] = []
     for event, entries in hooks.items():
@@ -304,21 +306,23 @@ def _check_structure(
                         f"Stop entry {i + 1} has unexpected matcher",
                     )
     if problems:
-        return [CheckResult(
-            check="HK-STRUCTURE",
+        return [CheckRecord(
+            check="HK-structure",
             passed=False,
             detail="; ".join(problems),
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-STRUCTURE",
+    return [CheckRecord(
+        check="HK-structure",
         passed=True,
         detail="All entries have correct matcher structure",
+        tier="I23",
     )]
 
 
 def _check_type(
     hooks: dict[str, list[dict[str, object]]],
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-TYPE: every hook entry has type: command with non-empty command."""
     problems: list[str] = []
     total_hooks = 0
@@ -334,22 +338,24 @@ def _check_type(
                 if not hook.get("command"):  # type: ignore[union-attr]
                     problems.append(f"{event}: empty or missing command field")
     if problems:
-        return [CheckResult(
-            check="HK-TYPE",
+        return [CheckRecord(
+            check="HK-type",
             passed=False,
             detail="; ".join(problems),
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-TYPE",
+    return [CheckRecord(
+        check="HK-type",
         passed=True,
         detail=f"All {total_hooks} hook entries have type: command",
+        tier="I23",
     )]
 
 
 def _check_resolve(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-RESOLVE: all command paths resolve to existing files."""
     missing: list[str] = []
     checked = 0
@@ -366,23 +372,24 @@ def _check_resolve(
             label = f"{event}/{matcher}" if matcher else event
             missing.append(f"{label} -> {resolved}")
     if missing:
-        return [CheckResult(
-            check="HK-RESOLVE",
+        return [CheckRecord(
+            check="HK-resolve",
             passed=False,
             detail=f"Missing scripts: {'; '.join(missing)}",
+            tier="I23",
         )]
     detail = f"All {checked} command paths resolve"
     if skipped:
         detail += (
             f" ({skipped} $CLAUDE_PROJECT_DIR paths skipped - runtime only)"
         )
-    return [CheckResult(check="HK-RESOLVE", passed=True, detail=detail)]
+    return [CheckRecord(check="HK-resolve", passed=True, detail=detail, tier="I23")]
 
 
 def _check_exec(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-EXEC: all resolved hook scripts are executable."""
     not_exec: list[str] = []
     seen: set[Path] = set()
@@ -396,21 +403,23 @@ def _check_exec(
         if resolved.is_file() and not access(resolved, X_OK):
             not_exec.append(resolved.name)
     if not_exec:
-        return [CheckResult(
-            check="HK-EXEC",
+        return [CheckRecord(
+            check="HK-exec",
             passed=False,
             detail=f"Not executable: {', '.join(not_exec)}",
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-EXEC",
+    return [CheckRecord(
+        check="HK-exec",
         passed=True,
         detail=f"All {len(seen)} unique scripts are executable",
+        tier="I23",
     )]
 
 
 def _check_duplicate(
     hooks: dict[str, list[dict[str, object]]],
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-DUPLICATE: no duplicate event+matcher combinations."""
     seen: set[tuple[str, str]] = set()
     dupes: list[str] = []
@@ -423,22 +432,24 @@ def _check_duplicate(
                 dupes.append(label)
             seen.add(key)
     if dupes:
-        return [CheckResult(
-            check="HK-DUPLICATE",
+        return [CheckRecord(
+            check="HK-duplicate",
             passed=False,
             detail=f"Duplicate event+matcher: {', '.join(dupes)}",
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-DUPLICATE",
+    return [CheckRecord(
+        check="HK-duplicate",
         passed=True,
         detail="No duplicate event+matcher pairs",
+        tier="I23",
     )]
 
 
 def _check_stdin(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-STDIN: hook scripts parse stdin JSON."""
     all_scripts = _scripts_for_events(hooks, VALID_EVENTS, skill_dir)
     missing: list[str] = []
@@ -458,30 +469,33 @@ def _check_stdin(
         if not found:
             missing.append(path.name)
     if missing:
-        return [CheckResult(
-            check="HK-STDIN",
+        return [CheckRecord(
+            check="HK-stdin",
             passed=False,
             detail=f"Scripts not parsing stdin: {', '.join(missing)}",
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-STDIN",
+    return [CheckRecord(
+        check="HK-stdin",
         passed=True,
         detail=f"All {len(all_scripts)} scripts parse stdin JSON",
+        tier="I23",
     )]
 
 
 def _check_loop(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-LOOP: Stop/SubagentStop scripts check stop_hook_active."""
     stop_events = frozenset({"Stop", "SubagentStop"})
     scripts = _scripts_for_events(hooks, stop_events, skill_dir)
     if not scripts:
-        return [CheckResult(
-            check="HK-LOOP",
+        return [CheckRecord(
+            check="HK-loop",
             passed=True,
             detail="No Stop/SubagentStop hooks to check",
+            tier="I23",
         )]
     missing: list[str] = []
     for path in scripts:
@@ -489,22 +503,24 @@ def _check_loop(
         if "stop_hook_active" not in content:
             missing.append(path.name)
     if missing:
-        return [CheckResult(
-            check="HK-LOOP",
+        return [CheckRecord(
+            check="HK-loop",
             passed=False,
             detail=f"Missing stop_hook_active guard: {', '.join(missing)}",
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-LOOP",
+    return [CheckRecord(
+        check="HK-loop",
         passed=True,
         detail=f"All {len(scripts)} Stop/SubagentStop scripts have loop guard",
+        tier="I23",
     )]
 
 
 def _check_exit(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-EXIT: PreToolUse scripts never use exit 2."""
     scripts = _scripts_for_events(
         hooks,
@@ -512,10 +528,11 @@ def _check_exit(
         skill_dir,
     )
     if not scripts:
-        return [CheckResult(
-            check="HK-EXIT",
+        return [CheckRecord(
+            check="HK-exit",
             passed=True,
             detail="No PreToolUse hooks to check",
+            tier="I23",
         )]
     problems: list[str] = []
     for path in scripts:
@@ -527,31 +544,34 @@ def _check_exit(
                 problems.append(path.name)
                 break
     if problems:
-        return [CheckResult(
-            check="HK-EXIT",
+        return [CheckRecord(
+            check="HK-exit",
             passed=False,
             detail="PreToolUse scripts using exit 2 (loses JSON output): "
             + ", ".join(problems),
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-EXIT",
+    return [CheckRecord(
+        check="HK-exit",
         passed=True,
         detail="No PreToolUse scripts use exit 2",
+        tier="I23",
     )]
 
 
 def _check_perm(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-PERM: PostToolUse/PostToolUseFailure don't output permissionDecision."""
     post_events = frozenset({"PostToolUse", "PostToolUseFailure"})
     scripts = _scripts_for_events(hooks, post_events, skill_dir)
     if not scripts:
-        return [CheckResult(
-            check="HK-PERM",
+        return [CheckRecord(
+            check="HK-perm",
             passed=True,
             detail="No PostToolUse/PostToolUseFailure hooks to check",
+            tier="I23",
         )]
     problems: list[str] = []
     for path in scripts:
@@ -564,23 +584,25 @@ def _check_perm(
                     problems.append(path.name)
                     break
     if problems:
-        return [CheckResult(
-            check="HK-PERM",
+        return [CheckRecord(
+            check="HK-perm",
             passed=False,
             detail="Post hooks outputting permissionDecision "
             "(not supported): " + ", ".join(problems),
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-PERM",
+    return [CheckRecord(
+        check="HK-perm",
         passed=True,
         detail="No post hooks use permissionDecision",
+        tier="I23",
     )]
 
 
 def _check_prefix(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """HK-PREFIX: error codes use consistent prefix within the skill."""
     all_scripts = _scripts_for_events(hooks, VALID_EVENTS, skill_dir)
     prefixes: set[str] = set()
@@ -589,21 +611,24 @@ def _check_prefix(
         for m in PREFIX_RE.finditer(content):
             prefixes.add(m.group(1))
     if not prefixes:
-        return [CheckResult(
-            check="HK-PREFIX",
+        return [CheckRecord(
+            check="HK-prefix",
             passed=True,
             detail="No error codes found (OK)",
+            tier="I23",
         )]
     if len(prefixes) == 1:
-        return [CheckResult(
-            check="HK-PREFIX",
+        return [CheckRecord(
+            check="HK-prefix",
             passed=True,
             detail=f"Consistent error prefix: {prefixes.pop()}",
+            tier="I23",
         )]
-    return [CheckResult(
-        check="HK-PREFIX",
+    return [CheckRecord(
+        check="HK-prefix",
         passed=False,
         detail=f"Multiple error prefixes: {', '.join(sorted(prefixes))}",
+        tier="I23",
     )]
 
 
@@ -615,16 +640,17 @@ def _check_prefix(
 def _check_p10(
     frontmatter: dict[str, str],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """P10: side-effect skills without hooks could benefit from guardrails."""
     dmi = frontmatter.get("disable-model-invocation", "")
     scripts_dir = skill_dir / "scripts"
     if dmi == "true" and scripts_dir.is_dir():
-        return [CheckResult(
-            check="hooks-suggestion-info",
+        return [CheckRecord(
+            check="HK-suggestion-info",
             passed=True,
-            detail="INFO: Side-effect skill with scripts/ but no hooks. "
-            "Consider adding skill-scoped hooks for guardrails.",
+            detail="INFO: Side-effect skill with scripts/ but no hooks - "
+            "consider adding skill-scoped hooks for guardrails",
+            tier="P10",
         )]
     return []
 
@@ -637,9 +663,9 @@ def _check_p10(
 def run_checks(
     hooks: dict[str, list[dict[str, object]]],
     skill_dir: Path,
-) -> list[CheckResult]:
+) -> list[CheckRecord]:
     """Run all hook validation checks and return results."""
-    results: list[CheckResult] = []
+    results: list[CheckRecord] = []
     results.extend(_check_events(hooks))
     results.extend(_check_structure(hooks))
     results.extend(_check_type(hooks))
