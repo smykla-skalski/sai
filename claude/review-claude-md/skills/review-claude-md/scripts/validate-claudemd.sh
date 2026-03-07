@@ -62,7 +62,7 @@ if [[ -f "$README_MD" ]]; then
     fi
   done <<< "$CLAUDE_LINES"
 
-  if [[ "$SHARED" -ge 3 ]]; then
+  if [[ "$SHARED" -ge 3 ]]; then  # 3/5 shared lines = likely copy-paste from README
     echo "{\"check\": \"readme-duplication\", \"pass\": false, \"detail\": \"${SHARED}/5 leading lines overlap with README.md — likely duplication\"}"
   else
     echo "{\"check\": \"readme-duplication\", \"pass\": true, \"detail\": \"${SHARED}/5 leading lines shared with README.md\"}"
@@ -110,7 +110,7 @@ while IFS= read -r line; do
       BLOCK_START=$LINE_NUM
     else
       IN_BLOCK=0
-      if [[ "$BLOCK_LINES" -gt 10 ]]; then
+      if [[ "$BLOCK_LINES" -gt 10 ]]; then  # >10 lines = should be a file:line ref instead
         echo "{\"check\": \"long-code-blocks\", \"pass\": false, \"detail\": \"Code block starting at line ${BLOCK_START} is ${BLOCK_LINES} lines (>10)\"}"
         LONG_BLOCKS=$((LONG_BLOCKS + 1))
       fi
@@ -136,6 +136,7 @@ while IFS= read -r line; do
     else
       BVP_IN_BLOCK=0
     fi
+    # 3+ consecutive plain lines = paragraph block (vs bullet list)
     if [[ "$CONSEC_PLAIN" -ge 3 ]]; then
       PARA_LINES=$((PARA_LINES + CONSEC_PLAIN))
     fi
@@ -174,7 +175,7 @@ if [[ "$TOTAL" -eq 0 ]]; then
   echo "{\"check\": \"bullets-vs-paragraphs\", \"pass\": true, \"detail\": \"No bullet or paragraph content detected\"}"
 else
   RATIO=$((BULLET_LINES * 100 / TOTAL))
-  if [[ "$RATIO" -gt 60 ]]; then
+  if [[ "$RATIO" -gt 60 ]]; then  # >60% bullets = good structure per Anthropic best practices
     echo "{\"check\": \"bullets-vs-paragraphs\", \"pass\": true, \"detail\": \"Bullet ratio ${RATIO}% (${BULLET_LINES} bullet lines, ${PARA_LINES} paragraph lines)\"}"
   else
     echo "{\"check\": \"bullets-vs-paragraphs\", \"pass\": false, \"detail\": \"Bullet ratio ${RATIO}% (${BULLET_LINES} bullet lines, ${PARA_LINES} paragraph lines) — prefer >60%\"}"
