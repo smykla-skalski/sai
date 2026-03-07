@@ -25,9 +25,7 @@ Exit codes: 0 = all pass, 1 = any fail, 2 = usage error.
 
 from __future__ import annotations
 
-import argparse
 import re
-from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -35,14 +33,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
-    FENCE_RE,
     CheckResult,
     SkillDocument,
-    SkillLoadError,
-    emit_error,
-    emit_results,
-    load_skill_document,
+    build_fenced_line_indices,
+    run_check_cli,
 )
 
 # ---------------------------------------------------------------------------
@@ -74,20 +68,6 @@ def _extract_flags(text: str) -> set[str]:
 # ---------------------------------------------------------------------------
 # Section detection
 # ---------------------------------------------------------------------------
-
-
-def _build_fence_set(lines: list[str]) -> set[int]:
-    """Return set of line indices that are inside fenced code blocks."""
-    fenced: set[int] = set()
-    in_fence = False
-    for i, line in enumerate(lines):
-        if FENCE_RE.match(line):
-            fenced.add(i)
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            fenced.add(i)
-    return fenced
 
 
 def _find_section(
@@ -330,7 +310,7 @@ def run_checks(
 ) -> list[CheckResult]:
     """Run flag coverage checks and return results in stable order."""
     body_lines = document.body.splitlines()
-    fenced = _build_fence_set(body_lines)
+    fenced = build_fenced_line_indices(body_lines)
 
     hint_raw = document.field("argument-hint")
     hint_flags = _extract_flags(hint_raw)
@@ -367,39 +347,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the command-line argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Verify flag documentation consistency in SKILL.md",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to the skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help="Run only the specified check (repeatable)",
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entry point and return a process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    return emit_results(run_checks(document, selected_checks))
+    return run_check_cli(
+        "Verify flag documentation consistency in SKILL.md",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":

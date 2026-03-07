@@ -15,10 +15,9 @@ Exit codes:
 
 from __future__ import annotations
 
-import argparse
 import re
 import stat
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -26,16 +25,13 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
     CheckResult,
     ProseLine,
     SkillDocument,
-    SkillLoadError,
-    emit_error,
-    emit_results,
     extract_prose_lines,
     format_hit,
-    load_skill_document,
+    iter_fence_lines,
+    run_check_cli,
 )
 
 # ---------------------------------------------------------------------------
@@ -62,10 +58,6 @@ SCRIPT_PATH_RE: Final[Pattern[str]] = re.compile(
 HEADING_LINE_RE: Final[Pattern[str]] = re.compile(r"^\s*#{1,6}\s")
 BASH_INVOCATION_PREFIX_RE: Final[Pattern[str]] = re.compile(
     r"^\s*(?:command\s+)?(?:(?:/usr/bin/|/bin/)?env\s+)?bash\b",
-)
-
-FENCE_START_RE: Final[Pattern[str]] = re.compile(
-    r"^\s*```\s*(?P<language>[a-zA-Z0-9_-]+)?.*$",
 )
 
 LIST_PREFIX_RE: Final[Pattern[str]] = re.compile(r"^\s*(?:[-*+]\s+|\d+\.\s+)")
@@ -128,33 +120,12 @@ def _line_hit(document: SkillDocument, line: ProseLine) -> str:
     )
 
 
-def _iter_command_fence_lines(body: str) -> Iterator[ProseLine]:
-    """Yield lines inside command-like fenced code blocks."""
-    in_fence = False
-    in_command_fence = False
-
-    for index, line in enumerate(body.splitlines()):
-        fence_match = FENCE_START_RE.match(line)
-        if fence_match is not None:
-            if not in_fence:
-                in_fence = True
-                language = (fence_match.group("language") or "").lower()
-                in_command_fence = language in COMMAND_FENCE_LANGUAGES
-            else:
-                in_fence = False
-                in_command_fence = False
-            continue
-
-        if in_fence and in_command_fence:
-            yield ProseLine(index=index, text=line)
-
-
 def _iter_command_fence_commands(body: str) -> Iterator[ProseLine]:
     """Yield logical command lines merged across trailing backslashes."""
     pending_text = ""
     pending_index: int | None = None
 
-    for line in _iter_command_fence_lines(body):
+    for line in iter_fence_lines(body, COMMAND_FENCE_LANGUAGES):
         stripped = line.text.strip()
 
         if not stripped or stripped.startswith("#"):
@@ -466,42 +437,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build and return command-line parser."""
-    parser = argparse.ArgumentParser(
-        description="Validate scripts directory invocation and executability checks.",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help=(
-            "Run only specified check (repeatable): "
-            "script-invocation-prefix, no-bash-prefix, script-executable"
-        ),
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run CLI entry point and return process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    return emit_results(run_checks(document, selected_checks))
+    return run_check_cli(
+        "Validate scripts directory invocation and executability checks.",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":

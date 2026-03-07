@@ -22,9 +22,7 @@ Exit codes:
 
 from __future__ import annotations
 
-import argparse
 import re
-from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -32,16 +30,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
     CheckResult,
     SkillDocument,
-    SkillLoadError,
     compile_patterns,
-    emit_error,
-    emit_results,
-    load_skill_document,
     matches_any,
     parse_allowed_tools,
+    run_check_cli,
 )
 
 # ---------------------------------------------------------------------------
@@ -308,39 +302,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the command-line argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Validate skill configuration and tool-usage checks.",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to the skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help="Run only the specified check (repeatable)",
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entry point and return a process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    return emit_results(run_checks(document, selected_checks))
+    return run_check_cli(
+        "Validate skill configuration and tool-usage checks.",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":

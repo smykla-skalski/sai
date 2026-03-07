@@ -21,24 +21,21 @@ Exit codes:
 
 from __future__ import annotations
 
-import argparse
 import re
 from dataclasses import dataclass
-from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
     CheckResult,
     ProseLine,
     SkillDocument,
-    SkillLoadError,
-    emit_error,
-    emit_results,
     extract_prose_lines,
     find_bundled_indices,
-    load_skill_document,
+    run_check_cli,
 )
 
 # ---------------------------------------------------------------------------
@@ -668,12 +665,12 @@ def _check_flow(
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> tuple[list[CheckResult], int]:
-    """Build inventory, run checks, return results and ref count."""
+) -> tuple[list[CheckResult], dict[str, object]]:
+    """Build inventory, run checks, return results and extra summary."""
     inventory = _build_inventory(document)
 
     if inventory.count == 0:
-        return [], 0
+        return [], {"refs": 0}
 
     prose_lines = extract_prose_lines(document.body)
     bundled_indices = find_bundled_indices(prose_lines)
@@ -722,7 +719,7 @@ def run_checks(
         if not selected or check_id in selected
     ]
 
-    return results, inventory.count
+    return results, {"refs": inventory.count}
 
 
 # ---------------------------------------------------------------------------
@@ -730,40 +727,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build the command-line argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Validate reference file read gates in a skill SKILL.md",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to the skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help="Run only the specified check (repeatable)",
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entrypoint and return process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    results, ref_count = run_checks(document, selected_checks)
-    return emit_results(results, extra_summary={"refs": ref_count})
+    return run_check_cli(
+        "Validate reference file read gates in a skill SKILL.md",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":
