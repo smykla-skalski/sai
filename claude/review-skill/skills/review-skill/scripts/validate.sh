@@ -111,36 +111,6 @@ delegate_script_args() {
   reemit_delegate_output "$output"
 }
 
-# Re-emit one check from check-config.py while preserving current output order.
-CONFIG_SCRIPT="${SCRIPT_DIR}/check-config.py"
-CONFIG_OUTPUT=""
-CONFIG_OUTPUT_LOADED=0
-
-load_config_output() {
-  [[ "$CONFIG_OUTPUT_LOADED" -eq 1 ]] && return 0
-  CONFIG_OUTPUT_LOADED=1
-  [[ -x "$CONFIG_SCRIPT" ]] || return 0
-  CONFIG_OUTPUT=$("$CONFIG_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
-}
-
-delegate_config_check() {
-  local wanted_check="$1"
-  load_config_output
-  [[ -n "$CONFIG_OUTPUT" ]] || return 0
-
-  local line chk pss dtl
-  while IFS= read -r line; do
-    [[ "$line" == *'"summary"'* ]] && continue
-    chk=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
-    [[ "$chk" == "$wanted_check" ]] || continue
-    pss=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
-    dtl=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
-    [[ -z "$chk" ]] && continue
-    emit "$chk" "$pss" "$dtl"
-    return 0
-  done <<< "$CONFIG_OUTPUT"
-}
-
 # ========================
 # FRONTMATTER CHECKS
 # ========================
@@ -251,6 +221,9 @@ run_structure() {
   local CONTENT_SCRIPT
   CONTENT_SCRIPT="${SCRIPT_DIR}/check-content.py"
 
+  local CONFIG_SCRIPT
+  CONFIG_SCRIPT="${SCRIPT_DIR}/check-config.py"
+
   # Function calls in exact current emission order
   check_body_line_count
   delegate_script_args "$FILE_REFS_SCRIPT" --check file-ref-resolves
@@ -265,7 +238,7 @@ run_structure() {
   delegate_script_args "$FILE_REFS_SCRIPT" --check no-disallowed-files
   delegate_script_args "$FILE_REFS_SCRIPT" --check refs-one-level
   check_long_ref_toc
-  delegate_config_check "persistent-state-xdg"
+  delegate_script_args "$CONFIG_SCRIPT" --check persistent-state-xdg
   delegate_script_args "$CONTENT_SCRIPT" --check no-grading-style
   delegate_script_args "$FILE_REFS_SCRIPT" --check skill-md-mentions-file
   delegate_script_args "$FILE_REFS_SCRIPT" --check ref-link-format
@@ -273,8 +246,8 @@ run_structure() {
   # Existing companion scripts (delegation)
   delegate_script "${SCRIPT_DIR}/check-read-gates.sh" "refs"
 
-  delegate_config_check "allowed-tools-usage"
-  delegate_config_check "side-effect-guard"
+  delegate_script_args "$CONFIG_SCRIPT" --check allowed-tools-usage
+  delegate_script_args "$CONFIG_SCRIPT" --check side-effect-guard
 
   delegate_script "${SCRIPT_DIR}/check-preprocessing.sh" "directives"
 

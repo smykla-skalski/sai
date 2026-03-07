@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import re
+from collections.abc import Callable
 from pathlib import Path
 from re import Pattern
 from typing import Final
@@ -48,6 +49,12 @@ from skill_check_common import (
 PERSISTENT_STATE_CHECK: Final[str] = "persistent-state-xdg"
 ALLOWED_TOOLS_CHECK: Final[str] = "allowed-tools-usage"
 SIDE_EFFECT_CHECK: Final[str] = "side-effect-guard"
+
+CHECK_ORDER: Final[tuple[str, ...]] = (
+    PERSISTENT_STATE_CHECK,
+    ALLOWED_TOOLS_CHECK,
+    SIDE_EFFECT_CHECK,
+)
 
 # ---------------------------------------------------------------------------
 # Pattern constants
@@ -139,7 +146,6 @@ SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
 # ---------------------------------------------------------------------------
 
 
-@functools.lru_cache(maxsize=32)
 def _get_tool_reference_pattern(tool_name: str) -> Pattern[str]:
     """Compile and cache the regex pattern for a specific tool."""
     return re.compile(rf"(?<![\w-]){re.escape(tool_name)}(?![\w-])")
@@ -310,6 +316,13 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Path to the skill directory containing SKILL.md",
     )
+    parser.add_argument(
+        "--check",
+        action="append",
+        choices=CHECK_ORDER,
+        dest="checks",
+        help="Run only the specified check (repeatable)",
+    )
     return parser
 
 
@@ -324,7 +337,8 @@ def main(argv: list[str] | None = None) -> int:
         emit_error(f"Error: {error}")
         return EXIT_USAGE_ERROR
 
-    return emit_results(run_checks(document))
+    selected_checks = tuple(args.checks or ())
+    return emit_results(run_checks(document, selected_checks))
 
 
 if __name__ == "__main__":
