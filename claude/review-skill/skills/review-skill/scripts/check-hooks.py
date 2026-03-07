@@ -31,88 +31,49 @@ Summary (final line):
 Exit codes: 0 = all pass, 1 = any fail, 2 = usage error.
 """
 
-import json
-import os
+from __future__ import annotations
+
+import argparse
 import re
-import sys
+from os import X_OK, access
+from pathlib import Path
+from re import Pattern
+from typing import Final
 
-
-# ---------------------------------------------------------------------------
-# Shared infrastructure (mirrors check-flag-coverage.py)
-# ---------------------------------------------------------------------------
-
-def find_skill_md(skill_dir: str) -> str:
-    """Find SKILL.md in the given directory."""
-    path = os.path.join(skill_dir, "SKILL.md")
-    if os.path.isfile(path):
-        return path
-    return ""
-
-
-def read_file(path: str) -> str:
-    """Read file contents, return empty string on failure."""
-    try:
-        with open(path, encoding="utf-8") as fh:
-            return fh.read()
-    except OSError:
-        return ""
-
-
-def emit(check: str, passed: bool, detail: str) -> dict:
-    """Build a check result dict."""
-    return {"check": check, "pass": passed, "detail": detail}
-
-
-def emit_json(obj: dict) -> None:
-    """Print a JSON object as a single line."""
-    print(json.dumps(obj, ensure_ascii=False))
-
+from skill_check_common import (
+    EXIT_USAGE_ERROR,
+    CheckResult,
+    emit_error,
+    emit_record,
+    emit_results,
+    parse_frontmatter_lines,
+    split_frontmatter,
+)
 
 # ---------------------------------------------------------------------------
-# Frontmatter extraction
+# Constants
 # ---------------------------------------------------------------------------
 
-def extract_frontmatter_lines(content: str) -> list:
-    """Return raw lines between --- delimiters."""
-    lines = content.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return []
-    fm_lines = []
-    for line in lines[1:]:
-        if line.strip() == "---":
-            break
-        fm_lines.append(line)
-    else:
-        return []
-    return fm_lines
+VALID_EVENTS: Final[frozenset[str]] = frozenset({
+    "PreToolUse",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "SubagentStart",
+    "SubagentStop",
+    "Stop",
+})
 
-
-def get_field_value(fm_lines: list, field: str) -> str:
-    """Get a simple scalar field from frontmatter lines."""
-    for line in fm_lines:
-        m = re.match(r"^" + re.escape(field) + r":\s*(.*)", line)
-        if m:
-            val = m.group(1).strip()
-            if len(val) >= 2 and val[0] in ('"', "'") and val[-1] == val[0]:
-                val = val[1:-1]
-            return val
-    return ""
+MATCHER_EVENTS: Final[frozenset[str]] = VALID_EVENTS - frozenset({"Stop"})
 
 
 # ---------------------------------------------------------------------------
 # Hooks YAML parser (custom state machine for nested hooks structure)
 # ---------------------------------------------------------------------------
 
-VALID_EVENTS = {
-    "PreToolUse", "PostToolUse", "PostToolUseFailure",
-    "SubagentStart", "SubagentStop", "Stop",
-}
 
-# Events that require a matcher field
-MATCHER_EVENTS = VALID_EVENTS - {"Stop"}
-
-
-def parse_hooks(fm_lines: list) -> dict:
+def parse_hooks(  # noqa: C901, PLR0912, PLR0915
+    fm_lines: list[str],
+) -> dict[str, list[dict[str, object]]]:
     """Parse hooks: block from frontmatter into dict[event] -> list[entry].
 
     Each entry is a dict with optional 'matcher' and a list of 'hooks',
@@ -120,8 +81,7 @@ def parse_hooks(fm_lines: list) -> dict:
 
     Returns empty dict if no hooks: block found.
     """
-    # Find hooks: line at indent 0
-    hooks_start = None
+    hooks_start: int | None = None
     for i, line in enumerate(fm_lines):
         if re.match(r"^hooks:\s*$", line):
             hooks_start = i
@@ -130,20 +90,17 @@ def parse_hooks(fm_lines: list) -> dict:
     if hooks_start is None:
         return {}
 
-    # Collect indented lines after hooks:
-    hooks_lines = []
+    hooks_lines: list[str] = []
     for line in fm_lines[hooks_start + 1:]:
-        # Stop at next top-level key or end
         if line and not line[0].isspace():
             break
         hooks_lines.append(line)
 
-    # Parse with state machine
-    result = {}
-    current_event = None
-    current_entry = None
-    current_hooks_list = None
-    current_hook = None
+    result: dict[str, list[dict[str, object]]] = {}
+    current_event: str | None = None
+    current_entry: dict[str, object] | None = None
+    current_hooks_list: list[dict[str, str]] | None = None
+    current_hook: dict[str, str] | None = None
 
     for line in hooks_lines:
         stripped = line.rstrip()
@@ -152,8 +109,7 @@ def parse_hooks(fm_lines: list) -> dict:
 
         indent = len(stripped) - len(stripped.lstrip())
 
-        # 2-space indent: event name (e.g., "  PreToolUse:")
-        if indent == 2 and stripped.strip().endswith(":"):
+        if indent == 2 and stripped.strip().endswith(":"):  # noqa: PLR2004
             event_name = stripped.strip()[:-1]
             current_event = event_name
             if current_event not in result:
@@ -163,8 +119,7 @@ def parse_hooks(fm_lines: list) -> dict:
             current_hook = None
             continue
 
-        # 4-space indent: list item (- matcher: "X" or - hooks:)
-        if indent == 4 and stripped.strip().startswith("- "):
+        if indent == 4 and stripped.strip().startswith("- "):  # noqa: PLR2004
             item_content = stripped.strip()[2:]
             current_entry = {}
             current_hooks_list = None
@@ -175,18 +130,17 @@ def parse_hooks(fm_lines: list) -> dict:
                 current_entry["matcher"] = m.group(1).strip()
             elif item_content.strip() == "hooks:":
                 current_entry["hooks"] = []
-                current_hooks_list = current_entry["hooks"]
+                current_hooks_list = current_entry["hooks"]  # type: ignore[assignment]
 
             if current_event is not None:
                 result[current_event].append(current_entry)
             continue
 
-        # 6-space indent: nested key under list item
-        if indent == 6 and current_entry is not None:
+        if indent == 6 and current_entry is not None:  # noqa: PLR2004
             key_content = stripped.strip()
             if key_content == "hooks:":
                 current_entry["hooks"] = []
-                current_hooks_list = current_entry["hooks"]
+                current_hooks_list = current_entry["hooks"]  # type: ignore[assignment]
                 current_hook = None
             elif key_content.startswith("matcher:"):
                 m = re.match(r'matcher:\s*"?([^"]*)"?', key_content)
@@ -194,8 +148,7 @@ def parse_hooks(fm_lines: list) -> dict:
                     current_entry["matcher"] = m.group(1).strip()
             continue
 
-        # 8-space indent: hook list item (- type: "command")
-        if indent == 8 and stripped.strip().startswith("- "):
+        if indent == 8 and stripped.strip().startswith("- "):  # noqa: PLR2004
             if current_hooks_list is not None:
                 item_content = stripped.strip()[2:]
                 current_hook = {}
@@ -205,8 +158,7 @@ def parse_hooks(fm_lines: list) -> dict:
                 current_hooks_list.append(current_hook)
             continue
 
-        # 10-space indent: hook fields (command:, type:)
-        if indent == 10 and current_hook is not None:
+        if indent == 10 and current_hook is not None:  # noqa: PLR2004
             key_content = stripped.strip()
             m = re.match(r'command:\s*"?([^"]*)"?', key_content)
             if m:
@@ -221,58 +173,8 @@ def parse_hooks(fm_lines: list) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Sub-check implementations
+# Hook resolution helpers
 # ---------------------------------------------------------------------------
-
-def check_events(hooks: dict) -> list:
-    """HK-EVENTS: all event names must be valid."""
-    invalid = sorted(set(hooks.keys()) - VALID_EVENTS)
-    if invalid:
-        return [emit("HK-EVENTS", False,
-                      "Invalid event names: " + ", ".join(invalid))]
-    return [emit("HK-EVENTS", True,
-                  "All %d event names valid" % len(hooks))]
-
-
-def check_structure(hooks: dict) -> list:
-    """HK-STRUCTURE: matcher-based events have matcher; Stop has none."""
-    problems = []
-    for event, entries in hooks.items():
-        if event in MATCHER_EVENTS:
-            for i, entry in enumerate(entries):
-                if "matcher" not in entry or not entry["matcher"]:
-                    problems.append(
-                        "%s entry %d missing matcher" % (event, i + 1))
-        elif event == "Stop":
-            for i, entry in enumerate(entries):
-                if "matcher" in entry and entry["matcher"]:
-                    problems.append(
-                        "Stop entry %d has unexpected matcher" % (i + 1))
-    if problems:
-        return [emit("HK-STRUCTURE", False, "; ".join(problems))]
-    return [emit("HK-STRUCTURE", True,
-                  "All entries have correct matcher structure")]
-
-
-def check_type(hooks: dict) -> list:
-    """HK-TYPE: every hook entry has type: command with non-empty command."""
-    problems = []
-    total_hooks = 0
-    for event, entries in hooks.items():
-        for entry in entries:
-            for hook in entry.get("hooks", []):
-                total_hooks += 1
-                if hook.get("type") != "command":
-                    problems.append(
-                        "%s: type is '%s', expected 'command'" %
-                        (event, hook.get("type", "(missing)")))
-                if not hook.get("command"):
-                    problems.append(
-                        "%s: empty or missing command field" % event)
-    if problems:
-        return [emit("HK-TYPE", False, "; ".join(problems))]
-    return [emit("HK-TYPE", True,
-                  "All %d hook entries have type: command" % total_hooks)]
 
 
 def uses_project_dir(command: str) -> bool:
@@ -280,7 +182,7 @@ def uses_project_dir(command: str) -> bool:
     return "$CLAUDE_PROJECT_DIR" in command
 
 
-def resolve_command_path(command: str, skill_dir: str) -> str:
+def resolve_command_path(command: str, skill_dir: Path) -> Path:
     """Replace ${CLAUDE_SKILL_DIR} and return resolved path.
 
     Only handles ${CLAUDE_SKILL_DIR} (body substitution that also works
@@ -291,26 +193,165 @@ def resolve_command_path(command: str, skill_dir: str) -> str:
     is installed (see #17688 workaround). Use uses_project_dir() to
     detect and skip these paths in checks that need file existence.
     """
-    resolved = command.replace("${CLAUDE_SKILL_DIR}", skill_dir)
-    resolved = resolved.replace("$CLAUDE_SKILL_DIR", skill_dir)
-    return resolved
+    dir_str = str(skill_dir)
+    resolved = command.replace("${CLAUDE_SKILL_DIR}", dir_str)
+    resolved = resolved.replace("$CLAUDE_SKILL_DIR", dir_str)
+    return Path(resolved)
 
 
-def collect_hook_entries(hooks: dict) -> list:
+def collect_hook_entries(
+    hooks: dict[str, list[dict[str, object]]],
+) -> list[tuple[str, str, str]]:
     """Return list of (event, matcher, command) tuples."""
-    entries = []
+    entries: list[tuple[str, str, str]] = []
     for event, event_entries in hooks.items():
         for entry in event_entries:
-            matcher = entry.get("matcher", "")
-            for hook in entry.get("hooks", []):
-                cmd = hook.get("command", "")
-                entries.append((event, matcher, cmd))
+            matcher = entry.get("matcher", "") or ""  # type: ignore[assignment]
+            for hook in entry.get("hooks", []):  # type: ignore[union-attr]
+                cmd = hook.get("command", "") or ""  # type: ignore[union-attr]
+                entries.append((event, str(matcher), str(cmd)))
     return entries
 
 
-def check_resolve(hooks: dict, skill_dir: str) -> list:
+def _scripts_for_events(
+    hooks: dict[str, list[dict[str, object]]],
+    events: frozenset[str],
+    skill_dir: Path,
+) -> list[Path]:
+    """Return unique resolved paths for scripts referenced by given events."""
+    paths: list[Path] = []
+    seen: set[Path] = set()
+    for event, _matcher, cmd in collect_hook_entries(hooks):
+        if event not in events or not cmd or uses_project_dir(cmd):
+            continue
+        resolved = resolve_command_path(cmd, skill_dir)
+        if resolved not in seen and resolved.is_file():
+            seen.add(resolved)
+            paths.append(resolved)
+    return paths
+
+
+def _read_text(path: Path) -> str:
+    """Read file contents, return empty string on failure."""
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+# ---------------------------------------------------------------------------
+# Pattern constants
+# ---------------------------------------------------------------------------
+
+STDIN_PATTERNS: Final[tuple[Pattern[str], ...]] = (
+    re.compile(r'input="\$\(cat\)"'),
+    re.compile(r"input='\$\(cat\)'"),
+    re.compile(r"\bcat\b.*\bjq\b"),
+    re.compile(r"\bjq\b.*<"),
+    re.compile(r"read\b.*stdin"),
+    re.compile(r"input=\$\(cat\)"),
+)
+
+STATIC_OUTPUT_RE: Final[Pattern[str]] = re.compile(r"\bjq\s+-nc\b")
+
+STDIN_FIELD_RE: Final[Pattern[str]] = re.compile(
+    r"\b(tool_input|tool_response|last_assistant_message"
+    r"|hook_event_name|session_id|stop_hook_active)\b",
+)
+
+EXIT2_RE: Final[Pattern[str]] = re.compile(r"^\s*exit\s+2\b")
+COMMENT_RE: Final[Pattern[str]] = re.compile(r"^\s*#")
+PREFIX_RE: Final[Pattern[str]] = re.compile(r"\[([A-Z]+)\d{3}\]")
+
+
+# ---------------------------------------------------------------------------
+# Check implementations
+# ---------------------------------------------------------------------------
+
+
+def _check_events(
+    hooks: dict[str, list[dict[str, object]]],
+) -> list[CheckResult]:
+    """HK-EVENTS: all event names must be valid."""
+    invalid = sorted(set(hooks.keys()) - VALID_EVENTS)
+    if invalid:
+        return [CheckResult(
+            check="HK-EVENTS",
+            passed=False,
+            detail=f"Invalid event names: {', '.join(invalid)}",
+        )]
+    return [CheckResult(
+        check="HK-EVENTS",
+        passed=True,
+        detail=f"All {len(hooks)} event names valid",
+    )]
+
+
+def _check_structure(
+    hooks: dict[str, list[dict[str, object]]],
+) -> list[CheckResult]:
+    """HK-STRUCTURE: matcher-based events have matcher; Stop has none."""
+    problems: list[str] = []
+    for event, entries in hooks.items():
+        if event in MATCHER_EVENTS:
+            for i, entry in enumerate(entries):
+                if "matcher" not in entry or not entry["matcher"]:
+                    problems.append(f"{event} entry {i + 1} missing matcher")
+        elif event == "Stop":
+            for i, entry in enumerate(entries):
+                if entry.get("matcher"):
+                    problems.append(
+                        f"Stop entry {i + 1} has unexpected matcher",
+                    )
+    if problems:
+        return [CheckResult(
+            check="HK-STRUCTURE",
+            passed=False,
+            detail="; ".join(problems),
+        )]
+    return [CheckResult(
+        check="HK-STRUCTURE",
+        passed=True,
+        detail="All entries have correct matcher structure",
+    )]
+
+
+def _check_type(
+    hooks: dict[str, list[dict[str, object]]],
+) -> list[CheckResult]:
+    """HK-TYPE: every hook entry has type: command with non-empty command."""
+    problems: list[str] = []
+    total_hooks = 0
+    for event, entries in hooks.items():
+        for entry in entries:
+            for hook in entry.get("hooks", []):  # type: ignore[union-attr]
+                total_hooks += 1
+                hook_type = hook.get("type", "(missing)")  # type: ignore[union-attr]
+                if hook_type != "command":
+                    problems.append(
+                        f"{event}: type is '{hook_type}', expected 'command'",
+                    )
+                if not hook.get("command"):  # type: ignore[union-attr]
+                    problems.append(f"{event}: empty or missing command field")
+    if problems:
+        return [CheckResult(
+            check="HK-TYPE",
+            passed=False,
+            detail="; ".join(problems),
+        )]
+    return [CheckResult(
+        check="HK-TYPE",
+        passed=True,
+        detail=f"All {total_hooks} hook entries have type: command",
+    )]
+
+
+def _check_resolve(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-RESOLVE: all command paths resolve to existing files."""
-    missing = []
+    missing: list[str] = []
     checked = 0
     skipped = 0
     for event, matcher, cmd in collect_hook_entries(hooks):
@@ -321,284 +362,349 @@ def check_resolve(hooks: dict, skill_dir: str) -> list:
             continue
         resolved = resolve_command_path(cmd, skill_dir)
         checked += 1
-        if not os.path.isfile(resolved):
-            label = "%s/%s" % (event, matcher) if matcher else event
-            missing.append("%s -> %s" % (label, resolved))
+        if not resolved.is_file():
+            label = f"{event}/{matcher}" if matcher else event
+            missing.append(f"{label} -> {resolved}")
     if missing:
-        return [emit("HK-RESOLVE", False,
-                      "Missing scripts: " + "; ".join(missing))]
-    detail = "All %d command paths resolve" % checked
+        return [CheckResult(
+            check="HK-RESOLVE",
+            passed=False,
+            detail=f"Missing scripts: {'; '.join(missing)}",
+        )]
+    detail = f"All {checked} command paths resolve"
     if skipped:
-        detail += " (%d $CLAUDE_PROJECT_DIR paths skipped - runtime only)" % skipped
-    return [emit("HK-RESOLVE", True, detail)]
+        detail += (
+            f" ({skipped} $CLAUDE_PROJECT_DIR paths skipped - runtime only)"
+        )
+    return [CheckResult(check="HK-RESOLVE", passed=True, detail=detail)]
 
 
-def check_exec(hooks: dict, skill_dir: str) -> list:
+def _check_exec(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-EXEC: all resolved hook scripts are executable."""
-    not_exec = []
-    seen = set()
-    for event, matcher, cmd in collect_hook_entries(hooks):
+    not_exec: list[str] = []
+    seen: set[Path] = set()
+    for _event, _matcher, cmd in collect_hook_entries(hooks):
         if not cmd:
             continue
         resolved = resolve_command_path(cmd, skill_dir)
         if resolved in seen:
             continue
         seen.add(resolved)
-        if os.path.isfile(resolved) and not os.access(resolved, os.X_OK):
-            not_exec.append(os.path.basename(resolved))
+        if resolved.is_file() and not access(resolved, X_OK):
+            not_exec.append(resolved.name)
     if not_exec:
-        return [emit("HK-EXEC", False,
-                      "Not executable: " + ", ".join(not_exec))]
-    return [emit("HK-EXEC", True,
-                  "All %d unique scripts are executable" % len(seen))]
+        return [CheckResult(
+            check="HK-EXEC",
+            passed=False,
+            detail=f"Not executable: {', '.join(not_exec)}",
+        )]
+    return [CheckResult(
+        check="HK-EXEC",
+        passed=True,
+        detail=f"All {len(seen)} unique scripts are executable",
+    )]
 
 
-def check_duplicate(hooks: dict) -> list:
+def _check_duplicate(
+    hooks: dict[str, list[dict[str, object]]],
+) -> list[CheckResult]:
     """HK-DUPLICATE: no duplicate event+matcher combinations."""
-    seen = {}
-    dupes = []
+    seen: set[tuple[str, str]] = set()
+    dupes: list[str] = []
     for event, entries in hooks.items():
         for entry in entries:
-            matcher = entry.get("matcher", "")
+            matcher = str(entry.get("matcher", ""))
             key = (event, matcher)
             if key in seen:
-                label = "%s/%s" % (event, matcher) if matcher else event
+                label = f"{event}/{matcher}" if matcher else event
                 dupes.append(label)
-            seen[key] = True
+            seen.add(key)
     if dupes:
-        return [emit("HK-DUPLICATE", False,
-                      "Duplicate event+matcher: " + ", ".join(dupes))]
-    return [emit("HK-DUPLICATE", True, "No duplicate event+matcher pairs")]
+        return [CheckResult(
+            check="HK-DUPLICATE",
+            passed=False,
+            detail=f"Duplicate event+matcher: {', '.join(dupes)}",
+        )]
+    return [CheckResult(
+        check="HK-DUPLICATE",
+        passed=True,
+        detail="No duplicate event+matcher pairs",
+    )]
 
 
-def _scripts_for_events(hooks: dict, events: set,
-                        skill_dir: str) -> list:
-    """Return unique resolved paths for scripts referenced by given events."""
-    paths = []
-    seen = set()
-    for event, matcher, cmd in collect_hook_entries(hooks):
-        if event not in events or not cmd or uses_project_dir(cmd):
-            continue
-        resolved = resolve_command_path(cmd, skill_dir)
-        if resolved not in seen and os.path.isfile(resolved):
-            seen.add(resolved)
-            paths.append(resolved)
-    return paths
-
-
-STDIN_PATTERNS = [
-    re.compile(r'input="\$\(cat\)"'),
-    re.compile(r"input='\$\(cat\)'"),
-    re.compile(r"\bcat\b.*\bjq\b"),
-    re.compile(r"\bjq\b.*<"),
-    re.compile(r"read\b.*stdin"),
-    re.compile(r"input=\$\(cat\)"),
-]
-
-# Scripts that only output static JSON (jq -nc) without reading any stdin
-# fields don't need stdin parsing. This is common for SubagentStart hooks
-# that just inject context.
-STATIC_OUTPUT_RE = re.compile(r"\bjq\s+-nc\b")
-
-
-def check_stdin(hooks: dict, skill_dir: str) -> list:
+def _check_stdin(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-STDIN: hook scripts parse stdin JSON."""
     all_scripts = _scripts_for_events(hooks, VALID_EVENTS, skill_dir)
-    missing = []
+    missing: list[str] = []
     for path in all_scripts:
-        content = read_file(path)
+        content = _read_text(path)
         if not content:
             continue
-        found = False
-        for pat in STDIN_PATTERNS:
-            if pat.search(content):
-                found = True
-                break
+        found = any(pat.search(content) for pat in STDIN_PATTERNS)
         # Static-output scripts (jq -nc only, no stdin field references)
         # don't need stdin parsing
-        if not found and STATIC_OUTPUT_RE.search(content):
-            # Verify it doesn't reference stdin fields like tool_input,
-            # tool_response, last_assistant_message, etc.
-            if not re.search(
-                r"\b(tool_input|tool_response|last_assistant_message|"
-                r"hook_event_name|session_id|stop_hook_active)\b",
-                content
-            ):
-                found = True
+        if (
+            not found
+            and STATIC_OUTPUT_RE.search(content)
+            and not STDIN_FIELD_RE.search(content)
+        ):
+            found = True
         if not found:
-            missing.append(os.path.basename(path))
+            missing.append(path.name)
     if missing:
-        return [emit("HK-STDIN", False,
-                      "Scripts not parsing stdin: " + ", ".join(missing))]
-    return [emit("HK-STDIN", True,
-                  "All %d scripts parse stdin JSON" % len(all_scripts))]
+        return [CheckResult(
+            check="HK-STDIN",
+            passed=False,
+            detail=f"Scripts not parsing stdin: {', '.join(missing)}",
+        )]
+    return [CheckResult(
+        check="HK-STDIN",
+        passed=True,
+        detail=f"All {len(all_scripts)} scripts parse stdin JSON",
+    )]
 
 
-def check_loop(hooks: dict, skill_dir: str) -> list:
+def _check_loop(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-LOOP: Stop/SubagentStop scripts check stop_hook_active."""
-    stop_events = {"Stop", "SubagentStop"}
+    stop_events = frozenset({"Stop", "SubagentStop"})
     scripts = _scripts_for_events(hooks, stop_events, skill_dir)
     if not scripts:
-        return [emit("HK-LOOP", True,
-                      "No Stop/SubagentStop hooks to check")]
-    missing = []
+        return [CheckResult(
+            check="HK-LOOP",
+            passed=True,
+            detail="No Stop/SubagentStop hooks to check",
+        )]
+    missing: list[str] = []
     for path in scripts:
-        content = read_file(path)
+        content = _read_text(path)
         if "stop_hook_active" not in content:
-            missing.append(os.path.basename(path))
+            missing.append(path.name)
     if missing:
-        return [emit("HK-LOOP", False,
-                      "Missing stop_hook_active guard: " +
-                      ", ".join(missing))]
-    return [emit("HK-LOOP", True,
-                  "All %d Stop/SubagentStop scripts have loop guard" %
-                  len(scripts))]
+        return [CheckResult(
+            check="HK-LOOP",
+            passed=False,
+            detail=f"Missing stop_hook_active guard: {', '.join(missing)}",
+        )]
+    return [CheckResult(
+        check="HK-LOOP",
+        passed=True,
+        detail=f"All {len(scripts)} Stop/SubagentStop scripts have loop guard",
+    )]
 
 
-EXIT2_RE = re.compile(r"^\s*exit\s+2\b")
-COMMENT_RE = re.compile(r"^\s*#")
-
-
-def check_exit(hooks: dict, skill_dir: str) -> list:
+def _check_exit(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-EXIT: PreToolUse scripts never use exit 2."""
-    scripts = _scripts_for_events(hooks, {"PreToolUse"}, skill_dir)
+    scripts = _scripts_for_events(
+        hooks,
+        frozenset({"PreToolUse"}),
+        skill_dir,
+    )
     if not scripts:
-        return [emit("HK-EXIT", True, "No PreToolUse hooks to check")]
-    problems = []
+        return [CheckResult(
+            check="HK-EXIT",
+            passed=True,
+            detail="No PreToolUse hooks to check",
+        )]
+    problems: list[str] = []
     for path in scripts:
-        content = read_file(path)
+        content = _read_text(path)
         for line in content.splitlines():
             if COMMENT_RE.match(line):
                 continue
             if EXIT2_RE.match(line):
-                problems.append(os.path.basename(path))
+                problems.append(path.name)
                 break
     if problems:
-        return [emit("HK-EXIT", False,
-                      "PreToolUse scripts using exit 2 (loses JSON output): "
-                      + ", ".join(problems))]
-    return [emit("HK-EXIT", True,
-                  "No PreToolUse scripts use exit 2")]
+        return [CheckResult(
+            check="HK-EXIT",
+            passed=False,
+            detail="PreToolUse scripts using exit 2 (loses JSON output): "
+            + ", ".join(problems),
+        )]
+    return [CheckResult(
+        check="HK-EXIT",
+        passed=True,
+        detail="No PreToolUse scripts use exit 2",
+    )]
 
 
-def check_perm(hooks: dict, skill_dir: str) -> list:
+def _check_perm(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-PERM: PostToolUse/PostToolUseFailure don't output permissionDecision."""
-    post_events = {"PostToolUse", "PostToolUseFailure"}
+    post_events = frozenset({"PostToolUse", "PostToolUseFailure"})
     scripts = _scripts_for_events(hooks, post_events, skill_dir)
     if not scripts:
-        return [emit("HK-PERM", True,
-                      "No PostToolUse/PostToolUseFailure hooks to check")]
-    problems = []
+        return [CheckResult(
+            check="HK-PERM",
+            passed=True,
+            detail="No PostToolUse/PostToolUseFailure hooks to check",
+        )]
+    problems: list[str] = []
     for path in scripts:
-        content = read_file(path)
+        content = _read_text(path)
         if "permissionDecision" in content:
             for line in content.splitlines():
                 if COMMENT_RE.match(line):
                     continue
                 if "permissionDecision" in line:
-                    problems.append(os.path.basename(path))
+                    problems.append(path.name)
                     break
     if problems:
-        return [emit("HK-PERM", False,
-                      "Post hooks outputting permissionDecision "
-                      "(not supported): " + ", ".join(problems))]
-    return [emit("HK-PERM", True,
-                  "No post hooks use permissionDecision")]
+        return [CheckResult(
+            check="HK-PERM",
+            passed=False,
+            detail="Post hooks outputting permissionDecision "
+            "(not supported): " + ", ".join(problems),
+        )]
+    return [CheckResult(
+        check="HK-PERM",
+        passed=True,
+        detail="No post hooks use permissionDecision",
+    )]
 
 
-PREFIX_RE = re.compile(r"\[([A-Z]+)\d{3}\]")
-
-
-def check_prefix(hooks: dict, skill_dir: str) -> list:
+def _check_prefix(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """HK-PREFIX: error codes use consistent prefix within the skill."""
     all_scripts = _scripts_for_events(hooks, VALID_EVENTS, skill_dir)
-    prefixes = set()
+    prefixes: set[str] = set()
     for path in all_scripts:
-        content = read_file(path)
+        content = _read_text(path)
         for m in PREFIX_RE.finditer(content):
             prefixes.add(m.group(1))
     if not prefixes:
-        return [emit("HK-PREFIX", True, "No error codes found (OK)")]
+        return [CheckResult(
+            check="HK-PREFIX",
+            passed=True,
+            detail="No error codes found (OK)",
+        )]
     if len(prefixes) == 1:
-        return [emit("HK-PREFIX", True,
-                      "Consistent error prefix: %s" % prefixes.pop())]
-    return [emit("HK-PREFIX", False,
-                  "Multiple error prefixes: " +
-                  ", ".join(sorted(prefixes)))]
+        return [CheckResult(
+            check="HK-PREFIX",
+            passed=True,
+            detail=f"Consistent error prefix: {prefixes.pop()}",
+        )]
+    return [CheckResult(
+        check="HK-PREFIX",
+        passed=False,
+        detail=f"Multiple error prefixes: {', '.join(sorted(prefixes))}",
+    )]
 
 
 # ---------------------------------------------------------------------------
 # P10: informational suggestion
 # ---------------------------------------------------------------------------
 
-def check_p10(fm_lines: list, skill_dir: str) -> list:
+
+def _check_p10(
+    frontmatter: dict[str, str],
+    skill_dir: Path,
+) -> list[CheckResult]:
     """P10: side-effect skills without hooks could benefit from guardrails."""
-    dmi = get_field_value(fm_lines, "disable-model-invocation")
-    scripts_dir = os.path.join(skill_dir, "scripts")
-    if dmi == "true" and os.path.isdir(scripts_dir):
-        return [emit("hooks-suggestion-info", True,
-                      "INFO: Side-effect skill with scripts/ but no hooks. "
-                      "Consider adding skill-scoped hooks for guardrails.")]
+    dmi = frontmatter.get("disable-model-invocation", "")
+    scripts_dir = skill_dir / "scripts"
+    if dmi == "true" and scripts_dir.is_dir():
+        return [CheckResult(
+            check="hooks-suggestion-info",
+            passed=True,
+            detail="INFO: Side-effect skill with scripts/ but no hooks. "
+            "Consider adding skill-scoped hooks for guardrails.",
+        )]
     return []
 
 
 # ---------------------------------------------------------------------------
-# Main
+# Orchestration
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    if len(sys.argv) < 2:
-        print("Usage: check-hooks.py <skill-directory>", file=sys.stderr)
-        sys.exit(2)
 
-    skill_dir = sys.argv[1]
-    skill_md_path = find_skill_md(skill_dir)
+def run_checks(
+    hooks: dict[str, list[dict[str, object]]],
+    skill_dir: Path,
+) -> list[CheckResult]:
+    """Run all hook validation checks and return results."""
+    results: list[CheckResult] = []
+    results.extend(_check_events(hooks))
+    results.extend(_check_structure(hooks))
+    results.extend(_check_type(hooks))
+    results.extend(_check_resolve(hooks, skill_dir))
+    results.extend(_check_exec(hooks, skill_dir))
+    results.extend(_check_duplicate(hooks))
+    results.extend(_check_stdin(hooks, skill_dir))
+    results.extend(_check_loop(hooks, skill_dir))
+    results.extend(_check_exit(hooks, skill_dir))
+    results.extend(_check_perm(hooks, skill_dir))
+    results.extend(_check_prefix(hooks, skill_dir))
+    return results
 
-    if not skill_md_path:
-        emit_json({"summary": True, "total": 0, "passed": 0, "failed": 0})
-        sys.exit(0)
 
-    content = read_file(skill_md_path)
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the command-line argument parser."""
+    parser = argparse.ArgumentParser(
+        description="Validate skill-scoped hooks configuration in SKILL.md",
+    )
+    parser.add_argument(
+        "skill_directory",
+        type=Path,
+        help="Path to the skill directory containing SKILL.md",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the CLI entry point and return a process exit code."""
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    skill_dir: Path = args.skill_directory
+    skill_md_path = skill_dir / "SKILL.md"
+
+    if not skill_md_path.is_file():
+        return emit_results([])
+
+    try:
+        content = skill_md_path.read_text(encoding="utf-8", errors="replace")
+    except OSError as err:
+        emit_error(f"Error reading {skill_md_path}: {err}")
+        return EXIT_USAGE_ERROR
+
     if not content:
-        emit_json({"summary": True, "total": 0, "passed": 0, "failed": 0})
-        sys.exit(0)
+        return emit_results([])
 
-    fm_lines = extract_frontmatter_lines(content)
+    fm_lines, _body_lines, _body_start = split_frontmatter(content)
+    frontmatter = parse_frontmatter_lines(fm_lines)
     hooks = parse_hooks(fm_lines)
 
-    # No hooks block - emit P10 if applicable, then exit
+    # No hooks block - emit P10 if applicable, then empty summary
     if not hooks:
-        p10 = check_p10(fm_lines, skill_dir)
-        for r in p10:
-            emit_json(r)
-        emit_json({"summary": True, "total": 0, "passed": 0, "failed": 0})
-        sys.exit(0)
+        p10_results = _check_p10(frontmatter, skill_dir)
+        for result in p10_results:
+            emit_record(result.payload())
+        return emit_results([])
 
-    # Run all sub-checks
-    results = []
-    results.extend(check_events(hooks))
-    results.extend(check_structure(hooks))
-    results.extend(check_type(hooks))
-    results.extend(check_resolve(hooks, skill_dir))
-    results.extend(check_exec(hooks, skill_dir))
-    results.extend(check_duplicate(hooks))
-    results.extend(check_stdin(hooks, skill_dir))
-    results.extend(check_loop(hooks, skill_dir))
-    results.extend(check_exit(hooks, skill_dir))
-    results.extend(check_perm(hooks, skill_dir))
-    results.extend(check_prefix(hooks, skill_dir))
-
-    total = len(results)
-    passed = sum(1 for r in results if r["pass"])
-    failed = total - passed
-
-    for r in results:
-        emit_json(r)
-
-    emit_json({"summary": True, "total": total, "passed": passed,
-               "failed": failed})
-    sys.exit(0 if failed == 0 else 1)
+    return emit_results(run_checks(hooks, skill_dir))
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
