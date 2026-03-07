@@ -202,7 +202,11 @@ def emit_error(message: str) -> None:
     sys.stderr.write(f"{message}\n")
 
 
-def emit_results(results: list[CheckResult]) -> int:
+def emit_results(
+    results: list[CheckResult],
+    *,
+    extra_summary: dict[str, object] | None = None,
+) -> int:
     """Emit all check records and summary, then return exit code."""
     passed = sum(1 for result in results if result.passed)
     failed = len(results) - passed
@@ -210,14 +214,15 @@ def emit_results(results: list[CheckResult]) -> int:
     for result in results:
         emit_record(result.payload())
 
-    emit_record(
-        {
-            "summary": True,
-            "total": len(results),
-            "passed": passed,
-            "failed": failed,
-        },
-    )
+    summary: dict[str, object] = {
+        "summary": True,
+        "total": len(results),
+        "passed": passed,
+        "failed": failed,
+    }
+    if extra_summary:
+        summary.update(extra_summary)
+    emit_record(summary)
 
     if failed:
         return EXIT_FAILURE
