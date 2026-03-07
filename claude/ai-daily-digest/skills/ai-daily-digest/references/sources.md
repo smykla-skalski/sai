@@ -22,7 +22,7 @@
 ## Research & Papers
 
 | Source | URL | Search Pattern |
-|--------|-----|----------------|
+| --- | --- | --- |
 | arXiv AI | arxiv.org | `site:arxiv.org cs.AI OR cs.LG OR cs.CL {topic}` |
 | HuggingFace | huggingface.co | `site:huggingface.co blog OR papers` |
 | Google AI | ai.google | `site:ai.google blog OR research` |
@@ -35,7 +35,7 @@
 ## Tech News
 
 | Source | URL | Search Pattern |
-|--------|-----|----------------|
+| --- | --- | --- |
 | TechCrunch | techcrunch.com/category/artificial-intelligence | `site:techcrunch.com AI OR artificial intelligence` |
 | VentureBeat | venturebeat.com/category/ai | `site:venturebeat.com AI` |
 | The Verge | theverge.com/ai-artificial-intelligence | `site:theverge.com AI` |
@@ -46,7 +46,7 @@
 ## Blogs & Newsletters
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | Simon Willison | simonwillison.net | LLM tooling, practical AI |
 | Latent Space | latent.space | AI engineering, deep dives |
 | The Batch | deeplearning.ai/the-batch | Weekly AI roundup |
@@ -62,7 +62,7 @@
 ## Indie & Smaller Bloggers
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | Lilian Weng | lilianweng.github.io | ML deep dives, tutorials |
 | Jay Alammar | jalammar.github.io | Visual ML explanations |
 | Eugene Yan | eugeneyan.com | ML systems, applied AI |
@@ -82,7 +82,7 @@
 ## YouTube AI Channels
 
 | Channel | URL | Focus |
-|---------|-----|-------|
+| --- | --- | --- |
 | 3Blue1Brown | youtube.com/@3blue1brown | Math/ML visualizations, deep learning |
 | Andrej Karpathy | youtube.com/@AndrejKarpathy | Neural nets, AI education |
 | Yannic Kilcher | youtube.com/@YannicKilcher | AI paper reviews, analysis |
@@ -102,7 +102,7 @@
 ## Community
 
 | Source | URL | Search Pattern |
-|--------|-----|----------------|
+| --- | --- | --- |
 | Hacker News | news.ycombinator.com | `site:news.ycombinator.com AI OR LLM OR GPT` |
 | r/MachineLearning | reddit.com/r/MachineLearning | `site:reddit.com/r/MachineLearning` |
 | r/LocalLLaMA | reddit.com/r/LocalLLaMA | `site:reddit.com/r/LocalLLaMA` |
@@ -112,7 +112,7 @@
 ## Engineering & Dev
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | Dev.to AI | dev.to/t/ai | Tutorials, tools |
 | Pragmatic Engineer | pragmaticengineer.com | Industry analysis |
 | Engineering Blogs | Various | Company engineering posts |
@@ -120,7 +120,7 @@
 ## GitHub Trending AI
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | GitHub Trending (all) | github.com/trending | Overall trending repos |
 | GitHub Trending Python | github.com/trending/python | Python AI/ML repos |
 | GitHub Trending Jupyter | github.com/trending/jupyter-notebook | ML notebooks |
@@ -129,7 +129,7 @@
 ## AI Tools for Software Engineers
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | Product Hunt | producthunt.com | New tool launches |
 | DevHunt | devhunt.org | Developer tools launches |
 | Console.dev | console.dev | Dev tools newsletter |
@@ -140,7 +140,7 @@
 ## AI Tools for Photo/Video
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | PetaPixel | petapixel.com | Photography news, AI tools |
 | Fstoppers | fstoppers.com | Photo/video tools |
 | No Film School | nofilmschool.com | Video production tools |
@@ -151,7 +151,7 @@
 ## Business & Funding
 
 | Source | URL | Search Pattern |
-|--------|-----|----------------|
+| --- | --- | --- |
 | Crunchbase | crunchbase.com | `site:crunchbase.com AI funding` |
 | Fortune | fortune.com/tag/artificial-intelligence | `site:fortune.com AI` |
 | Bloomberg | bloomberg.com | `site:bloomberg.com AI artificial intelligence` |
@@ -160,7 +160,7 @@
 ## Leadership & Strategy
 
 | Source | URL | Focus |
-|--------|-----|-------|
+| --- | --- | --- |
 | HBR | hbr.org | AI leadership, management strategy |
 | McKinsey | mckinsey.com | AI transformation, org strategy |
 | MIT Sloan | sloanreview.mit.edu | Tech leadership, AI adoption |

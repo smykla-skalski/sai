@@ -111,7 +111,7 @@ Each agent executes all web searches for its phase and returns ONLY a list of st
 Collect results from all research agents before proceeding to Phase 16. Do not skip phases - missing a phase means missing an entire digest section.
 
 | Phase | Topic | Skip unless focus includes |
-|-------|-------|---------------------------|
+| --- | --- | --- |
 | 2 | Technical research (models, papers, frameworks) | technical |
 | 3 | Business research (funding, acquisitions, launches) | business |
 | 4 | Engineering impact (dev tools, workflow, job market) | engineering |

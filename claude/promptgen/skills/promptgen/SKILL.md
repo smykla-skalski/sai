@@ -17,15 +17,15 @@ Two input channels:
 - **Conversation history** (messages before the `/promptgen` invocation): requirements, constraints, or context directed at promptgen itself. Read this to understand what the user wants from the generated prompt.
 - **`$ARGUMENTS`** (positional + flags): the prompt description and output flags. `$ARGUMENTS` is not directed at promptgen — it describes the prompt to generate.
 
-| Flag                    | Default | Purpose                                               |
-|:------------------------|:--------|:------------------------------------------------------|
-| (positional)            | -       | Description of the prompt to generate                 |
-| `--for <model>`         | claude  | Target: claude, gpt, generic                          |
-| `--research light\|deep` | off     | Do research before generating (see below)             |
-| `--verbose`             | off     | Show reasoning behind prompt decisions                |
-| `--no-copy`             | off     | Output to chat only, skip clipboard                   |
-| `--examples`       | off     | Include few-shot examples in generated prompt         |
-| `--raw`                 | off     | Skip opinionated formatting preferences               |
+| Flag | Default | Purpose |
+| :-- | :-- | :-- |
+| (positional) | - | Description of the prompt to generate |
+| `--for <model>` | claude | Target: claude, gpt, generic |
+| `--research light\ | deep` | off | Do research before generating (see below) |
+| `--verbose` | off | Show reasoning behind prompt decisions |
+| `--no-copy` | off | Output to chat only, skip clipboard |
+| `--examples` | off | Include few-shot examples in generated prompt |
+| `--raw` | off | Skip opinionated formatting preferences |
 
 ## Responsibility boundary
 

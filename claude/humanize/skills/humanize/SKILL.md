@@ -17,11 +17,11 @@ Remove AI writing patterns from text and replace them with natural, human-soundi
 
 Parse from `$ARGUMENTS`:
 
-| Flag           | Default | Purpose                                         |
-|:---------------|:--------|:------------------------------------------------|
-| (positional)   | —       | File path to humanize. Prompt user if omitted   |
-| `--score-only` | off     | Report detected patterns without rewriting      |
-| `--dry-run`    | off     | Output to chat instead of editing in-place      |
+| Flag | Default | Purpose |
+| :-- | :-- | :-- |
+| (positional) | — | File path to humanize. Prompt user if omitted |
+| `--score-only` | off | Report detected patterns without rewriting |
+| `--dry-run` | off | Output to chat instead of editing in-place |
 
 Default: edit the file in-place, fixing all detected patterns regardless of severity (including faint ones). Use `--dry-run` to preview changes without modifying the file.
 
@@ -140,12 +140,12 @@ If any check fails, revise the affected sections and re-verify.
 
 Output a pattern report:
 
-| Column   | Content                                     |
-|:---------|:--------------------------------------------|
-| #        | Sequential number                           |
-| Pattern  | Pattern name from the catalog               |
-| Instance | Quoted offending text from the original     |
-| Fix      | What replaced it (or "removed" if stripped) |
+| Column | Content |
+| :-- | :-- |
+| # | Sequential number |
+| Pattern | Pattern name from the catalog |
+| Instance | Quoted offending text from the original |
+| Fix | What replaced it (or "removed" if stripped) |
 
 Include a summary line: patterns detected count, category count, and overall severity (Minor, Moderate, Heavy).
 

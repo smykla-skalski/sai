@@ -28,11 +28,11 @@ Reference: [claude/humanize/skills/humanize/SKILL.md](claude/humanize/skills/hum
 
 ### Invocation control
 
-| Setting                          | User invokes | Claude invokes | Description in context |
-| :------------------------------- | :----------- | :------------- | :--------------------- |
-| (default)                        | yes          | yes            | yes                    |
-| `disable-model-invocation: true` | yes          | no             | no                     |
-| `user-invocable: false`          | no           | yes            | yes                    |
+| Setting | User invokes | Claude invokes | Description in context |
+| :-- | :-- | :-- | :-- |
+| (default) | yes | yes | yes |
+| `disable-model-invocation: true` | yes | no | no |
+| `user-invocable: false` | no | yes | yes |
 
 Use `disable-model-invocation: true` for skills with side effects (cluster creation, branch deletion, staging area changes) to prevent accidental auto-invocation.
 
@@ -240,12 +240,12 @@ Exit 2 ignores ALL stdout JSON. Use structured JSON output with exit 0 instead.
 
 **PreToolUse** uses `hookSpecificOutput` with `permissionDecision`:
 
-| Scenario   | Exit code | permissionDecision | Effect                                    |
-| :--------- | :-------- | :----------------- | :---------------------------------------- |
-| Block      | 0         | `"deny"`           | Claude sees reason + fix hint in JSON     |
-| Warn       | 0         | `"allow"`          | additionalContext adds context, cmd runs  |
-| Ask        | 0         | `"ask"`            | Permission prompt shown to user           |
-| Clean pass | 0         | (no output)        | No overhead                               |
+| Scenario | Exit code | permissionDecision | Effect |
+| :-- | :-- | :-- | :-- |
+| Block | 0 | `"deny"` | Claude sees reason + fix hint in JSON |
+| Warn | 0 | `"allow"` | additionalContext adds context, cmd runs |
+| Ask | 0 | `"ask"` | Permission prompt shown to user |
+| Clean pass | 0 | (no output) | No overhead |
 
 **PostToolUse, PostToolUseFailure, SubagentStop** use top-level `decision`/`reason` for blocking and `systemMessage` for warnings. They do NOT use `hookSpecificOutput`.
 
@@ -269,12 +269,12 @@ command: "$CLAUDE_PROJECT_DIR/.claude/skills/my-skill/scripts/hooks/my-hook.sh"
 
 **Tested path styles (project-local skills):**
 
-| Style                              | Works? | Why                                            |
-| :--------------------------------- | :----- | :--------------------------------------------- |
-| `$CLAUDE_PROJECT_DIR/path/to/hook` | Yes    | Env var resolved by shell at runtime           |
-| Absolute hardcoded path            | Yes    | Always works, not portable                     |
-| `${CLAUDE_SKILL_DIR}/path/to/hook` | No     | String substitution applies to body, not hooks |
-| Relative (`scripts/hooks/foo.sh`)  | No     | cwd is project root, not SKILL.md directory    |
+| Style | Works? | Why |
+| :-- | :-- | :-- |
+| `$CLAUDE_PROJECT_DIR/path/to/hook` | Yes | Env var resolved by shell at runtime |
+| Absolute hardcoded path | Yes | Always works, not portable |
+| `${CLAUDE_SKILL_DIR}/path/to/hook` | No | String substitution applies to body, not hooks |
+| Relative (`scripts/hooks/foo.sh`) | No | cwd is project root, not SKILL.md directory |
 
 Four handler types exist: `command`, `http`, `prompt`, `agent`.
 
@@ -282,12 +282,12 @@ Four handler types exist: `command`, `http`, `prompt`, `agent`.
 
 **Plugin hooks are broken** (GitHub issue #17688). Hooks defined in SKILL.md frontmatter do not fire when the skill is loaded via a plugin (`--plugin-dir` or marketplace install). The plugin loader omits the `cH5()` hooks parser call. Only project-local skills (`.claude/skills/`) fire hooks. No fix as of Claude Code 2.1.63.
 
-| Component              | Location           | Hooks  |
-| :--------------------- | :----------------- | :----- |
-| Project skill          | `.claude/skills/`  | Work   |
-| Project agent          | `.claude/agents/`  | Work   |
-| Plugin skill (any)     | `--plugin-dir`     | Broken |
-| Plugin agent (any)     | marketplace        | Broken |
+| Component | Location | Hooks |
+| :-- | :-- | :-- |
+| Project skill | `.claude/skills/` | Work |
+| Project agent | `.claude/agents/` | Work |
+| Plugin skill (any) | `--plugin-dir` | Broken |
+| Plugin agent (any) | marketplace | Broken |
 
 ### Error codes
 

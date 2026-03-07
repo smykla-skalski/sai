@@ -15,11 +15,11 @@ Delete local branches whose remote tracking is gone or merged, and remove their 
 
 Parse from `$ARGUMENTS`:
 
-| Flag             | Default | Purpose                                          |
-|:-----------------|:--------|:-------------------------------------------------|
-| (none)           | —       | Full cleanup: gone + merged branches + worktrees |
-| `--dry-run`      | off     | Preview only, no changes                         |
-| `--no-worktrees` | off     | Branches only, skip worktree removal             |
+| Flag | Default | Purpose |
+| :-- | :-- | :-- |
+| (none) | — | Full cleanup: gone + merged branches + worktrees |
+| `--dry-run` | off | Preview only, no changes |
+| `--no-worktrees` | off | Branches only, skip worktree removal |
 
 ## Preprocessed context
 
@@ -52,13 +52,13 @@ Parse script output line prefixes and render formatted summary directly as text.
 
 **Line prefixes** (from script output):
 
-| Prefix                           | Meaning          |
-|:---------------------------------|:-----------------|
-| `DELETED:branch:reason`          | Deleted branch   |
-| `REMOVED_WT:worktree:branch`     | Removed worktree |
-| `SKIPPED:branch:reason`          | Skipped branch   |
-| `KEPT:branch:reason`             | Kept branch      |
-| `KEPT_WT:worktree:branch:reason` | Kept worktree    |
+| Prefix | Meaning |
+| :-- | :-- |
+| `DELETED:branch:reason` | Deleted branch |
+| `REMOVED_WT:worktree:branch` | Removed worktree |
+| `SKIPPED:branch:reason` | Skipped branch |
+| `KEPT:branch:reason` | Kept branch |
+| `KEPT_WT:worktree:branch:reason` | Kept worktree |
 
 Dry-run uses `WOULD_DELETE`, `WOULD_REMOVE_WT`, `WOULD_SKIP`, `WOULD_KEEP`, `WOULD_KEEP_WT`.
 

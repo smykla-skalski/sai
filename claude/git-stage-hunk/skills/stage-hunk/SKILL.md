@@ -55,21 +55,21 @@ Filter the listing to one file:
 
 Parse from `$ARGUMENTS`:
 
-| Flag                     | Default | Purpose                                          |
-|:-------------------------|:--------|:-------------------------------------------------|
-| `--list`                 | -       | List all unstaged hunks with IDs and previews    |
-| `--list --file PATH`     | -       | List hunks filtered to file(s), comma-separated  |
-| `--list --split`         | -       | List all hunks with sub-hunk breakdown           |
-| `--split H3`             | -       | Show sub-hunks for one specific hunk             |
-| `--hunk H1,H2,...`       | -       | Stage specific hunks by global ID                |
-| `--hunk H3.1,H3.2`      | -       | Stage sub-hunks by dot-notation ID               |
-| `--hunk H3:5-10`         | -       | Stage hunk-relative lines 5-10 of H3            |
-| `--pattern REGEX`        | -       | Stage hunks matching regex content               |
-| `--file PATH`            | -       | Stage all hunks for file(s), comma-separated     |
-| `--range FILE:S-E`       | -       | Stage hunks overlapping line range               |
-| `--table`                | off     | Output as markdown table (default is NDJSON)     |
-| `--dry-run`              | off     | Preview without applying                         |
-| `--verify`               | -       | Show staged vs unstaged summary                  |
+| Flag | Default | Purpose |
+| :-- | :-- | :-- |
+| `--list` | - | List all unstaged hunks with IDs and previews |
+| `--list --file PATH` | - | List hunks filtered to file(s), comma-separated |
+| `--list --split` | - | List all hunks with sub-hunk breakdown |
+| `--split H3` | - | Show sub-hunks for one specific hunk |
+| `--hunk H1,H2,...` | - | Stage specific hunks by global ID |
+| `--hunk H3.1,H3.2` | - | Stage sub-hunks by dot-notation ID |
+| `--hunk H3:5-10` | - | Stage hunk-relative lines 5-10 of H3 |
+| `--pattern REGEX` | - | Stage hunks matching regex content |
+| `--file PATH` | - | Stage all hunks for file(s), comma-separated |
+| `--range FILE:S-E` | - | Stage hunks overlapping line range |
+| `--table` | off | Output as markdown table (default is NDJSON) |
+| `--dry-run` | off | Preview without applying |
+| `--verify` | - | Show staged vs unstaged summary |
 
 `--file` has dual behavior: with `--list` it filters the listing, without `--list` it stages all hunks for that file. If no mode flag is provided, default to `--list`.
 

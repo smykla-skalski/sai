@@ -247,14 +247,14 @@ Overly positive, people-pleasing language. Cut it.
 
 Common substitutions:
 
-| Filler                         | Replacement     |
-|:-------------------------------|:----------------|
-| In order to achieve this goal  | To achieve this |
-| Due to the fact that           | Because         |
-| At this point in time          | Now             |
-| In the event that              | If              |
-| has the ability to             | can             |
-| It is important to note that X | X               |
+| Filler | Replacement |
+| :-- | :-- |
+| In order to achieve this goal | To achieve this |
+| Due to the fact that | Because |
+| At this point in time | Now |
+| In the event that | If |
+| has the ability to | can |
+| It is important to note that X | X |
 
 ### 23. Excessive hedging
 
