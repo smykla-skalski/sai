@@ -67,7 +67,7 @@ Read the SKILL.md frontmatter first. Confirm the `description` field contains bo
 
 ## Important checks
 
-Three or more failures in this tier results in a **NEEDS WORK** verdict. These reflect best practices that materially affect skill quality.
+Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** verdict. These reflect best practices that materially affect skill quality.
 
 | ID | NDJSON | Check | Source |
 | :-- | :-- | :-- | :-- |
