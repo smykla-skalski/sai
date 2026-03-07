@@ -46,12 +46,12 @@ def _run_frontmatter(doc: SkillDocument) -> tuple[validate.ResultCollector, list
     return collector, records
 
 
-def _find_check(records: list[dict[str, object]], check_id: str) -> dict[str, object] | None:
-    """Find a record by check ID."""
+def _find_check(records: list[dict[str, object]], check_id: str) -> dict[str, object]:
+    """Find a record by check ID, raising if not found."""
     for record in records:
         if record.get("check") == check_id:
             return record
-    return None
+    raise AssertionError(f"No record with check_id={check_id!r} found")
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +341,7 @@ class UserInvocableTests(unittest.TestCase):
 class ParseNdjsonLineTests(unittest.TestCase):
     def test_valid_json(self) -> None:
         result = validate._parse_ndjson_line('{"check": "foo", "pass": true}')
-        self.assertIsNotNone(result)
+        assert result is not None
         self.assertEqual(result["check"], "foo")
 
     def test_invalid_json(self) -> None:
@@ -444,6 +444,7 @@ class CollectDelegateOutputTests(unittest.TestCase):
                 Path("/virtual/script.py"), Path("/virtual/skill"),
             )
         self.assertIsNone(parsed)
+        assert error is not None
         self.assertIn("Unexpected exit code", error)
 
     def test_empty_stdout(self) -> None:
@@ -455,6 +456,7 @@ class CollectDelegateOutputTests(unittest.TestCase):
                 Path("/virtual/script.py"), Path("/virtual/skill"),
             )
         self.assertIsNone(parsed)
+        assert error is not None
         self.assertIn("No stdout", error)
 
     def test_total_mismatch(self) -> None:
@@ -475,6 +477,7 @@ class CollectDelegateOutputTests(unittest.TestCase):
                 Path("/virtual/script.py"), Path("/virtual/skill"),
             )
         self.assertIsNone(parsed)
+        assert error is not None
         self.assertIn("total mismatch", error)
 
 
@@ -730,6 +733,7 @@ class ParseForkCandidateSummaryTests(unittest.TestCase):
         ]
         summary, error = validate._parse_fork_candidate_summary("\n".join(lines))
         self.assertIsNone(error)
+        assert summary is not None
         self.assertEqual(summary["recommendation"], "strong")
 
     def test_no_recommendation_field(self) -> None:
@@ -743,6 +747,7 @@ class ParseForkCandidateSummaryTests(unittest.TestCase):
         ]
         summary, error = validate._parse_fork_candidate_summary("\n".join(lines))
         self.assertIsNone(summary)
+        assert error is not None
         self.assertIn("summary", error)
 
 
@@ -826,6 +831,7 @@ class PassedFailedConsistencyTests(unittest.TestCase):
                 Path("/virtual/script.py"), Path("/virtual/skill"),
             )
         self.assertIsNone(parsed)
+        assert error is not None
         self.assertIn("passed+failed mismatch", error)
 
 

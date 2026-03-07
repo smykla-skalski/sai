@@ -39,7 +39,7 @@ import sys
 from os import X_OK, access
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import Final, cast
 
 from _skill_check_common import (
     EXIT_USAGE_ERROR,
@@ -226,8 +226,8 @@ def collect_hook_entries(
     for event, event_entries in hooks.items():
         for entry in event_entries:
             matcher = entry.get("matcher", "") or ""  # type: ignore[assignment]
-            for hook in entry.get("hooks", []):  # type: ignore[union-attr]
-                cmd = hook.get("command", "") or ""  # type: ignore[union-attr]
+            for hook in cast(list[dict[str, object]], entry.get("hooks", [])):
+                cmd = cast(str, hook.get("command", "")) or ""
                 entries.append((event, str(matcher), str(cmd)))
     return entries
 
@@ -347,14 +347,14 @@ def _check_type(
     total_hooks = 0
     for event, entries in hooks.items():
         for entry in entries:
-            for hook in entry.get("hooks", []):  # type: ignore[union-attr]
+            for hook in cast(list[dict[str, object]], entry.get("hooks", [])):
                 total_hooks += 1
-                hook_type = hook.get("type", "(missing)")  # type: ignore[union-attr]
+                hook_type = cast(str, hook.get("type", "(missing)"))
                 if hook_type != "command":
                     problems.append(
                         f"{event}: type is '{hook_type}', expected 'command'",
                     )
-                if not hook.get("command"):  # type: ignore[union-attr]
+                if not hook.get("command"):
                     problems.append(f"{event}: empty or missing command field")
     if problems:
         return [CheckRecord(
