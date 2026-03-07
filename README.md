@@ -92,7 +92,7 @@ Clean up local branches with deleted remote tracking and their worktrees. Detect
 
 Non-interactive hunk staging for selective `git add` without a TTY. Lists hunks with stable IDs, then stages by ID, pattern, file, or line range. Works in scripted and multi-agent environments where `git add -p` is unavailable.
 
-**Usage**: `/stage-hunk [--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]`
+**Usage**: `/git-stage-hunk [--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]`
 
 [Full documentation ->](./claude/git-stage-hunk/README.md)
 
