@@ -30,9 +30,11 @@ from re import Pattern
 from typing import Final
 
 from skill_check_common import (
+    EXIT_USAGE_ERROR,
     CheckResult,
     SkillDocument,
     SkillLoadError,
+    compile_patterns,
     emit_error,
     emit_results,
     load_skill_document,
@@ -40,66 +42,74 @@ from skill_check_common import (
     parse_allowed_tools,
 )
 
-EXIT_OK: Final[int] = 0
-EXIT_FAILURE: Final[int] = 1
-EXIT_USAGE_ERROR: Final[int] = 2
+# ---------------------------------------------------------------------------
+# Sub-check identifiers
+# ---------------------------------------------------------------------------
 
 PERSISTENT_STATE_CHECK: Final[str] = "persistent-state-xdg"
 ALLOWED_TOOLS_CHECK: Final[str] = "allowed-tools-usage"
 SIDE_EFFECT_CHECK: Final[str] = "side-effect-guard"
 
-BAD_STATE_PATH_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
+# ---------------------------------------------------------------------------
+# Pattern constants
+# ---------------------------------------------------------------------------
+
+BAD_STATE_PATH_PATTERNS: Final[
+    tuple[Pattern[str], ...]
+] = compile_patterns(
+    (
         r"\./findings/",
         r"\$SKILL_DIR/findings/",
         r"\$\{CLAUDE_SKILL_DIR\}/findings/",
-    )
+    ),
 )
 STATE_REFERENCE_PATTERNS: Final[tuple[Pattern[str], ...]] = (
     BAD_STATE_PATH_PATTERNS
-    + tuple(
-        re.compile(pattern, re.IGNORECASE)
-        for pattern in (
+    + compile_patterns(
+        (
             r"\.last-run",
             r"\.covered-",
             r"state stored in",
             r"persistent.*state",
             r"state files",
-        )
+        ),
     )
 )
-XDG_PATH_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
+XDG_PATH_PATTERNS: Final[
+    tuple[Pattern[str], ...]
+] = compile_patterns(
+    (
         r"XDG_DATA_HOME",
         r"\$HOME/\.local/share",
-    )
+    ),
 )
 
-TASK_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
+TASK_IMPLIED_PATTERNS: Final[
+    tuple[Pattern[str], ...]
+] = compile_patterns(
+    (
         r"\bagent\b",
         r"\bspawn\b",
         r"\bsubagent\b",
-    )
+    ),
 )
-TOOLSEARCH_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
+TOOLSEARCH_IMPLIED_PATTERNS: Final[
+    tuple[Pattern[str], ...]
+] = compile_patterns(
+    (
         r"mcp__",
         r"select:",
-    )
+    ),
 )
-ASK_USER_QUESTION_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
+ASK_USER_QUESTION_IMPLIED_PATTERNS: Final[
+    tuple[Pattern[str], ...]
+] = compile_patterns(
+    (
         r"\bask\s+the\s+user\b",
         r"\bprompt\s+the\s+user\b",
         r"\bconfirm\s+with\s+(the\s+)?user\b",
         r"\blet\s+the\s+user\s+(choose|decide|pick|select|confirm)\b",
-    )
+    ),
 )
 HIGH_SIGNAL_TOOL_RULES: Final[dict[str, tuple[Pattern[str], ...]]] = {
     "Task": TASK_IMPLIED_PATTERNS,
@@ -120,6 +130,11 @@ SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
     r"|rm\s+-rf",
     re.IGNORECASE,
 )
+
+
+# ---------------------------------------------------------------------------
+# Tool reference helpers
+# ---------------------------------------------------------------------------
 
 
 @functools.lru_cache(maxsize=32)
@@ -143,6 +158,11 @@ def _tool_is_referenced(tool_name: str, body_text: str) -> bool:
     if implied_patterns is None:
         return False
     return matches_any(body_text, implied_patterns)
+
+
+# ---------------------------------------------------------------------------
+# Check implementations
+# ---------------------------------------------------------------------------
 
 
 def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
@@ -186,7 +206,7 @@ def check_allowed_tools_usage(document: SkillDocument) -> CheckResult | None:
         tool_name
         for tool_name in declared_tools
         if tool_name in HIGH_SIGNAL_TOOL_RULES
-        and not _tool_is_referenced(tool_name, document.body)
+        and not _tool_is_referenced(tool_name, document.prose_body)
     )
 
     if not unused_tools:
@@ -217,7 +237,7 @@ def _count_side_effect_hits(body_text: str) -> int:
 
 def check_side_effect_guard(document: SkillDocument) -> CheckResult:
     """Validate that side-effect skills set `disable-model-invocation: true`."""
-    side_effect_hits = _count_side_effect_hits(document.body)
+    side_effect_hits = _count_side_effect_hits(document.prose_body)
     if side_effect_hits == 0:
         return CheckResult(
             check=SIDE_EFFECT_CHECK,
@@ -225,7 +245,7 @@ def check_side_effect_guard(document: SkillDocument) -> CheckResult:
             detail="No side-effect patterns detected",
         )
 
-    if str(document.field("disable-model-invocation")).lower() == "true":
+    if document.field("disable-model-invocation").lower() == "true":
         return CheckResult(
             check=SIDE_EFFECT_CHECK,
             passed=True,
@@ -243,6 +263,11 @@ def check_side_effect_guard(document: SkillDocument) -> CheckResult:
     )
 
 
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
+
 def run_checks(document: SkillDocument) -> list[CheckResult]:
     """Run all config checks and return emitted results in order."""
     results: list[CheckResult] = []
@@ -257,6 +282,11 @@ def run_checks(document: SkillDocument) -> list[CheckResult]:
 
     results.append(check_side_effect_guard(document))
     return results
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def _build_parser() -> argparse.ArgumentParser:
