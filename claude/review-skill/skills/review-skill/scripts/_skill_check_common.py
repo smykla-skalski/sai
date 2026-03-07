@@ -3,18 +3,23 @@
 Provides SKILL.md parsing (frontmatter, body, prose extraction),
 section detection (headings, bundled resources, agent instructions,
 arguments), data classes (CheckResult, ProseLine, SkillArgument,
-SkillDocument), NDJSON output helpers, and pattern matching utilities.
+SkillDocument), NDJSON output helpers, CLI boilerplate, fenced-block
+utilities, and pattern matching utilities.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 # ---------------------------------------------------------------------------
 # Exit codes
@@ -534,6 +539,56 @@ def extract_prose_lines(body: str) -> tuple[ProseLine, ...]:
     return tuple(prose_lines)
 
 
+def build_fenced_line_indices(lines: list[str]) -> frozenset[int]:
+    """Return indices of lines that are inside or on fenced code blocks."""
+    fenced: set[int] = set()
+    in_fence = False
+    for i, line in enumerate(lines):
+        if FENCE_RE.match(line):
+            fenced.add(i)
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            fenced.add(i)
+    return frozenset(fenced)
+
+
+FENCE_LANG_RE: Final[Pattern[str]] = re.compile(
+    r"^\s*```\s*(?P<language>[a-zA-Z0-9_-]+)?.*$",
+)
+
+
+def fence_language(line: str) -> str:
+    """Extract normalized language token from an opening fence line."""
+    without_fence = FENCE_RE.sub("", line, count=1)
+    language = without_fence.strip().split(maxsplit=1)
+    if not language:
+        return ""
+    return language[0].lower()
+
+
+def iter_fence_lines(
+    text: str,
+    languages: frozenset[str],
+) -> Iterator[ProseLine]:
+    """Yield lines inside fenced code blocks matching given languages."""
+    in_fence = False
+    in_matching_fence = False
+
+    for index, line in enumerate(text.splitlines()):
+        if FENCE_RE.match(line):
+            if in_fence:
+                in_fence = False
+                in_matching_fence = False
+            else:
+                in_fence = True
+                in_matching_fence = fence_language(line) in languages
+            continue
+
+        if in_fence and in_matching_fence:
+            yield ProseLine(index=index, text=line)
+
+
 # ---------------------------------------------------------------------------
 # Section detection
 # ---------------------------------------------------------------------------
@@ -783,3 +838,63 @@ def load_skill_document(skill_dir: Path) -> SkillDocument:
             skill_md_path,
         ),
     )
+
+
+# ---------------------------------------------------------------------------
+# CLI boilerplate helpers
+# ---------------------------------------------------------------------------
+
+
+def build_check_parser(
+    description: str,
+    check_order: tuple[str, ...] = (),
+) -> argparse.ArgumentParser:
+    """Build a standard CLI parser for checker scripts."""
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument(
+        "skill_directory",
+        type=Path,
+        help="Path to the skill directory containing SKILL.md",
+    )
+    if check_order:
+        parser.add_argument(
+            "--check",
+            action="append",
+            choices=check_order,
+            dest="checks",
+            help="Run only the specified check (repeatable)",
+        )
+    return parser
+
+
+def run_check_cli(
+    description: str,
+    check_order: tuple[str, ...],
+    run_checks_fn: Callable[
+        ...,
+        list[CheckResult] | tuple[list[CheckResult], dict[str, object]],
+    ],
+    argv: list[str] | None = None,
+) -> int:
+    """Run standard checker CLI: parse args, load skill, run checks, emit.
+
+    ``run_checks_fn`` receives ``(document, selected_checks)`` and returns
+    either a plain ``list[CheckResult]`` or a ``(results, extra_summary)``
+    tuple.
+    """
+    parser = build_check_parser(description, check_order)
+    args = parser.parse_args(argv)
+
+    try:
+        document = load_skill_document(args.skill_directory)
+    except SkillLoadError as error:
+        emit_error(f"Error: {error}")
+        return EXIT_USAGE_ERROR
+
+    selected_checks = tuple(args.checks or ()) if check_order else ()
+    outcome = run_checks_fn(document, selected_checks)
+
+    if isinstance(outcome, tuple):
+        results, extra_summary = outcome
+        return emit_results(results, extra_summary=extra_summary)
+    return emit_results(outcome)
