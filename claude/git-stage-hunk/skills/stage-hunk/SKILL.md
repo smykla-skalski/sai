@@ -61,7 +61,7 @@ Parse from `$ARGUMENTS`:
 | `--list --file PATH` | - | List hunks filtered to file(s), comma-separated |
 | `--list --split` | - | List all hunks with sub-hunk breakdown |
 | `--split H3` | - | Show sub-hunks for one specific hunk |
-| `--hunk H1,H2,...` | - | Stage specific hunks by global ID |
+| `--hunk H1,H2,...` | - | Stage specific hunks by sequential ID |
 | `--hunk H3.1,H3.2` | - | Stage sub-hunks by dot-notation ID |
 | `--hunk H3:5-10` | - | Stage hunk-relative lines 5-10 of H3 |
 | `--pattern REGEX` | - | Stage hunks matching regex content |
@@ -70,6 +70,8 @@ Parse from `$ARGUMENTS`:
 | `--table` | off | Output as markdown table (default is NDJSON) |
 | `--dry-run` | off | Preview without applying |
 | `--verify` | - | Show staged vs unstaged summary |
+
+Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes (`--pattern`, `--file`, `--range`) are alternatives for bulk selection.
 
 `--file` has dual behavior: with `--list` it filters the listing, without `--list` it stages all hunks for that file. If no mode flag is provided, default to `--list`.
 
@@ -140,9 +142,7 @@ After staging, optionally run `--verify` to show what ended up staged vs unstage
 
 ## Hunk ID scheme
 
-**WARNING: Hunk IDs shift after staging or committing.** Always re-list before using IDs from a previous run.
-
-Global sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then position within each file. Stable within a single diff snapshot.
+Sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then position within each file. Stable within a single diff snapshot but shift after staging (see warning in Quick workflow).
 
 ### Sub-hunk IDs
 
