@@ -550,6 +550,42 @@ def _run_script(
     )
 
 
+def _run_and_validate_script(
+    script_path: Path,
+    args: tuple[str, ...],
+    *,
+    forward_stderr: bool = True,
+) -> tuple[ScriptRunResult | None, str | None]:
+    """Run a script and validate basic execution contract.
+
+    Returns (result, None) on success or (None, error_message) on failure.
+    Checks: script ran OK, returncode exists, returncode in expected set,
+    stdout is non-empty. Optionally forwards stderr to sys.stderr.
+    """
+    run_result = _run_script(script_path, args)
+    if not run_result.ok:
+        return None, run_result.error
+
+    return_code = run_result.returncode
+    if return_code is None:
+        return None, f"No return code from {script_path.name}"
+
+    if return_code not in EXPECTED_EXIT_CODES:
+        detail = f"Unexpected exit code {return_code} from {script_path.name}"
+        stderr_excerpt = _snippet(run_result.stderr)
+        if stderr_excerpt:
+            detail += f" - stderr: {stderr_excerpt}"
+        return None, detail
+
+    if not run_result.stdout.strip():
+        return None, f"No stdout from {script_path.name}"
+
+    if forward_stderr and run_result.stderr.strip():
+        sys.stderr.write(run_result.stderr)
+
+    return run_result, None
+
+
 def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
     """Parse standard delegate NDJSON (check lines + final summary)."""
     checks: list[CheckResult] = []
@@ -647,22 +683,13 @@ def _collect_delegate_output(
     extra_args: tuple[str, ...] = (),
 ) -> tuple[ParsedDelegateOutput | None, str | None]:
     """Run and validate one standard delegate output contract."""
-    run_result = _run_script(script_path, (str(skill_dir), *extra_args))
-    if not run_result.ok:
-        return None, run_result.error
-
-    return_code = run_result.returncode
-    if return_code is None:
-        return None, f"No return code from {script_path.name}"
-    if return_code not in EXPECTED_EXIT_CODES:
-        detail = f"Unexpected exit code {return_code} from {script_path.name}"
-        stderr_excerpt = _snippet(run_result.stderr)
-        if stderr_excerpt:
-            detail += f" - stderr: {stderr_excerpt}"
-        return None, detail
-
-    if not run_result.stdout.strip():
-        return None, f"No stdout from {script_path.name}"
+    run_result, error = _run_and_validate_script(
+        script_path, (str(skill_dir), *extra_args),
+    )
+    if error:
+        return None, error
+    if run_result is None:
+        return None, f"No result from {script_path.name}"
 
     parsed = _parse_delegate_output(run_result.stdout)
     if parsed.invalid_lines:
@@ -855,14 +882,6 @@ def _aggregate_lint_findings(findings: tuple[dict[str, object], ...]) -> str:
     return detail
 
 
-def _run_lint_script(lint_script: Path, scripts_dir: Path) -> ScriptRunResult:
-    """Run lint-scripts.py with JSON output at medium severity."""
-    return _run_script(
-        lint_script,
-        (str(scripts_dir), "--json", "--severity", "medium"),
-    )
-
-
 def _handle_lint_scripts(
     script_dir: Path,
     skill_dir: Path,
@@ -882,53 +901,26 @@ def _handle_lint_scripts(
         return
 
     lint_script = script_dir / "lint-scripts.py"
-    run_result = _run_lint_script(lint_script, scripts_dir)
-    if not run_result.ok:
+    run_result, error = _run_and_validate_script(
+        lint_script,
+        (str(scripts_dir), "--json", "--severity", "medium"),
+    )
+    if error:
         _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
-            run_result.error,
-            check=CHECK_SCRIPT_LINT,
+            collector, lint_script.name, error, check=CHECK_SCRIPT_LINT,
         )
         return
-
-    return_code = run_result.returncode
-    if return_code is None:
+    if run_result is None:
         _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
-            "No return code from lint-scripts.py",
-            check=CHECK_SCRIPT_LINT,
-        )
-        return
-
-    if return_code not in EXPECTED_EXIT_CODES:
-        detail = f"Unexpected exit code {return_code} from lint-scripts.py"
-        stderr_excerpt = _snippet(run_result.stderr)
-        if stderr_excerpt:
-            detail += f" - stderr: {stderr_excerpt}"
-        _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
-            detail,
-            check=CHECK_SCRIPT_LINT,
-        )
-        return
-
-    if not run_result.stdout.strip():
-        _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
-            "No stdout from lint-scripts.py",
-            check=CHECK_SCRIPT_LINT,
+            collector, lint_script.name,
+            "No result from lint-scripts.py", check=CHECK_SCRIPT_LINT,
         )
         return
 
     parsed = _parse_lint_output(run_result.stdout)
     if parsed.invalid_lines:
         _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
+            collector, lint_script.name,
             f"Invalid NDJSON from lint-scripts.py: {parsed.invalid_lines[0]}",
             check=CHECK_SCRIPT_LINT,
         )
@@ -937,8 +929,7 @@ def _handle_lint_scripts(
     summary = parsed.summary
     if summary is None:
         _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
+            collector, lint_script.name,
             "Missing summary line from lint-scripts.py",
             check=CHECK_SCRIPT_LINT,
         )
@@ -947,8 +938,7 @@ def _handle_lint_scripts(
     lint_total = _summary_int(summary, "findings")
     if lint_total is None:
         _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
+            collector, lint_script.name,
             "Summary missing integer 'findings' in lint-scripts.py",
             check=CHECK_SCRIPT_LINT,
         )
@@ -956,8 +946,7 @@ def _handle_lint_scripts(
 
     if lint_total != len(parsed.findings):
         _emit_delegate_runtime_error(
-            collector,
-            lint_script.name,
+            collector, lint_script.name,
             (
                 "Summary findings mismatch in lint-scripts.py: "
                 f"summary={lint_total}, parsed={len(parsed.findings)}"
@@ -1023,48 +1012,22 @@ def _handle_fork_candidate(
 ) -> None:
     """Run check-fork-candidate.py and emit single fork-candidate-info result."""
     fork_script = script_dir / "check-fork-candidate.py"
-    run_result = _run_script(fork_script, (str(skill_dir),))
-    if not run_result.ok:
+    run_result, error = _run_and_validate_script(
+        fork_script, (str(skill_dir),),
+    )
+    if error:
         _emit_delegate_runtime_error(
-            collector,
-            fork_script.name,
-            run_result.error,
-            check=CHECK_FORK_INFO,
+            collector, fork_script.name, error, check=CHECK_FORK_INFO,
+        )
+        return
+    if run_result is None:
+        _emit_delegate_runtime_error(
+            collector, fork_script.name,
+            "No result from check-fork-candidate.py", check=CHECK_FORK_INFO,
         )
         return
 
     return_code = run_result.returncode
-    if return_code is None:
-        _emit_delegate_runtime_error(
-            collector,
-            fork_script.name,
-            "No return code from check-fork-candidate.py",
-            check=CHECK_FORK_INFO,
-        )
-        return
-
-    if return_code not in EXPECTED_EXIT_CODES:
-        detail = f"Unexpected exit code {return_code} from check-fork-candidate.py"
-        stderr_excerpt = _snippet(run_result.stderr)
-        if stderr_excerpt:
-            detail += f" - stderr: {stderr_excerpt}"
-        _emit_delegate_runtime_error(
-            collector,
-            fork_script.name,
-            detail,
-            check=CHECK_FORK_INFO,
-        )
-        return
-
-    if not run_result.stdout.strip():
-        _emit_delegate_runtime_error(
-            collector,
-            fork_script.name,
-            "No stdout from check-fork-candidate.py",
-            check=CHECK_FORK_INFO,
-        )
-        return
-
     summary_obj, error = _parse_fork_candidate_summary(run_result.stdout)
     if error:
         _emit_delegate_runtime_error(

@@ -115,7 +115,10 @@ class ValidateScriptTests(unittest.TestCase):
 
             with (
                 patch.object(validate, "emit_record", side_effect=records.append),
-                patch.object(validate, "_run_lint_script", return_value=fake_run),
+                patch.object(
+                    validate, "_run_and_validate_script",
+                    return_value=(fake_run, None),
+                ),
             ):
                 validate._handle_lint_scripts(script_dir, skill_dir, collector)
 
@@ -532,7 +535,10 @@ class LintScriptsHandlerTests(unittest.TestCase):
             records: list[dict[str, object]] = []
             with (
                 patch.object(validate, "emit_record", side_effect=records.append),
-                patch.object(validate, "_run_lint_script", return_value=fake_run),
+                patch.object(
+                    validate, "_run_and_validate_script",
+                    return_value=(fake_run, None),
+                ),
             ):
                 validate._handle_lint_scripts(SCRIPT_DIR, skill_dir, collector)
 
@@ -558,7 +564,10 @@ class LintScriptsHandlerTests(unittest.TestCase):
             records: list[dict[str, object]] = []
             with (
                 patch.object(validate, "emit_record", side_effect=records.append),
-                patch.object(validate, "_run_lint_script", return_value=fake_run),
+                patch.object(
+                    validate, "_run_and_validate_script",
+                    return_value=(fake_run, None),
+                ),
             ):
                 validate._handle_lint_scripts(SCRIPT_DIR, skill_dir, collector)
 
