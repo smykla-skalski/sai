@@ -57,7 +57,6 @@ source "${SCRIPT_DIR}/check-file-refs.sh"
 source "${SCRIPT_DIR}/check-scripts-dir.sh"
 source "${SCRIPT_DIR}/check-content.sh"
 source "${SCRIPT_DIR}/check-references.sh"
-source "${SCRIPT_DIR}/check-config.sh"
 
 # ========================
 # DELEGATION HELPER
@@ -84,6 +83,36 @@ delegate_script() {
     [[ -z "$chk" ]] && continue
     emit "$chk" "$pss" "$dtl"
   done <<< "$output"
+}
+
+# Re-emit one check from check-config.py while preserving current output order.
+CONFIG_SCRIPT="${SCRIPT_DIR}/check-config.py"
+CONFIG_OUTPUT=""
+CONFIG_OUTPUT_LOADED=0
+
+load_config_output() {
+  [[ "$CONFIG_OUTPUT_LOADED" -eq 1 ]] && return 0
+  CONFIG_OUTPUT_LOADED=1
+  [[ -x "$CONFIG_SCRIPT" ]] || return 0
+  CONFIG_OUTPUT=$("$CONFIG_SCRIPT" "$SKILL_DIR" 2>/dev/null || true)
+}
+
+delegate_config_check() {
+  local wanted_check="$1"
+  load_config_output
+  [[ -n "$CONFIG_OUTPUT" ]] || return 0
+
+  local line chk pss dtl
+  while IFS= read -r line; do
+    [[ "$line" == *'"summary"'* ]] && continue
+    chk=$(echo "$line" | sed -n 's/.*"check": "\([^"]*\)".*/\1/p')
+    [[ "$chk" == "$wanted_check" ]] || continue
+    pss=$(echo "$line" | sed -nE 's/.*"pass": (true|false).*/\1/p')
+    dtl=$(echo "$line" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
+    [[ -z "$chk" ]] && continue
+    emit "$chk" "$pss" "$dtl"
+    return 0
+  done <<< "$CONFIG_OUTPUT"
 }
 
 # ========================
@@ -192,7 +221,7 @@ run_structure() {
   check_no_disallowed_files
   check_refs_one_level
   check_long_ref_toc
-  check_persistent_state_xdg
+  delegate_config_check "persistent-state-xdg"
   check_no_grading_style
   check_skill_md_mentions_file
   check_ref_link_format
@@ -200,8 +229,8 @@ run_structure() {
   # Existing companion scripts (delegation)
   delegate_script "${SCRIPT_DIR}/check-read-gates.sh" "refs"
 
-  check_allowed_tools_usage
-  check_side_effect_guard
+  delegate_config_check "allowed-tools-usage"
+  delegate_config_check "side-effect-guard"
 
   delegate_script "${SCRIPT_DIR}/check-preprocessing.sh" "directives"
 
