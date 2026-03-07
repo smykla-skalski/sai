@@ -18,12 +18,12 @@ from __future__ import annotations
 
 import re
 import stat
-from pathlib import Path  # noqa: TC003
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
+    from pathlib import Path
 
 from _skill_check_common import (
     CheckRecord,

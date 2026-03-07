@@ -81,6 +81,7 @@ HUNK_ID_PLAIN_RE: Final[re.Pattern[str]] = re.compile(r"^H\d+$")
 HUNK_ID_SUB_RE: Final[re.Pattern[str]] = re.compile(r"^H\d+\.\d+$")
 HUNK_ID_LINE_RE: Final[re.Pattern[str]] = re.compile(r"^H\d+:\d+-\d+$")
 DIFF_GIT_RE: Final[re.Pattern[str]] = re.compile(r"^diff --git a/(.*) b/")
+RANGE_PART_COUNT: Final[int] = 2  # --range spec splits into exactly START and END
 
 # -- Data model --------------------------------------------------------------
 
@@ -1267,7 +1268,7 @@ def _parse_range_spec(
     range_lines = range_spec[colon_idx + 1:]
 
     parts = range_lines.split("-")
-    if len(parts) != 2:  # noqa: PLR2004
+    if len(parts) != RANGE_PART_COUNT:
         die("invalid range spec: expected START-END", EXIT_USAGE)
 
     if not range_file:

@@ -65,6 +65,13 @@ VALID_EVENTS: Final[frozenset[str]] = frozenset({
 
 MATCHER_EVENTS: Final[frozenset[str]] = VALID_EVENTS - frozenset({"Stop"})
 
+# YAML indentation levels in the hooks: block
+INDENT_EVENT: Final[int] = 2
+INDENT_ENTRY_LIST: Final[int] = 4
+INDENT_ENTRY_KEY: Final[int] = 6
+INDENT_HOOK_LIST: Final[int] = 8
+INDENT_HOOK_KEY: Final[int] = 10
+
 
 # ---------------------------------------------------------------------------
 # Hooks YAML parser (custom state machine for nested hooks structure)
@@ -119,7 +126,7 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
 
         indent = len(stripped) - len(stripped.lstrip())
 
-        if indent == 2 and stripped.strip().endswith(":"):  # noqa: PLR2004
+        if indent == INDENT_EVENT and stripped.strip().endswith(":"):
             event_name = stripped.strip()[:-1]
             current_event = event_name
             if current_event not in result:
@@ -129,7 +136,7 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
             current_hook = None
             continue
 
-        if indent == 4 and stripped.strip().startswith("- "):  # noqa: PLR2004
+        if indent == INDENT_ENTRY_LIST and stripped.strip().startswith("- "):
             item_content = stripped.strip()[2:]
             current_entry = {}
             current_hooks_list = None
@@ -140,17 +147,21 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
                 current_entry["matcher"] = m.group(1).strip()
             elif item_content.strip() == "hooks:":
                 current_entry["hooks"] = []
-                current_hooks_list = current_entry["hooks"]  # type: ignore[assignment]
+                current_hooks_list = cast(
+                    "list[dict[str, str]]", current_entry["hooks"],
+                )
 
             if current_event is not None:
                 result[current_event].append(current_entry)
             continue
 
-        if indent == 6 and current_entry is not None:  # noqa: PLR2004
+        if indent == INDENT_ENTRY_KEY and current_entry is not None:
             key_content = stripped.strip()
             if key_content == "hooks:":
                 current_entry["hooks"] = []
-                current_hooks_list = current_entry["hooks"]  # type: ignore[assignment]
+                current_hooks_list = cast(
+                    "list[dict[str, str]]", current_entry["hooks"],
+                )
                 current_hook = None
             elif key_content.startswith("matcher:"):
                 m = re.match(r'matcher:\s*"?([^"]*)"?', key_content)
@@ -158,7 +169,7 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
                     current_entry["matcher"] = m.group(1).strip()
             continue
 
-        if indent == 8 and stripped.strip().startswith("- "):  # noqa: PLR2004
+        if indent == INDENT_HOOK_LIST and stripped.strip().startswith("- "):
             if current_hooks_list is not None:
                 item_content = stripped.strip()[2:]
                 current_hook = {}
@@ -168,7 +179,7 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
                 current_hooks_list.append(current_hook)
             continue
 
-        if indent == 10 and current_hook is not None:  # noqa: PLR2004
+        if indent == INDENT_HOOK_KEY and current_hook is not None:
             key_content = stripped.strip()
             m = re.match(r'command:\s*"?([^"]*)"?', key_content)
             if m:
@@ -180,7 +191,10 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
             continue
 
         # Unexpected indentation - warn on stderr
-        expected = {2, 4, 6, 8, 10}
+        expected = {
+            INDENT_EVENT, INDENT_ENTRY_LIST, INDENT_ENTRY_KEY,
+            INDENT_HOOK_LIST, INDENT_HOOK_KEY,
+        }
         if indent not in expected:
             print(
                 f"check-hooks: unexpected indent {indent} in hooks block: "
@@ -225,9 +239,9 @@ def collect_hook_entries(
     entries: list[tuple[str, str, str]] = []
     for event, event_entries in hooks.items():
         for entry in event_entries:
-            matcher = entry.get("matcher", "") or ""  # type: ignore[assignment]
-            for hook in cast(list[dict[str, object]], entry.get("hooks", [])):
-                cmd = cast(str, hook.get("command", "")) or ""
+            matcher = cast("str", entry.get("matcher", "")) or ""
+            for hook in cast("list[dict[str, object]]", entry.get("hooks", [])):
+                cmd = cast("str", hook.get("command", "")) or ""
                 entries.append((event, str(matcher), str(cmd)))
     return entries
 
@@ -347,9 +361,9 @@ def _check_type(
     total_hooks = 0
     for event, entries in hooks.items():
         for entry in entries:
-            for hook in cast(list[dict[str, object]], entry.get("hooks", [])):
+            for hook in cast("list[dict[str, object]]", entry.get("hooks", [])):
                 total_hooks += 1
-                hook_type = cast(str, hook.get("type", "(missing)"))
+                hook_type = cast("str", hook.get("type", "(missing)"))
                 if hook_type != "command":
                     problems.append(
                         f"{event}: type is '{hook_type}', expected 'command'",
