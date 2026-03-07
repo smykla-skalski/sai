@@ -340,10 +340,10 @@ run_structure() {
 
   # --- fork candidate analysis (P9, informational) ---
   local FORK_SCRIPT
-  FORK_SCRIPT="${SCRIPT_DIR}/check-fork-candidate.sh"
+  FORK_SCRIPT="${SCRIPT_DIR}/check-fork-candidate.py"
   if [[ -x "$FORK_SCRIPT" ]]; then
     local FORK_RESULT
-    FORK_RESULT=$("$FORK_SCRIPT" "$SKILL_DIR" 2>/dev/null | tail -1 || true)
+    FORK_RESULT=$(python3 "$FORK_SCRIPT" "$SKILL_DIR" 2>/dev/null | tail -1 || true)
     local FORK_REC FORK_DETAIL
     FORK_REC=$(echo "$FORK_RESULT" | sed -n 's/.*"recommendation": "\([^"]*\)".*/\1/p')
     FORK_DETAIL=$(echo "$FORK_RESULT" | sed -n 's/.*"detail": "\(.*\)".*$/\1/p')
