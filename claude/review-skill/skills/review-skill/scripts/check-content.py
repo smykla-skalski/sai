@@ -12,9 +12,7 @@ Exit codes: 0 when all pass, 1 when any fail, 2 for usage/input errors.
 
 from __future__ import annotations
 
-import argparse
 import re
-from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -22,16 +20,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
-    FENCE_RE,
     SNIPPET_WIDTH,
     CheckResult,
     SkillDocument,
-    SkillLoadError,
-    emit_error,
-    emit_results,
-    load_skill_document,
+    iter_fence_lines,
     read_text,
+    run_check_cli,
 )
 
 # ---------------------------------------------------------------------------
@@ -145,47 +139,16 @@ def check_no_secrets(document: SkillDocument) -> CheckResult:
     )
 
 
-def _fence_language(line: str) -> str:
-    """Extract normalized language token from an opening fence line."""
-    without_fence = FENCE_RE.sub("", line, count=1)
-    language = without_fence.strip().split(maxsplit=1)
-    if not language:
-        return ""
-    return language[0].lower()
-
-
-def _iter_shell_fence_lines(markdown_text: str) -> list[str]:
-    """Return lines inside shell-compatible fenced code blocks."""
-    lines_in_shell_fences: list[str] = []
-    in_fence = False
-    in_shell_fence = False
-
-    for line in markdown_text.splitlines():
-        if FENCE_RE.match(line):
-            if in_fence:
-                in_fence = False
-                in_shell_fence = False
-            else:
-                in_fence = True
-                in_shell_fence = _fence_language(line) in SHELL_FENCE_LANGUAGES
-            continue
-
-        if in_fence and in_shell_fence:
-            lines_in_shell_fences.append(line)
-
-    return lines_in_shell_fences
-
-
 def _find_useless_echo_hits(markdown_text: str) -> list[str]:
     """Return suspicious `$(echo ...)` lines from shell code fences."""
     hits: list[str] = []
 
-    for line in _iter_shell_fence_lines(markdown_text):
-        if not USELESS_ECHO_PATTERN.search(line):
+    for prose_line in iter_fence_lines(markdown_text, SHELL_FENCE_LANGUAGES):
+        if not USELESS_ECHO_PATTERN.search(prose_line.text):
             continue
-        if VARIABLE_ECHO_PATTERN.search(line):
+        if VARIABLE_ECHO_PATTERN.search(prose_line.text):
             continue
-        hits.append(line)
+        hits.append(prose_line.text)
 
     return hits
 
@@ -304,39 +267,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build and return the CLI argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Validate content quality checks for a skill directory",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to the skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help="Run only the specified check (can be repeated)",
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run content checks and return the process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    return emit_results(run_checks(document, selected_checks))
+    return run_check_cli(
+        "Validate content quality checks for a skill directory",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":

@@ -17,10 +17,8 @@ Exit codes:
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import re
-from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -28,15 +26,11 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
     FENCE_RE,
     CheckResult,
     SkillDocument,
-    SkillLoadError,
-    emit_error,
-    emit_results,
-    load_skill_document,
     read_text,
+    run_check_cli,
     strip_fenced_code_blocks,
 )
 
@@ -357,39 +351,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build and return the CLI argument parser."""
-    parser = argparse.ArgumentParser(
-        description="Validate body and reference structure checks for SKILL.md",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to the skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help="Run only the specified check (can be repeated)",
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entrypoint and return process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    return emit_results(run_checks(document, selected_checks))
+    return run_check_cli(
+        "Validate body and reference structure checks for SKILL.md",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":

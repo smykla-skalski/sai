@@ -22,9 +22,7 @@ Exit codes:
 
 from __future__ import annotations
 
-import argparse
 import re
-from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -32,13 +30,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from _skill_check_common import (
-    EXIT_USAGE_ERROR,
     CheckResult,
     SkillDocument,
-    SkillLoadError,
-    emit_error,
-    emit_results,
-    load_skill_document,
+    run_check_cli,
 )
 
 # ---------------------------------------------------------------------------
@@ -589,13 +583,14 @@ CHECK_FUNCTIONS: Final[
 def run_checks(
     document: SkillDocument,
     selected_checks: tuple[str, ...] = (),
-) -> list[CheckResult]:
-    """Run preprocessing checks and return results in stable order."""
+) -> tuple[list[CheckResult], dict[str, object]]:
+    """Run preprocessing checks, return results and extra summary."""
     prose_body = document.prose_body
     directive_commands = _extract_directive_commands(prose_body)
+    directive_count = len(directive_commands)
 
     if not directive_commands:
-        return []
+        return [], {"directives": directive_count}
 
     selected = frozenset(selected_checks)
     results: list[CheckResult] = []
@@ -610,7 +605,7 @@ def run_checks(
             continue
         results.append(CHECK_FUNCTIONS[check_name](directive_commands))
 
-    return results
+    return results, {"directives": directive_count}
 
 
 # ---------------------------------------------------------------------------
@@ -618,41 +613,14 @@ def run_checks(
 # ---------------------------------------------------------------------------
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    """Build and return the command-line parser."""
-    parser = argparse.ArgumentParser(
-        description="Validate preprocessing directives in a skill SKILL.md",
-    )
-    parser.add_argument(
-        "skill_directory",
-        type=Path,
-        help="Path to the skill directory containing SKILL.md",
-    )
-    parser.add_argument(
-        "--check",
-        action="append",
-        choices=CHECK_ORDER,
-        dest="checks",
-        help="Run only the specified check (repeatable)",
-    )
-    return parser
-
-
 def main(argv: list[str] | None = None) -> int:
     """Run the CLI entrypoint and return process exit code."""
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    try:
-        document = load_skill_document(args.skill_directory)
-    except SkillLoadError as error:
-        emit_error(f"Error: {error}")
-        return EXIT_USAGE_ERROR
-
-    selected_checks = tuple(args.checks or ())
-    results = run_checks(document, selected_checks)
-    directive_count = len(_extract_directive_commands(document.prose_body))
-    return emit_results(results, extra_summary={"directives": directive_count})
+    return run_check_cli(
+        "Validate preprocessing directives in a skill SKILL.md",
+        CHECK_ORDER,
+        run_checks,
+        argv,
+    )
 
 
 if __name__ == "__main__":
