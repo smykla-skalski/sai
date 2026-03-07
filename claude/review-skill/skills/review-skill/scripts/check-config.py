@@ -23,15 +23,16 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern
-from typing import Final
+from typing import Any, Final
 
-from _skill_doc import SkillDocument, SkillDocumentError, load_skill_document
+from skill_check_common import SkillDocument, SkillLoadError, load_skill_document
 
 EXIT_OK: Final[int] = 0
 EXIT_FAILURE: Final[int] = 1
@@ -41,25 +42,25 @@ PERSISTENT_STATE_CHECK: Final[str] = "persistent-state-xdg"
 ALLOWED_TOOLS_CHECK: Final[str] = "allowed-tools-usage"
 SIDE_EFFECT_CHECK: Final[str] = "side-effect-guard"
 
-STATE_REFERENCE_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
-    re.compile(pattern, re.IGNORECASE)
-    for pattern in (
-        r"\./findings/",
-        r"\$SKILL_DIR/findings/",
-        r"\$\{CLAUDE_SKILL_DIR\}/findings/",
-        r"\.last-run",
-        r"\.covered-",
-        r"state stored in",
-        r"persistent.*state",
-        r"state files",
-    )
-)
 BAD_STATE_PATH_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
         r"\./findings/",
         r"\$SKILL_DIR/findings/",
         r"\$\{CLAUDE_SKILL_DIR\}/findings/",
+    )
+)
+STATE_REFERENCE_PATTERNS: Final[tuple[Pattern[str], ...]] = (
+    BAD_STATE_PATH_PATTERNS
+    + tuple(
+        re.compile(pattern, re.IGNORECASE)
+        for pattern in (
+            r"\.last-run",
+            r"\.covered-",
+            r"state stored in",
+            r"persistent.*state",
+            r"state files",
+        )
     )
 )
 XDG_PATH_PATTERNS: Final[tuple[Pattern[str], ...]] = tuple(
@@ -123,7 +124,7 @@ class CheckResult:
     passed: bool
     detail: str
 
-    def payload(self) -> dict[str, object]:
+    def payload(self) -> dict[str, Any]:
         """Serialize the result into the NDJSON output format."""
         return {
             "check": self.check,
@@ -132,14 +133,14 @@ class CheckResult:
         }
 
 
-def _emit_json_line(payload: object) -> None:
+def _emit_json_line(payload: Any) -> None:
     """Write one JSON object to stdout as a single line."""
-    sys.stdout.write(f"{json.dumps(payload, ensure_ascii=False)}\n")
+    print(json.dumps(payload, ensure_ascii=False), file=sys.stdout)
 
 
 def _emit_error(message: str) -> None:
     """Write one error line to stderr."""
-    sys.stderr.write(f"{message}\n")
+    print(message, file=sys.stderr)
 
 
 def _matches_any(text: str, patterns: tuple[Pattern[str], ...]) -> bool:
@@ -155,10 +156,16 @@ def _parse_declared_tools(raw_tools: str) -> tuple[str, ...]:
     return tuple(ordered_unique_tools)
 
 
+@functools.lru_cache(maxsize=32)
+def _get_tool_reference_pattern(tool_name: str) -> Pattern[str]:
+    """Compile and cache the regex pattern for a specific tool."""
+    return re.compile(rf"(?<![\w-]){re.escape(tool_name)}(?![\w-])")
+
+
 def _has_direct_tool_reference(tool_name: str, body_text: str) -> bool:
     """Return whether the body explicitly mentions a tool by name."""
-    pattern = rf"(?<![\w-]){re.escape(tool_name)}(?![\w-])"
-    return re.search(pattern, body_text) is not None
+    pattern = _get_tool_reference_pattern(tool_name)
+    return pattern.search(body_text) is not None
 
 
 def _tool_is_referenced(tool_name: str, body_text: str) -> bool:
@@ -174,7 +181,7 @@ def _tool_is_referenced(tool_name: str, body_text: str) -> bool:
 
 def check_persistent_state_xdg(document: SkillDocument) -> CheckResult | None:
     """Validate that persistent state uses XDG-compliant paths."""
-    body_text = document.body_without_code_fences
+    body_text = document.prose_body
     if not _matches_any(body_text, STATE_REFERENCE_PATTERNS):
         return None
 
@@ -253,7 +260,7 @@ def check_side_effect_guard(document: SkillDocument) -> CheckResult:
             detail="No side-effect patterns detected",
         )
 
-    if document.field("disable-model-invocation") == "true":
+    if str(document.field("disable-model-invocation")).lower() == "true":
         return CheckResult(
             check=SIDE_EFFECT_CHECK,
             passed=True,
@@ -329,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         document = load_skill_document(args.skill_directory)
-    except SkillDocumentError as error:
+    except SkillLoadError as error:
         _emit_error(f"Error: {error}")
         return EXIT_USAGE_ERROR
 
