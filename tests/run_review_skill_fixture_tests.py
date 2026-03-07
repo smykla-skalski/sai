@@ -493,7 +493,49 @@ def run_self_test() -> int:
     return 0
 
 
-def run_expected_output_suite(*, verbose: bool) -> tuple[int, int]:
+def _check_fixture_expected(
+    fixture_name: str,
+    fixture_dir: Path,
+    expected_checks: dict[str, tuple[bool, str]],
+) -> tuple[int, int]:
+    """Run validate.py on one fixture. Returns (assertions, failures)."""
+    rc, actual_records = run_command(
+        [sys.executable, str(VALIDATE_SCRIPT), str(fixture_dir)],
+    )
+    if rc not in (0, 1):
+        print(f"  FAIL {fixture_name}: validate.py exit code {rc}")
+        return 0, 1
+
+    assertions = 0
+    failures = 0
+    for check_id, (exp_pass, _exp_level) in expected_checks.items():
+        assertions += 1
+        actual = actual_records.get(check_id)
+        if actual is None:
+            print(f"  FAIL {fixture_name}/{check_id}: missing from output")
+            failures += 1
+            continue
+        if actual.get("pass") != exp_pass:
+            exp_str = "pass" if exp_pass else "fail"
+            act_str = "pass" if actual.get("pass") else "fail"
+            print(
+                f"  FAIL {fixture_name}/{check_id}: expected {exp_str}, got {act_str}",
+            )
+            failures += 1
+
+    for check_id in actual_records:
+        if check_id not in expected_checks:
+            assertions += 1
+            failures += 1
+            print(
+                f"  FAIL {fixture_name}/{check_id}: "
+                "unexpected check not in expected output",
+            )
+
+    return assertions, failures
+
+
+def run_expected_output_suite() -> tuple[int, int]:
     """Compare validate.py output against expected NDJSON files."""
     expected_dir = SCRIPT_DIR / "expected" / "review-skill"
     if not expected_dir.is_dir():
@@ -522,43 +564,11 @@ def run_expected_output_suite(*, verbose: bool) -> tuple[int, int]:
                     obj.get("level", "pass" if obj["pass"] else "fail"),
                 )
 
-        rc, actual_records = run_command(
-            [sys.executable, str(VALIDATE_SCRIPT), str(fixture_dir)],
-        )
-        if rc not in (0, 1):
-            print(f"  FAIL {fixture_name}: validate.py exit code {rc}")
-            failures += 1
-            continue
-
-        fixture_failures = 0
-        for check_id, (exp_pass, exp_level) in expected_checks.items():
-            assertions += 1
-            actual = actual_records.get(check_id)
-            if actual is None:
-                print(f"  FAIL {fixture_name}/{check_id}: missing from output")
-                fixture_failures += 1
-                continue
-            if actual.get("pass") != exp_pass:
-                exp_str = "pass" if exp_pass else "fail"
-                act_str = "pass" if actual.get("pass") else "fail"
-                print(
-                    f"  FAIL {fixture_name}/{check_id}: "
-                    f"expected {exp_str}, got {act_str}",
-                )
-                fixture_failures += 1
-
-        # Check for unexpected checks not in expected file
-        for check_id in actual_records:
-            if check_id not in expected_checks:
-                assertions += 1
-                fixture_failures += 1
-                print(
-                    f"  FAIL {fixture_name}/{check_id}: unexpected check not in expected output",
-                )
-
-        if fixture_failures == 0:
+        a, f = _check_fixture_expected(fixture_name, fixture_dir, expected_checks)
+        assertions += a
+        failures += f
+        if f == 0:
             print(f"OK   {fixture_name} ({len(expected_checks)} checks matched)")
-        failures += fixture_failures
 
     return assertions, failures
 
@@ -574,7 +584,7 @@ def main() -> int:
     assertions_b, failures_b = run_script_suite(verbose=verbose)
 
     print("\n== expected output suite ==")
-    assertions_c, failures_c = run_expected_output_suite(verbose=verbose)
+    assertions_c, failures_c = run_expected_output_suite()
 
     total_assertions = assertions_a + assertions_b + assertions_c
     total_failures = failures_a + failures_b + failures_c

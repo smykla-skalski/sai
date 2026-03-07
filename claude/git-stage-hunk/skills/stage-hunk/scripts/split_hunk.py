@@ -32,6 +32,8 @@ HUNK_HEADER_RE: Final[re.Pattern[str]] = re.compile(
 )
 PREVIEW_MAX_LEN: Final[int] = 120
 NULL_BYTE_SEPARATOR: Final[str] = "\x00"
+MIN_GIT_DIFF_PARTS: Final[int] = 4   # "diff --git a/... b/..." has 4 space-separated tokens
+MIN_SUBHUNK_SECTIONS: Final[int] = 2  # stdin has two sections separated by null byte
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +73,7 @@ def parse_hunk_header(line: str) -> tuple[int, int, int, int] | None:
 def _extract_file_path(line: str) -> str | None:
     """Extract the b/ file path from a ``diff --git`` line."""
     parts = line.strip().split(" ")
-    if len(parts) < 4:  # noqa: PLR2004
+    if len(parts) < MIN_GIT_DIFF_PARTS:
         return None
     b_path = parts[-1]
     return b_path.removeprefix("b/")
@@ -202,7 +204,7 @@ def cmd_find_subhunks(args: argparse.Namespace) -> None:
     """Find sub-hunks within a parent hunk using fine diff."""
     stdin = sys.stdin.read()
     parts = stdin.split(NULL_BYTE_SEPARATOR)
-    if len(parts) < 2:  # noqa: PLR2004
+    if len(parts) < MIN_SUBHUNK_SECTIONS:
         print(
             json.dumps({"error": "expected two sections separated by null byte"}),
             file=sys.stderr,

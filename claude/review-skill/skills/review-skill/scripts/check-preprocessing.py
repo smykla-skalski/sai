@@ -92,6 +92,7 @@ PIPE_LIMIT_RE: Final[Pattern[str]] = re.compile(
     r"\|\s*(head|tail|grep|wc|awk|sed|cut|sort|uniq|jq)",
 )
 GH_PR_DIFF_RE: Final[Pattern[str]] = re.compile(r"pr\s+diff")
+MIN_COMMAND_WORDS: Final[int] = 2  # minimum tokens needed to extract a second word
 
 SECRET_ENV_RE: Final[Pattern[str]] = re.compile(
     r"\$(API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|PRIVATE_KEY|AUTH_TOKEN|AWS_SECRET"
@@ -255,7 +256,7 @@ def _primary_command(command: str) -> str:
 def _second_word(command: str) -> str:
     """Return the second shell token, or empty string when missing."""
     parts = command.split()
-    if len(parts) < 2:  # noqa: PLR2004
+    if len(parts) < MIN_COMMAND_WORDS:
         return ""
     return parts[1]
 
