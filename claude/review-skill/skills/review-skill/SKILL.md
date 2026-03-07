@@ -64,7 +64,7 @@ The orchestrator sources shared helpers from `_lib.sh` and delegates to companio
 
 | Script                 | Checks          | Purpose                                  |
 | :--------------------- | :-------------- | :--------------------------------------- |
-| `check-file-refs.sh`   | C3, P3, P6, I15 | File reference resolution and format     |
+| `check-file-refs.py`   | C3, P3, P6, I15 | File reference resolution and format     |
 | `check-scripts-dir.sh` | I6, I12         | Script invocation prefix and permissions |
 | `check-references.sh`  | C2, P1, P8, I14 | Body metrics and reference structure     |
 | `check-config.py`      | I11, I16, I17   | Tool usage, XDG state, side-effect guard |

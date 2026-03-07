@@ -54,7 +54,6 @@ source "${SCRIPT_DIR}/_lib.sh"
 # ========================
 # LOAD CHECK FUNCTION LIBRARIES (function defs only)
 # ========================
-source "${SCRIPT_DIR}/check-file-refs.sh"
 source "${SCRIPT_DIR}/check-scripts-dir.sh"
 source "${SCRIPT_DIR}/check-references.sh"
 
@@ -243,30 +242,33 @@ run_structure() {
   local HAS_PYTHON3=1
   if ! command -v python3 &>/dev/null; then
     HAS_PYTHON3=0
-    emit "helper-runtime" "true" "WARN: python3 not found — I20, I21, I22, I23 checks skipped"
+    emit "helper-runtime" "true" "WARN: python3 not found - python-based checks skipped"
   fi
+
+  local FILE_REFS_SCRIPT
+  FILE_REFS_SCRIPT="${SCRIPT_DIR}/check-file-refs.py"
 
   local CONTENT_SCRIPT
   CONTENT_SCRIPT="${SCRIPT_DIR}/check-content.py"
 
   # Function calls in exact current emission order
   check_body_line_count
-  check_file_ref_resolves
+  delegate_script_args "$FILE_REFS_SCRIPT" --check file-ref-resolves
   check_script_invocation_prefix
   check_no_bash_prefix
   check_script_executable
   delegate_script_args "$CONTENT_SCRIPT" --check no-secrets
-  check_no_backslash_paths
+  delegate_script_args "$FILE_REFS_SCRIPT" --check no-backslash-paths
   delegate_script_args "$CONTENT_SCRIPT" --check no-useless-echo
   check_duplicate_codeblocks
   check_consistent_phase_numbering
-  check_no_disallowed_files
-  check_refs_one_level
+  delegate_script_args "$FILE_REFS_SCRIPT" --check no-disallowed-files
+  delegate_script_args "$FILE_REFS_SCRIPT" --check refs-one-level
   check_long_ref_toc
   delegate_config_check "persistent-state-xdg"
   delegate_script_args "$CONTENT_SCRIPT" --check no-grading-style
-  check_skill_md_mentions_file
-  check_ref_link_format
+  delegate_script_args "$FILE_REFS_SCRIPT" --check skill-md-mentions-file
+  delegate_script_args "$FILE_REFS_SCRIPT" --check ref-link-format
 
   # Existing companion scripts (delegation)
   delegate_script "${SCRIPT_DIR}/check-read-gates.sh" "refs"
