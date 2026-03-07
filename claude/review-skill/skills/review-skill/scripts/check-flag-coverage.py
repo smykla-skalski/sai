@@ -11,6 +11,7 @@ Sub-checks:
   - `FC-doc-hint`      - every --flag in Arguments section appears in argument-hint
   - `FC-doc-workflow`  - every --flag in Arguments section is
                           referenced in workflow body
+  - `FC-example-flags` - examples cover at least 50% of documented flags
 
 Usage:
     ./check-flag-coverage.py <skill-directory>
@@ -46,11 +47,16 @@ from _skill_check_common import (
 CHECK_HINT_DOC: Final[str] = "FC-hint-doc"
 CHECK_DOC_HINT: Final[str] = "FC-doc-hint"
 CHECK_DOC_WORKFLOW: Final[str] = "FC-doc-workflow"
+CHECK_EXAMPLE_FLAGS: Final[str] = "FC-example-flags"
+
+MIN_FLAGS_FOR_EXAMPLE_CHECK: Final[int] = 3
+EXAMPLE_COVERAGE_THRESHOLD: Final[float] = 0.5
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_HINT_DOC,
     CHECK_DOC_HINT,
     CHECK_DOC_WORKFLOW,
+    CHECK_EXAMPLE_FLAGS,
 )
 
 # ---------------------------------------------------------------------------
@@ -58,6 +64,12 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
 # ---------------------------------------------------------------------------
 
 FLAG_RE: Final[Pattern[str]] = re.compile(r"--[a-zA-Z][\w-]*")
+
+EXAMPLE_SECTION_PATTERNS: Final[tuple[str, ...]] = (
+    r"\bexample\s+invocations?\b",
+    r"\bexamples?\b",
+)
+MIN_EXAMPLE_HEADER_LEVEL: Final[int] = 2
 
 
 def _extract_flags(text: str) -> set[str]:
@@ -154,19 +166,23 @@ def _get_workflow_flags(
 ) -> set[str]:
     """Extract --flag patterns from body excluding Arguments and Example sections."""
     args_start, args_end = _find_section(
-        body_lines, r"\barguments\b", fenced,
+        body_lines,
+        r"\barguments\b",
+        fenced,
     )
 
     exclude_ranges: list[tuple[int, int]] = []
     if args_start is not None and args_end is not None:
         exclude_ranges.append((args_start, args_end))
 
-    for pattern in [r"\bexample\s+invocations?\b", r"\bexamples?\b"]:
+    for pattern in EXAMPLE_SECTION_PATTERNS:
         for s, e in _find_all_sections(body_lines, pattern, fenced):
             exclude_ranges.append((s, e))
 
     for s, e in _find_all_sections(
-        body_lines, r"\bbundled\s+resources\b", fenced,
+        body_lines,
+        r"\bbundled\s+resources\b",
+        fenced,
     ):
         exclude_ranges.append((s, e))
 
@@ -177,6 +193,19 @@ def _get_workflow_flags(
             workflow_lines.append(line)
 
     return _extract_flags("\n".join(workflow_lines))
+
+
+def _get_examples_section_flags(
+    body_lines: list[str],
+    fenced: frozenset[int],
+) -> set[str]:
+    """Extract --flag patterns from the first Example* section (level 2+)."""
+    for pattern in EXAMPLE_SECTION_PATTERNS:
+        for start, end in _find_all_sections(body_lines, pattern, fenced):
+            header_match = re.match(r"^(#{1,6})\s+", body_lines[start])
+            if header_match and len(header_match.group(1)) >= MIN_EXAMPLE_HEADER_LEVEL:
+                return _extract_flags("\n".join(body_lines[start:end]))
+    return set()
 
 
 # ---------------------------------------------------------------------------
@@ -299,12 +328,59 @@ def _check_doc_workflow(
     )
 
 
-CHECK_FUNCTIONS: Final[
-    dict[str, Callable[..., CheckRecord | None]]
-] = {
+def _check_example_flags(
+    doc_flags: set[str],
+    example_flags: set[str],
+) -> CheckRecord | None:
+    """Check example section coverage against documented flags."""
+    if not doc_flags:
+        return None
+
+    if len(doc_flags) < MIN_FLAGS_FOR_EXAMPLE_CHECK:
+        return CheckRecord(
+            check=CHECK_EXAMPLE_FLAGS,
+            passed=True,
+            detail=(
+                "Example flag coverage check skipped - fewer than 3 documented "
+                f"flags ({len(doc_flags)})"
+            ),
+            tier="I28",
+        )
+
+    covered_flags = doc_flags & example_flags
+    coverage_ratio = len(covered_flags) / len(doc_flags)
+    coverage_percent = round(coverage_ratio * 100)
+
+    if coverage_ratio < EXAMPLE_COVERAGE_THRESHOLD:
+        missing = ", ".join(sorted(doc_flags - example_flags))
+        return CheckRecord(
+            check=CHECK_EXAMPLE_FLAGS,
+            passed=False,
+            detail=(
+                "Example invocations cover "
+                f"{len(covered_flags)}/{len(doc_flags)} documented flags "
+                f"({coverage_percent}%) - below 50% threshold; missing: {missing}"
+            ),
+            tier="I28",
+        )
+
+    return CheckRecord(
+        check=CHECK_EXAMPLE_FLAGS,
+        passed=True,
+        detail=(
+            "Example invocations cover "
+            f"{len(covered_flags)}/{len(doc_flags)} documented flags "
+            f"({coverage_percent}%)"
+        ),
+        tier="I28",
+    )
+
+
+CHECK_FUNCTIONS: Final[dict[str, Callable[..., CheckRecord | None]]] = {
     CHECK_HINT_DOC: _check_hint_doc,
     CHECK_DOC_HINT: _check_doc_hint,
     CHECK_DOC_WORKFLOW: _check_doc_workflow,
+    CHECK_EXAMPLE_FLAGS: _check_example_flags,
 }
 
 
@@ -325,6 +401,7 @@ def run_checks(
     hint_flags = _extract_flags(hint_raw)
     doc_flags = _get_arguments_section_flags(body_lines, fenced)
     workflow_flags = _get_workflow_flags(body_lines, fenced)
+    example_flags = _get_examples_section_flags(body_lines, fenced)
 
     if not hint_flags and not doc_flags:
         return []
@@ -342,6 +419,8 @@ def run_checks(
             result = _check_doc_hint(doc_flags, hint_flags, hint_raw)
         elif check_name == CHECK_DOC_WORKFLOW:
             result = _check_doc_workflow(doc_flags, workflow_flags)
+        elif check_name == CHECK_EXAMPLE_FLAGS:
+            result = _check_example_flags(doc_flags, example_flags)
         else:
             continue
 

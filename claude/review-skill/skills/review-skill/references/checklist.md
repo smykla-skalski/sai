@@ -20,9 +20,12 @@ The NDJSON column shows check IDs emitted by validation scripts in JSON output. 
   - [Automated: script lint (I20)](#automated-script-lint-i20)
   - [Automated: AskUserQuestion (I21)](#automated-askuserquestion-i21)
   - [Automated: flag coverage (I22)](#automated-flag-coverage-i22)
+  - [Automated: example flag coverage (I28)](#automated-example-flag-coverage-i28)
   - [Automated: hooks (I23)](#automated-hooks-i23)
   - [Automated: size checks (I24-I25)](#automated-size-checks-i24-i25)
+  - [Automated: best practices (I26-I27)](#automated-best-practices-i26-i27)
 - [Polish checks](#polish-checks)
+  - [Automated polish signals (P11-P16)](#automated-polish-signals-p11-p16)
   - [Reference file quality](#reference-file-quality)
   - [Design quality](#design-quality)
   - [Fork candidate analysis (P9)](#fork-candidate-analysis-p9)
@@ -70,12 +73,12 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 | :-- | :-- | :-- | :-- |
 | I1 | - | Imperative form throughout ("Parse input" not "You should parse") | Anthropic skill-creator |
 | I2 | - | Progressive disclosure - complex skills use references/ for details | Agent Skills Spec, Context Engineering |
-| I3 | - | Concrete examples showing inputs → outputs | Anthropic Best Practices, Context Engineering |
+| I3 | - | Concrete examples show inputs -> outputs and are wrapped in `<example>` tags | Anthropic Best Practices, Context Engineering |
 | I4 | - | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
 | I5 | - | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding |
 | I6 | SD-invocation-prefix, SD-no-bash | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention |
 | I7 | - | Appropriate degrees of freedom (guardrails match task fragility) | Anthropic Best Practices |
-| I8 | - | Feedback loops for quality-critical steps | Anthropic Best Practices |
+| I8 | - | Feedback loops for quality-critical steps use do -> check -> fix -> repeat (one-shot verify is not enough) | Anthropic Best Practices |
 | I9 | FM-tools-present | allowed-tools not over-broad (only tools actually needed) | Anthropic Best Practices |
 | I10 | - | Consistent terminology (same concept = same word) | Anthropic Best Practices |
 | I11 | CF-state-xdg | Persistent state uses XDG paths, not relative or cache-relative paths | SAI Convention, Plugin Cache Architecture |
@@ -93,6 +96,10 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 | I23 | HK-* | Hooks configuration: valid events, correct structure, scripts exist/executable, hook patterns (stdin parsing, stop guard, exit codes, error prefix consistency) | SAI Convention, Skill Authoring Guide |
 | I24 | RF-body-chars | SKILL.md body under 20,000 characters (roughly 5,000 tokens) | Skills Research, Context Engineering |
 | I25 | FM-desc-length | Description field under 1,024 characters | Agent Skills Spec |
+| I26 | BP-example-tags | `<example>` tag coverage: 0 tags fails, 1-2 tags informational, 3+ tags pass | Anthropic Best Practices |
+| I27 | BP-over-prompting | Avoid aggressive all-caps prompting patterns in prose (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) | Anthropic Best Practices |
+| I28 | FC-example-flags | Example Invocations cover at least 50% of documented `--flags` when 3+ flags are documented | SAI Convention |
+| I29 | - | Non-obvious constraints include a short WHY rationale (cause/effect) | Anthropic Best Practices |
 
 ### How to evaluate
 
@@ -102,7 +109,7 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 
 **I2 (progressive disclosure):** Check whether the SKILL.md exceeds ~150 lines; if so, verify that detail-heavy sections (examples, search patterns, rubrics) are extracted to references/.
 
-**I3 (examples):** Look for at least one concrete input -> output example.
+**I3 (examples):** Verify examples are wrapped in `<example>` tags (I26 checks tag count automatically) and at least one example shows concrete input -> output format.
 
 **I4 (no duplication):** Diff the SKILL.md against each reference file for duplicated paragraphs or tables.
 
@@ -110,9 +117,11 @@ Three or more failures in this tier results in a **NEEDS WORK** verdict. These r
 
 **I7 (degrees of freedom):** Compare the task fragility against the guardrails provided. High-risk tasks need stricter constraints; low-risk creative tasks need more freedom.
 
-**I8 (feedback loops):** For quality-critical steps, verify there is a verification or re-check mechanism.
+**I8 (feedback loops):** For quality-critical steps, require a real loop: do -> check -> fix if wrong -> repeat. A one-shot "verify once" step is not a loop.
 
 **I10 (terminology):** Confirm the same concept uses the same term throughout (e.g., don't alternate between "score" and "grade").
+
+**I29 (WHY rationales):** For non-obvious constraints, look for a causal rationale (because/so that/to prevent). Bare imperative rules without rationale fail I29.
 
 **I11 (XDG state):** If the skill writes persistent state or artifacts (state files, generated output, tracking files), verify it uses `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` - not `./findings/`, `${CLAUDE_SKILL_DIR}/findings/`, or any relative path. Plugin cache directories are replaced on version updates; relative paths are ambiguous and may resolve to the cache.
 
@@ -191,6 +200,14 @@ Automated by `check-flag-coverage.py`. Compares three zones of flag declaration:
 
 Section detection skips fenced code block headers to avoid false positives from bash comments. Only `--flag` style arguments are checked; positional arguments are not validated.
 
+#### Automated: example flag coverage (I28)
+
+Automated by `check-flag-coverage.py` via `FC-example-flags`.
+
+- If the Arguments section documents 3 or more `--flags`, Example Invocations must cover at least 50% of them
+- If fewer than 3 flags are documented, the check emits a pass/skip detail
+- Coverage compares documented flags to flags extracted from the first `## Example*` section
+
 #### Automated: hooks (I23)
 
 Automated by `check-hooks.py`. Runs 11 sub-checks against the hooks frontmatter block and all referenced hook scripts:
@@ -217,6 +234,13 @@ Automated by `check-references.py` (I24) and `validate.py` frontmatter checks (I
 
 **I25:** The `description` frontmatter field must be under 1,024 characters. Long descriptions waste context when Claude Code loads them for auto-invocation matching.
 
+#### Automated: best practices (I26-I27)
+
+Automated by `check-best-practices.py`.
+
+- **BP-example-tags (I26):** Counts `<example>` tags in SKILL.md. Zero fails, 1-2 emits informational guidance, 3+ passes
+- **BP-over-prompting (I27):** Detects all-caps aggressive emphasis (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) in prose outside fenced blocks, headings, and `<example>` blocks. 3+ hits fails, 1-2 informational, 0 pass
+
 ---
 
 ## Polish checks
@@ -235,8 +259,26 @@ Informational findings. These are only scored when running with `--thorough` and
 | P8 | RF-dup-codeblocks-info | No duplicated code blocks (3+ lines) between SKILL.md and references | Anthropic Best Practices |
 | P9 | FK-recommendation-info | Consider `context: fork` + `agent` field for context isolation | Agent Skills Spec |
 | P10 | HK-suggestion-info | Side-effect skills without hooks could benefit from hook-based guardrails | SAI Convention |
+| P11 | BP-negative-instr-info | Negative instruction density signal (prefer pairing with positive alternatives) | Anthropic Best Practices |
+| P12 | BP-error-section-info | Error/failure section heading presence signal | Anthropic Best Practices |
+| P13 | BP-scope-boundary-info | Scope-boundary language signal (`when not to`, `avoid using`, limitations) | Anthropic Best Practices |
+| P14 | BP-constraint-refresh-info | Constraint refresh signal for skills with 4+ phases | Anthropic Best Practices |
+| P15 | RF-dup-tables-info | Duplicated markdown tables (3+ rows) between SKILL.md and references | Anthropic Best Practices |
+| P16 | SD-legacy-bash-info | Top-level legacy `.sh` scripts detected in scripts/ | SAI Convention |
+| P17 | - | Body section order follows: overview, arguments, state, workflow, output, errors, examples | Anthropic Best Practices |
 
 ### How to evaluate
+
+#### Automated polish signals (P11-P16)
+
+These checks are emitted by scripts and stay informational:
+
+- **P11 (BP-negative-instr-info):** Counts negative-instruction phrasing (`DO NOT`, `NEVER`, `don't`) as a signal for balancing with positive alternatives
+- **P12 (BP-error-section-info):** Detects whether SKILL.md includes an explicit `##` section heading for errors/failures/edge cases/troubleshooting
+- **P13 (BP-scope-boundary-info):** Detects scope-boundary language such as "when not to use", "avoid using", and "limitations"
+- **P14 (BP-constraint-refresh-info):** If 4+ phase headings exist, checks for reminder/recall/re-read/re-anchor language
+- **P15 (RF-dup-tables-info):** Detects duplicated markdown tables (3+ rows) between SKILL.md and references
+- **P16 (SD-legacy-bash-info):** Reports top-level `scripts/*.sh` files to help track migration from legacy shell scripts
 
 #### Reference file quality
 
@@ -250,6 +292,8 @@ Informational findings. These are only scored when running with `--thorough` and
 
 **P8 (code duplication):** Extract fenced code blocks (3+ lines) from SKILL.md and compare against reference files. Duplicates are informational - progressive disclosure means reference files are loaded independently ([Agent Skills Overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)), so each file should be self-contained. Low-freedom operational code blocks (kubectl, script invocations) should remain wherever the agent needs them. Only flag duplicates for manual review, never auto-remove.
 
+**P15 (table duplication):** Extract markdown table blocks (3+ consecutive rows starting with `|`) from SKILL.md and compare with references. Treat duplicates as an informational signal only - keep intentional duplication where each file must be self-contained.
+
 #### Design quality
 
 **P2 (options):** For option-heavy instructions, verify there is one clear default path and at most one alternative, not a menu of choices.
@@ -257,6 +301,8 @@ Informational findings. These are only scored when running with `--thorough` and
 **P4 (time-sensitive):** Flag hardcoded dates, version numbers, or URLs without a note on when to update them.
 
 **P7 (error handling):** For skills with scripts, check that scripts handle expected error conditions rather than letting Claude infer fixes from raw failures ("solve, don't punt"). Flag any numeric constants without inline comments explaining the value ("voodoo constants").
+
+**P17 (section order):** Check body section order against the recommended flow: overview, arguments, state, workflow, output, errors, examples. Minor deviations can pass if they clearly improve readability.
 
 #### Fork candidate analysis (P9)
 

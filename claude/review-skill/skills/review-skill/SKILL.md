@@ -4,6 +4,7 @@ description: Review and fix Claude Code skill definitions (SKILL.md) using a tie
 argument-hint: "[path/to/skill] [--score-only] [--fix] [--verbose] [--thorough] [--json-report] [--strict]"
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
+disable-model-invocation: true
 ---
 
 # Review Skill
@@ -49,8 +50,9 @@ Read [references/skill-structure.md](references/skill-structure.md) to understan
 
 1. Identify the target skill directory (from argument or cwd)
 2. Read the SKILL.md file
-3. Inventory all bundled resources (`references/`, `scripts/`, `assets/`, `examples/`)
-4. Note parent context: plugin (`skills/` dir), project (`.claude/skills/`), or standalone
+3. Use Glob to find files under `references/`, `scripts/`, `assets/`, and `examples/`
+4. Use Grep for content search when mapping check IDs, directives, and justifications
+5. Note parent context: plugin (`skills/` dir), project (`.claude/skills/`), or standalone
 
 ### Phase 2: Automated Checks
 
@@ -67,16 +69,17 @@ The orchestrator delegates to companion scripts:
 | Script | Checks | NDJSON | Purpose |
 | :-- | :-- | :-- | :-- |
 | `check-file-refs.py` | C3, P3, P6, I15 | FR-* | File reference resolution and format |
-| `check-scripts-dir.py` | I6, I12 | SD-* | Script invocation prefix and runnable entrypoint permissions |
-| `check-references.py` | C2, P1, P8, I14 | RF-* | Body metrics and reference structure |
+| `check-scripts-dir.py` | I6, I12, P16 | SD-* | Script invocation prefix, runnable entrypoint permissions, and legacy shell signal |
+| `check-references.py` | C2, P1, P8, P15, I14 | RF-* | Body metrics and reference structure |
 | `check-config.py` | I11, I16, I17 | CF-* | Tool usage, XDG state, side-effect guard |
 | `check-content.py` | C6, C7, I13 | CT-* | Secrets, useless echo, grading style |
+| `check-best-practices.py` | I26, I27, P11-P14 | BP-* | Example tags, over-prompting, and best-practice signals |
 | `check-fork-candidate.py` | P9 | FK-* | Fork candidate analysis |
 | `check-preprocessing.py` | I18 | PP-* | Preprocessing directive hygiene |
 | `check-read-gates.py` | I19 (7 sub) | RG-* | Reference read gate analysis |
 | `check-lint.py` | I20 | CL-* | Script static analysis (shellcheck/ruff) |
 | `check-ask-user.py` | I21 (9 sub) | AQ-* | AskUserQuestion usage validation |
-| `check-flag-coverage.py` | I22 (3 sub) | FC-* | Flag documentation consistency |
+| `check-flag-coverage.py` | I22 (3 sub), I28 | FC-* | Flag documentation consistency and example coverage |
 | `check-hooks.py` | I23 (11 sub) | HK-* | Hooks configuration validation |
 
 Shared parsing helpers: `_skill_check_common.py`.
@@ -108,6 +111,12 @@ The agent returns ONLY structured results - one entry per criterion:
 ```
 
 Do not duplicate checklist evaluation in the main context. Use the agent's returned results directly in Phase 4. If `--verbose`, display the agent's per-check reasoning in the chat.
+
+## Error handling
+
+- If `validate.py` emits runtime delegate errors (for example `*-runtime`), report them explicitly and include stderr snippets when available
+- If a delegated script returns malformed NDJSON, treat that as a failed automation step and continue manual evaluation for unaffected criteria
+- If tool calls fail during fixes, retry once with a narrower scope, then report the exact blocker
 
 ### Phase 4: Synthesize Verdict
 
@@ -184,8 +193,9 @@ Present all failing checks via AskUserQuestion before making changes. Options: "
    - Move detail-heavy content to `references/` if SKILL.md exceeds 300 lines
    - Use explicit read directives: "Read X before starting phase Y"
    - Invoke scripts directly with the `${CLAUDE_SKILL_DIR}` prefix (never `./scripts/` or `bash` prefix)
-3. Fix or create missing bundled resources as needed
-4. Verify all file references resolve after changes
+3. Use Edit to update files and Write to create files only after the user selects a fix option
+4. Fix or create missing bundled resources as needed
+5. Verify all file references resolve after changes
 
 ### Phase 7: Final Report
 
@@ -241,6 +251,21 @@ Read [references/examples.md](references/examples.md) for detailed comparison pa
 **Read directives** — Good: "Read the search patterns file in full before starting Phase 3." Bad: "Search patterns are available in the search patterns file."
 
 **Grading style** — Good: "Check each function for missing error handling. List issues with file path and fix." Bad: "Evaluate criteria with numeric scores and percentage weights, then derive a letter grade."
+
+<example>
+Input: A skill has prose examples but no `<example>` tags.
+Output: I26 fails and reports missing `<example>` tags.
+</example>
+
+<example>
+Input: A skill documents six flags, but examples use only `--verbose` and `--thorough`.
+Output: I28 fails because example flag coverage is below 50%.
+</example>
+
+<example>
+Input: A skill uses CRITICAL, ALWAYS, and NEVER in non-example prose.
+Output: I27 fails when aggressive emphasis hits reach the fail threshold.
+</example>
 
 ## Example Invocations
 

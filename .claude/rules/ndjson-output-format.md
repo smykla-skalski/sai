@@ -60,6 +60,7 @@ Every check ID follows `{PREFIX}-{slug}`:
 | check-ask-user.py | `AQ` |
 | check-flag-coverage.py | `FC` |
 | check-hooks.py | `HK` |
+| check-best-practices.py | `BP` |
 | check-fork-candidate.py | `FK` |
 | check-lint.py | `CL` |
 
@@ -76,7 +77,7 @@ Use static constructors: `CheckRecord.ok()`, `.fail()`, `.info()`, `.skip()`.
 
 ## Tier field
 
-Optional string mapping check ID to checklist tier (C1-C7, I1-I25, P1-P10). Regex: `^[CIP]\d{1,2}$`.
+Optional string mapping check ID to checklist tier (C1-C7, I1-I29, P1-P17). Regex: `^[CIP]\d{1,2}$`.
 
 ## Detail message style
 

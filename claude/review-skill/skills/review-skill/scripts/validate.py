@@ -81,6 +81,7 @@ CHECK_SKILL_EXISTS: Final[str] = "FM-skill-md-exists"
 
 # Script prefix mapping for runtime error IDs
 SCRIPT_PREFIX: Final[dict[str, str]] = {
+    "check-best-practices.py": "BP",
     "check-config.py": "CF",
     "check-content.py": "CT",
     "check-file-refs.py": "FR",
@@ -124,7 +125,10 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa
     if not name:
         collector.add(
             CheckRecord(
-                check="FM-name-present", passed=False, detail=detail, tier="C4",
+                check="FM-name-present",
+                passed=False,
+                detail=detail,
+                tier="C4",
             ),
         )
         collector.add(
@@ -847,6 +851,7 @@ STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
         "RF-body-lines",
         "RF-body-chars",
         "RF-dup-codeblocks-info",
+        "RF-dup-tables-info",
         "RF-phase-numbering",
         "RF-long-ref-toc",
     ),
@@ -873,6 +878,7 @@ STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
         "CF-tools-usage",
         "CF-side-effect",
     ),
+    _delegate("check-best-practices.py"),
     _delegate("check-read-gates.py", guard_field="refs"),
     _delegate("check-preprocessing.py", guard_field="directives"),
 )
@@ -911,7 +917,8 @@ def _run_structure_delegate(
             )
         else:
             collector.record_delegate_warning(
-                config.script, f"No parsed output from {config.script}",
+                config.script,
+                f"No parsed output from {config.script}",
             )
         return
 

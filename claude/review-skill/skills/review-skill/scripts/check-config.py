@@ -56,9 +56,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
 # Pattern constants
 # ---------------------------------------------------------------------------
 
-BAD_STATE_PATH_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+BAD_STATE_PATH_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\./findings/",
         r"\$\{CLAUDE_SKILL_DIR\}/findings/",
@@ -76,35 +74,27 @@ STATE_REFERENCE_PATTERNS: Final[tuple[Pattern[str], ...]] = (
         ),
     )
 )
-XDG_PATH_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+XDG_PATH_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"XDG_DATA_HOME",
         r"\$HOME/\.local/share",
     ),
 )
 
-TASK_IMPLIED_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+TASK_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bagent\b",
         r"\bspawn\b",
         r"\bsubagent\b",
     ),
 )
-TOOLSEARCH_IMPLIED_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+TOOLSEARCH_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"mcp__",
         r"select:",
     ),
 )
-ASK_USER_QUESTION_IMPLIED_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+ASK_USER_QUESTION_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bask\s+the\s+user\b",
         r"\bprompt\s+the\s+user\b",
@@ -112,11 +102,90 @@ ASK_USER_QUESTION_IMPLIED_PATTERNS: Final[
         r"\blet\s+the\s+user\s+(choose|decide|pick|select|confirm)\b",
     ),
 )
+GLOB_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bglob\b",
+        r"\bfind.*files?\b",
+        r"\bfile.*search\b",
+        r"\bpattern.*match\b",
+    ),
+)
+GREP_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bgrep\b",
+        r"\bsearch.*content\b",
+        r"\bcontent.*search\b",
+        r"\bfind.*text\b",
+    ),
+)
+WRITE_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bwrite.*file\b",
+        r"\bcreate.*file\b",
+        r"\bsave\b.*\bfile\b",
+        r"\bgenerate.*output\b",
+    ),
+)
+EDIT_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bedit.*file\b",
+        r"\bmodify.*file\b",
+        r"\bupdate.*file\b",
+        r"\brewrite\b",
+    ),
+)
+WEBSEARCH_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bweb.*search\b",
+        r"\bsearch.*web\b",
+        r"\bsearch.*online\b",
+    ),
+)
+WEBFETCH_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bfetch.*url\b",
+        r"\bdownload\b",
+        r"\bhttp[s]?://\b",
+        r"\bURL\b",
+    ),
+)
+# spawn/subagent overlap with TASK_IMPLIED_PATTERNS is intentional -
+# both Task and Agent tools relate to subagent workflows.
+AGENT_IMPLIED_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bspawn\b",
+        r"\bsubagent\b",
+        r"\bbackground.*agent\b",
+    ),
+)
 HIGH_SIGNAL_TOOL_RULES: Final[dict[str, tuple[Pattern[str], ...]]] = {
     "Task": TASK_IMPLIED_PATTERNS,
     "ToolSearch": TOOLSEARCH_IMPLIED_PATTERNS,
     "AskUserQuestion": ASK_USER_QUESTION_IMPLIED_PATTERNS,
+    "Glob": GLOB_IMPLIED_PATTERNS,
+    "Grep": GREP_IMPLIED_PATTERNS,
+    "Write": WRITE_IMPLIED_PATTERNS,
+    "Edit": EDIT_IMPLIED_PATTERNS,
+    "WebSearch": WEBSEARCH_IMPLIED_PATTERNS,
+    "WebFetch": WEBFETCH_IMPLIED_PATTERNS,
+    "Agent": AGENT_IMPLIED_PATTERNS,
 }
+
+TOOL_SIDE_EFFECTS: Final[frozenset[str]] = frozenset({"Write", "Edit"})
+
+API_SIDE_EFFECT_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bmcp__\w+",
+        r"\bNotion\b.*\b(create|update|write|post)\b",
+        r"\bSlack\b.*\b(send|post|message)\b",
+        r"\bGitHub\b.*\b(create|comment|review|merge|push)\b",
+        r"\bpbcopy\b",
+        r"\bxclip\b",
+        r"\bclipboard\b",
+        r"\bgh\s+pr\s+(create|comment|review|merge)\b",
+        r"\bgh\s+issue\s+(create|comment|close)\b",
+    ),
+)
 
 SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
     r"k3d\s+(cluster|create|delete)"
@@ -164,6 +233,29 @@ def _tool_is_referenced(tool_name: str, body_text: str) -> bool:
     return matches_any(body_text, implied_patterns)
 
 
+def _declared_tool_names(document: SkillDocument) -> frozenset[str]:
+    """Return allowed-tools names without parameter suffixes."""
+    return frozenset(
+        tool_name.split("(")[0]
+        for tool_name in parse_allowed_tools(document.frontmatter)
+    )
+
+
+def _matching_lines(
+    body_text: str,
+    patterns: tuple[Pattern[str], ...],
+) -> tuple[str, ...]:
+    """Return body lines that match any of the supplied patterns."""
+    hits: list[str] = []
+    for raw_line in body_text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if matches_any(line, patterns):
+            hits.append(line)
+    return tuple(hits)
+
+
 # ---------------------------------------------------------------------------
 # Check implementations
 # ---------------------------------------------------------------------------
@@ -208,20 +300,19 @@ def check_allowed_tools_usage(document: SkillDocument) -> CheckRecord | None:
     if not document.field("allowed-tools"):
         return None
 
-    declared_tools = parse_allowed_tools(document.frontmatter)
+    declared_tools = _declared_tool_names(document)
     unused_tools = sorted(
-        bare_name
+        tool_name
         for tool_name in declared_tools
-        for bare_name in (tool_name.split("(")[0],)
-        if bare_name in HIGH_SIGNAL_TOOL_RULES
-        and not _tool_is_referenced(bare_name, document.prose_body)
+        if tool_name in HIGH_SIGNAL_TOOL_RULES
+        and not _tool_is_referenced(tool_name, document.prose_body)
     )
 
     if not unused_tools:
         return CheckRecord(
             check=ALLOWED_TOOLS_CHECK,
             passed=True,
-            detail="No unused high-signal tools detected in allowed-tools",
+            detail="No unused purpose-specific tools detected in allowed-tools",
             tier="I16",
         )
 
@@ -236,18 +327,19 @@ def check_allowed_tools_usage(document: SkillDocument) -> CheckRecord | None:
     )
 
 
-def _count_side_effect_hits(body_text: str) -> int:
-    """Count body lines that contain destructive or infrastructure commands."""
-    return sum(
-        1
-        for line in body_text.splitlines()
-        if SIDE_EFFECT_PATTERN.search(line) is not None
-    )
+def _first_line_snippet(line: str, width: int = 80) -> str:
+    """Return one trimmed line excerpt for check detail output."""
+    return line.strip()[:width]
 
 
 def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
     """Validate that side-effect skills set `disable-model-invocation: true`."""
-    side_effect_hits = _count_side_effect_hits(document.prose_body)
+    declared_tools = _declared_tool_names(document)
+    tool_hits = sorted(TOOL_SIDE_EFFECTS & declared_tools)
+    api_hits = _matching_lines(document.prose_body, API_SIDE_EFFECT_PATTERNS)
+    command_hits = _matching_lines(document.prose_body, (SIDE_EFFECT_PATTERN,))
+    side_effect_hits = len(tool_hits) + len(api_hits) + len(command_hits)
+
     if side_effect_hits == 0:
         return CheckRecord(
             check=SIDE_EFFECT_CHECK,
@@ -256,11 +348,23 @@ def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
             tier="I17",
         )
 
+    evidence_parts: list[str] = []
+    if tool_hits:
+        evidence_parts.append(f"tools={','.join(tool_hits)}")
+    if api_hits:
+        evidence_parts.append(f"api={_first_line_snippet(api_hits[0])}")
+    if command_hits:
+        evidence_parts.append(f"cmd={_first_line_snippet(command_hits[0])}")
+    evidence = "; ".join(evidence_parts)
+
     if document.field("disable-model-invocation").lower() == "true":
         return CheckRecord(
             check=SIDE_EFFECT_CHECK,
             passed=True,
-            detail="Side-effect skill has disable-model-invocation: true",
+            detail=(
+                "Side-effect signals detected and disable-model-invocation: true "
+                f"is set ({evidence})"
+            ),
             tier="I17",
         )
 
@@ -268,9 +372,8 @@ def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
         check=SIDE_EFFECT_CHECK,
         passed=False,
         detail=(
-            f"Skill contains {side_effect_hits} side-effect pattern(s) "
-            "(destructive/infrastructure commands) but lacks "
-            "disable-model-invocation: true"
+            "Side-effect signals detected but disable-model-invocation: true is "
+            f"missing ({evidence})"
         ),
         tier="I17",
     )
@@ -280,9 +383,7 @@ def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
 # Orchestration
 # ---------------------------------------------------------------------------
 
-CHECK_FUNCTIONS: Final[
-    dict[str, Callable[[SkillDocument], CheckRecord | None]]
-] = {
+CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], CheckRecord | None]]] = {
     PERSISTENT_STATE_CHECK: check_persistent_state_xdg,
     ALLOWED_TOOLS_CHECK: check_allowed_tools_usage,
     SIDE_EFFECT_CHECK: check_side_effect_guard,
