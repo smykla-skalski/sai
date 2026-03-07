@@ -14,29 +14,38 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from re import Pattern
 from typing import Final
 
 from skill_check_common import (
+    EXIT_USAGE_ERROR,
+    FENCE_RE,
     CheckResult,
     SkillDocument,
     SkillLoadError,
+    emit_error,
     emit_results,
     load_skill_document,
 )
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
 
 CHECK_NO_SECRETS: Final[str] = "no-secrets"
 CHECK_NO_USELESS_ECHO: Final[str] = "no-useless-echo"
 CHECK_NO_GRADING_STYLE: Final[str] = "no-grading-style"
 
-EXIT_USAGE_ERROR: Final[int] = 2
 FIRST_SNIPPET_WIDTH: Final[int] = 80
 GRADING_SIGNAL_THRESHOLD: Final[int] = 2
 
 SHELL_FENCE_LANGUAGES: Final[frozenset[str]] = frozenset({"", "bash", "sh", "shell"})
+
+# ---------------------------------------------------------------------------
+# Pattern constants
+# ---------------------------------------------------------------------------
 
 SECRET_PATTERN: Final[Pattern[str]] = re.compile(
     r"AKIA[A-Z0-9]{16}|"
@@ -51,7 +60,6 @@ PLACEHOLDER_PATTERN: Final[Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 
-FENCE_PATTERN: Final[Pattern[str]] = re.compile(r"^\s*```")
 USELESS_ECHO_PATTERN: Final[Pattern[str]] = re.compile(r"\$\(\s*echo\s+")
 VARIABLE_ECHO_PATTERN: Final[Pattern[str]] = re.compile(r"\$\(\s*echo[^)]*\$[A-Za-z_{]")
 
@@ -88,6 +96,11 @@ GRADING_PATTERNS: Final[tuple[tuple[str, Pattern[str]], ...]] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# File and fence helpers
+# ---------------------------------------------------------------------------
+
+
 def _read_text(path: Path) -> str:
     """Read a UTF-8 text file with replacement for invalid bytes."""
     try:
@@ -104,6 +117,11 @@ def _contains_real_secret(text: str) -> bool:
             continue
         return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Check implementations
+# ---------------------------------------------------------------------------
 
 
 def check_no_secrets(document: SkillDocument) -> CheckResult:
@@ -134,7 +152,7 @@ def check_no_secrets(document: SkillDocument) -> CheckResult:
 
 def _fence_language(line: str) -> str:
     """Extract normalized language token from an opening fence line."""
-    without_fence = FENCE_PATTERN.sub("", line, count=1)
+    without_fence = FENCE_RE.sub("", line, count=1)
     language = without_fence.strip().split(maxsplit=1)
     if not language:
         return ""
@@ -148,7 +166,7 @@ def _iter_shell_fence_lines(markdown_text: str) -> list[str]:
     in_shell_fence = False
 
     for line in markdown_text.splitlines():
-        if FENCE_PATTERN.match(line):
+        if FENCE_RE.match(line):
             if in_fence:
                 in_fence = False
                 in_shell_fence = False
@@ -251,6 +269,10 @@ def check_no_grading_style(document: SkillDocument) -> CheckResult:
     )
 
 
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
 CheckFunction = Callable[[SkillDocument], CheckResult]
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
@@ -281,6 +303,11 @@ def run_checks(
     return [CHECK_FUNCTIONS[check_name](document) for check_name in checks_to_run]
 
 
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+
 def _build_parser() -> argparse.ArgumentParser:
     """Build and return the CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -309,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         document = load_skill_document(args.skill_directory)
     except SkillLoadError as error:
-        sys.stderr.write(f"Error: {error}\n")
+        emit_error(f"Error: {error}")
         return EXIT_USAGE_ERROR
 
     selected_checks = tuple(args.checks or ())
