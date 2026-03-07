@@ -30,15 +30,15 @@ Binary checklist for evaluating Claude Code skill definitions. Each check is pas
 
 Any single failure in this tier results in an overall **FAIL** verdict. These represent hard requirements from the Agent Skills specification and Anthropic best practices.
 
-| ID  | Check                                                                         | Source                                       |
-|:----|:------------------------------------------------------------------------------|:---------------------------------------------|
-| C1  | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) | Anthropic Best Practices, Agent Skills Spec |
-| C2  | SKILL.md body under 500 lines (excluding frontmatter); see I24 for character limit | Agent Skills Spec, Claude Code Docs          |
-| C3  | All file references in SKILL.md resolve to actual files                       | Agent Skills Spec                            |
-| C4  | Name field valid format and matches directory name                            | Agent Skills Spec                            |
-| C5  | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
-| C6  | Not structured as a scoring rubric with points, weights, or letter grades     | Anthropic Best Practices                     |
-| C7  | No secrets or credentials in skill files (API keys, tokens, private keys)     | Anthropic Best Practices                     |
+| ID | Check | Source |
+| :-- | :-- | :-- |
+| C1 | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) | Anthropic Best Practices, Agent Skills Spec |
+| C2 | SKILL.md body under 500 lines (excluding frontmatter); see I24 for character limit | Agent Skills Spec, Claude Code Docs |
+| C3 | All file references in SKILL.md resolve to actual files | Agent Skills Spec |
+| C4 | Name field valid format and matches directory name | Agent Skills Spec |
+| C5 | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
+| C6 | Not structured as a scoring rubric with points, weights, or letter grades | Anthropic Best Practices |
+| C7 | No secrets or credentials in skill files (API keys, tokens, private keys) | Anthropic Best Practices |
 
 ### How to evaluate
 
@@ -62,33 +62,33 @@ Read the SKILL.md frontmatter first. Confirm the `description` field contains bo
 
 Three or more failures in this tier results in a **NEEDS WORK** verdict. These reflect best practices that materially affect skill quality.
 
-| ID  | Check                                                                               | Source                                        |
-|:----|:------------------------------------------------------------------------------------|:----------------------------------------------|
-| I1  | Imperative form throughout ("Parse input" not "You should parse")                   | Anthropic skill-creator                       |
-| I2  | Progressive disclosure - complex skills use references/ for details                 | Agent Skills Spec, Context Engineering        |
-| I3  | Concrete examples showing inputs → outputs                                          | Anthropic Best Practices, Context Engineering |
-| I4  | No prose duplication between SKILL.md and references (code blocks OK)               | Anthropic skill-creator                       |
-| I5  | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding                             |
-| I6  | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention                                |
-| I7  | Appropriate degrees of freedom (guardrails match task fragility)                    | Anthropic Best Practices                      |
-| I8  | Feedback loops for quality-critical steps                                           | Anthropic Best Practices                      |
-| I9  | allowed-tools not over-broad (only tools actually needed)                           | Anthropic Best Practices                      |
-| I10 | Consistent terminology (same concept = same word)                                   | Anthropic Best Practices                      |
-| I11 | Persistent state uses XDG paths, not relative or cache-relative paths               | SAI Convention, Plugin Cache Architecture     |
-| I12 | All scripts in scripts/ have executable bit set                                     | SAI Convention                                |
-| I13 | No useless echo wrapping literals (`$(echo "text")`, not `$(echo "${VAR}")`)        | ShellCheck SC2116                             |
-| I14 | Consistent phase/step numbering between SKILL.md and references                     | Anthropic Best Practices                      |
-| I15 | Reference file paths use markdown links, not inline code, for progressive disclosure | Agent Skills Spec, Progressive Disclosure     |
-| I16 | allowed-tools only lists tools actually referenced in the skill body                 | Anthropic Best Practices                      |
-| I17 | Side-effect skills have `disable-model-invocation: true` in frontmatter              | Anthropic Best Practices                      |
+| ID | Check | Source |
+| :-- | :-- | :-- |
+| I1 | Imperative form throughout ("Parse input" not "You should parse") | Anthropic skill-creator |
+| I2 | Progressive disclosure - complex skills use references/ for details | Agent Skills Spec, Context Engineering |
+| I3 | Concrete examples showing inputs → outputs | Anthropic Best Practices, Context Engineering |
+| I4 | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
+| I5 | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding |
+| I6 | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention |
+| I7 | Appropriate degrees of freedom (guardrails match task fragility) | Anthropic Best Practices |
+| I8 | Feedback loops for quality-critical steps | Anthropic Best Practices |
+| I9 | allowed-tools not over-broad (only tools actually needed) | Anthropic Best Practices |
+| I10 | Consistent terminology (same concept = same word) | Anthropic Best Practices |
+| I11 | Persistent state uses XDG paths, not relative or cache-relative paths | SAI Convention, Plugin Cache Architecture |
+| I12 | All scripts in scripts/ have executable bit set | SAI Convention |
+| I13 | No useless echo wrapping literals (`$(echo "text")`, not `$(echo "${VAR}")`) | ShellCheck SC2116 |
+| I14 | Consistent phase/step numbering between SKILL.md and references | Anthropic Best Practices |
+| I15 | Reference file paths use markdown links, not inline code, for progressive disclosure | Agent Skills Spec, Progressive Disclosure |
+| I16 | allowed-tools only lists tools actually referenced in the skill body | Anthropic Best Practices |
+| I17 | Side-effect skills have `disable-model-invocation: true` in frontmatter | Anthropic Best Practices |
 | I18 | Preprocessing directives follow best practices (error handling, output limits, no secrets, no mutations, no slow/hanging commands) | Claude Code Docs, Community Best Practices |
 | I19 | Reference read gate analysis: gate presence, passive mentions, orphan files, dead bundled-only listings, use-before-gate ordering, gate purpose text, multi-flow coverage | Empirical finding, I5 automated complement |
 | I20 | Bundled scripts pass static analysis (shellcheck for .sh, ruff for .py; critical/medium severity) | SAI Script Audit, ShellCheck, Ruff |
 | I21 | AskUserQuestion declared when body implies user interaction, not used in spawned agents, required args have ask-or-fallback | SAI Convention, Skill Authoring Guide |
 | I22 | Flag coverage: every --flag in argument-hint documented in Arguments, every documented flag in argument-hint, every documented flag referenced in workflow | SAI Convention |
 | I23 | Hooks configuration: valid events, correct structure, scripts exist/executable, hook patterns (stdin parsing, stop guard, exit codes, error prefix consistency) | SAI Convention, Skill Authoring Guide |
-| I24 | SKILL.md body under 20,000 characters (roughly 5,000 tokens)                       | Skills Research, Context Engineering          |
-| I25 | Description field under 1,024 characters                                            | Agent Skills Spec                             |
+| I24 | SKILL.md body under 20,000 characters (roughly 5,000 tokens) | Skills Research, Context Engineering |
+| I25 | Description field under 1,024 characters | Agent Skills Spec |
 
 ### How to evaluate
 
@@ -218,18 +218,18 @@ Automated by `check-references.sh` (I24) and `validate.sh` frontmatter checks (I
 
 Informational findings. These are only scored when running with `--thorough` and do not affect the pass/fail verdict.
 
-| ID  | Check                                                            | Source                   |
-|:----|:-----------------------------------------------------------------|:-------------------------|
-| P1  | Long references (>100 lines) have table of contents              | Agent Skills Spec        |
-| P2  | One default + one escape hatch (not five options)                | Anthropic Best Practices |
-| P3  | SKILL.md mentions all bundled resources                          | Agent Skills Spec        |
-| P4  | No time-sensitive info without deprecation plan                  | Anthropic skill-creator  |
-| P5  | Description uses third-person form                               | Anthropic Best Practices |
-| P6  | No Windows-style backslash paths in file references              | Anthropic Best Practices |
-| P7  | Scripts handle errors explicitly, no unexplained magic constants | Anthropic Best Practices |
-| P8  | No duplicated code blocks (3+ lines) between SKILL.md and references | Anthropic Best Practices |
-| P9  | Consider `context: fork` + `agent` field for context isolation        | Agent Skills Spec        |
-| P10 | Side-effect skills without hooks could benefit from hook-based guardrails | SAI Convention           |
+| ID | Check | Source |
+| :-- | :-- | :-- |
+| P1 | Long references (>100 lines) have table of contents | Agent Skills Spec |
+| P2 | One default + one escape hatch (not five options) | Anthropic Best Practices |
+| P3 | SKILL.md mentions all bundled resources | Agent Skills Spec |
+| P4 | No time-sensitive info without deprecation plan | Anthropic skill-creator |
+| P5 | Description uses third-person form | Anthropic Best Practices |
+| P6 | No Windows-style backslash paths in file references | Anthropic Best Practices |
+| P7 | Scripts handle errors explicitly, no unexplained magic constants | Anthropic Best Practices |
+| P8 | No duplicated code blocks (3+ lines) between SKILL.md and references | Anthropic Best Practices |
+| P9 | Consider `context: fork` + `agent` field for context isolation | Agent Skills Spec |
+| P10 | Side-effect skills without hooks could benefit from hook-based guardrails | SAI Convention |
 
 ### How to evaluate
 

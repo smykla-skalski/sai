@@ -52,10 +52,10 @@ my-plugin/                          # Plugin root
 
 Two distinct levels exist:
 
-| Location                       | Purpose                        | Path variable           |
-|:-------------------------------|:-------------------------------|:------------------------|
-| `{plugin-root}/`               | Plugin metadata, README, hooks | `${CLAUDE_PLUGIN_ROOT}` |
-| `{plugin-root}/skills/{name}/` | Skill entrypoint, resources    | Skill base path         |
+| Location | Purpose | Path variable |
+| :-- | :-- | :-- |
+| `{plugin-root}/` | Plugin metadata, README, hooks | `${CLAUDE_PLUGIN_ROOT}` |
+| `{plugin-root}/skills/{name}/` | Skill entrypoint, resources | Skill base path |
 
 `${CLAUDE_PLUGIN_ROOT}` is available in hook and MCP JSON configurations only. It is not available inside SKILL.md or command markdown files.
 
@@ -63,10 +63,10 @@ Two distinct levels exist:
 
 When a skill is invoked, Claude Code provides the skill's **base path** in the system context. This path points to the directory containing SKILL.md, not the plugin root.
 
-| Context                | Available path          | Resolves to                         |
-|:-----------------------|:------------------------|:------------------------------------|
-| Hook/MCP JSON configs  | `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory               |
-| Skill markdown content | `${CLAUDE_SKILL_DIR}`   | Skill directory (contains SKILL.md) |
+| Context | Available path | Resolves to |
+| :-- | :-- | :-- |
+| Hook/MCP JSON configs | `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory |
+| Skill markdown content | `${CLAUDE_SKILL_DIR}` | Skill directory (contains SKILL.md) |
 
 `${CLAUDE_SKILL_DIR}` is an official string substitution available in SKILL.md content. Claude Code replaces it with the literal absolute path to the skill directory before the agent sees the content. Use it for script invocations and file references in SKILL.md. It is not available in reference files - those are read by the agent via the Read tool without substitution.
 

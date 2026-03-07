@@ -40,13 +40,13 @@ The passive is fine when the receiver of the action is the topic of the paragrap
 
 Make definite assertions. Use "not" for denial or antithesis, never for evasion. AI text hedges with negative phrasing where a direct positive statement works better.
 
-| Negative form                 | Positive form |
-|:------------------------------|:--------------|
+| Negative form | Positive form |
+| :-- | :-- |
 | He was not very often on time | He usually came late |
-| did not remember              | forgot |
-| did not pay any attention to  | ignored |
+| did not remember | forgot |
+| did not pay any attention to | ignored |
 | did not have much confidence in | distrusted |
-| not important                 | trifling |
+| not important | trifling |
 
 This applies to whole passages too:
 
@@ -58,9 +58,9 @@ This applies to whole passages too:
 
 Prefer the specific to the general, the definite to the vague, the concrete to the abstract. AI text gravitates toward generic abstractions. Counter this by grounding statements in observable details.
 
-| Abstract                                           | Concrete                           |
-|:---------------------------------------------------|:-----------------------------------|
-| A period of unfavorable weather set in              | It rained every day for a week     |
+| Abstract | Concrete |
+| :-- | :-- |
+| A period of unfavorable weather set in | It rained every day for a week |
 | He showed satisfaction as he took possession of his well-earned reward | He grinned as he pocketed the coin |
 
 The surest way to hold the reader's attention is being specific. When dealing with general principles, give particular instances.
@@ -69,32 +69,32 @@ The surest way to hold the reader's attention is being specific. When dealing wi
 
 A sentence should contain no unnecessary words, a paragraph no unnecessary sentences. This does not mean making all sentences short or avoiding detail - it means making every word tell.
 
-| Wordy                          | Concise         |
-|:-------------------------------|:----------------|
-| the question as to whether     | whether         |
-| there is no doubt but that     | no doubt        |
-| used for fuel purposes         | used for fuel   |
-| he is a man who                | he              |
-| in a hasty manner              | hastily         |
-| this is a subject which        | this subject    |
-| His story is a strange one.    | His story is strange. |
+| Wordy | Concise |
+| :-- | :-- |
+| the question as to whether | whether |
+| there is no doubt but that | no doubt |
+| used for fuel purposes | used for fuel |
+| he is a man who | he |
+| in a hasty manner | hastily |
+| this is a subject which | this subject |
+| His story is a strange one. | His story is strange. |
 
 Revise "the fact that" out of every sentence:
 
-| Expression                       | Replacement     |
-|:---------------------------------|:----------------|
-| owing to the fact that           | since, because  |
-| in spite of the fact that        | though          |
-| call your attention to the fact that | remind you  |
-| I was unaware of the fact that   | I did not know  |
-| the fact that he had not succeeded | his failure   |
+| Expression | Replacement |
+| :-- | :-- |
+| owing to the fact that | since, because |
+| in spite of the fact that | though |
+| call your attention to the fact that | remind you |
+| I was unaware of the fact that | I did not know |
+| the fact that he had not succeeded | his failure |
 
 "Who is" and "which was" are often superfluous:
 
-| Wordy                                                | Concise                              |
-|:-----------------------------------------------------|:-------------------------------------|
-| His brother, who is a member of the same firm         | His brother, a member of the same firm |
-| Trafalgar, which was Nelson's last battle             | Trafalgar, Nelson's last battle      |
+| Wordy | Concise |
+| :-- | :-- |
+| His brother, who is a member of the same firm | His brother, a member of the same firm |
+| Trafalgar, which was Nelson's last battle | Trafalgar, Nelson's last battle |
 
 Combine choppy step-by-step sentences into one:
 
@@ -118,28 +118,28 @@ The position of words in a sentence shows their relationship. Keep together what
 
 Subject and verb should not be separated by a clause that can move to the beginning:
 
-| Separated                                      | Together                                       |
-|:-----------------------------------------------|:-----------------------------------------------|
+| Separated | Together |
+| :-- | :-- |
 | Wordsworth, in the fifth book of The Excursion, gives a minute description | In the fifth book of The Excursion, Wordsworth gives a minute description |
 
 Relative pronouns should follow their antecedent immediately:
 
-| Ambiguous                                      | Clear                                          |
-|:-----------------------------------------------|:-----------------------------------------------|
+| Ambiguous | Clear |
+| :-- | :-- |
 | He wrote three articles about his adventures in Spain, which were published in Harper's | He published in Harper's three articles about his adventures in Spain |
 
 Modifiers should sit next to what they modify:
 
-| Misplaced                  | Correct              |
-|:---------------------------|:---------------------|
+| Misplaced | Correct |
+| :-- | :-- |
 | He only found two mistakes | He found only two mistakes |
 
 ## Place emphasis at the end
 
 The end of a sentence is its most prominent position. Put the word or phrase you want to emphasize there.
 
-| Weak ending                                       | Strong ending                                     |
-|:--------------------------------------------------|:--------------------------------------------------|
+| Weak ending | Strong ending |
+| :-- | :-- |
 | Humanity has hardly advanced in fortitude since that time, though it has advanced in many other ways | Humanity has advanced in many other ways, but it has hardly advanced in fortitude |
 | This steel is principally used for making razors, because of its hardness | Because of its hardness, this steel is principally used in making razors |
 
@@ -159,18 +159,18 @@ Single-sentence paragraphs are acceptable as transitions but should not be the n
 
 Words and phrases that add nothing. Replace or remove.
 
-| Expression        | Problem                              | Fix                        |
-|:------------------|:-------------------------------------|:---------------------------|
-| case              | usually redundant ("in many cases")  | rewrite ("many rooms")     |
-| character         | wordiness ("acts of a hostile character") | cut ("hostile acts")  |
-| factor            | hackneyed ("the great factor in")    | rewrite ("he won by")      |
-| feature           | adds nothing ("a feature worthy of mention") | describe the thing  |
-| interesting       | lazy intro ("an interesting story")  | just tell the story        |
-| nature            | same as character ("of a hostile nature") | cut ("hostile")       |
+| Expression | Problem | Fix |
+| :-- | :-- | :-- |
+| case | usually redundant ("in many cases") | rewrite ("many rooms") |
+| character | wordiness ("acts of a hostile character") | cut ("hostile acts") |
+| factor | hackneyed ("the great factor in") | rewrite ("he won by") |
+| feature | adds nothing ("a feature worthy of mention") | describe the thing |
+| interesting | lazy intro ("an interesting story") | just tell the story |
+| nature | same as character ("of a hostile nature") | cut ("hostile") |
 | along these lines | overworked ("spoke along the same lines") | rewrite ("to the same effect") |
-| worth while       | vague approval                       | be specific about the value |
-| very              | use sparingly; prefer strong words   | cut or choose a stronger word |
-| certainly         | false intensifier, like "very"       | cut                        |
+| worth while | vague approval | be specific about the value |
+| very | use sparingly; prefer strong words | cut or choose a stronger word |
+| certainly | false intensifier, like "very" | cut |
 
 ---
 

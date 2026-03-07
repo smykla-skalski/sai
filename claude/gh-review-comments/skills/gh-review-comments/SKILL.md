@@ -26,14 +26,14 @@ Parse from `$ARGUMENTS`:
 
 ## Actions Overview
 
-| Mode            | Flags                     | Behavior                                                  |
-|:----------------|:--------------------------|:----------------------------------------------------------|
-| List            | (no action flags)         | Display threads with IDs, author, body, resolution status |
-| Reply           | `--reply <msg>`           | Reply to matched threads                                  |
-| Resolve         | `--resolve`               | Resolve matched threads                                   |
-| Reply + Resolve | `--reply <msg> --resolve` | Reply then resolve each thread                            |
-| Unresolve       | `--unresolve`             | Reopen resolved threads                                   |
-| Create review   | `--create-review`         | Interactively create a review with line-level comments    |
+| Mode | Flags | Behavior |
+| :-- | :-- | :-- |
+| List | (no action flags) | Display threads with IDs, author, body, resolution status |
+| Reply | `--reply <msg>` | Reply to matched threads |
+| Resolve | `--resolve` | Resolve matched threads |
+| Reply + Resolve | `--reply <msg> --resolve` | Reply then resolve each thread |
+| Unresolve | `--unresolve` | Reopen resolved threads |
+| Create review | `--create-review` | Interactively create a review with line-level comments |
 
 ## Scripts
 

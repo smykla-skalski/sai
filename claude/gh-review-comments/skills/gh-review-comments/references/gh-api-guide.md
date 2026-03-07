@@ -13,7 +13,7 @@ Practical reference for listing, replying to, and resolving pull request review 
 ## ID Types
 
 | What | Format Example | Where Used |
-|------|----------------|------------|
+| --- | --- | --- |
 | REST comment ID | `2815685985` (integer) | REST reply endpoint |
 | Thread node ID | `PRRT_kwDOCnTGG85tgSD3` (string) | GraphQL resolve/unresolve |
 | Comment node ID | `PRRC_kwDOCnTGG86l3xmZ` (string) | GraphQL reply mutation |
@@ -22,7 +22,7 @@ Practical reference for listing, replying to, and resolving pull request review 
 ## REST Endpoints
 
 | Operation | Method | Endpoint |
-|-----------|--------|----------|
+| --- | --- | --- |
 | List PR review comments | GET | `/repos/{owner}/{repo}/pulls/{pull_number}/comments` |
 | Get single review comment | GET | `/repos/{owner}/{repo}/pulls/comments/{comment_id}` |
 | Reply to review comment | POST | `/repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies` |
@@ -40,7 +40,7 @@ The `comment_id` in the reply endpoint **must** be a top-level comment (`in_repl
 ## GraphQL Mutations
 
 | Operation | Mutation | Key Input |
-|-----------|----------|-----------|
+| --- | --- | --- |
 | Resolve thread | `resolveReviewThread` | `threadId` (ID!) |
 | Unresolve thread | `unresolveReviewThread` | `threadId` (ID!) |
 | Reply to thread | `addPullRequestReviewThreadReply` | `pullRequestReviewThreadId` (ID!), `body` (String!) |

@@ -392,7 +392,7 @@ Use this template for generating AI daily digests.
 ## Length Guidelines
 
 | Section | Target Items |
-|---------|--------------|
+| --- | --- |
 | Research Papers | 3-5 |
 | Models & Releases | 2-4 |
 | Frameworks & Tools | 2-3 |
