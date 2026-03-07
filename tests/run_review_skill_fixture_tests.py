@@ -34,6 +34,12 @@ ExpectationValue = Union[bool, dict[str, object]]  # noqa: UP007
 # bool -> expected pass value
 # dict -> supports keys: pass, level, detail_contains
 EXPECTATIONS: dict[str, dict[str, ExpectationValue]] = {
+    "bullet-args": {
+        "FC-hint-doc": True,
+        "FC-doc-hint": True,
+        "FC-doc-workflow": True,
+        "FC-example-flags": True,
+    },
     "api-side-effect-no-dmi": {
         "CF-side-effect": False,
     },
@@ -193,6 +199,24 @@ SCRIPT_CASES: tuple[dict[str, object], ...] = (
             "FC-example-flags": {
                 "pass": True,
                 "detail_contains": "50%",
+            },
+        },
+    },
+    {
+        "name": "flag-coverage-bullet-args",
+        "fixture": "bullet-args",
+        "command": [
+            str(CHECKERS_DIR / "check-flag-coverage.py"),
+            "{fixture}",
+        ],
+        "expectations": {
+            "FC-hint-doc": {
+                "pass": True,
+                "detail_contains": "3 argument-hint flags",
+            },
+            "FC-doc-hint": {
+                "pass": True,
+                "detail_contains": "3 documented flags",
             },
         },
     },
@@ -469,6 +493,76 @@ def run_self_test() -> int:
     return 0
 
 
+def run_expected_output_suite(*, verbose: bool) -> tuple[int, int]:
+    """Compare validate.py output against expected NDJSON files."""
+    expected_dir = SCRIPT_DIR / "expected" / "review-skill"
+    if not expected_dir.is_dir():
+        print("SKIP expected output suite: directory not found")
+        return 0, 0
+
+    assertions = 0
+    failures = 0
+
+    for expected_file in sorted(expected_dir.glob("*.ndjson")):
+        fixture_name = expected_file.stem
+        fixture_dir = FIXTURES_DIR / fixture_name
+        if not fixture_dir.is_dir():
+            print(f"SKIP {fixture_name}: fixture directory not found")
+            continue
+
+        expected_checks: dict[str, tuple[bool, str]] = {}
+        for raw_line in expected_file.read_text().splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            if "check" in obj and "pass" in obj:
+                expected_checks[obj["check"]] = (
+                    obj["pass"],
+                    obj.get("level", "pass" if obj["pass"] else "fail"),
+                )
+
+        rc, actual_records = run_command(
+            [sys.executable, str(VALIDATE_SCRIPT), str(fixture_dir)],
+        )
+        if rc not in (0, 1):
+            print(f"  FAIL {fixture_name}: validate.py exit code {rc}")
+            failures += 1
+            continue
+
+        fixture_failures = 0
+        for check_id, (exp_pass, exp_level) in expected_checks.items():
+            assertions += 1
+            actual = actual_records.get(check_id)
+            if actual is None:
+                print(f"  FAIL {fixture_name}/{check_id}: missing from output")
+                fixture_failures += 1
+                continue
+            if actual.get("pass") != exp_pass:
+                exp_str = "pass" if exp_pass else "fail"
+                act_str = "pass" if actual.get("pass") else "fail"
+                print(
+                    f"  FAIL {fixture_name}/{check_id}: "
+                    f"expected {exp_str}, got {act_str}",
+                )
+                fixture_failures += 1
+
+        # Check for unexpected checks not in expected file
+        for check_id in actual_records:
+            if check_id not in expected_checks:
+                assertions += 1
+                fixture_failures += 1
+                print(
+                    f"  FAIL {fixture_name}/{check_id}: unexpected check not in expected output",
+                )
+
+        if fixture_failures == 0:
+            print(f"OK   {fixture_name} ({len(expected_checks)} checks matched)")
+        failures += fixture_failures
+
+    return assertions, failures
+
+
 def main() -> int:
     """Run validate and script regression suites for review-skill fixtures."""
     verbose = "--verbose" in sys.argv or "-v" in sys.argv
@@ -479,8 +573,11 @@ def main() -> int:
     print("\n== script suite ==")
     assertions_b, failures_b = run_script_suite(verbose=verbose)
 
-    total_assertions = assertions_a + assertions_b
-    total_failures = failures_a + failures_b
+    print("\n== expected output suite ==")
+    assertions_c, failures_c = run_expected_output_suite(verbose=verbose)
+
+    total_assertions = assertions_a + assertions_b + assertions_c
+    total_failures = failures_a + failures_b + failures_c
 
     print(f"\n{total_assertions} assertions, {total_failures} failures")
 
