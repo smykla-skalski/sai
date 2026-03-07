@@ -28,23 +28,26 @@ import json
 import os
 import re
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
-
-from skill_check_common import (
-    CheckResult,
-    SkillDocument,
-    SkillLoadError,
-    emit_record,
-    load_skill_document,
-)
 
 # ---------------------------------------------------------------------------
 # Ensure we don't write .pyc files into plugin cache
 # ---------------------------------------------------------------------------
 
 os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+sys.dont_write_bytecode = True
+
+from skill_check_common import (  # noqa: E402
+    EXIT_USAGE_ERROR,
+    CheckResult,
+    SkillDocument,
+    SkillLoadError,
+    emit_record,
+    load_skill_document,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -57,13 +60,16 @@ TRIGGER_PHRASE_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(when|use|for)\b",
     re.IGNORECASE,
 )
-FIRST_PERSON_RE: Final[re.Pattern[str]] = re.compile(
-    r"^\s*\"?(I can|You can)",
+FIRST_OR_SECOND_PERSON_RE: Final[re.Pattern[str]] = re.compile(
+    r"\b(I can|You can)\b",
     re.IGNORECASE,
 )
 
 VALID_MODES: Final[frozenset[str]] = frozenset({"all", "frontmatter", "structure"})
 LINT_TOP_FINDINGS_LIMIT: Final[int] = 3
+DELEGATE_TIMEOUT_SECONDS: Final[int] = 30
+EXPECTED_EXIT_CODES: Final[frozenset[int]] = frozenset({0, 1})
+ERROR_SNIPPET_LENGTH: Final[int] = 200
 
 
 # ---------------------------------------------------------------------------
@@ -90,12 +96,14 @@ class ResultCollector:
 
     def emit_summary(self) -> None:
         """Emit the final summary line."""
-        emit_record({
-            "summary": True,
-            "total": self.total,
-            "passed": self.passed,
-            "failed": self.failed,
-        })
+        emit_record(
+            {
+                "summary": True,
+                "total": self.total,
+                "passed": self.passed,
+                "failed": self.failed,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -109,67 +117,103 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:
     dir_name = doc.skill_dir.name
 
     if not name:
-        collector.add(CheckResult(
-            check="name-present",
-            passed=False,
-            detail="Field 'name' is missing from frontmatter",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-present",
+                passed=False,
+                detail="Field 'name' is missing from frontmatter",
+            )
+        )
+        collector.add(
+            CheckResult(
+                check="name-format",
+                passed=False,
+                detail="Cannot validate format because field 'name' is missing",
+            )
+        )
+        collector.add(
+            CheckResult(
+                check="name-matches-dir",
+                passed=False,
+                detail="Cannot compare name to directory because field 'name' is missing",
+            )
+        )
         return
 
-    collector.add(CheckResult(
-        check="name-present",
-        passed=True,
-        detail="Field 'name' is present",
-    ))
+    collector.add(
+        CheckResult(
+            check="name-present",
+            passed=True,
+            detail="Field 'name' is present",
+        )
+    )
 
     # format validation
     if len(name) > NAME_MAX_LENGTH:
-        collector.add(CheckResult(
-            check="name-format",
-            passed=False,
-            detail=f"Name '{name}' exceeds 64 characters ({len(name)})",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-format",
+                passed=False,
+                detail=(
+                    f"Name '{name}' exceeds {NAME_MAX_LENGTH} characters ({len(name)})"
+                ),
+            )
+        )
     elif not NAME_RE.match(name):
-        collector.add(CheckResult(
-            check="name-format",
-            passed=False,
-            detail=(
-                f"Name '{name}' contains invalid characters "
-                "(only lowercase, numbers, hyphens)"
-            ),
-        ))
+        collector.add(
+            CheckResult(
+                check="name-format",
+                passed=False,
+                detail=(
+                    f"Name '{name}' contains invalid characters "
+                    "(only lowercase, numbers, hyphens)"
+                ),
+            )
+        )
     elif name.startswith("-") or name.endswith("-"):
-        collector.add(CheckResult(
-            check="name-format",
-            passed=False,
-            detail=f"Name '{name}' must not start or end with a hyphen",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-format",
+                passed=False,
+                detail=f"Name '{name}' must not start or end with a hyphen",
+            )
+        )
     elif "--" in name:
-        collector.add(CheckResult(
-            check="name-format",
-            passed=False,
-            detail=f"Name '{name}' contains consecutive hyphens",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-format",
+                passed=False,
+                detail=f"Name '{name}' contains consecutive hyphens",
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="name-format",
-            passed=True,
-            detail=f"Name '{name}' matches pattern [a-z0-9-]{{1,64}}",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-format",
+                passed=True,
+                detail=(
+                    f"Name '{name}' matches pattern [a-z0-9-]{{1,{NAME_MAX_LENGTH}}}"
+                ),
+            )
+        )
 
     # matches directory
     if name == dir_name:
-        collector.add(CheckResult(
-            check="name-matches-dir",
-            passed=True,
-            detail=f"Name '{name}' matches directory '{dir_name}'",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-matches-dir",
+                passed=True,
+                detail=f"Name '{name}' matches directory '{dir_name}'",
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="name-matches-dir",
-            passed=False,
-            detail=f"Name '{name}' does not match directory '{dir_name}'",
-        ))
+        collector.add(
+            CheckResult(
+                check="name-matches-dir",
+                passed=False,
+                detail=f"Name '{name}' does not match directory '{dir_name}'",
+            )
+        )
 
 
 def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
@@ -177,122 +221,179 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
     description = doc.field("description")
 
     if not description:
-        collector.add(CheckResult(
-            check="description-present",
-            passed=False,
-            detail="Field 'description' is missing from frontmatter",
-        ))
+        collector.add(
+            CheckResult(
+                check="description-present",
+                passed=False,
+                detail="Field 'description' is missing from frontmatter",
+            )
+        )
+        collector.add(
+            CheckResult(
+                check="description-length",
+                passed=False,
+                detail=(
+                    "Cannot validate description length because "
+                    "field 'description' is missing"
+                ),
+            )
+        )
+        collector.add(
+            CheckResult(
+                check="description-trigger-phrases",
+                passed=False,
+                detail=(
+                    "Cannot validate trigger phrases because "
+                    "field 'description' is missing"
+                ),
+            )
+        )
+        collector.add(
+            CheckResult(
+                check="description-third-person",
+                passed=False,
+                detail=(
+                    "Cannot validate description voice because "
+                    "field 'description' is missing"
+                ),
+            )
+        )
         return
 
-    collector.add(CheckResult(
-        check="description-present",
-        passed=True,
-        detail="Field 'description' is present",
-    ))
+    collector.add(
+        CheckResult(
+            check="description-present",
+            passed=True,
+            detail="Field 'description' is present",
+        )
+    )
 
     # length
     if len(description) > DESCRIPTION_MAX_LENGTH:
-        collector.add(CheckResult(
-            check="description-length",
-            passed=False,
-            detail=(
-                f"Description is {len(description)} chars, "
-                f"exceeds {DESCRIPTION_MAX_LENGTH}-char limit"
-            ),
-        ))
+        collector.add(
+            CheckResult(
+                check="description-length",
+                passed=False,
+                detail=(
+                    f"Description is {len(description)} chars, "
+                    f"exceeds {DESCRIPTION_MAX_LENGTH}-char limit"
+                ),
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="description-length",
-            passed=True,
-            detail=(
-                f"Description is {len(description)} chars "
-                f"(limit {DESCRIPTION_MAX_LENGTH})"
-            ),
-        ))
+        collector.add(
+            CheckResult(
+                check="description-length",
+                passed=True,
+                detail=(
+                    f"Description is {len(description)} chars "
+                    f"(limit {DESCRIPTION_MAX_LENGTH})"
+                ),
+            )
+        )
 
     # trigger phrases (skip if DMI)
-    dmi = doc.field("disable-model-invocation")
-    if dmi.lower() == "true":
-        collector.add(CheckResult(
-            check="description-trigger-phrases",
-            passed=True,
-            detail="Trigger phrases not required (disable-model-invocation: true)",
-        ))
+    dmi = doc.field("disable-model-invocation").strip().lower()
+    if dmi == "true":
+        collector.add(
+            CheckResult(
+                check="description-trigger-phrases",
+                passed=True,
+                detail="Trigger phrases not required (disable-model-invocation: true)",
+            )
+        )
     elif TRIGGER_PHRASE_RE.search(description):
-        collector.add(CheckResult(
-            check="description-trigger-phrases",
-            passed=True,
-            detail="Description includes trigger phrase (when/use/for)",
-        ))
+        collector.add(
+            CheckResult(
+                check="description-trigger-phrases",
+                passed=True,
+                detail="Description includes trigger phrase (when/use/for)",
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="description-trigger-phrases",
-            passed=False,
-            detail=(
-                "Description should include a trigger phrase "
-                "(when/use/for) for discoverability"
-            ),
-        ))
+        collector.add(
+            CheckResult(
+                check="description-trigger-phrases",
+                passed=False,
+                detail=(
+                    "Description should include a trigger phrase "
+                    "(when/use/for) for discoverability"
+                ),
+            )
+        )
 
     # third-person voice
-    if FIRST_PERSON_RE.match(description):
-        collector.add(CheckResult(
-            check="description-third-person",
-            passed=False,
-            detail=(
-                "Description should use third-person form, "
-                "not 'I can' or 'You can'"
-            ),
-        ))
+    if FIRST_OR_SECOND_PERSON_RE.search(description):
+        collector.add(
+            CheckResult(
+                check="description-third-person",
+                passed=False,
+                detail=(
+                    "Description should use third-person form, not 'I can' or 'You can'"
+                ),
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="description-third-person",
-            passed=True,
-            detail="Description uses appropriate voice",
-        ))
+        collector.add(
+            CheckResult(
+                check="description-third-person",
+                passed=True,
+                detail="Description uses appropriate voice",
+            )
+        )
 
 
 def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run allowed-tools-present check."""
     allowed_tools = doc.field("allowed-tools")
     if not allowed_tools:
-        collector.add(CheckResult(
-            check="allowed-tools-present",
-            passed=False,
-            detail="Field 'allowed-tools' is missing from frontmatter",
-        ))
+        collector.add(
+            CheckResult(
+                check="allowed-tools-present",
+                passed=False,
+                detail="Field 'allowed-tools' is missing from frontmatter",
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="allowed-tools-present",
-            passed=True,
-            detail=f"Field 'allowed-tools' is present: {allowed_tools}",
-        ))
+        collector.add(
+            CheckResult(
+                check="allowed-tools-present",
+                passed=True,
+                detail=f"Field 'allowed-tools' is present: {allowed_tools}",
+            )
+        )
 
 
 def _check_user_invocable(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run user-invocable-present check."""
-    user_invocable = doc.field("user-invocable")
+    user_invocable = doc.field("user-invocable").strip().lower()
     if not user_invocable:
-        collector.add(CheckResult(
-            check="user-invocable-present",
-            passed=False,
-            detail="Field 'user-invocable' is missing from frontmatter",
-        ))
+        collector.add(
+            CheckResult(
+                check="user-invocable-present",
+                passed=False,
+                detail="Field 'user-invocable' is missing from frontmatter",
+            )
+        )
     elif user_invocable in {"true", "false"}:
-        collector.add(CheckResult(
-            check="user-invocable-present",
-            passed=True,
-            detail=f"Field 'user-invocable' is '{user_invocable}'",
-        ))
+        collector.add(
+            CheckResult(
+                check="user-invocable-present",
+                passed=True,
+                detail=f"Field 'user-invocable' is '{user_invocable}'",
+            )
+        )
     else:
-        collector.add(CheckResult(
-            check="user-invocable-present",
-            passed=False,
-            detail=(
-                "Field 'user-invocable' must be boolean (true/false), "
-                f"got '{user_invocable}'"
-            ),
-        ))
+        collector.add(
+            CheckResult(
+                check="user-invocable-present",
+                passed=False,
+                detail=(
+                    "Field 'user-invocable' must be boolean (true/false), "
+                    f"got '{user_invocable}'"
+                ),
+            )
+        )
 
 
 def run_frontmatter(doc: SkillDocument, collector: ResultCollector) -> None:
@@ -315,90 +416,328 @@ class DelegateConfig:
     script: str
     args: tuple[str, ...] = ()
     guard_field: str = ""
+    required: bool = True
+
+
+@dataclass(frozen=True)
+class ScriptRunResult:
+    """Store subprocess execution state for one script invocation."""
+
+    ok: bool
+    returncode: int | None = None
+    stdout: str = ""
+    stderr: str = ""
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class ParsedDelegateOutput:
+    """Store parsed NDJSON output for standard delegate scripts."""
+
+    checks: tuple[CheckResult, ...]
+    summary: dict[str, object] | None
+    invalid_lines: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ParsedLintOutput:
+    """Store parsed NDJSON output from lint-scripts.py."""
+
+    findings: tuple[dict[str, object], ...]
+    summary: dict[str, object] | None
+    invalid_lines: tuple[str, ...]
 
 
 def _parse_ndjson_line(line: str) -> dict[str, object] | None:
     """Parse one NDJSON line, returning None on failure."""
     try:
         obj = json.loads(line)
-    except (json.JSONDecodeError, ValueError):
+    except json.JSONDecodeError:
         return None
     if not isinstance(obj, dict):
         return None
     return obj
 
 
-def _reemit_results(
-    output: str,
-    collector: ResultCollector,
-) -> None:
-    """Re-emit non-summary check results from delegate output."""
-    for line in output.splitlines():
-        obj = _parse_ndjson_line(line)
-        if obj is None:
-            continue
-        if obj.get("summary"):
-            continue
-        check = obj.get("check")
-        passed = obj.get("pass")
-        detail = obj.get("detail", "")
-        if not isinstance(check, str) or not isinstance(passed, bool):
-            continue
-        collector.add(CheckResult(
-            check=check,
-            passed=passed,
-            detail=str(detail),
-        ))
+def _summary_int(summary: dict[str, object], field: str) -> int | None:
+    """Return integer summary field value, or None if invalid."""
+    raw_value = summary.get(field)
+    if isinstance(raw_value, bool) or raw_value is None:
+        return None
+
+    if isinstance(raw_value, int):
+        return raw_value
+
+    if isinstance(raw_value, str):
+        try:
+            return int(raw_value)
+        except ValueError:
+            return None
+
+    if isinstance(raw_value, float):
+        if raw_value.is_integer():
+            return int(raw_value)
+        return None
+
+    try:
+        return int(str(raw_value))
+    except (TypeError, ValueError):
+        return None
 
 
-def _run_delegate(
-    script_path: Path,
-    skill_dir: Path,
-    extra_args: tuple[str, ...] = (),
-    *,
-    guard_field: str = "",
-) -> str:
-    """Run a companion script and return its stdout, or empty on skip."""
-    if not script_path.is_file() or not os.access(script_path, os.X_OK):
+def _snippet(text: str, *, width: int = ERROR_SNIPPET_LENGTH) -> str:
+    """Return one-line excerpt for error details."""
+    stripped = text.strip()
+    if not stripped:
         return ""
+    first_line = stripped.splitlines()[0]
+    return first_line[:width]
 
-    cmd = [str(script_path), str(skill_dir), *extra_args]
+
+def _runtime_check_id(script: str) -> str:
+    """Build stable check id for delegated runtime errors."""
+    return f"delegate-{Path(script).stem}-runtime"
+
+
+def _run_script(
+    script_path: Path,
+    args: tuple[str, ...],
+) -> ScriptRunResult:
+    """Run script and return structured execution result."""
+    if not script_path.is_file():
+        return ScriptRunResult(
+            ok=False,
+            error=f"Script not found: {script_path.name}",
+        )
+
+    if not os.access(script_path, os.X_OK):
+        return ScriptRunResult(
+            ok=False,
+            error=f"Script is not executable: {script_path.name}",
+        )
+
+    cmd = [str(script_path), *args]
     try:
         result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
+            timeout=DELEGATE_TIMEOUT_SECONDS,
         )
-    except OSError:
-        return ""
+    except subprocess.TimeoutExpired:
+        return ScriptRunResult(
+            ok=False,
+            error=(
+                f"Script timed out after {DELEGATE_TIMEOUT_SECONDS}s: "
+                f"{script_path.name}"
+            ),
+        )
+    except OSError as error:
+        return ScriptRunResult(
+            ok=False,
+            error=f"Failed to execute {script_path.name}: {error}",
+        )
 
-    output = result.stdout
-    if not output:
-        return ""
-
-    if not guard_field:
-        return output
-
-    return _apply_guard(output, guard_field)
+    return ScriptRunResult(
+        ok=True,
+        returncode=result.returncode,
+        stdout=result.stdout,
+        stderr=result.stderr,
+    )
 
 
-def _apply_guard(output: str, guard_field: str) -> str:
-    """Return output if guard_field value > 0, empty string otherwise."""
-    last_line = output.strip().splitlines()[-1] if output.strip() else ""
-    obj = _parse_ndjson_line(last_line)
-    if obj is None:
-        return ""
-    try:
-        val = int(obj.get(guard_field, 0))  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return ""
-    return output if val > 0 else ""
+def _parse_delegate_output(output: str) -> ParsedDelegateOutput:
+    """Parse standard delegate NDJSON (check lines + final summary)."""
+    checks: list[CheckResult] = []
+    invalid_lines: list[str] = []
+    summary: dict[str, object] | None = None
+
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+
+        obj = _parse_ndjson_line(line)
+        if obj is None:
+            invalid_lines.append(_snippet(line))
+            continue
+
+        if obj.get("summary") is True:
+            if summary is None:
+                summary = obj
+            else:
+                invalid_lines.append(_snippet(line))
+            continue
+
+        check = obj.get("check")
+        passed = obj.get("pass")
+        if not isinstance(check, str) or not isinstance(passed, bool):
+            invalid_lines.append(_snippet(line))
+            continue
+
+        checks.append(
+            CheckResult(
+                check=check,
+                passed=passed,
+                detail=str(obj.get("detail", "")),
+            )
+        )
+
+    return ParsedDelegateOutput(
+        checks=tuple(checks),
+        summary=summary,
+        invalid_lines=tuple(invalid_lines),
+    )
+
+
+def _parse_lint_output(output: str) -> ParsedLintOutput:
+    """Parse lint-scripts NDJSON (finding lines + final summary)."""
+    findings: list[dict[str, object]] = []
+    invalid_lines: list[str] = []
+    summary: dict[str, object] | None = None
+
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+
+        obj = _parse_ndjson_line(line)
+        if obj is None:
+            invalid_lines.append(_snippet(line))
+            continue
+
+        if obj.get("summary") is True:
+            if summary is None:
+                summary = obj
+            else:
+                invalid_lines.append(_snippet(line))
+            continue
+
+        check_id = obj.get("check")
+        message = obj.get("message")
+        severity = obj.get("severity")
+        if not isinstance(check_id, str):
+            invalid_lines.append(_snippet(line))
+            continue
+        if not isinstance(message, str):
+            invalid_lines.append(_snippet(line))
+            continue
+        if not isinstance(severity, str):
+            invalid_lines.append(_snippet(line))
+            continue
+
+        findings.append(obj)
+
+    return ParsedLintOutput(
+        findings=tuple(findings),
+        summary=summary,
+        invalid_lines=tuple(invalid_lines),
+    )
+
+
+def _collect_delegate_output(
+    script_path: Path,
+    skill_dir: Path,
+    extra_args: tuple[str, ...] = (),
+) -> tuple[ParsedDelegateOutput | None, str | None]:
+    """Run and validate one standard delegate output contract."""
+    run_result = _run_script(script_path, (str(skill_dir), *extra_args))
+    if not run_result.ok:
+        return None, run_result.error
+
+    return_code = run_result.returncode
+    if return_code is None:
+        return None, f"No return code from {script_path.name}"
+    if return_code not in EXPECTED_EXIT_CODES:
+        detail = f"Unexpected exit code {return_code} from {script_path.name}"
+        stderr_excerpt = _snippet(run_result.stderr)
+        if stderr_excerpt:
+            detail += f" - stderr: {stderr_excerpt}"
+        return None, detail
+
+    if not run_result.stdout.strip():
+        return None, f"No stdout from {script_path.name}"
+
+    parsed = _parse_delegate_output(run_result.stdout)
+    if parsed.invalid_lines:
+        return (
+            None,
+            (f"Invalid NDJSON from {script_path.name}: {parsed.invalid_lines[0]}"),
+        )
+
+    if parsed.summary is None:
+        return None, f"Missing summary line from {script_path.name}"
+
+    total = _summary_int(parsed.summary, "total")
+    if total is None:
+        return None, f"Summary missing integer 'total' in {script_path.name}"
+    if total != len(parsed.checks):
+        return (
+            None,
+            (
+                f"Summary total mismatch in {script_path.name}: "
+                f"summary={total}, checks={len(parsed.checks)}"
+            ),
+        )
+
+    return parsed, None
+
+
+def _emit_delegate_runtime_error(
+    collector: ResultCollector,
+    script: str,
+    detail: str,
+    *,
+    check: str | None = None,
+) -> None:
+    """Emit one failed runtime check record for delegated execution."""
+    collector.add(
+        CheckResult(
+            check=check or _runtime_check_id(script),
+            passed=False,
+            detail=detail,
+        )
+    )
+
+
+def _emit_delegate_checks(
+    parsed: ParsedDelegateOutput,
+    collector: ResultCollector,
+    *,
+    script: str,
+    guard_field: str = "",
+) -> None:
+    """Emit parsed checks, optionally guarded by integer summary field."""
+    if guard_field:
+        summary = parsed.summary
+        if summary is None:
+            _emit_delegate_runtime_error(
+                collector,
+                script,
+                f"Missing summary line from {script}",
+            )
+            return
+
+        guard_value = _summary_int(summary, guard_field)
+        if guard_value is None:
+            _emit_delegate_runtime_error(
+                collector,
+                script,
+                f"Summary field '{guard_field}' is not an integer in {script}",
+            )
+            return
+        if guard_value <= 0:
+            return
+
+    for result in parsed.checks:
+        collector.add(result)
 
 
 # ---------------------------------------------------------------------------
 # Structure delegation table
 # ---------------------------------------------------------------------------
+
 
 # Ordered identically to the bash orchestrator
 def _d(
@@ -406,23 +745,22 @@ def _d(
     args: tuple[str, ...] = (),
     *,
     guard_field: str = "",
+    required: bool = True,
 ) -> DelegateConfig:
     """Build a DelegateConfig with compact syntax."""
-    return DelegateConfig(script, args, guard_field)
+    return DelegateConfig(script, args, guard_field, required)
 
 
-def _chk(script: str, *checks: str) -> DelegateConfig:
+def _chk(script: str, *checks: str, required: bool = True) -> DelegateConfig:
     """Build a DelegateConfig with --check args."""
     args: list[str] = []
     for check in checks:
         args.extend(("--check", check))
-    return DelegateConfig(script, tuple(args))
+    return DelegateConfig(script, tuple(args), required=required)
 
 
 # Ordered identically to the bash orchestrator
-STRUCTURE_DELEGATIONS: Final[
-    tuple[DelegateConfig, ...]
-] = (
+STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
     _chk("check-references.py", "body-line-count", "body-char-count"),
     _chk("check-file-refs.py", "file-ref-resolves"),
     _d("check-scripts-dir.py"),
@@ -449,49 +787,73 @@ STRUCTURE_DELEGATIONS: Final[
 # ---------------------------------------------------------------------------
 
 
-def _aggregate_lint_findings(output: str) -> str:
-    """Parse lint NDJSON output and build a summary detail string."""
-    lines = output.strip().splitlines()
+def _run_structure_delegate(
+    config: DelegateConfig,
+    script_dir: Path,
+    skill_dir: Path,
+    collector: ResultCollector,
+) -> None:
+    """Run one standard structure delegate and emit its check results."""
+    script_path = script_dir / config.script
+    parsed, error = _collect_delegate_output(
+        script_path,
+        skill_dir,
+        config.args,
+    )
+    if error:
+        if config.required:
+            _emit_delegate_runtime_error(collector, config.script, error)
+        return
+
+    if parsed is None:
+        if config.required:
+            _emit_delegate_runtime_error(
+                collector,
+                config.script,
+                f"No parsed output from {config.script}",
+            )
+        return
+
+    _emit_delegate_checks(
+        parsed,
+        collector,
+        script=config.script,
+        guard_field=config.guard_field,
+    )
+
+
+def _aggregate_lint_findings(findings: tuple[dict[str, object], ...]) -> str:
+    """Build compact lint summary detail from parsed finding records."""
     crits = 0
     meds = 0
     top_findings: list[str] = []
-    for line in lines:
-        obj = _parse_ndjson_line(line)
-        if obj is None or obj.get("summary"):
-            continue
+    for obj in findings:
         severity = obj.get("severity", "")
         if severity == "critical":
             crits += 1
         elif severity == "medium":
             meds += 1
+
         if len(top_findings) < LINT_TOP_FINDINGS_LIMIT:
             check_id = obj.get("check", "")
             message = obj.get("message", "")
-            if check_id and message:
+            if isinstance(check_id, str) and isinstance(message, str):
+                if not check_id or not message:
+                    continue
                 top_findings.append(f"{check_id}: {message}")
 
     detail = f"scripts/ has {crits} critical, {meds} medium finding(s)"
     if top_findings:
-        detail += " — " + "; ".join(top_findings)
+        detail += " - " + "; ".join(top_findings)
     return detail
 
 
-def _run_lint_script(lint_script: Path, scripts_dir: Path) -> str:
-    """Run lint-scripts.py and return its stdout."""
-    cmd = [
-        str(lint_script), str(scripts_dir),
-        "--json", "--severity", "medium",
-    ]
-    try:
-        result = subprocess.run(  # noqa: S603
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return ""
-    return result.stdout
+def _run_lint_script(lint_script: Path, scripts_dir: Path) -> ScriptRunResult:
+    """Run lint-scripts.py with JSON output at medium severity."""
+    return _run_script(
+        lint_script,
+        (str(scripts_dir), "--json", "--severity", "medium"),
+    )
 
 
 def _handle_lint_scripts(
@@ -503,43 +865,117 @@ def _handle_lint_scripts(
     scripts_dir = skill_dir / "scripts"
 
     if not scripts_dir.is_dir():
-        collector.add(CheckResult(
-            check="script-lint",
-            passed=True,
-            detail="No scripts/ directory",
-        ))
+        collector.add(
+            CheckResult(
+                check="script-lint",
+                passed=True,
+                detail="No scripts/ directory",
+            )
+        )
         return
 
     lint_script = script_dir / "lint-scripts.py"
-    if not lint_script.is_file() or not os.access(lint_script, os.X_OK):
+    run_result = _run_lint_script(lint_script, scripts_dir)
+    if not run_result.ok:
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            run_result.error,
+            check="script-lint",
+        )
         return
 
-    output = _run_lint_script(lint_script, scripts_dir)
-    if not output:
+    return_code = run_result.returncode
+    if return_code is None:
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            "No return code from lint-scripts.py",
+            check="script-lint",
+        )
         return
 
-    lines = output.strip().splitlines()
-    summary_obj = _parse_ndjson_line(lines[-1] if lines else "")
-    lint_total = 0
-    if summary_obj:
-        try:
-            lint_total = int(summary_obj.get("findings", 0))
-        except (TypeError, ValueError):
-            lint_total = 0
+    if return_code not in EXPECTED_EXIT_CODES:
+        detail = f"Unexpected exit code {return_code} from lint-scripts.py"
+        stderr_excerpt = _snippet(run_result.stderr)
+        if stderr_excerpt:
+            detail += f" - stderr: {stderr_excerpt}"
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            detail,
+            check="script-lint",
+        )
+        return
+
+    if not run_result.stdout.strip():
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            "No stdout from lint-scripts.py",
+            check="script-lint",
+        )
+        return
+
+    parsed = _parse_lint_output(run_result.stdout)
+    if parsed.invalid_lines:
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            f"Invalid NDJSON from lint-scripts.py: {parsed.invalid_lines[0]}",
+            check="script-lint",
+        )
+        return
+
+    summary = parsed.summary
+    if summary is None:
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            "Missing summary line from lint-scripts.py",
+            check="script-lint",
+        )
+        return
+
+    lint_total = _summary_int(summary, "findings")
+    if lint_total is None:
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            "Summary missing integer 'findings' in lint-scripts.py",
+            check="script-lint",
+        )
+        return
+
+    if lint_total != len(parsed.findings):
+        _emit_delegate_runtime_error(
+            collector,
+            lint_script.name,
+            (
+                "Summary findings mismatch in lint-scripts.py: "
+                f"summary={lint_total}, parsed={len(parsed.findings)}"
+            ),
+            check="script-lint",
+        )
+        return
 
     if lint_total == 0:
-        collector.add(CheckResult(
-            check="script-lint",
-            passed=True,
-            detail="No critical/medium findings in scripts/",
-        ))
+        collector.add(
+            CheckResult(
+                check="script-lint",
+                passed=True,
+                detail="No critical/medium findings in scripts/",
+            )
+        )
         return
 
-    collector.add(CheckResult(
-        check="script-lint",
-        passed=False,
-        detail=_aggregate_lint_findings(output),
-    ))
+    collector.add(
+        CheckResult(
+            check="script-lint",
+            passed=False,
+            detail=_aggregate_lint_findings(parsed.findings),
+        )
+    )
 
 
 def _handle_check_ask_user(
@@ -549,23 +985,68 @@ def _handle_check_ask_user(
 ) -> None:
     """Run check-ask-user.py and re-emit only if total > 0."""
     auq_script = script_dir / "check-ask-user.py"
-    output = _run_delegate(auq_script, skill_dir)
-    if not output:
+    parsed, error = _collect_delegate_output(auq_script, skill_dir)
+    if error:
+        _emit_delegate_runtime_error(
+            collector,
+            auq_script.name,
+            error,
+            check="check-ask-user-runtime",
+        )
         return
 
-    lines = output.strip().splitlines()
-    summary_line = lines[-1] if lines else ""
-    summary_obj = _parse_ndjson_line(summary_line)
-    if summary_obj is None:
+    if parsed is None or parsed.summary is None:
+        _emit_delegate_runtime_error(
+            collector,
+            auq_script.name,
+            "No parsed summary from check-ask-user.py",
+            check="check-ask-user-runtime",
+        )
         return
 
-    try:
-        total = int(summary_obj.get("total", 0))
-    except (TypeError, ValueError):
-        total = 0
+    total = _summary_int(parsed.summary, "total")
+    if total is None:
+        _emit_delegate_runtime_error(
+            collector,
+            auq_script.name,
+            "Summary missing integer 'total' in check-ask-user.py",
+            check="check-ask-user-runtime",
+        )
+        return
 
     if total > 0:
-        _reemit_results(output, collector)
+        for result in parsed.checks:
+            collector.add(result)
+
+
+def _parse_fork_candidate_summary(
+    output: str,
+) -> tuple[dict[str, object] | None, str | None]:
+    """Parse check-fork-candidate NDJSON and return summary object."""
+    objects: list[dict[str, object]] = []
+    invalid_lines: list[str] = []
+
+    for line in output.splitlines():
+        if not line.strip():
+            continue
+        obj = _parse_ndjson_line(line)
+        if obj is None:
+            invalid_lines.append(_snippet(line))
+            continue
+        objects.append(obj)
+
+    if invalid_lines:
+        return None, f"Invalid NDJSON from check-fork-candidate.py: {invalid_lines[0]}"
+    if not objects:
+        return None, "No NDJSON records from check-fork-candidate.py"
+
+    summary_obj = objects[-1]
+    if "recommendation" not in summary_obj:
+        return (
+            None,
+            "Last NDJSON record from check-fork-candidate.py is missing 'recommendation'",
+        )
+    return summary_obj, None
 
 
 def _handle_fork_candidate(
@@ -575,44 +1056,126 @@ def _handle_fork_candidate(
 ) -> None:
     """Run check-fork-candidate.py and emit single fork-candidate-info result."""
     fork_script = script_dir / "check-fork-candidate.py"
-    if not fork_script.is_file() or not os.access(fork_script, os.X_OK):
-        return
-
-    cmd = [str(fork_script), str(skill_dir)]
-    try:
-        result = subprocess.run(  # noqa: S603
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
+    run_result = _run_script(fork_script, (str(skill_dir),))
+    if not run_result.ok:
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            run_result.error,
+            check="fork-candidate-info",
         )
-    except OSError:
         return
 
-    output = result.stdout
-    if not output:
+    return_code = run_result.returncode
+    if return_code is None:
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            "No return code from check-fork-candidate.py",
+            check="fork-candidate-info",
+        )
         return
 
-    last_line = output.strip().splitlines()[-1] if output.strip() else ""
-    obj = _parse_ndjson_line(last_line)
-    if obj is None:
+    if return_code not in EXPECTED_EXIT_CODES:
+        detail = f"Unexpected exit code {return_code} from check-fork-candidate.py"
+        stderr_excerpt = _snippet(run_result.stderr)
+        if stderr_excerpt:
+            detail += f" - stderr: {stderr_excerpt}"
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            detail,
+            check="fork-candidate-info",
+        )
         return
 
-    recommendation = obj.get("recommendation", "")
-    detail = str(obj.get("detail", ""))
+    if not run_result.stdout.strip():
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            "No stdout from check-fork-candidate.py",
+            check="fork-candidate-info",
+        )
+        return
+
+    summary_obj, error = _parse_fork_candidate_summary(run_result.stdout)
+    if error:
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            error,
+            check="fork-candidate-info",
+        )
+        return
+
+    if summary_obj is None:
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            "Missing summary from check-fork-candidate.py",
+            check="fork-candidate-info",
+        )
+        return
+
+    recommendation = summary_obj.get("recommendation")
+    if not isinstance(recommendation, str):
+        _emit_delegate_runtime_error(
+            collector,
+            fork_script.name,
+            "Field 'recommendation' is missing or not a string",
+            check="fork-candidate-info",
+        )
+        return
+
+    detail = str(summary_obj.get("detail", "")).strip()
+    if not detail:
+        detail = "No detail returned by check-fork-candidate.py"
 
     if recommendation in {"strong", "soft"}:
-        collector.add(CheckResult(
-            check="fork-candidate-info",
-            passed=True,
-            detail=f"INFO: {detail}",
-        ))
-    else:
-        collector.add(CheckResult(
-            check="fork-candidate-info",
-            passed=True,
-            detail=f"No fork recommendation — {detail}",
-        ))
+        if return_code != 0:
+            _emit_delegate_runtime_error(
+                collector,
+                fork_script.name,
+                (
+                    "Recommendation is strong/soft but exit code is "
+                    f"{return_code} (expected 0)"
+                ),
+                check="fork-candidate-info",
+            )
+            return
+        collector.add(
+            CheckResult(
+                check="fork-candidate-info",
+                passed=True,
+                detail=f"INFO: {detail}",
+            )
+        )
+        return
+
+    if recommendation == "none":
+        if return_code != 1:
+            _emit_delegate_runtime_error(
+                collector,
+                fork_script.name,
+                (f"Recommendation is none but exit code is {return_code} (expected 1)"),
+                check="fork-candidate-info",
+            )
+            return
+        collector.add(
+            CheckResult(
+                check="fork-candidate-info",
+                passed=True,
+                detail=f"No fork recommendation - {detail}",
+            )
+        )
+        return
+
+    _emit_delegate_runtime_error(
+        collector,
+        fork_script.name,
+        f"Unknown recommendation value: '{recommendation}'",
+        check="fork-candidate-info",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -628,31 +1191,27 @@ def run_structure(
     """Run all structure checks via delegation."""
     # Standard delegations
     for config in STRUCTURE_DELEGATIONS:
-        script_path = script_dir / config.script
-        output = _run_delegate(
-            script_path,
-            doc.skill_dir,
-            config.args,
-            guard_field=config.guard_field,
-        )
-        if output:
-            _reemit_results(output, collector)
+        _run_structure_delegate(config, script_dir, doc.skill_dir, collector)
 
     # Special cases
     _handle_lint_scripts(script_dir, doc.skill_dir, collector)
     _handle_check_ask_user(script_dir, doc.skill_dir, collector)
 
     # Flag coverage (I22)
-    flag_script = script_dir / "check-flag-coverage.py"
-    output = _run_delegate(flag_script, doc.skill_dir)
-    if output:
-        _reemit_results(output, collector)
+    _run_structure_delegate(
+        _d("check-flag-coverage.py"),
+        script_dir,
+        doc.skill_dir,
+        collector,
+    )
 
     # Hooks validation (I23)
-    hooks_script = script_dir / "check-hooks.py"
-    output = _run_delegate(hooks_script, doc.skill_dir)
-    if output:
-        _reemit_results(output, collector)
+    _run_structure_delegate(
+        _d("check-hooks.py"),
+        script_dir,
+        doc.skill_dir,
+        collector,
+    )
 
     # Fork candidate (P9, informational)
     _handle_fork_candidate(script_dir, doc.skill_dir, collector)
@@ -692,16 +1251,17 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         doc = load_skill_document(args.skill_directory)
-    except SkillLoadError:
-        # Match bash behavior: emit one failing check and summary
+    except SkillLoadError as error:
         collector = ResultCollector()
-        collector.add(CheckResult(
-            check="skill-md-exists",
-            passed=False,
-            detail=f"SKILL.md not found in {args.skill_directory}",
-        ))
+        collector.add(
+            CheckResult(
+                check="skill-md-exists",
+                passed=False,
+                detail=str(error),
+            )
+        )
         collector.emit_summary()
-        return 1
+        return EXIT_USAGE_ERROR
 
     collector = ResultCollector()
 
