@@ -124,10 +124,14 @@ SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
     r"|git\s+branch\s+-[dD]"
     r"|git\s+apply\s+--cached"
     r"|git\s+clean\s+-"
-    r"|git\s+push\s+--force"
+    r"|git\s+push\s+--force(?!-with-lease)"
     r"|kubectl\s+(delete|drain|cordon)"
     r"|helm\s+(uninstall|delete)"
-    r"|rm\s+-rf",
+    r"|rm\s+-rf"
+    r"|docker\s+(rm|rmi|system\s+prune)"
+    r"|git\s+push\s+--delete"
+    r"|terraform\s+(destroy|apply\s+.*--destroy)"
+    r"|pulumi\s+destroy",
     re.IGNORECASE,
 )
 
@@ -203,10 +207,11 @@ def check_allowed_tools_usage(document: SkillDocument) -> CheckResult | None:
 
     declared_tools = parse_allowed_tools(document.frontmatter)
     unused_tools = sorted(
-        tool_name
+        bare_name
         for tool_name in declared_tools
-        if tool_name in HIGH_SIGNAL_TOOL_RULES
-        and not _tool_is_referenced(tool_name, document.prose_body)
+        for bare_name in (tool_name.split("(")[0],)
+        if bare_name in HIGH_SIGNAL_TOOL_RULES
+        and not _tool_is_referenced(bare_name, document.prose_body)
     )
 
     if not unused_tools:
