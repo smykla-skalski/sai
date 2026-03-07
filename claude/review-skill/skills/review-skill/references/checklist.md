@@ -2,6 +2,8 @@
 
 Binary checklist for evaluating Claude Code skill definitions. Each check is pass/fail.
 
+To override a check, add `<!-- justify: ID reason -->` as an HTML comment in the target SKILL.md. The check ID must be valid and the reason non-empty. Overridden checks count as passing.
+
 The NDJSON column shows check IDs emitted by validation scripts in JSON output. IDs follow `{PREFIX}-{slug}` format (e.g., `FM-name-present`). Wildcard entries like `PP-*` represent multiple sub-checks. Manual checks show `-`.
 
 ## Table of contents
