@@ -5,6 +5,7 @@ Sub-checks:
 - CT-no-secrets
 - CT-no-echo
 - CT-no-grading
+- CT-long-prose
 
 Output is NDJSON, one object per line, with a summary on the final line.
 Exit codes: 0 when all pass, 1 when any fail, 2 for usage/input errors.
@@ -23,6 +24,7 @@ from _skill_check_common import (
     SNIPPET_WIDTH,
     CheckRecord,
     SkillDocument,
+    build_fenced_line_indices,
     iter_fence_lines,
     read_text,
     run_check_cli,
@@ -35,8 +37,10 @@ from _skill_check_common import (
 CHECK_NO_SECRETS: Final[str] = "CT-no-secrets"
 CHECK_NO_USELESS_ECHO: Final[str] = "CT-no-echo"
 CHECK_NO_GRADING_STYLE: Final[str] = "CT-no-grading"
+CHECK_LONG_PROSE: Final[str] = "CT-long-prose"
 
 GRADING_SIGNAL_THRESHOLD: Final[int] = 2
+LONG_PROSE_THRESHOLD: Final[int] = 300
 
 SHELL_FENCE_LANGUAGES: Final[frozenset[str]] = frozenset({"", "bash", "sh", "shell"})
 
@@ -59,6 +63,9 @@ PLACEHOLDER_PATTERN: Final[Pattern[str]] = re.compile(
 
 USELESS_ECHO_PATTERN: Final[Pattern[str]] = re.compile(r"\$\(\s*echo\s+")
 VARIABLE_ECHO_PATTERN: Final[Pattern[str]] = re.compile(r"\$\(\s*echo[^)]*\$[A-Za-z_{]")
+
+URL_RE: Final[Pattern[str]] = re.compile(r"https?://\S+")
+TABLE_ROW_RE: Final[Pattern[str]] = re.compile(r"^\s*\|")
 
 GRADING_PATTERNS: Final[tuple[tuple[str, Pattern[str]], ...]] = (
     (
@@ -235,6 +242,50 @@ def check_no_grading_style(document: SkillDocument) -> CheckRecord:
     )
 
 
+def _is_url_dominated(line: str) -> bool:
+    """Return whether URLs account for most of the line length."""
+    url_chars = sum(len(m.group(0)) for m in URL_RE.finditer(line))
+    return url_chars > len(line) * 0.5
+
+
+def check_long_prose_lines(document: SkillDocument) -> CheckRecord:
+    """Detect prose lines exceeding the length threshold.
+
+    Ignores fenced code blocks, table rows, and URL-dominated lines.
+    """
+    body = document.body
+    fenced = build_fenced_line_indices(body)
+    long_lines: list[tuple[int, int]] = []
+
+    for i, line in enumerate(body.splitlines()):
+        if i in fenced:
+            continue
+        if TABLE_ROW_RE.match(line):
+            continue
+        if len(line) <= LONG_PROSE_THRESHOLD:
+            continue
+        if _is_url_dominated(line):
+            continue
+        long_lines.append((i + 1, len(line)))
+
+    if long_lines:
+        first_lineno, first_len = long_lines[0]
+        return CheckRecord(
+            check=CHECK_LONG_PROSE,
+            passed=False,
+            detail=(
+                f"{len(long_lines)} prose line(s) exceed {LONG_PROSE_THRESHOLD} chars"
+                f" - first: L{first_lineno} ({first_len} chars)"
+            ),
+        )
+
+    return CheckRecord(
+        check=CHECK_LONG_PROSE,
+        passed=True,
+        detail=f"No prose lines exceed {LONG_PROSE_THRESHOLD} chars",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -246,12 +297,14 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_NO_SECRETS,
     CHECK_NO_USELESS_ECHO,
     CHECK_NO_GRADING_STYLE,
+    CHECK_LONG_PROSE,
 )
 
 CHECK_FUNCTIONS: Final[dict[str, CheckFunction]] = {
     CHECK_NO_SECRETS: check_no_secrets,
     CHECK_NO_USELESS_ECHO: check_no_useless_echo,
     CHECK_NO_GRADING_STYLE: check_no_grading_style,
+    CHECK_LONG_PROSE: check_long_prose_lines,
 }
 
 

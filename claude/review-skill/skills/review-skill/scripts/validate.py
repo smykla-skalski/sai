@@ -865,6 +865,7 @@ STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
         "CT-no-secrets",
         "CT-no-echo",
         "CT-no-grading",
+        "CT-long-prose",
     ),
     _delegate_checks(
         "check-config.py",
@@ -897,6 +898,8 @@ def _run_structure_delegate(
     if error:
         if config.required:
             _emit_delegate_runtime_error(collector, config.script, error)
+        else:
+            collector.record_delegate_warning(config.script, error)
         return
 
     if parsed is None:
@@ -905,6 +908,10 @@ def _run_structure_delegate(
                 collector,
                 config.script,
                 f"No parsed output from {config.script}",
+            )
+        else:
+            collector.record_delegate_warning(
+                config.script, f"No parsed output from {config.script}",
             )
         return
 

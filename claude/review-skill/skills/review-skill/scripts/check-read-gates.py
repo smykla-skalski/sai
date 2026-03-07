@@ -113,6 +113,11 @@ MODE_HEADING_RE: Final[Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 
+INFORMATIONAL_HEADING_RE: Final[Pattern[str]] = re.compile(
+    r"^#{2,}\s+.*(example|additional\s+resource|see\s+also|appendix|note$)",
+    re.IGNORECASE,
+)
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -280,6 +285,58 @@ def _analyze_ref(
 
 
 # ---------------------------------------------------------------------------
+# Informational section detection
+# ---------------------------------------------------------------------------
+
+
+def _find_informational_indices(
+    prose_lines: tuple[ProseLine, ...],
+) -> frozenset[int]:
+    """Return indices of lines inside informational sections.
+
+    Informational sections (examples, additional resources, appendix, etc.)
+    contain optional context. References linked only in these sections
+    do not require explicit read gates.
+    """
+    indices: set[int] = set()
+    in_informational = False
+    info_level = 0
+
+    for line in prose_lines:
+        stripped = line.text.strip()
+        heading_match = re.match(r"^(#{2,})\s+", stripped)
+        if heading_match:
+            level = len(heading_match.group(1))
+            if INFORMATIONAL_HEADING_RE.match(stripped):
+                in_informational = True
+                info_level = level
+                indices.add(line.index)
+                continue
+            if in_informational and level <= info_level:
+                in_informational = False
+        if in_informational:
+            indices.add(line.index)
+
+    return frozenset(indices)
+
+
+def _ref_linked_only_in_optional(
+    ref: str,
+    prose_lines: tuple[ProseLine, ...],
+    bundled_indices: frozenset[int],
+    informational_indices: frozenset[int],
+) -> bool:
+    """Return whether ref is linked only in bundled or informational sections."""
+    optional = bundled_indices | informational_indices
+    for line in prose_lines:
+        if ref.lower() not in line.text.lower():
+            continue
+        if line.index not in optional:
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Flow detection
 # ---------------------------------------------------------------------------
 
@@ -381,12 +438,19 @@ def _count_flow_coverage(
 def _check_gate(
     inventory: RefInventory,
     analyses: dict[str, RefAnalysis],
+    optional_refs: frozenset[str] = frozenset(),
 ) -> CheckRecord:
-    """RG-GATE: every linked ref has an explicit load directive."""
+    """RG-GATE: every linked ref has an explicit load directive.
+
+    References linked only in informational sections (examples, additional
+    resources) are optional and exempt from this check.
+    """
     fails = [
         a.ref
         for a in analyses.values()
-        if a.ref in inventory.linked_refs and a.gate_index is None
+        if a.ref in inventory.linked_refs
+        and a.gate_index is None
+        and a.ref not in optional_refs
     ]
     if not fails:
         return CheckRecord(
@@ -691,6 +755,7 @@ def run_checks(
 
     prose_lines = extract_prose_lines(document.body)
     bundled_indices = find_bundled_indices(prose_lines)
+    informational_indices = _find_informational_indices(prose_lines)
 
     analyses: dict[str, RefAnalysis] = {}
     for ref in sorted(inventory.all_refs):
@@ -701,6 +766,14 @@ def run_checks(
             document.content,
         )
 
+    optional_refs = frozenset(
+        ref
+        for ref in inventory.linked_refs
+        if _ref_linked_only_in_optional(
+            ref, prose_lines, bundled_indices, informational_indices,
+        )
+    )
+
     orphan_refs = frozenset(
         a.ref
         for a in analyses.values()
@@ -710,7 +783,7 @@ def run_checks(
     selected = frozenset(selected_checks)
 
     check_results: dict[str, CheckRecord] = {
-        CHECK_GATE: _check_gate(inventory, analyses),
+        CHECK_GATE: _check_gate(inventory, analyses, optional_refs),
         CHECK_PASSIVE: _check_passive(inventory, analyses, document),
         CHECK_ORPHAN: _check_orphan(orphan_refs),
         CHECK_DEAD: _check_dead(

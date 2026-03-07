@@ -60,7 +60,7 @@ Run the validation script and collect its JSON output:
 "${CLAUDE_SKILL_DIR}/scripts/validate.py" "$TARGET_DIR"
 ```
 
-`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line - `pass: false` results map to the corresponding checklist criterion. The final line is always a summary with total/passed/failed counts.
+`$TARGET_DIR` is the skill directory being reviewed. The script runs all checks by default. Subcommands `frontmatter` and `structure` run subsets. Parse each JSON line - `pass: false` results map to the corresponding checklist criterion. The final line is a summary with total/passed/failed counts.
 
 The orchestrator delegates to companion scripts:
 
@@ -95,7 +95,9 @@ Spawn a `general-purpose` evaluation agent with these inputs:
 - The `--thorough` flag value (true/false)
 - List of check IDs already covered by automated scripts (from Phase 2)
 
-The agent reads the checklist, the target SKILL.md, and all bundled resources in the target skill directory. Before evaluating each check group (Critical, Important, Polish), re-read the relevant section of checklist.md to avoid drift. Evaluate each criterion not covered by automated checks as binary pass/fail with evidence.
+The agent reads the checklist, the target SKILL.md, and all bundled resources. Before evaluating each check group (Critical, Important, Polish), re-read the relevant checklist.md section to avoid drift.
+
+Evaluate each criterion not covered by automated checks as binary pass/fail with evidence.
 
 If the target SKILL.md contains `<!-- justify: ID reason -->` comments, treat the matching check as passing with the stated justification. The override must reference a valid check ID and provide a non-empty reason.
 
