@@ -94,7 +94,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I21 | AQ-* | AskUserQuestion declared when body implies user interaction, not used in spawned agents, required args have ask-or-fallback | SAI Convention, Skill Authoring Guide |
 | I22 | FC-* | Flag coverage: every --flag in argument-hint documented in Arguments, every documented flag in argument-hint, every documented flag referenced in workflow | SAI Convention |
 | I23 | HK-* | Hooks configuration: valid events, correct structure, scripts exist/executable, hook patterns (stdin parsing, stop guard, exit codes, error prefix consistency) | SAI Convention, Skill Authoring Guide |
-| I24 | RF-body-chars | SKILL.md body under 20,000 characters (roughly 5,000 tokens) | Skills Research, Context Engineering |
+| I24 | RF-body-chars, CT-long-prose | SKILL.md body under 20,000 characters (roughly 5,000 tokens); no prose lines over 300 chars | Skills Research, Context Engineering |
 | I25 | FM-desc-length | Description field under 1,024 characters | Agent Skills Spec |
 | I26 | BP-example-tags | `<example>` tag coverage: 0 tags fails, 1-2 tags informational, 3+ tags pass | Anthropic Best Practices |
 | I27 | BP-over-prompting | Avoid aggressive all-caps prompting patterns in prose (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) | Anthropic Best Practices |

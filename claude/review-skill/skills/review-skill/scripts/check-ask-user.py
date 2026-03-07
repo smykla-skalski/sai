@@ -885,7 +885,7 @@ def check_spawned_agent(doc: ParsedSkill) -> CheckRecord:
             CHECK_SPAWNED,
             passed=True,
             detail=(
-                "context: fork - entire skill is a subagent, "
+                "Skill uses context: fork - entire skill is a subagent, "
                 "check skipped"
             ),
             tier="I21",
