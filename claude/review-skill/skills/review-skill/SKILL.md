@@ -1,7 +1,7 @@
 ---
 name: review-skill
 description: Review and fix Claude Code skill definitions (SKILL.md) using a tiered binary checklist based on the Agent Skills specification, Anthropic best practices, and community guidelines. Use when auditing, improving, or validating any skill before publishing.
-argument-hint: "[path/to/skill] [--score-only] [--fix] [--verbose] [--thorough]"
+argument-hint: "[path/to/skill] [--score-only] [--fix] [--verbose] [--thorough] [--json-report] [--strict]"
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
 ---
@@ -19,6 +19,8 @@ Parse from `$ARGUMENTS`:
 - `--fix` — Fix all failing checks (default behavior)
 - `--verbose` — Show rationale for each check
 - `--thorough` — Include Polish tier in the report
+- `--json-report` — Output the Phase 5 report as JSON instead of markdown
+- `--strict` — Treat any Important failure as FAIL (not just 3+)
 
 If both `--score-only` and `--fix` are passed, `--score-only` wins.
 
@@ -34,8 +36,8 @@ If both `--score-only` and `--fix` are passed, `--score-only` wins.
 
 ```text
 Any Critical fails              → FAIL
-3+ Important fails              → NEEDS WORK
-All Critical pass, ≤2 Important → PASS
+3+ Important fails              → NEEDS WORK  (with --strict: 1+ → FAIL)
+All Critical pass, ≤2 Important → PASS        (with --strict: 0 only)
 Polish checks                   → informational (with --thorough)
 ```
 
@@ -83,14 +85,19 @@ Shared parsing helpers: `_skill_check_common.py`.
 
 Read [references/checklist.md](references/checklist.md) in full before starting this phase.
 
+Read [references/check-id-mapping.md](references/check-id-mapping.md) for the full check-to-script mapping before spawning the agent.
+
 Spawn a `general-purpose` evaluation agent with these inputs:
 
 - Target skill directory path
 - Path to [references/checklist.md](references/checklist.md)
+- Path to [references/check-id-mapping.md](references/check-id-mapping.md)
 - The `--thorough` flag value (true/false)
 - List of check IDs already covered by automated scripts (from Phase 2)
 
-The agent reads the checklist, the target SKILL.md, and all bundled resources in the target skill directory. It evaluates each criterion not covered by automated checks as binary pass/fail with evidence.
+The agent reads the checklist, the target SKILL.md, and all bundled resources in the target skill directory. Before evaluating each check group (Critical, Important, Polish), re-read the relevant section of checklist.md to avoid drift. Evaluate each criterion not covered by automated checks as binary pass/fail with evidence.
+
+If the target SKILL.md contains `<!-- justify: ID reason -->` comments, treat the matching check as passing with the stated justification. The override must reference a valid check ID and provide a non-empty reason.
 
 The agent returns ONLY structured results - one entry per criterion:
 
@@ -119,6 +126,7 @@ Output the verdict report:
 **Skill**: <name>
 **Path**: <path>
 **Lines**: <count> (body, excluding frontmatter)
+**Chars**: <count> (~<tokens> tokens)
 **Verdict**: PASS | NEEDS WORK | FAIL
 
 ### Critical
@@ -140,6 +148,23 @@ Output the verdict report:
 
 ### Verdict: <VERDICT>
 <summary>
+```
+
+With `--json-report`, output as JSON instead:
+
+```json
+{
+  "skill": "<name>",
+  "path": "<path>",
+  "lines": 219,
+  "chars": 8068,
+  "verdict": "PASS",
+  "checks": [
+    {"id": "C1", "pass": true, "detail": "Description includes what + when-to-use"},
+    {"id": "I3", "pass": false, "detail": "No concrete examples found"}
+  ],
+  "rationale": "<reasoning>"
+}
 ```
 
 ### Phase 6: Fix
@@ -177,6 +202,7 @@ The agent re-runs validate.py AND re-evaluates all manual checks against the fix
 **Skill**: <name>
 **Path**: <path>
 **Lines**: <count> (was: <old_count>)
+**Chars**: <count> (~<tokens> tokens)
 **Verdict**: <verdict>
 
 ### Changes Made
@@ -190,6 +216,17 @@ The agent re-runs validate.py AND re-evaluates all manual checks against the fix
 ```
 
 Display the agent's returned report. If verdict is still not PASS, iterate: fix remaining issues in the main context and spawn a new verification agent.
+
+## Output format
+
+The validation script (`validate.py`) emits NDJSON - one JSON object per line. Each line has `kind` as the first key:
+
+- `check` - pass/fail result for a single criterion (fields: check, pass, level, tier, detail)
+- `signal` - detected positive/negative signal (fields: signal, type, detected, detail)
+- `finding` - lint or antipattern finding (fields: file, line, check, severity, message)
+- `summary` - final counts (fields: total, passed, failed, skipped, info)
+
+Check IDs follow `{PREFIX}-{slug}` format where PREFIX is 2 uppercase letters unique per script. See [references/check-id-mapping.md](references/check-id-mapping.md) for the full mapping.
 
 ## Good vs Bad Examples
 
