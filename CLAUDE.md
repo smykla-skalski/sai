@@ -11,6 +11,20 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - No build step (pure markdown + shell scripts)
 - No lint step (no linter configured)
 
+## Running tests
+
+**NEVER run tests directly** (`python3 -m unittest`, `python3 -m pytest`, or any direct invocation). **ALWAYS use mise tasks**:
+
+- `mise run test` — all tests
+- `mise run test <module.Class.method>` — specific test(s)
+- `mise run test:review-skill-scripts` — checker behavior tests
+- `mise run test:best-practices` — best-practices tests only
+- `mise run test:review-skill-fixtures` — fixture regression tests
+- `mise run test:ruff` — ruff lint on review-skill scripts
+- `mise run test:mypy` — mypy type checks
+
+If a needed filter is missing, add a new mise task first, then use it.
+
 ## Pre-commit Checklist
 
 - Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
