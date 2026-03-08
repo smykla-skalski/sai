@@ -743,6 +743,47 @@ class FlagCoverageScriptBehaviorTests(ScriptTestCase):
         self.assertIn("50%", str(record.get("detail")))
 
 
+    def test_hint_doc_empty_arguments_section(self) -> None:
+        body = (
+            "# Skill\n\n## Arguments\n\n"
+            "No flags documented here.\n\n"
+            "## Workflow\n\n1. Do work"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={"argument-hint": "[--foo]"},
+                body=body,
+            )
+            _, records = self.run_checker(
+                "check-flag-coverage.py",
+                skill_dir,
+                checks=("FC-hint-doc",),
+            )
+
+        record = self.one_check(records, "FC-hint-doc")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("documents none", str(record.get("detail")))
+
+    def test_hint_doc_missing_arguments_section(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Do work"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={"argument-hint": "[--foo]"},
+                body=body,
+            )
+            _, records = self.run_checker(
+                "check-flag-coverage.py",
+                skill_dir,
+                checks=("FC-hint-doc",),
+            )
+
+        record = self.one_check(records, "FC-hint-doc")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("no Arguments section found", str(record.get("detail")))
+
+
 class ScriptsDirBehaviorTests(ScriptTestCase):
     def test_invocation_prefix_check_fails_without_claude_skill_dir_prefix(
         self,
@@ -851,6 +892,24 @@ class ScriptsDirBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "SD-legacy-bash-info")
         self.assertIs(record.get("pass"), True)
         self.assertNotIn("INFO:", str(record.get("detail")))
+
+    def test_bare_script_at_position_zero_flagged(self) -> None:
+        body = "# Skill\n\n## Workflow\n\nscripts/deploy.py --config prod"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"scripts/deploy.py": "#!/usr/bin/env python3\npass\n"},
+                executable_paths={"scripts/deploy.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-invocation-prefix",),
+            )
+
+        record = self.one_check(records, "SD-invocation-prefix")
+        self.assertIs(record.get("pass"), False)
 
 
 class ReferencesScriptBehaviorTests(ScriptTestCase):
@@ -1263,6 +1322,25 @@ class WhyRationaleBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-why-rationale-info")
         self.assertEqual(record.get("level"), "skip")
 
+    def test_rationale_in_code_block_not_credited(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST validate input\n"
+            "```python\n"
+            "# because this prevents crashes\n"
+            "```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
 
 class ExampleDiversityBehaviorTests(ScriptTestCase):
     def test_example_diversity_io_pair(self) -> None:
@@ -1313,6 +1391,24 @@ class ExampleDiversityBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-example-diversity-info")
         self.assertEqual(record.get("level"), "info")
         self.assertIn("identical", str(record.get("detail")))
+
+    def test_example_diversity_blank_lines_preserved(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Run\n\n"
+            "<example>\nInput: alpha\n\nOutput: bravo\n</example>\n\n"
+            "<example>\nInput: charlie\n\nOutput: delta\n</example>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-diversity-info",),
+            )
+
+        record = self.one_check(records, "BP-example-diversity-info")
+        self.assertEqual(record.get("level"), "pass")
+        self.assertIn("2 example(s)", str(record.get("detail")))
 
 
 class FeedbackLoopBehaviorTests(ScriptTestCase):
@@ -1459,6 +1555,80 @@ class FileRefOneLevelBehaviorTests(ScriptTestCase):
         ]
         self.assertTrue(alpha_records)
         self.assertIs(alpha_records[0].get("pass"), True)
+
+
+class PreprocessingBehaviorTests(ScriptTestCase):
+    def test_git_dash_c_option_bounded(self) -> None:
+        body = (
+            "# Skill\n\n## Context\n\n"
+            "- Current branch: !`git -C ./repo branch --show-current`"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-preprocessing.py",
+                skill_dir,
+                checks=("PP-output-limit",),
+            )
+
+        record = self.one_check(records, "PP-output-limit")
+        self.assertIs(record.get("pass"), True)
+
+    def test_git_no_pager_log_with_limit(self) -> None:
+        body = (
+            "# Skill\n\n## Context\n\n"
+            "- Last commit: !`git --no-pager log -1 --oneline`"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-preprocessing.py",
+                skill_dir,
+                checks=("PP-output-limit",),
+            )
+
+        record = self.one_check(records, "PP-output-limit")
+        self.assertIs(record.get("pass"), True)
+
+    def test_git_plain_branch_still_passes(self) -> None:
+        body = "# Skill\n\n## Context\n\n- Branch: !`git branch --show-current`"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-preprocessing.py",
+                skill_dir,
+                checks=("PP-output-limit",),
+            )
+
+        record = self.one_check(records, "PP-output-limit")
+        self.assertIs(record.get("pass"), True)
+
+
+class ReadGatesFlowBehaviorTests(ScriptTestCase):
+    def test_trailing_examples_not_absorbed(self) -> None:
+        body = (
+            "# Skill\n\n"
+            "## Workflow\n\n"
+            "1. Read [Guide](references/guide.md)\n"
+            "2. Process data\n\n"
+            "## Examples\n\n"
+            "```bash\n/skill run\n```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"references/guide.md": "# Guide\n"},
+            )
+            _, records = self.run_checker(
+                "check-read-gates.py",
+                skill_dir,
+            )
+
+        check_ids = {r.get("check") for r in self.check_records(records)}
+        self.assertIn("RG-gate-present", check_ids)
+        record = self.one_check(records, "RG-gate-present")
+        self.assertIs(record.get("pass"), True)
 
 
 class CrashResilienceTests(ScriptTestCase):
@@ -1851,6 +2021,29 @@ class ConfirmedBugRegressionTests(ScriptTestCase):
 
         record = self.one_check(records, "HK-resolve")
         self.assertIs(record.get("pass"), True)
+
+    def test_agent_multi_paragraph_not_truncated(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Spawn a new agent with these instructions:\n"
+            "First paragraph of agent instructions.\n"
+            "\n"
+            "Second paragraph of agent instructions.\n"
+            "\n"
+            "Third paragraph with more details.\n\n"
+            "## Output\n\n"
+            "Write results."
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-long-prose",),
+            )
+
+        check_ids = {r.get("check") for r in self.check_records(records)}
+        self.assertIn("CT-long-prose", check_ids)
 
 
 class ValidateDelegationBehaviorTests(ScriptTestCase):

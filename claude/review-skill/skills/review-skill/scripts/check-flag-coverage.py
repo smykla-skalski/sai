@@ -151,11 +151,15 @@ def _find_all_sections(
 def _get_arguments_section_flags(
     body_lines: list[str],
     fenced: frozenset[int],
-) -> set[str]:
-    """Extract --flag patterns from the Arguments section."""
+) -> set[str] | None:
+    """Extract --flag patterns from the Arguments section.
+
+    Returns ``None`` when the section is missing entirely, or a
+    (possibly empty) set when the section exists.
+    """
     start, end = _find_section(body_lines, r"\barguments\b", fenced)
     if start is None:
-        return set()
+        return None
     section_text = "\n".join(body_lines[start:end])
     return _extract_flags(section_text)
 
@@ -215,44 +219,55 @@ def _get_examples_section_flags(
 
 def _check_hint_doc(
     hint_flags: set[str],
-    doc_flags: set[str],
+    doc_flags: set[str] | None,
 ) -> CheckRecord | None:
     """Check that flags in argument-hint appear in Arguments section."""
     if not hint_flags:
         return None
 
-    if doc_flags:
-        missing = sorted(hint_flags - doc_flags)
-        if missing:
-            return CheckRecord(
-                check=CHECK_HINT_DOC,
-                passed=False,
-                detail=(
-                    "Flags in argument-hint not documented in Arguments section: "
-                    f"{', '.join(missing)}"
-                ),
-                tier="I22",
-            )
+    if doc_flags is None:
         return CheckRecord(
             check=CHECK_HINT_DOC,
-            passed=True,
-            detail=f"All {len(hint_flags)} argument-hint flags documented",
+            passed=False,
+            detail=(
+                f"Argument-hint has {len(hint_flags)} flags but no Arguments "
+                "section found in body"
+            ),
             tier="I22",
         )
 
+    if not doc_flags:
+        return CheckRecord(
+            check=CHECK_HINT_DOC,
+            passed=False,
+            detail=(
+                f"Argument-hint has {len(hint_flags)} flags but Arguments "
+                "section documents none"
+            ),
+            tier="I22",
+        )
+
+    missing = sorted(hint_flags - doc_flags)
+    if missing:
+        return CheckRecord(
+            check=CHECK_HINT_DOC,
+            passed=False,
+            detail=(
+                "Flags in argument-hint not documented in Arguments section: "
+                f"{', '.join(missing)}"
+            ),
+            tier="I22",
+        )
     return CheckRecord(
         check=CHECK_HINT_DOC,
-        passed=False,
-        detail=(
-            f"Argument-hint has {len(hint_flags)} flags but no Arguments "
-            "section found in body"
-        ),
+        passed=True,
+        detail=f"All {len(hint_flags)} argument-hint flags documented",
         tier="I22",
     )
 
 
 def _check_doc_hint(
-    doc_flags: set[str],
+    doc_flags: set[str] | None,
     hint_flags: set[str],
     hint_raw: str,
 ) -> CheckRecord | None:
@@ -302,7 +317,7 @@ def _check_doc_hint(
 
 
 def _check_doc_workflow(
-    doc_flags: set[str],
+    doc_flags: set[str] | None,
     workflow_flags: set[str],
 ) -> CheckRecord | None:
     """Check that flags in Arguments section are referenced in workflow body."""
@@ -329,7 +344,7 @@ def _check_doc_workflow(
 
 
 def _check_example_flags(
-    doc_flags: set[str],
+    doc_flags: set[str] | None,
     example_flags: set[str],
 ) -> CheckRecord | None:
     """Check example section coverage against documented flags."""

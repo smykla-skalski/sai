@@ -491,6 +491,10 @@ def _extract_example_contents(
         if index in fenced_indices:
             continue
 
+        if in_example and not line:
+            current.append("")
+            continue
+
         cursor = 0
         while cursor < len(line):
             if in_example:
@@ -635,8 +639,12 @@ def check_why_rationale_info(document: SkillDocument) -> CheckRecord:
 
     with_rationale = 0
     for ci in constraint_indices:
-        window = lines[ci : min(ci + 3, len(lines))]
-        window_text = " ".join(window)
+        window_lines = [
+            lines[j]
+            for j in range(ci, min(ci + 3, len(lines)))
+            if j not in fenced_indices
+        ]
+        window_text = " ".join(window_lines)
         if any(p.search(window_text) for p in CAUSAL_CONNECTOR_PATTERNS):
             with_rationale += 1
 
