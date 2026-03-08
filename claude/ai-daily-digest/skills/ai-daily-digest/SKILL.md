@@ -106,7 +106,7 @@ Example:
 
 ### Phases 2-15: Research
 
-**CRITICAL: Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full for all search queries, source-specific patterns, and the Friday Weekly Recap section.**
+**Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full for all search queries, source-specific patterns, and the Friday Weekly Recap section.**
 
 Spawn a `general-purpose` research agent for each phase (or batch of independent phases).
 Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md).
@@ -135,7 +135,7 @@ Collect results from all research agents before proceeding to Phase 16. Do not s
 
 ### Phase 16: Synthesis (CRITICAL — Dedup BEFORE Digest)
 
-All deduplication MUST happen here BEFORE generating the digest.
+All deduplication happens here before generating the digest.
 
 **Step 1: Generate story IDs** for all collected items.
 
