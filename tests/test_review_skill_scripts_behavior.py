@@ -1212,6 +1212,109 @@ class WhyRationaleBehaviorTests(ScriptTestCase):
         self.assertEqual(record.get("level"), "skip")
 
 
+class ExampleDiversityBehaviorTests(ScriptTestCase):
+    def test_example_diversity_io_pair(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Run\n\n"
+            "<example>\nInput: foo\nOutput: bar\n</example>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-diversity-info",),
+            )
+
+        record = self.one_check(records, "BP-example-diversity-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_example_diversity_no_examples(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Run"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-diversity-info",),
+            )
+
+        record = self.one_check(records, "BP-example-diversity-info")
+        self.assertEqual(record.get("level"), "skip")
+
+    def test_example_diversity_identical(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Run\n\n"
+            "<example>\nDo the thing\n</example>\n\n"
+            "<example>\nDo the thing\n</example>\n\n"
+            "<example>\nDo the thing\n</example>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-diversity-info",),
+            )
+
+        record = self.one_check(records, "BP-example-diversity-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("identical", str(record.get("detail")))
+
+
+class FeedbackLoopBehaviorTests(ScriptTestCase):
+    def test_feedback_loop_verify_without_loop(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Generate output\n"
+            "2. Verify output quality"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("none have", str(record.get("detail")))
+
+    def test_feedback_loop_verify_with_loop(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Generate output\n"
+            "2. Verify output quality\n"
+            "3. If errors found, fix and retry"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_feedback_loop_no_verify(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Generate output\n2. Save results"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertEqual(record.get("level"), "skip")
+
+
 class FileRefOneLevelBehaviorTests(ScriptTestCase):
     def test_one_level_detects_bare_sibling_reference(self) -> None:
         body = "# Skill\n\n## Workflow\n\n1. Read references"

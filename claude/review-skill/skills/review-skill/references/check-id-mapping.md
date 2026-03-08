@@ -87,6 +87,8 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | HK-suggestion-info | P10 | check-hooks.py | Hooks recommended for side-effect skills |
 | BP-section-order-info | P17 | check-best-practices.py | Body section order signal |
 | BP-why-rationale-info | I29 | check-best-practices.py | WHY rationale coverage signal |
+| BP-example-diversity-info | I3 | check-best-practices.py | Example diversity signal |
+| BP-feedback-loop-info | I8 | check-best-practices.py | Feedback loop signal |
 | FK-recommendation-info | P9 | check-fork-candidate.py | Fork candidate analysis |
 
 ## Manual checks
@@ -98,11 +100,11 @@ These checks require human or agent evaluation - no automated script covers them
 | C5 | No generic filler content Claude already knows |
 | I1 | Imperative form throughout |
 | I2 | Progressive disclosure for complex skills |
-| I3 | Concrete input/output examples |
+| I3 | Concrete input/output examples (now automated: BP-example-diversity-info) |
 | I4 | No prose duplication between SKILL.md and references |
 | I5 | Explicit read directives for workflow-critical references |
 | I7 | Appropriate degrees of freedom |
-| I8 | Feedback loops for quality-critical steps |
+| I8 | Feedback loops for quality-critical steps (now automated: BP-feedback-loop-info) |
 | I10 | Consistent terminology |
 | I29 | WHY rationale on non-obvious constraints (now automated: BP-why-rationale-info) |
 | P2 | One default + one escape hatch |
