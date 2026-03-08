@@ -51,6 +51,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | RF-long-ref-toc | P1 | check-references.py | Long references have TOC |
 | RF-dup-codeblocks-info | P8 | check-references.py | No duplicated code blocks |
 | RF-dup-tables-info | P15 | check-references.py | No duplicated markdown tables |
+| RF-dup-prose-info | I4 | check-references.py | Prose duplication signal |
 | PP-* | I18 | check-preprocessing.py | Preprocessing directive hygiene (8 sub-checks) |
 | RG-gate-present | I19 | check-read-gates.py | References have explicit read gates |
 | RG-passive | I19 | check-read-gates.py | No passive mentions before gate |
@@ -101,7 +102,7 @@ These checks require human or agent evaluation - no automated script covers them
 | I1 | Imperative form throughout |
 | I2 | Progressive disclosure for complex skills |
 | I3 | Concrete input/output examples (now automated: BP-example-diversity-info) |
-| I4 | No prose duplication between SKILL.md and references |
+| I4 | No prose duplication between SKILL.md and references (now automated: RF-dup-prose-info) |
 | I5 | Explicit read directives for workflow-critical references |
 | I7 | Appropriate degrees of freedom |
 | I8 | Feedback loops for quality-critical steps (now automated: BP-feedback-loop-info) |

@@ -943,6 +943,58 @@ class ReferencesScriptBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), False)
 
 
+class DupProseBehaviorTests(ScriptTestCase):
+    def test_dup_prose_detects_similar_paragraphs(self) -> None:
+        shared = (
+            "This paragraph describes the exact workflow steps "
+            "that the skill executes. It processes input data "
+            "and generates structured output."
+        )
+        body = f"# Skill\n\n## Workflow\n\n{shared}\n\n1. Run"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"references/guide.md": f"# Guide\n\n{shared}"},
+            )
+            _, records = self.run_checker(
+                "check-references.py",
+                skill_dir,
+                checks=("RF-dup-prose-info",),
+            )
+
+        record = self.one_check(records, "RF-dup-prose-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("guide.md", str(record.get("detail")))
+
+    def test_dup_prose_passes_distinct(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "This skill validates input data and produces a report. "
+            "It checks each field against the schema.\n\n1. Run"
+        )
+        ref = (
+            "# Reference\n\n"
+            "The deployment pipeline runs integration tests in staging. "
+            "Each test verifies a different API endpoint."
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"references/deploy.md": ref},
+            )
+            _, records = self.run_checker(
+                "check-references.py",
+                skill_dir,
+                checks=("RF-dup-prose-info",),
+            )
+
+        record = self.one_check(records, "RF-dup-prose-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+
 class ContentScriptBehaviorTests(ScriptTestCase):
     def test_secret_detection_fails_on_token_pattern(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

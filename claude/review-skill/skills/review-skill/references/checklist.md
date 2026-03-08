@@ -74,7 +74,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I1 | - | Imperative form throughout ("Parse input" not "You should parse") | Anthropic skill-creator |
 | I2 | - | Progressive disclosure - complex skills use references/ for details | Agent Skills Spec, Context Engineering |
 | I3 | BP-example-diversity-info | Concrete examples show inputs -> outputs and are wrapped in `<example>` tags | Anthropic Best Practices, Context Engineering |
-| I4 | - | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
+| I4 | RF-dup-prose-info | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
 | I5 | - | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding |
 | I6 | SD-invocation-prefix, SD-no-bash | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention |
 | I7 | - | Appropriate degrees of freedom (guardrails match task fragility) | Anthropic Best Practices |
