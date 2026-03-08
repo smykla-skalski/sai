@@ -16,7 +16,10 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import _skill_check_common  # noqa: E402
 import validate  # noqa: E402
-from _skill_check_common import CheckRecord, ResultCollector, SkillDocument, SkillLoadError  # noqa: E402
+from _skill_check_common import (  # noqa: E402
+    CheckRecord,
+    SkillDocument,
+)
 
 
 def _make_doc(

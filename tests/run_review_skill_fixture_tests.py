@@ -261,7 +261,7 @@ SCRIPT_CASES: tuple[dict[str, object], ...] = (
 
 def run_command(command: list[str]) -> tuple[int, dict[str, dict[str, Any]]]:
     """Run command and return (returncode, check_id -> check_record)."""
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         command,
         capture_output=True,
         text=True,
