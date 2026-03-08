@@ -40,6 +40,9 @@ EXPECTATIONS: dict[str, dict[str, ExpectationValue]] = {
         "FC-doc-workflow": True,
         "FC-example-flags": True,
     },
+    "attributed-examples": {
+        "BP-example-tags": True,
+    },
     "api-side-effect-no-dmi": {
         "CF-side-effect": False,
     },
@@ -105,6 +108,23 @@ EXPECTATIONS: dict[str, dict[str, ExpectationValue]] = {
 }
 
 SCRIPT_CASES: tuple[dict[str, object], ...] = (
+    {
+        "name": "bp-example-tags-attributed",
+        "fixture": "attributed-examples",
+        "command": [
+            str(CHECKERS_DIR / "check-best-practices.py"),
+            "{fixture}",
+            "--check",
+            "BP-example-tags",
+        ],
+        "expectations": {
+            "BP-example-tags": {
+                "pass": True,
+                "level": "pass",
+                "detail_contains": "3 <example> tag(s)",
+            },
+        },
+    },
     {
         "name": "bp-example-tags-info-threshold",
         "fixture": "limited-examples",
