@@ -96,11 +96,30 @@ def _remove_non_signal_segments(text: str) -> str:
     return INLINE_CODE_RE.sub("", without_quotes)
 
 
-def _has_cross_reference(content: str) -> bool:
-    """Return whether prose contains any references/ path cross-reference."""
+def _has_cross_reference(
+    content: str,
+    *,
+    sibling_names: frozenset[str] = frozenset(),
+) -> bool:
+    """Return whether prose contains cross-references to other reference files.
+
+    Checks two patterns:
+    1. Explicit ``references/filename`` paths (strips inline code)
+    2. Bare sibling filenames like ``sources.md`` (does NOT strip inline code -
+       backtick-wrapped sibling names are still cross-references)
+    """
     stripped = strip_fenced_code_blocks(content)
     normalized = _remove_non_signal_segments(stripped)
-    return bool(CROSS_REFERENCE_RE.search(normalized))
+    if CROSS_REFERENCE_RE.search(normalized):
+        return True
+
+    if sibling_names:
+        for name in sibling_names:
+            sibling_re = re.compile(rf"\b{re.escape(name)}\b")
+            if sibling_re.search(stripped):
+                return True
+
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -225,20 +244,27 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckRecord]:
     if not references_dir.is_dir():
         return []
 
-    results: list[CheckRecord] = []
+    # Collect all reference filenames for sibling detection
+    ref_files: list[tuple[str, str]] = []
     for path in sorted(references_dir.iterdir()):
         if not path.is_file():
             continue
         if path.name.startswith("."):
             continue
+        ref_files.append((path.name, read_text(path)))
 
-        has_xref = _has_cross_reference(read_text(path))
+    all_names = frozenset(name for name, _ in ref_files)
+
+    results: list[CheckRecord] = []
+    for name, content in ref_files:
+        siblings = all_names - {name}
+        has_xref = _has_cross_reference(content, sibling_names=siblings)
         if has_xref:
             results.append(
                 CheckRecord.info(
                     check=CHECK_REFS_ONE_LEVEL,
                     detail=(
-                        f"Reference '{path.name}' cross-references other "
+                        f"Reference '{name}' cross-references other "
                         "reference files"
                     ),
                 ),
@@ -250,7 +276,7 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckRecord]:
                 check=CHECK_REFS_ONE_LEVEL,
                 passed=True,
                 detail=(
-                    f"Reference '{path.name}' does not cross-reference other files"
+                    f"Reference '{name}' does not cross-reference other files"
                 ),
             ),
         )
