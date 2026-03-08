@@ -74,7 +74,7 @@ _END_SENTINEL: Final[int] = 999_999
 # ---------------------------------------------------------------------------
 
 MARKDOWN_LINK_REF_RE: Final[Pattern[str]] = re.compile(
-    r"\((?:references|examples)/[a-zA-Z0-9._-]+\.md\)",
+    r"\(((?:references|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*\.md)\)",
 )
 
 GATE_DIRECTIVE_RE: Final[Pattern[str]] = re.compile(
@@ -165,16 +165,16 @@ def _collect_disk_refs(skill_dir: Path) -> frozenset[str]:
         subdir_path = skill_dir / subdir
         if not subdir_path.is_dir():
             continue
-        for path in subdir_path.iterdir():
-            if path.is_file() and path.suffix == ".md":
-                refs.add(f"{subdir}/{path.name}")
+        for path in subdir_path.rglob("*.md"):
+            if path.is_file():
+                refs.add(path.relative_to(skill_dir).as_posix())
     return frozenset(refs)
 
 
 def _extract_linked_refs(prose_body: str) -> frozenset[str]:
     """Extract reference paths from markdown links in prose body."""
     matches = MARKDOWN_LINK_REF_RE.findall(prose_body)
-    return frozenset(match[1:-1] for match in matches)
+    return frozenset(matches)
 
 
 def _build_inventory(document: SkillDocument) -> RefInventory:
@@ -521,8 +521,7 @@ def _check_orphan(orphan_refs: frozenset[str]) -> CheckRecord:
         check=CHECK_ORPHAN,
         passed=False,
         detail=(
-            f"{len(orphan_refs)} file(s) on disk not mentioned"
-            f" in SKILL.md: {refs_str}"
+            f"{len(orphan_refs)} file(s) on disk not mentioned in SKILL.md: {refs_str}"
         ),
         tier="I19",
     )
@@ -770,7 +769,10 @@ def run_checks(
         ref
         for ref in inventory.linked_refs
         if _ref_linked_only_in_optional(
-            ref, prose_lines, bundled_indices, informational_indices,
+            ref,
+            prose_lines,
+            bundled_indices,
+            informational_indices,
         )
     )
 

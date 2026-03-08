@@ -967,5 +967,34 @@ class CheckRecordSanitizationTests(unittest.TestCase):
         self.assertTrue(result.endswith("..."))
 
 
+# ---------------------------------------------------------------------------
+# Frontmatter parsing edge cases
+# ---------------------------------------------------------------------------
+
+
+class FrontmatterParsingTests(unittest.TestCase):
+    """Verify parse_frontmatter_lines handles block scalars and lists with blank lines."""
+
+    def test_block_scalar_with_empty_lines(self) -> None:
+        lines = [
+            "description: |",
+            "  line 1",
+            "",
+            "  line 2",
+        ]
+        parsed = _skill_check_common.parse_frontmatter_lines(lines)
+        self.assertEqual(parsed.get("description"), "line 1\nline 2")
+
+    def test_list_with_empty_lines(self) -> None:
+        lines = [
+            "allowed-tools:",
+            "  - tool1",
+            "",
+            "  - tool2",
+        ]
+        parsed = _skill_check_common.parse_frontmatter_lines(lines)
+        self.assertEqual(parsed.get("allowed-tools"), "tool1, tool2")
+
+
 if __name__ == "__main__":
     unittest.main()

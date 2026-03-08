@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 from _skill_check_common import (
     FENCE_RE,
@@ -198,6 +199,18 @@ def _char_ngram_jaccard(a: str, b: str, n: int = 4) -> float:
     return len(set_a & set_b) / len(set_a | set_b)
 
 
+def _iter_reference_markdown_files(references_dir: Path) -> tuple[Path, ...]:
+    """Return all markdown files under references/, recursively."""
+    return tuple(
+        path for path in sorted(references_dir.rglob("*.md")) if path.is_file()
+    )
+
+
+def _reference_label(reference_file: Path, references_dir: Path) -> str:
+    """Return a stable relative label for one reference file."""
+    return reference_file.relative_to(references_dir).as_posix()
+
+
 # ---------------------------------------------------------------------------
 # Check implementations
 # ---------------------------------------------------------------------------
@@ -269,15 +282,12 @@ def _check_duplicate_codeblocks(document: SkillDocument) -> list[CheckRecord]:
     duplicate_count = 0
     duplicate_refs: list[str] = []
 
-    for reference_file in sorted(references_dir.glob("*.md")):
-        if not reference_file.is_file():
-            continue
-
+    for reference_file in _iter_reference_markdown_files(references_dir):
         reference_hashes = _hash_code_blocks(read_text(reference_file))
         match_count = len(skill_hashes & reference_hashes)
         if match_count > 0:
             duplicate_count += match_count
-            duplicate_refs.append(reference_file.name)
+            duplicate_refs.append(_reference_label(reference_file, references_dir))
 
     if duplicate_refs:
         refs_joined = " ".join(duplicate_refs)
@@ -313,15 +323,12 @@ def _check_duplicate_tables(document: SkillDocument) -> list[CheckRecord]:
     duplicate_count = 0
     duplicate_refs: list[str] = []
 
-    for reference_file in sorted(references_dir.glob("*.md")):
-        if not reference_file.is_file():
-            continue
-
+    for reference_file in _iter_reference_markdown_files(references_dir):
         reference_hashes = _hash_markdown_tables(read_text(reference_file))
         match_count = len(skill_hashes & reference_hashes)
         if match_count > 0:
             duplicate_count += match_count
-            duplicate_refs.append(reference_file.name)
+            duplicate_refs.append(_reference_label(reference_file, references_dir))
 
     if duplicate_refs:
         refs_joined = " ".join(duplicate_refs)
@@ -360,9 +367,8 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckRecord]:
     results: list[CheckRecord] = []
     skill_phase_set = set(skill_phases)
 
-    for reference_file in sorted(references_dir.glob("*.md")):
-        if not reference_file.is_file():
-            continue
+    for reference_file in _iter_reference_markdown_files(references_dir):
+        reference_name = _reference_label(reference_file, references_dir)
 
         reference_text = strip_fenced_code_blocks(read_text(reference_file))
         reference_phases = _extract_phase_numbers(reference_text)
@@ -378,7 +384,7 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckRecord]:
                     check=CHECK_PHASE_NUMBERING,
                     passed=True,
                     detail=(
-                        f"Phase ranges in '{reference_file.name}' and SKILL.md "
+                        f"Phase ranges in '{reference_name}' and SKILL.md "
                         "are complementary (no overlap)"
                     ),
                     tier="I14",
@@ -391,7 +397,7 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckRecord]:
                 CheckRecord(
                     check=CHECK_PHASE_NUMBERING,
                     passed=True,
-                    detail=f"Phase numbers in '{reference_file.name}' match SKILL.md",
+                    detail=f"Phase numbers in '{reference_name}' match SKILL.md",
                     tier="I14",
                 ),
             )
@@ -405,7 +411,7 @@ def _check_phase_numbering(document: SkillDocument) -> list[CheckRecord]:
                 passed=False,
                 detail=(
                     "Phase numbering mismatch: SKILL.md has "
-                    f"[{skill_list}] but {reference_file.name} has "
+                    f"[{skill_list}] but {reference_name} has "
                     f"[{reference_list}] (overlapping phases differ)"
                 ),
                 tier="I14",
@@ -423,9 +429,8 @@ def _check_long_ref_toc(document: SkillDocument) -> list[CheckRecord]:
 
     results: list[CheckRecord] = []
 
-    for reference_file in sorted(references_dir.glob("*.md")):
-        if not reference_file.is_file():
-            continue
+    for reference_file in _iter_reference_markdown_files(references_dir):
+        reference_name = _reference_label(reference_file, references_dir)
 
         reference_text = read_text(reference_file)
         line_count = len(reference_text.splitlines())
@@ -435,13 +440,13 @@ def _check_long_ref_toc(document: SkillDocument) -> list[CheckRecord]:
         has_toc = TOC_HEADING_RE.search(reference_text) is not None
         if has_toc:
             detail = (
-                f"Reference '{reference_file.name}' ({line_count} lines) "
+                f"Reference '{reference_name}' ({line_count} lines) "
                 "has table of contents"
             )
             passed = True
         else:
             detail = (
-                f"Reference '{reference_file.name}' ({line_count} lines) "
+                f"Reference '{reference_name}' ({line_count} lines) "
                 "exceeds 100 lines but has no '# Contents' "
                 "or '# Table of Contents' heading"
             )
@@ -471,17 +476,16 @@ def _check_dup_prose(document: SkillDocument) -> list[CheckRecord]:
 
     similar_pairs: list[str] = []
 
-    for reference_file in sorted(references_dir.glob("*.md")):
-        if not reference_file.is_file():
-            continue
+    for reference_file in _iter_reference_markdown_files(references_dir):
+        reference_name = _reference_label(reference_file, references_dir)
 
         ref_paragraphs = _extract_prose_paragraphs(read_text(reference_file))
         for sp in skill_paragraphs:
             for rp in ref_paragraphs:
                 if _char_ngram_jaccard(sp, rp) >= DUP_PROSE_JACCARD_THRESHOLD:
-                    similar_pairs.append(reference_file.name)
+                    similar_pairs.append(reference_name)
                     break
-            if similar_pairs and similar_pairs[-1] == reference_file.name:
+            if similar_pairs and similar_pairs[-1] == reference_name:
                 break
 
     if similar_pairs:
