@@ -6,3 +6,20 @@ ignore = [
     "T201",  # print is the correct output mechanism for this CLI tool
     "INP001",  # standalone scripts, not a package
 ]
+
+[lint.per-file-ignores]
+"tests/**" = [
+    "D1",     # docstrings not required in test files
+    "E501",   # test strings are naturally long; wrapping hurts readability
+    "COM812", # trailing comma style not enforced in tests
+    "PLR0913",# test helpers legitimately need many parameters
+    "PT009",  # unittest-style assertions are correct here (not pytest)
+    "PT027",  # unittest-style assertRaises is correct here
+    "S101",   # assert is valid in test assertions
+    "S603",   # subprocess in test infrastructure is intentional
+    "S607",   # partial executable path in test infrastructure is intentional
+    "SLF001", # testing private functions is legitimate
+    "FBT003", # assertIs(x, True/False) is standard unittest pattern
+    "TRY003", # long AssertionError messages are fine in tests
+    "EM102",  # f-string in exception is fine in test assertions
+]

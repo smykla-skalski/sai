@@ -26,7 +26,7 @@ run = "python3 -m unittest tests.test_review_skill_scripts_behavior.BestPractice
 
 [tasks."test:ruff"]
 description = "Run ruff check on review-skill scripts"
-run = "ruff check claude/review-skill/skills/review-skill/scripts/ tests/run_review_skill_fixture_tests.py"
+run = "ruff check claude/review-skill/skills/review-skill/scripts/ tests/"
 
 [tasks."test:mypy"]
 description = "Run mypy type checks"
