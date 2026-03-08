@@ -27,6 +27,8 @@
 {"check": "BP-error-section-info", "pass": true, "level": "pass"}
 {"check": "BP-scope-boundary-info", "pass": true, "level": "info"}
 {"check": "BP-constraint-refresh-info", "pass": true, "level": "skip"}
+{"check": "BP-section-order-info", "pass": true, "level": "pass"}
+{"check": "BP-why-rationale-info", "pass": true, "level": "skip"}
 {"check": "CL-aggregate", "pass": true, "level": "pass"}
 {"check": "AQ-declaration", "pass": true, "level": "pass"}
 {"check": "AQ-implicit", "pass": true, "level": "pass"}
@@ -42,4 +44,4 @@
 {"check": "FC-doc-workflow", "pass": true, "level": "pass"}
 {"check": "FC-example-flags", "pass": true, "level": "pass"}
 {"check": "FK-recommendation-info", "pass": true, "level": "info"}
-{"kind": "summary", "total": 44, "passed": 44, "failed": 0}
+{"kind": "summary", "total": 46, "passed": 46, "failed": 0, "skipped": 2, "info": 3}

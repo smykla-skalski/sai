@@ -1109,6 +1109,109 @@ class FileRefBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
 
 
+class SectionOrderBehaviorTests(ScriptTestCase):
+    def test_section_order_correct(self) -> None:
+        body = (
+            "# Skill\n\n"
+            "## Overview\n\nThis skill does X.\n\n"
+            "## Arguments\n\n- `--flag` -- option\n\n"
+            "## Workflow\n\n1. Read input\n\n"
+            "## Example Invocations\n\n```bash\n/skill\n```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-section-order-info",),
+            )
+
+        record = self.one_check(records, "BP-section-order-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_section_order_inverted(self) -> None:
+        body = (
+            "# Skill\n\n"
+            "## Example Invocations\n\n```bash\n/skill\n```\n\n"
+            "## Workflow\n\n1. Read input"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-section-order-info",),
+            )
+
+        record = self.one_check(records, "BP-section-order-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("inversion", str(record.get("detail")))
+
+    def test_section_order_few_headings(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read input"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-section-order-info",),
+            )
+
+        record = self.one_check(records, "BP-section-order-info")
+        self.assertEqual(record.get("level"), "skip")
+
+
+class WhyRationaleBehaviorTests(ScriptTestCase):
+    def test_why_rationale_with_because(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST validate input because malformed data corrupts output"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("1 of 1", str(record.get("detail")))
+
+    def test_why_rationale_missing(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST validate input\n"
+            "2. NEVER skip the check"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 2", str(record.get("detail")))
+
+    def test_why_rationale_no_constraints(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read input and process it"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "skip")
+
+
 class FileRefOneLevelBehaviorTests(ScriptTestCase):
     def test_one_level_detects_bare_sibling_reference(self) -> None:
         body = "# Skill\n\n## Workflow\n\n1. Read references"

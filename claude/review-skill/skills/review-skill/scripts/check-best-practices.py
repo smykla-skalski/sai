@@ -8,6 +8,8 @@ Sub-checks:
   - `BP-error-section-info`
   - `BP-scope-boundary-info`
   - `BP-constraint-refresh-info`
+  - `BP-section-order-info`
+  - `BP-why-rationale-info`
 
 Usage:
     ./check-best-practices.py <skill-directory>
@@ -51,6 +53,8 @@ CHECK_NEGATIVE_INSTR: Final[str] = "BP-negative-instr-info"
 CHECK_ERROR_SECTION: Final[str] = "BP-error-section-info"
 CHECK_SCOPE_BOUNDARY: Final[str] = "BP-scope-boundary-info"
 CHECK_CONSTRAINT_REFRESH: Final[str] = "BP-constraint-refresh-info"
+CHECK_SECTION_ORDER: Final[str] = "BP-section-order-info"
+CHECK_WHY_RATIONALE: Final[str] = "BP-why-rationale-info"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_EXAMPLE_TAGS,
@@ -59,6 +63,8 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_ERROR_SECTION,
     CHECK_SCOPE_BOUNDARY,
     CHECK_CONSTRAINT_REFRESH,
+    CHECK_SECTION_ORDER,
+    CHECK_WHY_RATIONALE,
 )
 
 EXAMPLE_TAG_PASS_THRESHOLD: Final[int] = 3
@@ -127,6 +133,36 @@ REFRESH_FALSE_POSITIVE_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patte
         r"\byour\s+(output|result|rewrite)\b",
     ),
 )
+
+HEADING_H2_RE: Final[Pattern[str]] = re.compile(r"^##\s+(.*)")
+
+MIN_CLASSIFIABLE_HEADINGS: Final[int] = 2
+
+CANONICAL_SECTION_ORDER: Final[tuple[str, ...]] = (
+    "overview",
+    "arguments",
+    "state",
+    "workflow",
+    "output",
+    "errors",
+    "examples",
+)
+
+CAUSAL_CONNECTOR_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bbecause\b",
+        r"\bsince\b(?!\s+\d{4})(?!\s+last\b)",
+        r"\bso\s+that\b",
+        r"\bto\s+prevent\b",
+        r"\bto\s+avoid\b",
+        r"\bto\s+ensure\b",
+        r"\botherwise\b",
+        r"\bthis\s+(?:prevents|ensures|avoids)\b",
+        r"\breason:",
+    ),
+)
+
+WHY_RATIONALE_COVERAGE_THRESHOLD: Final[float] = 0.5
 
 
 # ---------------------------------------------------------------------------
@@ -401,6 +437,134 @@ def check_constraint_refresh_info(document: SkillDocument) -> CheckRecord:
 # Orchestration
 # ---------------------------------------------------------------------------
 
+_HEADING_CLASSIFIERS: Final[tuple[tuple[Pattern[str], str], ...]] = (
+    (re.compile(r"\bargument", re.IGNORECASE), "arguments"),
+    (re.compile(r"\b(?:error|failure|troubleshoot)", re.IGNORECASE), "errors"),
+    (re.compile(r"\b(?:workflow|phase|step)\b", re.IGNORECASE), "workflow"),
+    (re.compile(r"\b(?:example|invocation|usage)\b", re.IGNORECASE), "examples"),
+    (re.compile(r"\b(?:output|format|result)\b", re.IGNORECASE), "output"),
+    (re.compile(r"\b(?:state|persist|storage)\b", re.IGNORECASE), "state"),
+)
+
+
+def _classify_heading(text: str, *, is_first: bool) -> str | None:
+    """Classify an H2 heading text into a canonical section category."""
+    for pattern, category in _HEADING_CLASSIFIERS:
+        if pattern.search(text):
+            return category
+    if is_first:
+        return "overview"
+    return None
+
+
+def check_section_order_info(document: SkillDocument) -> CheckRecord:
+    """Emit informational signal when body sections deviate from canonical order."""
+    lines = document.body.splitlines()
+    fenced_indices = build_fenced_line_indices(lines)
+
+    classified: list[str] = []
+    first_seen = False
+    for index, line in enumerate(lines):
+        if index in fenced_indices:
+            continue
+        match = HEADING_H2_RE.match(line)
+        if match is None:
+            continue
+        category = _classify_heading(match.group(1), is_first=not first_seen)
+        first_seen = True
+        if category is not None:
+            classified.append(category)
+
+    if len(classified) < MIN_CLASSIFIABLE_HEADINGS:
+        return CheckRecord.skip(
+            CHECK_SECTION_ORDER,
+            (
+                "Section order check skipped - fewer than 2 classifiable "
+                f"H2 headings ({len(classified)})"
+            ),
+            tier="P17",
+        )
+
+    canonical_indices = [
+        CANONICAL_SECTION_ORDER.index(cat) for cat in classified
+    ]
+    inversions = [
+        f"{classified[i]} > {classified[i + 1]}"
+        for i in range(len(canonical_indices) - 1)
+        if canonical_indices[i] > canonical_indices[i + 1]
+    ]
+
+    if inversions:
+        return CheckRecord.info(
+            CHECK_SECTION_ORDER,
+            f"{len(inversions)} section order inversion(s): {', '.join(inversions)}",
+            tier="P17",
+        )
+
+    return CheckRecord.ok(
+        CHECK_SECTION_ORDER,
+        f"Body section order follows canonical flow ({len(classified)} sections)",
+        tier="P17",
+    )
+
+
+def check_why_rationale_info(document: SkillDocument) -> CheckRecord:
+    """Emit informational signal when constraints lack WHY rationale."""
+    lines = document.body.splitlines()
+    fenced_indices = build_fenced_line_indices(lines)
+    example_indices = _build_example_line_indices(lines, fenced_indices)
+
+    all_constraint_patterns = OVER_PROMPT_PATTERNS + NEGATIVE_INSTR_PATTERNS
+    constraint_indices: list[int] = []
+    for index, line in enumerate(lines):
+        if _is_ignored_line(
+            index,
+            line,
+            fenced_indices=fenced_indices,
+            example_indices=example_indices,
+        ):
+            continue
+        if any(p.search(line) for p in all_constraint_patterns):
+            constraint_indices.append(index)
+
+    if not constraint_indices:
+        return CheckRecord.skip(
+            CHECK_WHY_RATIONALE,
+            "WHY rationale check skipped - no constraint patterns found",
+            tier="I29",
+        )
+
+    with_rationale = 0
+    for ci in constraint_indices:
+        window = lines[ci : min(ci + 3, len(lines))]
+        window_text = " ".join(window)
+        if any(p.search(window_text) for p in CAUSAL_CONNECTOR_PATTERNS):
+            with_rationale += 1
+
+    total = len(constraint_indices)
+    ratio = with_rationale / total if total > 0 else 0.0
+
+    if ratio >= WHY_RATIONALE_COVERAGE_THRESHOLD:
+        return CheckRecord.ok(
+            CHECK_WHY_RATIONALE,
+            f"{with_rationale} of {total} constraint(s) have WHY rationale",
+            tier="I29",
+        )
+
+    return CheckRecord.info(
+        CHECK_WHY_RATIONALE,
+        (
+            f"{with_rationale} of {total} constraint(s) have WHY rationale "
+            "- add because/so that/to prevent for non-obvious rules"
+        ),
+        tier="I29",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Orchestration (below new checks)
+# ---------------------------------------------------------------------------
+
 CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], CheckRecord]]] = {
     CHECK_EXAMPLE_TAGS: check_example_tags,
     CHECK_OVER_PROMPTING: check_over_prompting,
@@ -408,6 +572,8 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], CheckRecord]]] = {
     CHECK_ERROR_SECTION: check_error_section_info,
     CHECK_SCOPE_BOUNDARY: check_scope_boundary_info,
     CHECK_CONSTRAINT_REFRESH: check_constraint_refresh_info,
+    CHECK_SECTION_ORDER: check_section_order_info,
+    CHECK_WHY_RATIONALE: check_why_rationale_info,
 }
 
 

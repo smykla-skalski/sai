@@ -85,6 +85,8 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | HK-perm | I23 | check-hooks.py | PostToolUse avoids permissionDecision |
 | HK-prefix | I23 | check-hooks.py | Consistent error code prefix |
 | HK-suggestion-info | P10 | check-hooks.py | Hooks recommended for side-effect skills |
+| BP-section-order-info | P17 | check-best-practices.py | Body section order signal |
+| BP-why-rationale-info | I29 | check-best-practices.py | WHY rationale coverage signal |
 | FK-recommendation-info | P9 | check-fork-candidate.py | Fork candidate analysis |
 
 ## Manual checks
@@ -102,11 +104,11 @@ These checks require human or agent evaluation - no automated script covers them
 | I7 | Appropriate degrees of freedom |
 | I8 | Feedback loops for quality-critical steps |
 | I10 | Consistent terminology |
-| I29 | WHY rationale on non-obvious constraints |
+| I29 | WHY rationale on non-obvious constraints (now automated: BP-why-rationale-info) |
 | P2 | One default + one escape hatch |
 | P4 | No time-sensitive info without deprecation plan |
 | P7 | Scripts handle errors, no magic constants |
-| P17 | Body section order follows recommended flow |
+| P17 | Body section order follows recommended flow (now automated: BP-section-order-info) |
 
 ## Signal IDs
 
