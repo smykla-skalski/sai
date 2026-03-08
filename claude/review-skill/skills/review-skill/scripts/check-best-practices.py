@@ -62,7 +62,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
 )
 
 EXAMPLE_TAG_PASS_THRESHOLD: Final[int] = 3
-OVER_PROMPT_FAIL_THRESHOLD: Final[int] = 3
+OVER_PROMPT_FAIL_THRESHOLD: Final[int] = 2
 PHASE_REFRESH_THRESHOLD: Final[int] = 4
 
 # ---------------------------------------------------------------------------
@@ -260,7 +260,7 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
             CHECK_OVER_PROMPTING,
             (
                 f"Detected {hit_count} aggressive emphasis pattern hit(s) "
-                "outside headings/examples (threshold 3) - first: "
+                "outside headings/examples (threshold 2) - first: "
                 f"{first_evidence}"
             ),
             tier="I27",
@@ -271,7 +271,7 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
             CHECK_OVER_PROMPTING,
             (
                 f"Detected {hit_count} aggressive emphasis pattern hit(s) "
-                "outside headings/examples (below fail threshold of 3) - first: "
+                "outside headings/examples (below fail threshold of 2) - first: "
                 f"{first_evidence}"
             ),
             tier="I27",
