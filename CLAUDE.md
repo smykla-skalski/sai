@@ -9,29 +9,41 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - Test plugin locally: `claude --plugin-dir claude/{plugin-name}/`
 - Test specific skill: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
 - No build step (pure markdown + shell scripts)
-- No lint step (no linter configured)
 
-## Running tests
+## Running tests and linters
 
-**NEVER run tests directly** (`python3 -m unittest`, `python3 -m pytest`, or any direct invocation). **ALWAYS use mise tasks**:
+**NEVER run tests or linters directly** (`python3 -m unittest`, `python3 -m pytest`, `ruff`, `mypy`, or any direct invocation). **ALWAYS use mise tasks**:
 
+- `mise run check` — all tests + all linters (run before every commit)
 - `mise run test` — all tests
 - `mise run test <module.Class.method>` — specific test(s)
 - `mise run test:review-skill-scripts` — checker behavior tests
 - `mise run test:best-practices` — best-practices tests only
 - `mise run test:review-skill-fixtures` — fixture regression tests
-- `mise run test:ruff` — ruff lint on review-skill scripts
-- `mise run test:mypy` — mypy type checks
+- `mise run lint` — all linters (ruff + mypy)
+- `mise run lint:ruff` — ruff check on review-skill scripts
+- `mise run lint:mypy` — mypy type checks
 
 If a needed filter is missing, add a new mise task first, then use it.
 
-## Pre-commit Checklist
+## Pre-commit checklist
 
+- **`mise run check` must be green** before committing any script changes (tests + ruff + mypy)
 - Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
 - Test modified plugins with `claude --plugin-dir claude/{plugin-name}/`
 - Update root README.md if adding/removing plugins
 - Follow conventional commits: `type(scope): description` — see `CONTRIBUTING.md:93`
 - **Bump plugin version** in `plugin.json` for any functional change (SKILL.md, scripts, references) — include the bump in the same commit. Skip only for pure doc changes (README, comments, typos)
+
+## Linter suppression policy
+
+Never disable linter warnings via inline comments (`# noqa`, `# type: ignore`, `# noinspection`, etc.) or by adjusting linter config files (ruff.toml, mypy.ini, pyproject.toml lint sections) without following this process:
+
+1. Thoroughly investigate whether the issue can be fixed properly in a future-proof way
+2. If suppression is genuinely the only option, use AskUserQuestion to get explicit user approval before adding the suppression
+3. Include a comment explaining WHY suppression is necessary
+
+This applies to all linters: ruff, mypy, shellcheck, and any future linters. Fixing the root cause is always preferred over suppressing the symptom.
 
 ## Architecture
 
