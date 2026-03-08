@@ -55,7 +55,7 @@ DISALLOWED_FILES: Final[tuple[str, ...]] = (
 # ---------------------------------------------------------------------------
 
 RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
-    r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+",
+    r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*",
 )
 IGNORE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
     r"/(?:\.\.\.|\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)",
@@ -64,7 +64,7 @@ BACKSLASH_PATH_RE: Final[Pattern[str]] = re.compile(
     r"(?:references|scripts|assets|examples)\\[a-zA-Z0-9._-]+",
 )
 INLINE_CODE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
-    r"`(?:references|examples)/[a-zA-Z0-9._-]+`",
+    r"`(?:references|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*`",
 )
 
 CROSS_REFERENCE_RE: Final[Pattern[str]] = re.compile(
@@ -126,7 +126,7 @@ def check_file_ref_resolves(document: SkillDocument) -> list[CheckRecord]:
 
     for reference in references:
         expected_path = document.skill_dir / reference
-        if expected_path.is_file():
+        if expected_path.is_file() or expected_path.is_dir():
             results.append(
                 CheckRecord(
                     check=CHECK_FILE_REF_RESOLVES,
@@ -138,7 +138,9 @@ def check_file_ref_resolves(document: SkillDocument) -> list[CheckRecord]:
             continue
 
         plugin_root_path = plugin_root / reference if plugin_root is not None else None
-        if plugin_root_path is not None and plugin_root_path.is_file():
+        if plugin_root_path is not None and (
+            plugin_root_path.is_file() or plugin_root_path.is_dir()
+        ):
             results.append(
                 CheckRecord(
                     check=CHECK_FILE_REF_RESOLVES,

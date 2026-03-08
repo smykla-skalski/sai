@@ -890,5 +890,79 @@ class EmptyLintFieldTests(unittest.TestCase):
         self.assertEqual(len(parsed.invalid_lines), 1)
 
 
+# ---------------------------------------------------------------------------
+# CheckRecord auto-sanitization (crash prevention)
+# ---------------------------------------------------------------------------
+
+
+class CheckRecordSanitizationTests(unittest.TestCase):
+    """Verify CheckRecord auto-sanitizes detail instead of crashing."""
+
+    def test_long_detail_auto_truncated(self) -> None:
+        long_detail = "A" * 600
+        record = CheckRecord(check="XX-test", passed=True, detail=long_detail)
+        self.assertEqual(len(record.detail), 500)
+        self.assertTrue(record.detail.endswith("..."))
+
+    def test_lowercase_detail_auto_capitalized(self) -> None:
+        record = CheckRecord(check="XX-test", passed=True, detail="context: fork")
+        self.assertEqual(record.detail[0], "C")
+        self.assertEqual(record.detail, "Context: fork")
+
+    def test_trailing_period_auto_stripped(self) -> None:
+        record = CheckRecord(check="XX-test", passed=True, detail="Found issues.")
+        self.assertFalse(record.detail.endswith("."))
+        self.assertEqual(record.detail, "Found issues")
+
+    def test_multiple_trailing_periods_stripped(self) -> None:
+        record = CheckRecord(check="XX-test", passed=True, detail="Found issues...")
+        self.assertFalse(record.detail.endswith("."))
+
+    def test_all_periods_replaced(self) -> None:
+        record = CheckRecord(check="XX-test", passed=True, detail="...")
+        self.assertTrue(len(record.detail) > 0)
+        self.assertFalse(record.detail.endswith("."))
+
+    def test_combined_long_lowercase_period(self) -> None:
+        detail = "lowercase start " + "x" * 500 + "."
+        record = CheckRecord(check="XX-test", passed=True, detail=detail)
+        self.assertTrue(record.detail[0].isupper())
+        self.assertLessEqual(len(record.detail), 500)
+        # Truncation suffix "..." ends with "." but that's intentional
+        self.assertTrue(record.detail.endswith("..."))
+
+    def test_short_lowercase_period_sanitized(self) -> None:
+        record = CheckRecord(
+            check="XX-test", passed=True, detail="lowercase text.",
+        )
+        self.assertEqual(record.detail, "Lowercase text")
+
+    def test_invalid_check_id_still_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            CheckRecord(check="bad", passed=True, detail="Test")
+
+    def test_empty_detail_still_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            CheckRecord(check="XX-test", passed=True, detail="")
+
+    def test_invalid_tier_still_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            CheckRecord(check="XX-test", passed=True, detail="Test", tier="bad")
+
+    def test_cap_detail_under_limit(self) -> None:
+        result = _skill_check_common.cap_detail("Short text")
+        self.assertEqual(result, "Short text")
+
+    def test_cap_detail_over_limit(self) -> None:
+        result = _skill_check_common.cap_detail("A" * 600)
+        self.assertEqual(len(result), 500)
+        self.assertTrue(result.endswith("..."))
+
+    def test_cap_detail_custom_limit(self) -> None:
+        result = _skill_check_common.cap_detail("A" * 100, limit=50)
+        self.assertEqual(len(result), 50)
+        self.assertTrue(result.endswith("..."))
+
+
 if __name__ == "__main__":
     unittest.main()

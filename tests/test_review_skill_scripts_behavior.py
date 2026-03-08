@@ -967,6 +967,279 @@ class ContentScriptBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
 
 
+class ExampleTagBehaviorTests(ScriptTestCase):
+    def test_example_tags_with_attributes_are_counted(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Read input\n\n"
+            '<example description="Basic usage">\nInput: a\nOutput: b\n</example>\n\n'
+            '<example description="Advanced usage">\nInput: c\nOutput: d\n</example>\n\n'
+            '<example description="Edge case">\nInput: e\nOutput: f\n</example>'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-tags",),
+            )
+
+        record = self.one_check(records, "BP-example-tags")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("3", str(record.get("detail")))
+
+    def test_example_tags_mixed_bare_and_attributed(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Read input\n\n"
+            "<example>\nInput: a\nOutput: b\n</example>\n\n"
+            '<example description="test">\nInput: c\nOutput: d\n</example>'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-tags",),
+            )
+
+        record = self.one_check(records, "BP-example-tags")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("2", str(record.get("detail")))
+
+
+class FileRefBehaviorTests(ScriptTestCase):
+    def test_nested_script_path_resolves(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Run scripts/hooks/guard.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"scripts/hooks/guard.py": "#!/usr/bin/env python3\npass\n"},
+                executable_paths={"scripts/hooks/guard.py"},
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-resolves",),
+            )
+
+        record = self.one_check(records, "FR-resolves")
+        self.assertIs(record.get("pass"), True)
+
+    def test_directory_reference_resolves(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. See scripts/hooks for guardrails"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"scripts/hooks/guard.py": "pass\n"},
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-resolves",),
+            )
+
+        record = self.one_check(records, "FR-resolves")
+        self.assertIs(record.get("pass"), True)
+
+
+class CrashResilienceTests(ScriptTestCase):
+    """Verify that no checker script crashes on adversarial input."""
+
+    def test_ask_user_many_interaction_patterns_no_crash(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Ask the user to choose a target\n"
+            "2. Prompt the user for confirmation\n"
+            "3. Use AskUserQuestion to get the scope\n"
+            "4. Via AskUserQuestion present the options\n"
+            "5. With AskUserQuestion show the summary\n"
+            "6. Let the user decide the approach\n"
+            "7. Get user approval for the plan\n"
+            "8. Confirm with the user before proceeding\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={
+                    "allowed-tools": "AskUserQuestion, Bash, Read",
+                },
+                body=body,
+            )
+            result, records = self.run_checker(
+                "check-ask-user.py",
+                skill_dir,
+            )
+
+        self.assertIn(result.returncode, (0, 1))
+        self.assert_summary_consistent(records)
+
+    def test_ask_user_context_fork_no_crash(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Execute the task"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={
+                    "context": "fork",
+                    "agent": "general-purpose",
+                    "allowed-tools": "Bash, Read",
+                },
+                body=body,
+            )
+            result, records = self.run_checker(
+                "check-ask-user.py",
+                skill_dir,
+            )
+
+        self.assertIn(result.returncode, (0, 1))
+        self.assert_summary_consistent(records)
+        spawned = self.one_check(records, "AQ-spawned-agent")
+        detail = str(spawned.get("detail", ""))
+        self.assertTrue(detail[0].isupper())
+
+    def test_read_gates_many_references_no_crash(self) -> None:
+        refs = {f"references/ref-{i:02d}.md": f"Content {i}" for i in range(15)}
+        ref_mentions = "\n".join(
+            f"{i}. See [references/ref-{i:02d}.md](references/ref-{i:02d}.md)"
+            for i in range(15)
+        )
+        body = f"# Skill\n\n## Workflow\n\n{ref_mentions}"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files=refs,
+            )
+            result, records = self.run_checker(
+                "check-read-gates.py",
+                skill_dir,
+            )
+
+        self.assertIn(result.returncode, (0, 1))
+        self.assert_summary_consistent(records)
+
+    def test_flag_coverage_many_flags_no_crash(self) -> None:
+        flags = [f"--flag-{i:02d}" for i in range(20)]
+        arg_lines = "\n".join(f"- `{f}` -- option {f}" for f in flags)
+        hint = " ".join(f"[{f}]" for f in flags)
+        body = f"# Skill\n\n## Arguments\n\n{arg_lines}\n\n## Workflow\n\n1. Read"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={"argument-hint": hint},
+                body=body,
+            )
+            result, records = self.run_checker(
+                "check-flag-coverage.py",
+                skill_dir,
+            )
+
+        self.assertIn(result.returncode, (0, 1))
+        self.assert_summary_consistent(records)
+
+    def test_preprocessing_long_command_no_crash(self) -> None:
+        long_cmd = "echo " + "x" * 400
+        body = f"# Skill\n\n## Context\n\n- Data: !`{long_cmd}`"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            result, records = self.run_checker(
+                "check-preprocessing.py",
+                skill_dir,
+            )
+
+        self.assertIn(result.returncode, (0, 1))
+        self.assert_summary_consistent(records)
+
+    def test_hooks_many_entries_no_crash(self) -> None:
+        hooks_yaml = "hooks:\n  PreToolUse:\n"
+        for i in range(10):
+            hooks_yaml += (
+                f'    - matcher: "Tool{i}"\n'
+                f"      hooks:\n"
+                f'        - type: "command"\n'
+                f'          command: "$CLAUDE_PROJECT_DIR/scripts/guard-{i}.py"\n'
+            )
+        body = "# Skill\n\n## Workflow\n\n1. Execute"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+            )
+            # Write SKILL.md with hooks in frontmatter
+            skill_md = skill_dir / "SKILL.md"
+            content = skill_md.read_text()
+            content = content.replace(
+                "---\n\n",
+                f"{hooks_yaml}---\n\n",
+                1,
+            )
+            skill_md.write_text(content)
+
+            result, records = self.run_checker(
+                "check-hooks.py",
+                skill_dir,
+            )
+
+        self.assertIn(result.returncode, (0, 1))
+        self.assert_summary_consistent(records)
+
+    def test_all_checkers_survive_minimal_skill(self) -> None:
+        """Every checker script must produce valid NDJSON on a minimal skill."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp))
+            for script_name in RUN_CHECK_SCRIPTS:
+                with self.subTest(script=script_name):
+                    result, records = self.run_checker(script_name, skill_dir)
+                    self.assertIn(
+                        result.returncode, (0, 1),
+                        f"{script_name} crashed: {result.stderr}",
+                    )
+                    self.assert_summary_consistent(records)
+
+    def test_all_checkers_survive_maximal_skill(self) -> None:
+        """Every checker script must handle a complex skill without crashing."""
+        long_line = "x" * 400
+        many_interactions = "\n".join(
+            f"{i}. Ask the user to choose option {i}" for i in range(10)
+        )
+        body = (
+            "# Skill\n\n"
+            "## Arguments\n\n"
+            + "\n".join(f"- `--flag-{i}` -- option" for i in range(10))
+            + "\n\n## Workflow\n\n"
+            + many_interactions
+            + f"\n\n{long_line}\n\n"
+            "## Error handling\n\n- Report errors\n\n"
+            "## Example Invocations\n\n```bash\n/skill --flag-0\n```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={
+                    "allowed-tools": "AskUserQuestion, Bash, Read, Write",
+                    "argument-hint": " ".join(
+                        f"[--flag-{i}]" for i in range(10)
+                    ),
+                    "disable-model-invocation": "true",
+                },
+                body=body,
+                files={
+                    "references/guide.md": "# Guide\n\nContent here",
+                    "scripts/run.py": "#!/usr/bin/env python3\npass\n",
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            for script_name in RUN_CHECK_SCRIPTS:
+                with self.subTest(script=script_name):
+                    result, records = self.run_checker(script_name, skill_dir)
+                    self.assertIn(
+                        result.returncode, (0, 1),
+                        f"{script_name} crashed: {result.stderr}",
+                    )
+                    self.assert_summary_consistent(records)
+
+
 class ValidateDelegationBehaviorTests(ScriptTestCase):
     def test_validate_structure_mode_includes_new_bp_and_fc_checks(self) -> None:
         body = (

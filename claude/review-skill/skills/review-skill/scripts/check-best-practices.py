@@ -69,7 +69,9 @@ PHASE_REFRESH_THRESHOLD: Final[int] = 4
 # Patterns
 # ---------------------------------------------------------------------------
 
-EXAMPLE_OPEN_RE: Final[Pattern[str]] = re.compile(r"<example>", re.IGNORECASE)
+EXAMPLE_OPEN_RE: Final[Pattern[str]] = re.compile(
+    r"<example(?:\s[^>]*)?>", re.IGNORECASE,
+)
 EXAMPLE_CLOSE_RE: Final[Pattern[str]] = re.compile(r"</example>", re.IGNORECASE)
 HEADING_RE: Final[Pattern[str]] = re.compile(r"^\s*#")
 

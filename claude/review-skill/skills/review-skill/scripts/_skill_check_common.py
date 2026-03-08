@@ -61,6 +61,7 @@ CHECK_ID_RE: Final[Pattern[str]] = re.compile(
 )
 TIER_RE: Final[Pattern[str]] = re.compile(r"^[CIP]\d{1,2}$")
 DETAIL_MAX_LENGTH: Final[int] = 500
+DETAIL_TRUNCATION_SUFFIX: Final[str] = "..."
 
 
 def read_text(path: Path) -> str:
@@ -69,6 +70,19 @@ def read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return ""
+
+
+def cap_detail(text: str, *, limit: int = DETAIL_MAX_LENGTH) -> str:
+    """Truncate a detail string to fit within the CheckRecord limit.
+
+    Use proactively when building detail strings from dynamic content
+    (joined lists, format_hit samples, user-provided text). Produces
+    cleaner output than relying on CheckRecord auto-truncation.
+    """
+    if len(text) <= limit:
+        return text
+    suffix_len = len(DETAIL_TRUNCATION_SUFFIX)
+    return text[: limit - suffix_len] + DETAIL_TRUNCATION_SUFFIX
 
 
 # ---------------------------------------------------------------------------
@@ -224,15 +238,25 @@ class CheckRecord:
         if not self.detail:
             msg = "Detail must not be empty"
             raise ValueError(msg)
-        if len(self.detail) > DETAIL_MAX_LENGTH:
-            msg = f"Detail exceeds {DETAIL_MAX_LENGTH} chars ({len(self.detail)})"
-            raise ValueError(msg)
-        if self.detail[0].islower():
-            msg = f"Detail must start with uppercase: {self.detail[:40]!r}"
-            raise ValueError(msg)
-        if self.detail.endswith("."):
-            msg = f"Detail must not end with period: ...{self.detail[-40:]!r}"
-            raise ValueError(msg)
+
+        # Auto-sanitize detail to prevent data-dependent crashes.
+        # Length, casing, and trailing period depend on user input
+        # and cannot always be predicted by the script author.
+        detail = self.detail
+        if detail.endswith("."):
+            detail = detail.rstrip(".")
+        if not detail:
+            detail = "(empty after period removal)"
+        if detail[0].islower():
+            detail = detail[0].upper() + detail[1:]
+        if len(detail) > DETAIL_MAX_LENGTH:
+            detail = (
+                detail[: DETAIL_MAX_LENGTH - len(DETAIL_TRUNCATION_SUFFIX)]
+                + DETAIL_TRUNCATION_SUFFIX
+            )
+        if detail != self.detail:
+            object.__setattr__(self, "detail", detail)
+
         if self.tier is not None and not TIER_RE.match(self.tier):
             msg = f"Invalid tier: {self.tier!r}"
             raise ValueError(msg)
