@@ -239,7 +239,7 @@ Automated by `check-references.py` (I24) and `validate.py` frontmatter checks (I
 Automated by `check-best-practices.py`.
 
 - **BP-example-tags (I26):** Counts `<example>` tags in SKILL.md. Zero fails, 1-2 emits informational guidance, 3+ passes
-- **BP-over-prompting (I27):** Detects all-caps aggressive emphasis (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) in prose outside fenced blocks, headings, and `<example>` blocks. 3+ hits fails, 1-2 informational, 0 pass
+- **BP-over-prompting (I27):** Detects all-caps aggressive emphasis (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) in prose outside fenced blocks, headings, and `<example>` blocks. 2+ hits fails, 1 informational, 0 pass
 
 ---
 

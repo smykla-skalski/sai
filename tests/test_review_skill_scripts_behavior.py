@@ -355,7 +355,7 @@ class BestPracticesScriptBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
         self.assertEqual(record.get("level"), "info")
 
-    def test_over_prompting_info_threshold_respects_heading_and_example_exclusions(
+    def test_over_prompting_threshold_respects_heading_and_example_exclusions(
         self,
     ) -> None:
         body = (
@@ -378,15 +378,15 @@ class BestPracticesScriptBehaviorTests(ScriptTestCase):
             )
 
         record = self.one_check(records, "BP-over-prompting")
-        self.assertIs(record.get("pass"), True)
-        self.assertEqual(record.get("level"), "info")
+        # 2 prose hits (MUST + ALWAYS) now fail at threshold 2
+        self.assertIs(record.get("pass"), False)
+        self.assertEqual(record.get("level"), "fail")
 
-    def test_over_prompting_fails_at_three_hits(self) -> None:
+    def test_over_prompting_fails_at_two_hits(self) -> None:
         body = (
             "# Skill\n\n## Workflow\n\n"
             "1. You MUST parse input\n"
-            "2. ALWAYS validate output\n"
-            "3. NEVER ignore malformed data"
+            "2. ALWAYS validate output"
         )
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(Path(tmp), body=body)
