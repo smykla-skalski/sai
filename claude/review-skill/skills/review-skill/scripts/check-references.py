@@ -8,6 +8,7 @@ Implemented checks:
 - `RF-dup-tables-info` (informational)
 - `RF-phase-numbering`
 - `RF-long-ref-toc`
+- `RF-dup-prose-info` (informational)
 
 Output is NDJSON with a final summary line.
 Exit codes:
@@ -51,6 +52,9 @@ CHECK_DUP_CODEBLOCKS: Final[str] = "RF-dup-codeblocks-info"
 CHECK_DUP_TABLES: Final[str] = "RF-dup-tables-info"
 CHECK_PHASE_NUMBERING: Final[str] = "RF-phase-numbering"
 CHECK_LONG_REF_TOC: Final[str] = "RF-long-ref-toc"
+CHECK_DUP_PROSE: Final[str] = "RF-dup-prose-info"
+DUP_PROSE_JACCARD_THRESHOLD: Final[float] = 0.35
+MIN_PROSE_PARAGRAPH_SENTENCES: Final[int] = 2
 
 # ---------------------------------------------------------------------------
 # Pattern constants
@@ -65,6 +69,8 @@ TOC_HEADING_RE: Final[Pattern[str]] = re.compile(
     re.MULTILINE | re.IGNORECASE,
 )
 TABLE_ROW_RE: Final[Pattern[str]] = re.compile(r"^\s*\|")
+HEADING_LINE_RE: Final[Pattern[str]] = re.compile(r"^\s*#")
+SENTENCE_END_RE: Final[Pattern[str]] = re.compile(r"[.!?]")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -147,6 +153,49 @@ def _hash_markdown_tables(text: str) -> set[str]:
         hashes.add(digest)
 
     return hashes
+
+
+def _extract_prose_paragraphs(text: str) -> list[str]:
+    """Extract normalized prose paragraphs with 2+ sentences.
+
+    Strips fenced code blocks and table rows. Groups consecutive non-empty,
+    non-heading lines into paragraphs. Normalizes: lowercase, collapse
+    whitespace.
+    """
+    stripped = strip_fenced_code_blocks(text)
+    paragraphs: list[str] = []
+    current: list[str] = []
+
+    for line in stripped.splitlines():
+        trimmed = line.strip()
+        if not trimmed or HEADING_LINE_RE.match(trimmed) or TABLE_ROW_RE.match(trimmed):
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            continue
+        current.append(trimmed)
+
+    if current:
+        paragraphs.append(" ".join(current))
+
+    result: list[str] = []
+    for para in paragraphs:
+        sentence_count = len(SENTENCE_END_RE.findall(para))
+        if sentence_count >= MIN_PROSE_PARAGRAPH_SENTENCES:
+            result.append(re.sub(r"\s+", " ", para.lower().strip()))
+
+    return result
+
+
+def _char_ngram_jaccard(a: str, b: str, n: int = 4) -> float:
+    """Compute character n-gram Jaccard similarity between two strings."""
+    if len(a) < n and len(b) < n:
+        return 0.0
+    set_a = {a[i : i + n] for i in range(len(a) - n + 1)}
+    set_b = {b[i : i + n] for i in range(len(b) - n + 1)}
+    if not set_a and not set_b:
+        return 0.0
+    return len(set_a & set_b) / len(set_a | set_b)
 
 
 # ---------------------------------------------------------------------------
@@ -410,6 +459,55 @@ def _check_long_ref_toc(document: SkillDocument) -> list[CheckRecord]:
     return results
 
 
+def _check_dup_prose(document: SkillDocument) -> list[CheckRecord]:
+    """Build informational result for similar prose between SKILL.md and references."""
+    references_dir = document.skill_dir / "references"
+    if not references_dir.is_dir():
+        return []
+
+    skill_paragraphs = _extract_prose_paragraphs(document.body)
+    if not skill_paragraphs:
+        return []
+
+    similar_pairs: list[str] = []
+
+    for reference_file in sorted(references_dir.glob("*.md")):
+        if not reference_file.is_file():
+            continue
+
+        ref_paragraphs = _extract_prose_paragraphs(read_text(reference_file))
+        for sp in skill_paragraphs:
+            for rp in ref_paragraphs:
+                if _char_ngram_jaccard(sp, rp) >= DUP_PROSE_JACCARD_THRESHOLD:
+                    similar_pairs.append(reference_file.name)
+                    break
+            if similar_pairs and similar_pairs[-1] == reference_file.name:
+                break
+
+    if similar_pairs:
+        refs_joined = " ".join(similar_pairs)
+        return [
+            CheckRecord.info(
+                CHECK_DUP_PROSE,
+                (
+                    f"Similar prose paragraph(s) found between SKILL.md and "
+                    f"references: {refs_joined} - review for unnecessary "
+                    "duplication"
+                ),
+                tier="I4",
+            ),
+        ]
+
+    return [
+        CheckRecord(
+            check=CHECK_DUP_PROSE,
+            passed=True,
+            detail="No similar prose paragraphs between SKILL.md and references",
+            tier="I4",
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -421,6 +519,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_DUP_TABLES,
     CHECK_PHASE_NUMBERING,
     CHECK_LONG_REF_TOC,
+    CHECK_DUP_PROSE,
 )
 
 CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] = {
@@ -430,6 +529,7 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] 
     CHECK_DUP_TABLES: _check_duplicate_tables,
     CHECK_PHASE_NUMBERING: _check_phase_numbering,
     CHECK_LONG_REF_TOC: _check_long_ref_toc,
+    CHECK_DUP_PROSE: _check_dup_prose,
 }
 
 
