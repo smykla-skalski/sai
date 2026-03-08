@@ -1044,6 +1044,102 @@ class FileRefBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
 
 
+class FileRefOneLevelBehaviorTests(ScriptTestCase):
+    def test_one_level_detects_bare_sibling_reference(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/alpha.md": "See beta.md for details",
+                    "references/beta.md": "Standalone content",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-one-level",),
+            )
+
+        alpha_records = [
+            r for r in self.check_records(records)
+            if r.get("check") == "FR-one-level" and "alpha" in str(r.get("detail"))
+        ]
+        self.assertTrue(alpha_records)
+        self.assertEqual(alpha_records[0].get("level"), "info")
+
+    def test_one_level_passes_no_cross_references(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/alpha.md": "This is standalone content",
+                    "references/beta.md": "This is also standalone content",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-one-level",),
+            )
+
+        check_records = [
+            r for r in self.check_records(records)
+            if r.get("check") == "FR-one-level"
+        ]
+        self.assertTrue(all(r.get("pass") is True for r in check_records))
+
+    def test_one_level_detects_backtick_sibling_reference(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/alpha.md": "See `beta.md` for details",
+                    "references/beta.md": "Standalone content",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-one-level",),
+            )
+
+        alpha_records = [
+            r for r in self.check_records(records)
+            if r.get("check") == "FR-one-level" and "alpha" in str(r.get("detail"))
+        ]
+        self.assertTrue(alpha_records)
+        self.assertEqual(alpha_records[0].get("level"), "info")
+
+    def test_one_level_ignores_self_reference(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/alpha.md": "This file is alpha.md with standalone content",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-one-level",),
+            )
+
+        alpha_records = [
+            r for r in self.check_records(records)
+            if r.get("check") == "FR-one-level" and "alpha" in str(r.get("detail"))
+        ]
+        self.assertTrue(alpha_records)
+        self.assertIs(alpha_records[0].get("pass"), True)
+
+
 class CrashResilienceTests(ScriptTestCase):
     """Verify that no checker script crashes on adversarial input."""
 
