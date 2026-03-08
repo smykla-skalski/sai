@@ -99,7 +99,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I26 | BP-example-tags | `<example>` tag coverage: 0 tags fails, 1-2 tags informational, 3+ tags pass | Anthropic Best Practices |
 | I27 | BP-over-prompting | Avoid aggressive all-caps prompting patterns in prose (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) | Anthropic Best Practices |
 | I28 | FC-example-flags | Example Invocations cover at least 50% of documented `--flags` when 3+ flags are documented | SAI Convention |
-| I29 | - | Non-obvious constraints include a short WHY rationale (cause/effect) | Anthropic Best Practices |
+| I29 | BP-why-rationale-info | Non-obvious constraints include a short WHY rationale (cause/effect) | Anthropic Best Practices |
 
 ### How to evaluate
 
@@ -265,7 +265,7 @@ Informational findings. These are only scored when running with `--thorough` and
 | P14 | BP-constraint-refresh-info | Constraint refresh signal for skills with 4+ phases | Anthropic Best Practices |
 | P15 | RF-dup-tables-info | Duplicated markdown tables (3+ rows) between SKILL.md and references | Anthropic Best Practices |
 | P16 | SD-legacy-bash-info | Top-level legacy `.sh` scripts detected in scripts/ | SAI Convention |
-| P17 | - | Body section order follows: overview, arguments, state, workflow, output, errors, examples | Anthropic Best Practices |
+| P17 | BP-section-order-info | Body section order follows: overview, arguments, state, workflow, output, errors, examples | Anthropic Best Practices |
 
 ### How to evaluate
 

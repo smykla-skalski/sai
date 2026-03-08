@@ -31,6 +31,8 @@
 {"check": "BP-error-section-info", "pass": true, "level": "info"}
 {"check": "BP-scope-boundary-info", "pass": true, "level": "info"}
 {"check": "BP-constraint-refresh-info", "pass": true, "level": "skip"}
+{"check": "BP-section-order-info", "pass": true, "level": "skip"}
+{"check": "BP-why-rationale-info", "pass": true, "level": "skip"}
 {"check": "RG-gate-present", "pass": false, "level": "fail"}
 {"check": "RG-passive", "pass": false, "level": "fail"}
 {"check": "RG-orphan", "pass": true, "level": "pass"}
@@ -49,4 +51,4 @@
 {"check": "AQ-multiselect", "pass": true, "level": "pass"}
 {"check": "AQ-wizard", "pass": true, "level": "pass"}
 {"check": "FK-recommendation-info", "pass": true, "level": "info"}
-{"kind": "summary", "total": 51, "passed": 48, "failed": 3}
+{"kind": "summary", "total": 53, "passed": 50, "failed": 3, "skipped": 3, "info": 4}
