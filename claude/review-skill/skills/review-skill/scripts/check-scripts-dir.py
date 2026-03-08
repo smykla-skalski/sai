@@ -86,6 +86,9 @@ EXECUTABLE_MODE_MASK: Final[int] = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 MAX_LISTED_EXAMPLES: Final[int] = 5
 CONTINUATION_DIVISOR: Final[int] = 2
 
+_POST_SHORT_FLAG_RE: Final[Pattern[str]] = re.compile(r"^\s+-[a-zA-Z]")
+_POST_LONG_FLAG_RE: Final[Pattern[str]] = re.compile(r"^\s+--[a-zA-Z]")
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -167,12 +170,22 @@ def _is_command_like_prose_line(text: str) -> bool:
     if script_match is None:
         return False
 
-    if BASH_INVOCATION_PREFIX_RE.match(line):
-        return True
-    if _has_required_prefix(line, script_match.start()):
+    if (
+        BASH_INVOCATION_PREFIX_RE.match(line)
+        or _has_required_prefix(line, script_match.start())
+        or RUN_VERB_RE.search(line[: script_match.start()]) is not None
+    ):
         return True
 
-    return RUN_VERB_RE.search(line[: script_match.start()]) is not None
+    # Bare script invocation: starts line, quoted at position 0, or has flags
+    start = script_match.start()
+    if start == 0 or (start == 1 and line[0] in ("`", '"', "'")):
+        return True
+    post_match = line[script_match.end() :]
+    return bool(
+        _POST_SHORT_FLAG_RE.search(post_match)
+        or _POST_LONG_FLAG_RE.search(post_match),
+    )
 
 
 def _iter_invocation_lines(document: SkillDocument) -> Iterator[ProseLine]:

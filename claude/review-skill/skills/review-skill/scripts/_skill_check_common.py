@@ -906,36 +906,29 @@ def find_bundled_indices(
 def find_agent_indices(
     prose_lines: tuple[ProseLine, ...],
 ) -> frozenset[int]:
-    """Return line indices in spawned-agent instruction blocks."""
+    """Return line indices in spawned-agent instruction blocks.
+
+    Agent blocks extend from the trigger line until the next L2 or L3
+    heading. Blank lines and multi-paragraph content are included.
+    """
     indices: set[int] = set()
     in_agent = False
-    blank_count = 0
 
     for line in prose_lines:
         stripped = line.text.strip()
 
-        if in_agent and HEADING_L3_RE.match(stripped):
+        if in_agent and (
+            HEADING_L2_RE.match(stripped) or HEADING_L3_RE.match(stripped)
+        ):
             in_agent = False
-            blank_count = 0
 
         if in_agent:
-            if not stripped:
-                blank_count += 1
-                continue
-            if blank_count > 0 and starts_new_paragraph(line.text):
-                in_agent = False
-                blank_count = 0
-            else:
-                blank_count = 0
+            if stripped:
                 indices.add(line.index)
-                continue
+            continue
 
-        if not in_agent and matches_any(
-            stripped,
-            AGENT_SECTION_START_PATTERNS,
-        ):
+        if matches_any(stripped, AGENT_SECTION_START_PATTERNS):
             in_agent = True
-            blank_count = 0
             indices.add(line.index)
 
     return frozenset(indices)

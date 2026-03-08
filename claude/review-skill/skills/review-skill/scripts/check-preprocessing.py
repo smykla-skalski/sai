@@ -261,6 +261,31 @@ def _second_word(command: str) -> str:
     return parts[1]
 
 
+# Git options that consume the next token as their argument.
+_GIT_ARG_OPTIONS: Final[frozenset[str]] = frozenset({"-C", "-c"})
+
+
+def _git_subcommand(command: str) -> str:
+    """Return the git subcommand, skipping global options.
+
+    Git global options like ``-C <path>`` and ``-c <key>=<value>`` take an
+    argument (skip 2 tokens); other flags starting with ``-`` skip 1.
+    """
+    parts = command.split()
+    if len(parts) < MIN_COMMAND_WORDS:
+        return ""
+    i = 1
+    while i < len(parts):
+        token = parts[i]
+        if not token.startswith("-"):
+            return token
+        if token in _GIT_ARG_OPTIONS:
+            i += 2  # skip flag + its argument
+        else:
+            i += 1  # skip single flag
+    return ""
+
+
 def _has_error_handling(command: str) -> bool:
     """Check whether directive has fallback/error handling behavior."""
     primary = _primary_command(command)
@@ -281,7 +306,7 @@ def _is_bounded_git_output(command: str) -> bool | None:
     if _primary_command(command) != "git":
         return None
 
-    subcommand = _second_word(command)
+    subcommand = _git_subcommand(command)
     if subcommand in GIT_BOUNDED_SUBCOMMANDS:
         return True
     if subcommand == "log":

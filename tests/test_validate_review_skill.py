@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import tempfile
@@ -994,6 +995,135 @@ class FrontmatterParsingTests(unittest.TestCase):
         ]
         parsed = _skill_check_common.parse_frontmatter_lines(lines)
         self.assertEqual(parsed.get("allowed-tools"), "tool1, tool2")
+
+
+# ---------------------------------------------------------------------------
+# Agent indices (find_agent_indices)
+# ---------------------------------------------------------------------------
+
+
+class AgentIndicesTests(unittest.TestCase):
+    """Verify find_agent_indices handles multi-paragraph agent blocks."""
+
+    def test_multi_paragraph_included(self) -> None:
+        prose = _skill_check_common.extract_prose_lines(
+            "Spawn a new agent with these instructions:\n"
+            "First paragraph of instructions.\n"
+            "\n"
+            "Second paragraph of instructions."
+        )
+        indices = _skill_check_common.find_agent_indices(prose)
+        self.assertIn(0, indices)
+        self.assertIn(1, indices)
+        self.assertIn(3, indices)
+
+    def test_exits_on_l3_heading(self) -> None:
+        prose = _skill_check_common.extract_prose_lines(
+            "Spawn a new agent with config:\n"
+            "Do the work.\n"
+            "### Next Section\n"
+            "Not agent content."
+        )
+        indices = _skill_check_common.find_agent_indices(prose)
+        self.assertIn(0, indices)
+        self.assertIn(1, indices)
+        self.assertNotIn(2, indices)
+        self.assertNotIn(3, indices)
+
+    def test_exits_on_l2_heading(self) -> None:
+        prose = _skill_check_common.extract_prose_lines(
+            "Create the agent with prompt:\n"
+            "Agent instructions here.\n"
+            "## New Section\n"
+            "Not agent content."
+        )
+        indices = _skill_check_common.find_agent_indices(prose)
+        self.assertIn(0, indices)
+        self.assertIn(1, indices)
+        self.assertNotIn(2, indices)
+        self.assertNotIn(3, indices)
+
+    def test_list_items_included(self) -> None:
+        prose = _skill_check_common.extract_prose_lines(
+            "The agent must:\n"
+            "- Step one\n"
+            "- Step two\n"
+            "- Step three"
+        )
+        indices = _skill_check_common.find_agent_indices(prose)
+        self.assertIn(0, indices)
+        self.assertIn(1, indices)
+        self.assertIn(2, indices)
+        self.assertIn(3, indices)
+
+    def test_mixed_paragraphs_and_lists(self) -> None:
+        prose = _skill_check_common.extract_prose_lines(
+            "Instruct the agent to do the following:\n"
+            "Overview paragraph.\n"
+            "\n"
+            "- Item one\n"
+            "- Item two\n"
+            "\n"
+            "Another paragraph of instructions."
+        )
+        indices = _skill_check_common.find_agent_indices(prose)
+        self.assertIn(0, indices)
+        self.assertIn(1, indices)
+        self.assertIn(3, indices)
+        self.assertIn(4, indices)
+        self.assertIn(6, indices)
+
+
+# ---------------------------------------------------------------------------
+# Flag coverage: missing vs empty section
+# ---------------------------------------------------------------------------
+
+
+class FlagCoverageUnitTests(unittest.TestCase):
+    """Verify _check_hint_doc and _get_arguments_section_flags."""
+
+    def setUp(self) -> None:
+        self._mod = importlib.import_module("check-flag-coverage")
+
+    def test_hint_doc_missing_section(self) -> None:
+        result = self._mod._check_hint_doc({"--foo"}, None)
+        assert result is not None
+        self.assertFalse(result.passed)
+        self.assertIn("no Arguments section found", result.detail)
+
+    def test_hint_doc_empty_section(self) -> None:
+        result = self._mod._check_hint_doc({"--foo"}, set())
+        assert result is not None
+        self.assertFalse(result.passed)
+        self.assertIn("documents none", result.detail)
+
+    def test_hint_doc_populated_passes(self) -> None:
+        result = self._mod._check_hint_doc({"--foo"}, {"--foo"})
+        assert result is not None
+        self.assertTrue(result.passed)
+
+    def test_get_arguments_section_flags_missing(self) -> None:
+        lines = ["# Skill", "", "## Workflow", "", "1. Do things"]
+        fenced = _skill_check_common.build_fenced_line_indices(lines)
+        result = self._mod._get_arguments_section_flags(lines, fenced)
+        self.assertIsNone(result)
+
+    def test_get_arguments_section_flags_empty(self) -> None:
+        lines = ["# Skill", "", "## Arguments", "", "No flags here.", "", "## Workflow"]
+        fenced = _skill_check_common.build_fenced_line_indices(lines)
+        result = self._mod._get_arguments_section_flags(lines, fenced)
+        self.assertIsNotNone(result)
+        self.assertEqual(result, set())
+
+    def test_get_arguments_section_flags_populated(self) -> None:
+        lines = [
+            "# Skill", "", "## Arguments", "",
+            "- `--foo` -- a flag", "", "## Workflow",
+        ]
+        fenced = _skill_check_common.build_fenced_line_indices(lines)
+        result = self._mod._get_arguments_section_flags(lines, fenced)
+        self.assertIsNotNone(result)
+        self.assertEqual(result, {"--foo"})
 
 
 if __name__ == "__main__":
