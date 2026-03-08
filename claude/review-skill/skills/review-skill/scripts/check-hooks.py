@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shlex
 import sys
 from os import X_OK, access
 from pathlib import Path
@@ -48,20 +49,23 @@ from _skill_check_common import (
     emit_results,
     parse_frontmatter_lines,
     split_frontmatter,
+    strip_wrapping_quotes,
 )
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-VALID_EVENTS: Final[frozenset[str]] = frozenset({
-    "PreToolUse",
-    "PostToolUse",
-    "PostToolUseFailure",
-    "SubagentStart",
-    "SubagentStop",
-    "Stop",
-})
+VALID_EVENTS: Final[frozenset[str]] = frozenset(
+    {
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "SubagentStart",
+        "SubagentStop",
+        "Stop",
+    },
+)
 
 MATCHER_EVENTS: Final[frozenset[str]] = VALID_EVENTS - frozenset({"Stop"})
 
@@ -94,7 +98,7 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
       keys), 8 (hook list), 10 (hook keys)
     - No anchors (&), aliases (*), or merge keys (<<)
     - No multi-line strings (| or >)
-    - Values may be bare or double-quoted; single quotes not stripped
+    - Values may be bare, single-quoted, or double-quoted
     - Only 'matcher', 'hooks', 'type', 'command' keys are recognized
     - Unexpected indentation levels are silently skipped
     """
@@ -108,7 +112,7 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
         return {}
 
     hooks_lines: list[str] = []
-    for line in fm_lines[hooks_start + 1:]:
+    for line in fm_lines[hooks_start + 1 :]:
         if line and not line[0].isspace():
             break
         hooks_lines.append(line)
@@ -142,13 +146,14 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
             current_hooks_list = None
             current_hook = None
 
-            m = re.match(r'matcher:\s*"?([^"]*)"?', item_content)
-            if m:
-                current_entry["matcher"] = m.group(1).strip()
-            elif item_content.strip() == "hooks:":
+            matcher_value = _extract_scalar_for_key(item_content, "matcher")
+            if matcher_value is not None:
+                current_entry["matcher"] = matcher_value
+            elif item_content == "hooks:":
                 current_entry["hooks"] = []
                 current_hooks_list = cast(
-                    "list[dict[str, str]]", current_entry["hooks"],
+                    "list[dict[str, str]]",
+                    current_entry["hooks"],
                 )
 
             if current_event is not None:
@@ -160,40 +165,44 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
             if key_content == "hooks:":
                 current_entry["hooks"] = []
                 current_hooks_list = cast(
-                    "list[dict[str, str]]", current_entry["hooks"],
+                    "list[dict[str, str]]",
+                    current_entry["hooks"],
                 )
                 current_hook = None
-            elif key_content.startswith("matcher:"):
-                m = re.match(r'matcher:\s*"?([^"]*)"?', key_content)
-                if m:
-                    current_entry["matcher"] = m.group(1).strip()
+            else:
+                matcher_value = _extract_scalar_for_key(key_content, "matcher")
+                if matcher_value is not None:
+                    current_entry["matcher"] = matcher_value
             continue
 
         if indent == INDENT_HOOK_LIST and stripped.strip().startswith("- "):
             if current_hooks_list is not None:
                 item_content = stripped.strip()[2:]
                 current_hook = {}
-                m = re.match(r'type:\s*"?([^"]*)"?', item_content)
-                if m:
-                    current_hook["type"] = m.group(1).strip()
+                type_value = _extract_scalar_for_key(item_content, "type")
+                if type_value is not None:
+                    current_hook["type"] = type_value
                 current_hooks_list.append(current_hook)
             continue
 
         if indent == INDENT_HOOK_KEY and current_hook is not None:
             key_content = stripped.strip()
-            m = re.match(r'command:\s*"?([^"]*)"?', key_content)
-            if m:
-                current_hook["command"] = m.group(1).strip()
+            command_value = _extract_scalar_for_key(key_content, "command")
+            if command_value is not None:
+                current_hook["command"] = command_value
             else:
-                m = re.match(r'type:\s*"?([^"]*)"?', key_content)
-                if m:
-                    current_hook["type"] = m.group(1).strip()
+                type_value = _extract_scalar_for_key(key_content, "type")
+                if type_value is not None:
+                    current_hook["type"] = type_value
             continue
 
         # Unexpected indentation - warn on stderr
         expected = {
-            INDENT_EVENT, INDENT_ENTRY_LIST, INDENT_ENTRY_KEY,
-            INDENT_HOOK_LIST, INDENT_HOOK_KEY,
+            INDENT_EVENT,
+            INDENT_ENTRY_LIST,
+            INDENT_ENTRY_KEY,
+            INDENT_HOOK_LIST,
+            INDENT_HOOK_KEY,
         }
         if indent not in expected:
             print(
@@ -203,6 +212,14 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
             )
 
     return result
+
+
+def _extract_scalar_for_key(text: str, key: str) -> str | None:
+    """Extract inline scalar for a ``key: value`` pair, if present."""
+    if not text.startswith(f"{key}:"):
+        return None
+    _, raw_value = text.split(":", 1)
+    return strip_wrapping_quotes(raw_value.strip())
 
 
 # ---------------------------------------------------------------------------
@@ -215,8 +232,105 @@ def uses_project_dir(command: str) -> bool:
     return "$CLAUDE_PROJECT_DIR" in command
 
 
-def resolve_command_path(command: str, skill_dir: Path) -> Path:
-    """Replace ${CLAUDE_SKILL_DIR} and return resolved path.
+INTERPRETER_BINARIES: Final[frozenset[str]] = frozenset(
+    {
+        "bash",
+        "node",
+        "perl",
+        "python",
+        "python3",
+        "pwsh",
+        "ruby",
+        "sh",
+        "zsh",
+    },
+)
+
+ENV_ASSIGNMENT_RE: Final[Pattern[str]] = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*=.*$",
+)
+
+
+def _replace_skill_dir(command: str, skill_dir: Path) -> str:
+    """Replace skill-dir placeholders in one command string."""
+    dir_str = str(skill_dir)
+    return command.replace("${CLAUDE_SKILL_DIR}", dir_str).replace(
+        "$CLAUDE_SKILL_DIR",
+        dir_str,
+    )
+
+
+def _split_command_tokens(command: str) -> list[str]:
+    """Split command into shell-like tokens with tolerant fallback."""
+    try:
+        return shlex.split(command, posix=True)
+    except ValueError:
+        return command.split()
+
+
+def _first_non_assignment_index(tokens: list[str], start: int = 0) -> int:
+    """Return index of first token that is not an env assignment."""
+    index = start
+    while index < len(tokens) and ENV_ASSIGNMENT_RE.match(tokens[index]):
+        index += 1
+    return index
+
+
+def _resolve_env_target(
+    tokens: list[str],
+    start: int,
+) -> tuple[str | None, int]:
+    """Resolve command token when command starts with env wrapper."""
+    if start >= len(tokens):
+        return None, start
+
+    command_token = tokens[start]
+    if Path(command_token).name != "env":
+        return command_token, start
+
+    index = start + 1
+    while index < len(tokens):
+        token = tokens[index]
+        if token.startswith("-") or ENV_ASSIGNMENT_RE.match(token):
+            index += 1
+            continue
+        return token, index
+
+    return None, len(tokens)
+
+
+def _first_non_option_token(tokens: list[str], start: int) -> str | None:
+    """Return first token at or after start that is not an option."""
+    for token in tokens[start:]:
+        if token.startswith("-"):
+            continue
+        return token
+    return None
+
+
+def _extract_command_target(tokens: list[str]) -> str | None:
+    """Extract script-like target token from a tokenized command."""
+    if not tokens:
+        return None
+
+    index = _first_non_assignment_index(tokens)
+    if index >= len(tokens):
+        return None
+
+    command_token, command_index = _resolve_env_target(tokens, index)
+    if command_token is None:
+        return None
+
+    command_name = Path(command_token).name
+
+    if command_name in INTERPRETER_BINARIES:
+        return _first_non_option_token(tokens, command_index + 1)
+
+    return command_token
+
+
+def resolve_command_path(command: str, skill_dir: Path) -> Path | None:
+    """Return resolved script path extracted from command.
 
     Only handles ${CLAUDE_SKILL_DIR} (body substitution that also works
     when skill_dir matches the actual skill location).
@@ -226,10 +340,11 @@ def resolve_command_path(command: str, skill_dir: Path) -> Path:
     is installed (see #17688 workaround). Use uses_project_dir() to
     detect and skip these paths in checks that need file existence.
     """
-    dir_str = str(skill_dir)
-    resolved = command.replace("${CLAUDE_SKILL_DIR}", dir_str)
-    resolved = resolved.replace("$CLAUDE_SKILL_DIR", dir_str)
-    return Path(resolved)
+    resolved = _replace_skill_dir(command, skill_dir)
+    target = _extract_command_target(_split_command_tokens(resolved))
+    if target is None:
+        return None
+    return Path(target)
 
 
 def collect_hook_entries(
@@ -258,6 +373,8 @@ def _scripts_for_events(
         if event not in events or not cmd or uses_project_dir(cmd):
             continue
         resolved = resolve_command_path(cmd, skill_dir)
+        if resolved is None:
+            continue
         if resolved not in seen and resolved.is_file():
             seen.add(resolved)
             paths.append(resolved)
@@ -308,18 +425,22 @@ def _check_events(
     """HK-EVENTS: all event names must be valid."""
     invalid = sorted(set(hooks.keys()) - VALID_EVENTS)
     if invalid:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-events",
+                passed=False,
+                detail=f"Invalid event names: {', '.join(invalid)}",
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-events",
-            passed=False,
-            detail=f"Invalid event names: {', '.join(invalid)}",
+            passed=True,
+            detail=f"All {len(hooks)} event names valid",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-events",
-        passed=True,
-        detail=f"All {len(hooks)} event names valid",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_structure(
@@ -339,18 +460,22 @@ def _check_structure(
                         f"Stop entry {i + 1} has unexpected matcher",
                     )
     if problems:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-structure",
+                passed=False,
+                detail="; ".join(problems),
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-structure",
-            passed=False,
-            detail="; ".join(problems),
+            passed=True,
+            detail="All entries have correct matcher structure",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-structure",
-        passed=True,
-        detail="All entries have correct matcher structure",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_type(
@@ -371,18 +496,22 @@ def _check_type(
                 if not hook.get("command"):
                     problems.append(f"{event}: empty or missing command field")
     if problems:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-type",
+                passed=False,
+                detail="; ".join(problems),
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-type",
-            passed=False,
-            detail="; ".join(problems),
+            passed=True,
+            detail=f"All {total_hooks} hook entries have type: command",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-type",
-        passed=True,
-        detail=f"All {total_hooks} hook entries have type: command",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_resolve(
@@ -401,21 +530,24 @@ def _check_resolve(
             continue
         resolved = resolve_command_path(cmd, skill_dir)
         checked += 1
+        label = f"{event}/{matcher}" if matcher else event
+        if resolved is None:
+            missing.append(f"{label} -> <unresolved command>")
+            continue
         if not resolved.is_file():
-            label = f"{event}/{matcher}" if matcher else event
             missing.append(f"{label} -> {resolved}")
     if missing:
-        return [CheckRecord(
-            check="HK-resolve",
-            passed=False,
-            detail=f"Missing scripts: {'; '.join(missing)}",
-            tier="I23",
-        )]
+        return [
+            CheckRecord(
+                check="HK-resolve",
+                passed=False,
+                detail=f"Missing scripts: {'; '.join(missing)}",
+                tier="I23",
+            ),
+        ]
     detail = f"All {checked} command paths resolve"
     if skipped:
-        detail += (
-            f" ({skipped} $CLAUDE_PROJECT_DIR paths skipped - runtime only)"
-        )
+        detail += f" ({skipped} $CLAUDE_PROJECT_DIR paths skipped - runtime only)"
     return [CheckRecord(check="HK-resolve", passed=True, detail=detail, tier="I23")]
 
 
@@ -427,27 +559,33 @@ def _check_exec(
     not_exec: list[str] = []
     seen: set[Path] = set()
     for _event, _matcher, cmd in collect_hook_entries(hooks):
-        if not cmd:
+        if not cmd or uses_project_dir(cmd):
             continue
         resolved = resolve_command_path(cmd, skill_dir)
+        if resolved is None:
+            continue
         if resolved in seen:
             continue
         seen.add(resolved)
         if resolved.is_file() and not access(resolved, X_OK):
             not_exec.append(resolved.name)
     if not_exec:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-exec",
+                passed=False,
+                detail=f"Not executable: {', '.join(not_exec)}",
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-exec",
-            passed=False,
-            detail=f"Not executable: {', '.join(not_exec)}",
+            passed=True,
+            detail=f"All {len(seen)} unique scripts are executable",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-exec",
-        passed=True,
-        detail=f"All {len(seen)} unique scripts are executable",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_duplicate(
@@ -465,18 +603,22 @@ def _check_duplicate(
                 dupes.append(label)
             seen.add(key)
     if dupes:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-duplicate",
+                passed=False,
+                detail=f"Duplicate event+matcher: {', '.join(dupes)}",
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-duplicate",
-            passed=False,
-            detail=f"Duplicate event+matcher: {', '.join(dupes)}",
+            passed=True,
+            detail="No duplicate event+matcher pairs",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-duplicate",
-        passed=True,
-        detail="No duplicate event+matcher pairs",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_stdin(
@@ -502,18 +644,22 @@ def _check_stdin(
         if not found:
             missing.append(path.name)
     if missing:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-stdin",
+                passed=False,
+                detail=f"Scripts not parsing stdin: {', '.join(missing)}",
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-stdin",
-            passed=False,
-            detail=f"Scripts not parsing stdin: {', '.join(missing)}",
+            passed=True,
+            detail=f"All {len(all_scripts)} scripts parse stdin JSON",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-stdin",
-        passed=True,
-        detail=f"All {len(all_scripts)} scripts parse stdin JSON",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_loop(
@@ -524,30 +670,36 @@ def _check_loop(
     stop_events = frozenset({"Stop", "SubagentStop"})
     scripts = _scripts_for_events(hooks, stop_events, skill_dir)
     if not scripts:
-        return [CheckRecord(
-            check="HK-loop",
-            passed=True,
-            detail="No Stop/SubagentStop hooks to check",
-            tier="I23",
-        )]
+        return [
+            CheckRecord(
+                check="HK-loop",
+                passed=True,
+                detail="No Stop/SubagentStop hooks to check",
+                tier="I23",
+            ),
+        ]
     missing: list[str] = []
     for path in scripts:
         content = _read_text(path)
         if "stop_hook_active" not in content:
             missing.append(path.name)
     if missing:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-loop",
+                passed=False,
+                detail=f"Missing stop_hook_active guard: {', '.join(missing)}",
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-loop",
-            passed=False,
-            detail=f"Missing stop_hook_active guard: {', '.join(missing)}",
+            passed=True,
+            detail=f"All {len(scripts)} Stop/SubagentStop scripts have loop guard",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-loop",
-        passed=True,
-        detail=f"All {len(scripts)} Stop/SubagentStop scripts have loop guard",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_exit(
@@ -561,12 +713,14 @@ def _check_exit(
         skill_dir,
     )
     if not scripts:
-        return [CheckRecord(
-            check="HK-exit",
-            passed=True,
-            detail="No PreToolUse hooks to check",
-            tier="I23",
-        )]
+        return [
+            CheckRecord(
+                check="HK-exit",
+                passed=True,
+                detail="No PreToolUse hooks to check",
+                tier="I23",
+            ),
+        ]
     problems: list[str] = []
     for path in scripts:
         content = _read_text(path)
@@ -577,19 +731,23 @@ def _check_exit(
                 problems.append(path.name)
                 break
     if problems:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-exit",
+                passed=False,
+                detail="PreToolUse scripts using exit 2 (loses JSON output): "
+                + ", ".join(problems),
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-exit",
-            passed=False,
-            detail="PreToolUse scripts using exit 2 (loses JSON output): "
-            + ", ".join(problems),
+            passed=True,
+            detail="No PreToolUse scripts use exit 2",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-exit",
-        passed=True,
-        detail="No PreToolUse scripts use exit 2",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_perm(
@@ -600,12 +758,14 @@ def _check_perm(
     post_events = frozenset({"PostToolUse", "PostToolUseFailure"})
     scripts = _scripts_for_events(hooks, post_events, skill_dir)
     if not scripts:
-        return [CheckRecord(
-            check="HK-perm",
-            passed=True,
-            detail="No PostToolUse/PostToolUseFailure hooks to check",
-            tier="I23",
-        )]
+        return [
+            CheckRecord(
+                check="HK-perm",
+                passed=True,
+                detail="No PostToolUse/PostToolUseFailure hooks to check",
+                tier="I23",
+            ),
+        ]
     problems: list[str] = []
     for path in scripts:
         content = _read_text(path)
@@ -617,19 +777,23 @@ def _check_perm(
                     problems.append(path.name)
                     break
     if problems:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-perm",
+                passed=False,
+                detail="Post hooks outputting permissionDecision "
+                "(not supported): " + ", ".join(problems),
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-perm",
-            passed=False,
-            detail="Post hooks outputting permissionDecision "
-            "(not supported): " + ", ".join(problems),
+            passed=True,
+            detail="No post hooks use permissionDecision",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-perm",
-        passed=True,
-        detail="No post hooks use permissionDecision",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 def _check_prefix(
@@ -644,25 +808,31 @@ def _check_prefix(
         for m in PREFIX_RE.finditer(content):
             prefixes.add(m.group(1))
     if not prefixes:
-        return [CheckRecord(
-            check="HK-prefix",
-            passed=True,
-            detail="No error codes found (OK)",
-            tier="I23",
-        )]
+        return [
+            CheckRecord(
+                check="HK-prefix",
+                passed=True,
+                detail="No error codes found (OK)",
+                tier="I23",
+            ),
+        ]
     if len(prefixes) == 1:
-        return [CheckRecord(
+        return [
+            CheckRecord(
+                check="HK-prefix",
+                passed=True,
+                detail=f"Consistent error prefix: {prefixes.pop()}",
+                tier="I23",
+            ),
+        ]
+    return [
+        CheckRecord(
             check="HK-prefix",
-            passed=True,
-            detail=f"Consistent error prefix: {prefixes.pop()}",
+            passed=False,
+            detail=f"Multiple error prefixes: {', '.join(sorted(prefixes))}",
             tier="I23",
-        )]
-    return [CheckRecord(
-        check="HK-prefix",
-        passed=False,
-        detail=f"Multiple error prefixes: {', '.join(sorted(prefixes))}",
-        tier="I23",
-    )]
+        ),
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -678,13 +848,15 @@ def _check_p10(
     dmi = frontmatter.get("disable-model-invocation", "")
     scripts_dir = skill_dir / "scripts"
     if dmi == "true" and scripts_dir.is_dir():
-        return [CheckRecord(
-            check="HK-suggestion-info",
-            passed=True,
-            detail="INFO: Side-effect skill with scripts/ but no hooks - "
-            "consider adding skill-scoped hooks for guardrails",
-            tier="P10",
-        )]
+        return [
+            CheckRecord(
+                check="HK-suggestion-info",
+                passed=True,
+                detail="INFO: Side-effect skill with scripts/ but no hooks - "
+                "consider adding skill-scoped hooks for guardrails",
+                tier="P10",
+            ),
+        ]
     return []
 
 

@@ -663,13 +663,16 @@ def _consume_block_scalar(
     values: list[str] = []
     index = start_index
 
-    while index < len(lines) and lines[index][:1].isspace():
-        stripped = lines[index].strip()
+    while index < len(lines):
+        raw = lines[index]
+        if raw and not raw[:1].isspace():
+            break
+        stripped = raw.strip()
         if stripped:
             values.append(stripped)
         index += 1
 
-    return " ".join(values), index
+    return "\n".join(values), index
 
 
 def _consume_list_value(
@@ -681,10 +684,11 @@ def _consume_list_value(
     index = start_index
 
     while index < len(lines):
-        if not lines[index][:1].isspace():
+        raw = lines[index]
+        if raw and not raw[:1].isspace():
             break
 
-        stripped = lines[index].strip()
+        stripped = raw.strip()
         if not stripped:
             index += 1
             continue
@@ -1094,7 +1098,11 @@ def _collect_resource_files(
     skill_dir: Path,
     skill_md_path: Path,
 ) -> tuple[Path, ...]:
-    """Collect top-level resource files for shell checks."""
+    """Collect resource files for shell checks.
+
+    Includes SKILL.md and all files under resource subdirectories,
+    recursively.
+    """
     files: list[Path] = [skill_md_path]
 
     for subdir_name in RESOURCE_SUBDIRECTORIES:
@@ -1102,9 +1110,10 @@ def _collect_resource_files(
         if not subdir_path.is_dir():
             continue
         files.extend(
-            child_path
-            for child_path in sorted(subdir_path.iterdir())
-            if child_path.is_file()
+            sorted(
+                (p for p in subdir_path.rglob("*") if p.is_file()),
+                key=lambda p: p.relative_to(skill_dir).as_posix(),
+            ),
         )
 
     return tuple(files)

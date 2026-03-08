@@ -1317,11 +1317,7 @@ class ExampleDiversityBehaviorTests(ScriptTestCase):
 
 class FeedbackLoopBehaviorTests(ScriptTestCase):
     def test_feedback_loop_verify_without_loop(self) -> None:
-        body = (
-            "# Skill\n\n## Workflow\n\n"
-            "1. Generate output\n"
-            "2. Verify output quality"
-        )
+        body = "# Skill\n\n## Workflow\n\n1. Generate output\n2. Verify output quality"
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(Path(tmp), body=body)
             _, records = self.run_checker(
@@ -1386,7 +1382,8 @@ class FileRefOneLevelBehaviorTests(ScriptTestCase):
             )
 
         alpha_records = [
-            r for r in self.check_records(records)
+            r
+            for r in self.check_records(records)
             if r.get("check") == "FR-one-level" and "alpha" in str(r.get("detail"))
         ]
         self.assertTrue(alpha_records)
@@ -1410,8 +1407,7 @@ class FileRefOneLevelBehaviorTests(ScriptTestCase):
             )
 
         check_records = [
-            r for r in self.check_records(records)
-            if r.get("check") == "FR-one-level"
+            r for r in self.check_records(records) if r.get("check") == "FR-one-level"
         ]
         self.assertTrue(all(r.get("pass") is True for r in check_records))
 
@@ -1433,7 +1429,8 @@ class FileRefOneLevelBehaviorTests(ScriptTestCase):
             )
 
         alpha_records = [
-            r for r in self.check_records(records)
+            r
+            for r in self.check_records(records)
             if r.get("check") == "FR-one-level" and "alpha" in str(r.get("detail"))
         ]
         self.assertTrue(alpha_records)
@@ -1456,7 +1453,8 @@ class FileRefOneLevelBehaviorTests(ScriptTestCase):
             )
 
         alpha_records = [
-            r for r in self.check_records(records)
+            r
+            for r in self.check_records(records)
             if r.get("check") == "FR-one-level" and "alpha" in str(r.get("detail"))
         ]
         self.assertTrue(alpha_records)
@@ -1611,7 +1609,8 @@ class CrashResilienceTests(ScriptTestCase):
                 with self.subTest(script=script_name):
                     result, records = self.run_checker(script_name, skill_dir)
                     self.assertIn(
-                        result.returncode, (0, 1),
+                        result.returncode,
+                        (0, 1),
                         f"{script_name} crashed: {result.stderr}",
                     )
                     self.assert_summary_consistent(records)
@@ -1637,9 +1636,7 @@ class CrashResilienceTests(ScriptTestCase):
                 Path(tmp),
                 frontmatter_overrides={
                     "allowed-tools": "AskUserQuestion, Bash, Read, Write",
-                    "argument-hint": " ".join(
-                        f"[--flag-{i}]" for i in range(10)
-                    ),
+                    "argument-hint": " ".join(f"[--flag-{i}]" for i in range(10)),
                     "disable-model-invocation": "true",
                 },
                 body=body,
@@ -1653,10 +1650,207 @@ class CrashResilienceTests(ScriptTestCase):
                 with self.subTest(script=script_name):
                     result, records = self.run_checker(script_name, skill_dir)
                     self.assertIn(
-                        result.returncode, (0, 1),
+                        result.returncode,
+                        (0, 1),
                         f"{script_name} crashed: {result.stderr}",
                     )
                     self.assert_summary_consistent(records)
+
+
+class ConfirmedBugRegressionTests(ScriptTestCase):
+    def _create_hooks_skill_with_command(self, tmp_dir: Path, command: str) -> Path:
+        skill_dir = tmp_dir / "hooks-skill"
+        (skill_dir / "scripts").mkdir(parents=True, exist_ok=True)
+
+        guard_script = skill_dir / "scripts" / "guard.sh"
+        guard_script.write_text(
+            (
+                "#!/usr/bin/env bash\n"
+                "set -euo pipefail\n"
+                'input="$(cat)"\n'
+                'if [ -n "${input}" ]; then\n'
+                "  :\n"
+                "fi\n"
+                "printf '{\"ok\":true}\\n'\n"
+            ),
+            encoding="utf-8",
+        )
+        guard_script.chmod(0o755)
+
+        (skill_dir / "SKILL.md").write_text(
+            (
+                "---\n"
+                "name: hooks-skill\n"
+                "description: Validate hooks behavior. Use when testing hooks checks.\n"
+                "allowed-tools: Read\n"
+                "user-invocable: true\n"
+                "hooks:\n"
+                "  PreToolUse:\n"
+                '    - matcher: "Read"\n'
+                "      hooks:\n"
+                "        - type: command\n"
+                f"          command: {command}\n"
+                "---\n\n"
+                "# Skill\n\n"
+                "## Workflow\n\n"
+                "1. Run checks\n"
+            ),
+            encoding="utf-8",
+        )
+
+        return skill_dir
+
+    def test_content_secret_detection_scans_nested_reference_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "references/nested/secret.md": (
+                        "token: sk-ZYXWVUTSRQPONMLKJIHG9876543210"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-no-secrets",),
+            )
+
+        record = self.one_check(records, "CT-no-secrets")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("secret.md", str(record.get("detail")))
+
+    def test_content_useless_echo_detection_scans_nested_markdown(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "references/nested/shell.md": (
+                        '```bash\nVALUE="$(echo literal)"\n```\n'
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-no-echo",),
+            )
+
+        record = self.one_check(records, "CT-no-echo")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("shell.md", str(record.get("detail")))
+
+    def test_config_state_xdg_fails_when_bad_and_good_paths_are_mixed(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Store persistent state in ./findings/state.json\n"
+            "2. Mirror to "
+            "${XDG_DATA_HOME:-$HOME/.local/share}/sai/plugin/state.json"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-state-xdg",),
+            )
+
+        record = self.one_check(records, "CF-state-xdg")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("relative paths", str(record.get("detail")))
+
+    def test_file_refs_detects_missing_single_letter_markdown_reference(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references/a.md before proceeding"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-resolves",),
+            )
+
+        record = self.one_check(records, "FR-resolves")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("references/a.md", str(record.get("detail")))
+
+    def test_read_gates_checks_nested_reference_links(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. See [Guide](references/nested/guide.md)"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"references/nested/guide.md": "# Guide\n"},
+            )
+            _, records = self.run_checker(
+                "check-read-gates.py",
+                skill_dir,
+                checks=("RG-gate-present",),
+            )
+
+        check_ids = {record.get("check") for record in self.check_records(records)}
+        self.assertIn("RG-gate-present", check_ids)
+        record = self.one_check(records, "RG-gate-present")
+        self.assertIs(record.get("pass"), False)
+
+    def test_references_checks_nested_files_for_long_ref_toc(self) -> None:
+        long_reference = "\n".join(f"line {index}" for index in range(120))
+        body = "# Skill\n\n## Workflow\n\n1. Read [Long](references/nested/long.md)"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"references/nested/long.md": long_reference},
+            )
+            _, records = self.run_checker(
+                "check-references.py",
+                skill_dir,
+                checks=("RF-long-ref-toc",),
+            )
+
+        check_ids = {record.get("check") for record in self.check_records(records)}
+        self.assertIn("RF-long-ref-toc", check_ids)
+        record = self.one_check(records, "RF-long-ref-toc")
+        self.assertIs(record.get("pass"), False)
+
+    def test_best_practices_example_diversity_handles_inline_example_tags(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "<example>Input: a Output: b</example>\n\n"
+            "<example>Input: c Output: d</example>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-example-diversity-info",),
+            )
+
+        record = self.one_check(records, "BP-example-diversity-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_hooks_resolve_handles_command_arguments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self._create_hooks_skill_with_command(
+                Path(tmp),
+                '"${CLAUDE_SKILL_DIR}/scripts/guard.sh --strict"',
+            )
+            _, records = self.run_checker("check-hooks.py", skill_dir)
+
+        record = self.one_check(records, "HK-resolve")
+        self.assertIs(record.get("pass"), True)
+
+    def test_hooks_resolve_handles_single_quoted_command_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self._create_hooks_skill_with_command(
+                Path(tmp),
+                "'${CLAUDE_SKILL_DIR}/scripts/guard.sh'",
+            )
+            _, records = self.run_checker("check-hooks.py", skill_dir)
+
+        record = self.one_check(records, "HK-resolve")
+        self.assertIs(record.get("pass"), True)
 
 
 class ValidateDelegationBehaviorTests(ScriptTestCase):

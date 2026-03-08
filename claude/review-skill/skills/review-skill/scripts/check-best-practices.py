@@ -82,7 +82,8 @@ PHASE_REFRESH_THRESHOLD: Final[int] = 4
 # ---------------------------------------------------------------------------
 
 EXAMPLE_OPEN_RE: Final[Pattern[str]] = re.compile(
-    r"<example(?:\s[^>]*)?>", re.IGNORECASE,
+    r"<example(?:\s[^>]*)?>",
+    re.IGNORECASE,
 )
 EXAMPLE_CLOSE_RE: Final[Pattern[str]] = re.compile(r"</example>", re.IGNORECASE)
 HEADING_RE: Final[Pattern[str]] = re.compile(r"^\s*#")
@@ -325,7 +326,9 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
         hit_count += line_hits
         if first_evidence is None:
             first_evidence = format_hit(
-                index, line, body_start_line=document.body_start_line,
+                index,
+                line,
+                body_start_line=document.body_start_line,
             )
 
     if hit_count >= OVER_PROMPT_FAIL_THRESHOLD:
@@ -373,7 +376,9 @@ def check_negative_instruction_info(document: SkillDocument) -> CheckRecord:
         hit_count += 1
         if first_hit is None:
             first_hit = format_hit(
-                index, line, body_start_line=document.body_start_line,
+                index,
+                line,
+                body_start_line=document.body_start_line,
             )
 
     if hit_count == 0:
@@ -474,7 +479,10 @@ def _extract_example_contents(
     lines: list[str],
     fenced_indices: frozenset[int],
 ) -> list[str]:
-    """Extract text content between <example>...</example> tags."""
+    """Extract text content between <example>...</example> tags.
+
+    Supports both multiline blocks and inline one-line tags.
+    """
     examples: list[str] = []
     current: list[str] = []
     in_example = False
@@ -482,17 +490,41 @@ def _extract_example_contents(
     for index, line in enumerate(lines):
         if index in fenced_indices:
             continue
-        if EXAMPLE_OPEN_RE.search(line) is not None:
+
+        cursor = 0
+        while cursor < len(line):
+            if in_example:
+                close_match = EXAMPLE_CLOSE_RE.search(line, cursor)
+                if close_match is None:
+                    current.append(line[cursor:])
+                    break
+
+                current.append(line[cursor : close_match.start()])
+                examples.append("\n".join(current))
+                current = []
+                in_example = False
+                cursor = close_match.end()
+                continue
+
+            open_match = EXAMPLE_OPEN_RE.search(line, cursor)
+            if open_match is None:
+                break
+
             in_example = True
             current = []
-            continue
-        if EXAMPLE_CLOSE_RE.search(line) is not None:
-            if in_example:
-                examples.append("\n".join(current))
+            cursor = open_match.end()
+
+            close_match = EXAMPLE_CLOSE_RE.search(line, cursor)
+            if close_match is None:
+                if cursor < len(line):
+                    current.append(line[cursor:])
+                break
+
+            current.append(line[cursor : close_match.start()])
+            examples.append("\n".join(current))
+            current = []
             in_example = False
-            continue
-        if in_example:
-            current.append(line)
+            cursor = close_match.end()
 
     return examples
 
@@ -554,9 +586,7 @@ def check_section_order_info(document: SkillDocument) -> CheckRecord:
             tier="P17",
         )
 
-    canonical_indices = [
-        CANONICAL_SECTION_ORDER.index(cat) for cat in classified
-    ]
+    canonical_indices = [CANONICAL_SECTION_ORDER.index(cat) for cat in classified]
     inversions = [
         f"{classified[i]} > {classified[i + 1]}"
         for i in range(len(canonical_indices) - 1)
@@ -643,10 +673,7 @@ def check_example_diversity_info(document: SkillDocument) -> CheckRecord:
             tier="I3",
         )
 
-    has_io_pair = any(
-        any(p.search(ex) for p in IO_PAIR_PATTERNS)
-        for ex in examples
-    )
+    has_io_pair = any(any(p.search(ex) for p in IO_PAIR_PATTERNS) for ex in examples)
     normalized = [_normalize_text(ex) for ex in examples]
     all_identical = len(set(normalized)) == 1 and len(normalized) > 1
 
@@ -701,10 +728,7 @@ def check_feedback_loop_info(document: SkillDocument) -> CheckRecord:
     if with_loop > 0:
         return CheckRecord.ok(
             CHECK_FEEDBACK_LOOP,
-            (
-                f"{with_loop} of {total} verification step(s) have "
-                "loop/retry language"
-            ),
+            (f"{with_loop} of {total} verification step(s) have loop/retry language"),
             tier="I8",
         )
 

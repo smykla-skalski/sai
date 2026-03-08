@@ -267,15 +267,10 @@ def check_persistent_state_xdg(document: SkillDocument) -> CheckRecord | None:
     if not matches_any(body_text, STATE_REFERENCE_PATTERNS):
         return None
 
-    if matches_any(body_text, XDG_PATH_PATTERNS):
-        return CheckRecord(
-            check=PERSISTENT_STATE_CHECK,
-            passed=True,
-            detail="Persistent state uses XDG-compliant path",
-            tier="I11",
-        )
+    has_bad_path = matches_any(body_text, BAD_STATE_PATH_PATTERNS)
+    has_xdg_path = matches_any(body_text, XDG_PATH_PATTERNS)
 
-    if matches_any(body_text, BAD_STATE_PATH_PATTERNS):
+    if has_bad_path:
         return CheckRecord(
             check=PERSISTENT_STATE_CHECK,
             passed=False,
@@ -284,6 +279,14 @@ def check_persistent_state_xdg(document: SkillDocument) -> CheckRecord | None:
                 "${CLAUDE_SKILL_DIR}/findings/) for persistent state - use "
                 "${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin}/ instead"
             ),
+            tier="I11",
+        )
+
+    if has_xdg_path:
+        return CheckRecord(
+            check=PERSISTENT_STATE_CHECK,
+            passed=True,
+            detail="Persistent state uses XDG-compliant path",
             tier="I11",
         )
 

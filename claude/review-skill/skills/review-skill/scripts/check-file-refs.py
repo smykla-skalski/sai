@@ -58,7 +58,7 @@ RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
     r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*",
 )
 IGNORE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
-    r"/(?:\.\.\.|\.\.|[a-z]\.md|foo\.|bar\.|baz\.|example\.)",
+    r"/(?:\.\.\.|\.\.|foo\.|bar\.|baz\.|example\.)",
 )
 BACKSLASH_PATH_RE: Final[Pattern[str]] = re.compile(
     r"(?:references|scripts|assets|examples)\\[a-zA-Z0-9._-]+",
@@ -264,8 +264,7 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckRecord]:
                 CheckRecord.info(
                     check=CHECK_REFS_ONE_LEVEL,
                     detail=(
-                        f"Reference '{name}' cross-references other "
-                        "reference files"
+                        f"Reference '{name}' cross-references other reference files"
                     ),
                 ),
             )
@@ -275,9 +274,7 @@ def check_refs_one_level(document: SkillDocument) -> list[CheckRecord]:
             CheckRecord(
                 check=CHECK_REFS_ONE_LEVEL,
                 passed=True,
-                detail=(
-                    f"Reference '{name}' does not cross-reference other files"
-                ),
+                detail=f"Reference '{name}' does not cross-reference other files",
             ),
         )
 
