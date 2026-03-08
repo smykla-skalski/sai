@@ -1,3 +1,11 @@
+[tasks.check]
+description = "Run all tests, ruff, and mypy"
+depends = ["test", "lint"]
+
+[tasks.lint]
+description = "Run all linters (ruff + mypy)"
+depends = ["lint:ruff", "lint:mypy"]
+
 [tasks.test]
 description = "Run all tests, or specific tests: mise run test <module.Class.method>"
 run = """
@@ -24,10 +32,10 @@ run = "python3 -m unittest tests.test_review_skill_scripts_behavior -v"
 description = "Run best-practices checker behavior tests only"
 run = "python3 -m unittest tests.test_review_skill_scripts_behavior.BestPracticesScriptBehaviorTests -v"
 
-[tasks."test:ruff"]
+[tasks."lint:ruff"]
 description = "Run ruff check on review-skill scripts"
 run = "ruff check claude/review-skill/skills/review-skill/scripts/ tests/"
 
-[tasks."test:mypy"]
+[tasks."lint:mypy"]
 description = "Run mypy type checks"
 run = "uvx mypy --config-file mypy.ini"
