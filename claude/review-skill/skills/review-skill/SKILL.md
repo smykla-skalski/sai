@@ -65,6 +65,7 @@ The orchestrator delegates to companion scripts:
 
 | Script | Checks | NDJSON | Purpose |
 | :-- | :-- | :-- | :-- |
+| `check-security.py` | C8 | SC-* | Security vulnerabilities (shell=True, eval, pickle) |
 | `check-file-refs.py` | C3, P3, P6, I15 | FR-* | File reference resolution and format |
 | `check-scripts-dir.py` | I6, I12, P16 | SD-* | Script invocation prefix, runnable entrypoint permissions, and legacy shell signal |
 | `check-references.py` | C2, P1, P8, P15, I14 | RF-* | Body metrics and reference structure |

@@ -13,6 +13,7 @@ SCRIPTS_DIR = (
 SELF_SKILL_DIR = REPO_ROOT / "claude" / "review-skill" / "skills" / "review-skill"
 
 RUN_CHECK_SCRIPTS = (
+    "check-security.py",
     "check-ask-user.py",
     "check-best-practices.py",
     "check-config.py",
@@ -1143,6 +1144,201 @@ class ContentScriptBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
 
 
+class SecurityScriptBehaviorTests(ScriptTestCase):
+    def test_nested_check_security_py_file_is_scanned(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Run checks"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/check-security.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import subprocess\n"
+                        "subprocess.run('whoami', shell=True)\n"
+                    )
+                },
+            )
+            _, records = self.run_checker(
+                "check-security.py",
+                skill_dir,
+            )
+
+        record = self.one_check(records, "SC-no-shell-true")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("check-security.py", str(record.get("detail")))
+
+    def test_eval_exec_check_matches_builtin_only(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Validate input"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "class Runner:\n"
+                        "    def eval(self, text):\n"
+                        "        return text\n"
+                        "runner = Runner()\n"
+                        "runner.eval('safe')\n"
+                    )
+                },
+            )
+            _, records = self.run_checker(
+                "check-security.py",
+                skill_dir,
+            )
+
+        record = self.one_check(records, "SC-no-eval-exec")
+        self.assertIs(record.get("pass"), True)
+
+    def test_shell_true_check_ignores_non_security_shell_assignment(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Prepare state"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"scripts/run.py": "shell = True\nvalue = 'ok'\n"},
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        record = self.one_check(records, "SC-no-shell-true")
+        self.assertIs(record.get("pass"), True)
+
+    def test_string_literals_do_not_trigger_security_checks(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Log examples"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "text = 'shell=True'\n"
+                        "note = 'eval() and os.system() are risky patterns'\n"
+                    )
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        self.assertIs(self.one_check(records, "SC-no-shell-true").get("pass"), True)
+        self.assertIs(self.one_check(records, "SC-no-eval-exec").get("pass"), True)
+
+    def test_pickle_load_detected(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Process data"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "import pickle\n"
+                        "with open('data.pkl', 'rb') as f:\n"
+                        "    obj = pickle.load(f)\n"
+                    )
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        record = self.one_check(records, "SC-no-pickle")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("run.py", str(record.get("detail")))
+
+    def test_pickle_method_call_not_false_positive(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Process data"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "class Cache:\n"
+                        "    def load(self, path):\n"
+                        "        return open(path).read()\n"
+                        "c = Cache()\n"
+                        "c.load('data.txt')\n"
+                    )
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        self.assertIs(self.one_check(records, "SC-no-pickle").get("pass"), True)
+
+    def test_yaml_load_detected(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Parse config"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "import yaml\n"
+                        "with open('config.yml') as f:\n"
+                        "    data = yaml.load(f)\n"
+                    )
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        record = self.one_check(records, "SC-no-yaml-load")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("run.py", str(record.get("detail")))
+
+    def test_yaml_safe_load_not_flagged(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Parse config"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "import yaml\n"
+                        "with open('config.yml') as f:\n"
+                        "    data = yaml.safe_load(f)\n"
+                    )
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        self.assertIs(self.one_check(records, "SC-no-yaml-load").get("pass"), True)
+
+    def test_os_system_detected(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Run command"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": (
+                        "import os\n"
+                        "os.system('ls -la')\n"
+                    )
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        record = self.one_check(records, "SC-no-os-system")
+        self.assertIs(record.get("pass"), False)
+
+    def test_syntax_error_files_reported_in_detail(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Run"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/bad.py": "def broken(\n",
+                    "scripts/good.py": "x = 1\n",
+                },
+            )
+            _, records = self.run_checker("check-security.py", skill_dir)
+
+        record = self.one_check(records, "SC-no-shell-true")
+        self.assertIs(record.get("pass"), True)
+        detail = str(record.get("detail"))
+        self.assertIn("skipped", detail)
+        self.assertIn("bad.py", detail)
+
+
 class ExampleTagBehaviorTests(ScriptTestCase):
     def test_example_tags_with_attributes_are_counted(self) -> None:
         body = (
@@ -1576,8 +1772,7 @@ class PreprocessingBehaviorTests(ScriptTestCase):
 
     def test_git_no_pager_log_with_limit(self) -> None:
         body = (
-            "# Skill\n\n## Context\n\n"
-            "- Last commit: !`git --no-pager log -1 --oneline`"
+            "# Skill\n\n## Context\n\n- Last commit: !`git --no-pager log -1 --oneline`"
         )
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(Path(tmp), body=body)

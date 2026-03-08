@@ -86,6 +86,7 @@ SCRIPT_PREFIX: Final[dict[str, str]] = {
     "check-best-practices.py": "BP",
     "check-config.py": "CF",
     "check-content.py": "CT",
+    "check-security.py": "SC",
     "check-file-refs.py": "FR",
     "check-scripts-dir.py": "SD",
     "check-references.py": "RF",
@@ -879,6 +880,14 @@ def _delegate_checks(
 
 # Ordered identically to the bash orchestrator
 STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
+    _delegate_checks(
+        "check-security.py",
+        "SC-no-shell-true",
+        "SC-no-eval-exec",
+        "SC-no-os-system",
+        "SC-no-yaml-load",
+        "SC-no-pickle",
+    ),
     _delegate_checks(
         "check-references.py",
         "RF-body-lines",
