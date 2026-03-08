@@ -42,3 +42,8 @@
 {"check": "AQ-multiselect", "pass": true, "level": "pass"}
 {"check": "AQ-wizard", "pass": true, "level": "pass"}
 {"check": "FK-recommendation-info", "pass": true, "level": "info"}
+{"check": "SC-no-shell-true", "pass": true, "level": "pass"}
+{"check": "SC-no-eval-exec", "pass": true, "level": "pass"}
+{"check": "SC-no-os-system", "pass": true, "level": "pass"}
+{"check": "SC-no-yaml-load", "pass": true, "level": "pass"}
+{"check": "SC-no-pickle", "pass": true, "level": "pass"}

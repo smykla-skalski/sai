@@ -46,6 +46,7 @@ Any single failure in this tier results in an overall **FAIL** verdict. These re
 | C5 | - | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
 | C6 | CT-no-grading | Not structured as a scoring rubric with points, weights, or letter grades | Anthropic Best Practices |
 | C7 | CT-no-secrets | No secrets or credentials in skill files (API keys, tokens, private keys) | Anthropic Best Practices |
+| C8 | SC-no-* | No dangerous functions (shell=True, eval, os.system, yaml.load, pickle) | Security Best Practices |
 
 ### How to evaluate
 

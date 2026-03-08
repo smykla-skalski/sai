@@ -33,6 +33,11 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | BP-constraint-refresh-info | P14 | check-best-practices.py | Constraint refresh signal for 4+ phases |
 | CT-no-grading | C6 | check-content.py | No scoring rubric patterns |
 | CT-no-secrets | C7 | check-content.py | No secrets in skill files |
+| SC-no-shell-true | C8 | check-security.py | No shell=True in subprocess |
+| SC-no-eval-exec | C8 | check-security.py | No eval() or exec() |
+| SC-no-os-system | C8 | check-security.py | No os.system() |
+| SC-no-yaml-load | C8 | check-security.py | No yaml.load(), use safe_load |
+| SC-no-pickle | C8 | check-security.py | No pickle usage |
 | CT-no-echo | I13 | check-content.py | No useless echo wrapping |
 | CT-long-prose | I24 | check-content.py | No prose lines over 300 chars |
 | FR-resolves | C3 | check-file-refs.py | File references resolve to actual files |
