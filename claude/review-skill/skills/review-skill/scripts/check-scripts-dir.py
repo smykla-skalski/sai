@@ -416,20 +416,22 @@ def check_script_executable(document: SkillDocument) -> list[CheckRecord]:
 
 
 def check_legacy_bash_info(document: SkillDocument) -> list[CheckRecord]:
-    """Emit informational signal when top-level legacy .sh scripts exist."""
+    """Emit informational signal when legacy .sh scripts exist anywhere."""
     scripts_dir = document.skill_dir / "scripts"
     if not scripts_dir.is_dir():
         return []
 
     legacy_scripts = sorted(
-        path.name for path in scripts_dir.glob("*.sh") if path.is_file()
+        path.relative_to(scripts_dir).as_posix()
+        for path in scripts_dir.rglob("*.sh")
+        if path.is_file()
     )
     if not legacy_scripts:
         return [
             CheckRecord(
                 check=CHECK_LEGACY_BASH_INFO,
                 passed=True,
-                detail="No top-level legacy .sh scripts found in scripts/",
+                detail="No legacy .sh scripts found in scripts/",
                 tier="P16",
             ),
         ]
@@ -438,7 +440,7 @@ def check_legacy_bash_info(document: SkillDocument) -> list[CheckRecord]:
         CheckRecord.info(
             CHECK_LEGACY_BASH_INFO,
             (
-                f"Found {len(legacy_scripts)} top-level legacy .sh "
+                f"Found {len(legacy_scripts)} legacy .sh "
                 "script(s) in scripts/: "
                 f"{_format_examples(legacy_scripts)}"
             ),

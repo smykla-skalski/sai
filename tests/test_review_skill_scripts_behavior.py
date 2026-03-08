@@ -520,6 +520,34 @@ class BestPracticesScriptBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-negative-instr-info")
         self.assertEqual(record.get("level"), "info")
 
+    def test_error_section_detects_h3_heading(self) -> None:
+        body = "# Skill\n\n### Error handling\n\n- Report parsing errors"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-error-section-info",),
+            )
+
+        record = self.one_check(records, "BP-error-section-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("detected", str(record.get("detail")))
+
+    def test_error_section_detects_h4_heading(self) -> None:
+        body = "# Skill\n\n#### Troubleshooting\n\n- Fix common issues"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-error-section-info",),
+            )
+
+        record = self.one_check(records, "BP-error-section-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("detected", str(record.get("detail")))
+
     def test_error_section_info_not_detected_emits_info_level(self) -> None:
         body = "# Skill\n\n## Workflow\n\n1. Process input"
         with tempfile.TemporaryDirectory() as tmp:
@@ -770,7 +798,7 @@ class ScriptsDirBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), False)
         self.assertIn("missing executable bit", str(record.get("detail")))
 
-    def test_legacy_shell_info_reports_top_level_shell_scripts(self) -> None:
+    def test_legacy_shell_info_reports_shell_scripts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(
                 Path(tmp),
@@ -785,7 +813,44 @@ class ScriptsDirBehaviorTests(ScriptTestCase):
 
         record = self.one_check(records, "SD-legacy-bash-info")
         self.assertIs(record.get("pass"), True)
-        self.assertIn("INFO: Found 1 top-level legacy .sh", str(record.get("detail")))
+        self.assertIn("INFO: Found 1 legacy .sh", str(record.get("detail")))
+
+    def test_legacy_bash_info_reports_nested_shell_scripts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/hooks/guard.sh": "#!/usr/bin/env bash\necho guard\n",
+                },
+                executable_paths={"scripts/hooks/guard.sh"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-legacy-bash-info",),
+            )
+
+        record = self.one_check(records, "SD-legacy-bash-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("hooks/guard.sh", str(record.get("detail")))
+
+    def test_legacy_bash_info_passes_no_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={"scripts/run.py": "#!/usr/bin/env python3\npass\n"},
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-legacy-bash-info",),
+            )
+
+        record = self.one_check(records, "SD-legacy-bash-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotIn("INFO:", str(record.get("detail")))
 
 
 class ReferencesScriptBehaviorTests(ScriptTestCase):

@@ -71,6 +71,7 @@ NON_THIRD_PERSON_RE: Final[re.Pattern[str]] = re.compile(
 
 VALID_MODES: Final[tuple[str, ...]] = ("all", "frontmatter", "structure")
 LINT_TOP_FINDINGS_LIMIT: Final[int] = 3
+# 30s is generous for any single checker script; avoids blocking on hangs
 DELEGATE_TIMEOUT_SECONDS: Final[int] = 30
 EXPECTED_EXIT_CODES: Final[frozenset[int]] = frozenset({0, 1})
 ERROR_SNIPPET_LENGTH: Final[int] = 200

@@ -186,7 +186,7 @@ SCRIPT_CASES: tuple[dict[str, object], ...] = (
         "expectations": {
             "SD-legacy-bash-info": {
                 "pass": True,
-                "detail_contains": "Found 1 top-level legacy .sh script(s)",
+                "detail_contains": "Found 1 legacy .sh script(s)",
             },
         },
     },

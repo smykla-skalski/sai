@@ -39,6 +39,7 @@ CHECK_NO_USELESS_ECHO: Final[str] = "CT-no-echo"
 CHECK_NO_GRADING_STYLE: Final[str] = "CT-no-grading"
 CHECK_LONG_PROSE: Final[str] = "CT-long-prose"
 
+# 2+ distinct grading signals (e.g. point-values + rubric-keywords) = rubric detected
 GRADING_SIGNAL_THRESHOLD: Final[int] = 2
 LONG_PROSE_THRESHOLD: Final[int] = 300
 

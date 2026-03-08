@@ -94,7 +94,7 @@ NEGATIVE_INSTR_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
 )
 
 ERROR_SECTION_RE: Final[Pattern[str]] = re.compile(
-    r"^##\s+.*(error|failure|edge case|troubleshoot)",
+    r"^#{2,6}\s+.*(error|failure|edge case|troubleshoot)",
     re.IGNORECASE,
 )
 
