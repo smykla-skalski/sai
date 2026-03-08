@@ -73,12 +73,12 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | :-- | :-- | :-- | :-- |
 | I1 | - | Imperative form throughout ("Parse input" not "You should parse") | Anthropic skill-creator |
 | I2 | - | Progressive disclosure - complex skills use references/ for details | Agent Skills Spec, Context Engineering |
-| I3 | - | Concrete examples show inputs -> outputs and are wrapped in `<example>` tags | Anthropic Best Practices, Context Engineering |
+| I3 | BP-example-diversity-info | Concrete examples show inputs -> outputs and are wrapped in `<example>` tags | Anthropic Best Practices, Context Engineering |
 | I4 | - | No prose duplication between SKILL.md and references (code blocks OK) | Anthropic skill-creator |
 | I5 | - | Explicit read directives for workflow-critical references ("Read X before phase Y") | Empirical finding |
 | I6 | SD-invocation-prefix, SD-no-bash | Scripts invoked directly via `"${CLAUDE_SKILL_DIR}/scripts/..."`, never `bash` prefix | SAI Convention |
 | I7 | - | Appropriate degrees of freedom (guardrails match task fragility) | Anthropic Best Practices |
-| I8 | - | Feedback loops for quality-critical steps use do -> check -> fix -> repeat (one-shot verify is not enough) | Anthropic Best Practices |
+| I8 | BP-feedback-loop-info | Feedback loops for quality-critical steps use do -> check -> fix -> repeat (one-shot verify is not enough) | Anthropic Best Practices |
 | I9 | FM-tools-present | allowed-tools not over-broad (only tools actually needed) | Anthropic Best Practices |
 | I10 | - | Consistent terminology (same concept = same word) | Anthropic Best Practices |
 | I11 | CF-state-xdg | Persistent state uses XDG paths, not relative or cache-relative paths | SAI Convention, Plugin Cache Architecture |

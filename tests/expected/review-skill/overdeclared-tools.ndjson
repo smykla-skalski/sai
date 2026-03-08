@@ -29,6 +29,8 @@
 {"check": "BP-constraint-refresh-info", "pass": true, "level": "skip"}
 {"check": "BP-section-order-info", "pass": true, "level": "skip"}
 {"check": "BP-why-rationale-info", "pass": true, "level": "info"}
+{"check": "BP-example-diversity-info", "pass": true, "level": "skip"}
+{"check": "BP-feedback-loop-info", "pass": true, "level": "skip"}
 {"check": "CL-aggregate", "pass": true, "level": "pass"}
 {"check": "AQ-declaration", "pass": true, "level": "pass"}
 {"check": "AQ-implicit", "pass": true, "level": "pass"}
@@ -40,4 +42,3 @@
 {"check": "AQ-multiselect", "pass": true, "level": "pass"}
 {"check": "AQ-wizard", "pass": true, "level": "pass"}
 {"check": "FK-recommendation-info", "pass": true, "level": "info"}
-{"kind": "summary", "total": 42, "passed": 40, "failed": 2, "skipped": 2, "info": 5}

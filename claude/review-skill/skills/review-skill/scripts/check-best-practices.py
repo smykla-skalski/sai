@@ -10,6 +10,8 @@ Sub-checks:
   - `BP-constraint-refresh-info`
   - `BP-section-order-info`
   - `BP-why-rationale-info`
+  - `BP-example-diversity-info`
+  - `BP-feedback-loop-info`
 
 Usage:
     ./check-best-practices.py <skill-directory>
@@ -55,6 +57,8 @@ CHECK_SCOPE_BOUNDARY: Final[str] = "BP-scope-boundary-info"
 CHECK_CONSTRAINT_REFRESH: Final[str] = "BP-constraint-refresh-info"
 CHECK_SECTION_ORDER: Final[str] = "BP-section-order-info"
 CHECK_WHY_RATIONALE: Final[str] = "BP-why-rationale-info"
+CHECK_EXAMPLE_DIVERSITY: Final[str] = "BP-example-diversity-info"
+CHECK_FEEDBACK_LOOP: Final[str] = "BP-feedback-loop-info"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_EXAMPLE_TAGS,
@@ -65,6 +69,8 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_CONSTRAINT_REFRESH,
     CHECK_SECTION_ORDER,
     CHECK_WHY_RATIONALE,
+    CHECK_EXAMPLE_DIVERSITY,
+    CHECK_FEEDBACK_LOOP,
 )
 
 EXAMPLE_TAG_PASS_THRESHOLD: Final[int] = 3
@@ -163,6 +169,37 @@ CAUSAL_CONNECTOR_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
 )
 
 WHY_RATIONALE_COVERAGE_THRESHOLD: Final[float] = 0.5
+
+IO_PAIR_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"->",
+        r"-->",
+        r"\binput\s*:",
+        r"\boutput\s*:",
+        r"\bresult\s*:",
+        r"\bbefore\s*:",
+        r"\bafter\s*:",
+        r"\bgiven\s*:",
+        r"\bexpect\s*:",
+    ),
+)
+
+VERIFICATION_RE: Final[Pattern[str]] = re.compile(
+    r"\b(?:verify|validate|check)\b.*\b(?:output|result|artifact|generated|quality)\b",
+    re.IGNORECASE,
+)
+
+LOOP_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\b(?:loop|repeat|retry|re-run|iterate)\b",
+        r"\bfix\s+and\s+re",
+        r"\breturn\s+to\b",
+        r"\bgo\s+back\b",
+        r"\buntil\b.*\bpass\b",
+    ),
+)
+
+VERIFICATION_WINDOW: Final[int] = 5
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +470,38 @@ def check_constraint_refresh_info(document: SkillDocument) -> CheckRecord:
     )
 
 
+def _extract_example_contents(
+    lines: list[str],
+    fenced_indices: frozenset[int],
+) -> list[str]:
+    """Extract text content between <example>...</example> tags."""
+    examples: list[str] = []
+    current: list[str] = []
+    in_example = False
+
+    for index, line in enumerate(lines):
+        if index in fenced_indices:
+            continue
+        if EXAMPLE_OPEN_RE.search(line) is not None:
+            in_example = True
+            current = []
+            continue
+        if EXAMPLE_CLOSE_RE.search(line) is not None:
+            if in_example:
+                examples.append("\n".join(current))
+            in_example = False
+            continue
+        if in_example:
+            current.append(line)
+
+    return examples
+
+
+def _normalize_text(text: str) -> str:
+    """Normalize text for comparison: strip, lowercase, collapse whitespace."""
+    return re.sub(r"\s+", " ", text.strip().lower())
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -561,6 +630,94 @@ def check_why_rationale_info(document: SkillDocument) -> CheckRecord:
     )
 
 
+def check_example_diversity_info(document: SkillDocument) -> CheckRecord:
+    """Emit informational signal when examples lack I/O pairs or are identical."""
+    lines = document.body.splitlines()
+    fenced_indices = build_fenced_line_indices(lines)
+    examples = _extract_example_contents(lines, fenced_indices)
+
+    if not examples:
+        return CheckRecord.skip(
+            CHECK_EXAMPLE_DIVERSITY,
+            "Example diversity check skipped - no <example> tags found",
+            tier="I3",
+        )
+
+    has_io_pair = any(
+        any(p.search(ex) for p in IO_PAIR_PATTERNS)
+        for ex in examples
+    )
+    normalized = [_normalize_text(ex) for ex in examples]
+    all_identical = len(set(normalized)) == 1 and len(normalized) > 1
+
+    findings: list[str] = []
+    if not has_io_pair:
+        findings.append("no I/O pairs found")
+    if all_identical:
+        findings.append(f"{len(normalized)} identical examples")
+
+    if findings:
+        return CheckRecord.info(
+            CHECK_EXAMPLE_DIVERSITY,
+            f"Example diversity signal: {', '.join(findings)}",
+            tier="I3",
+        )
+
+    return CheckRecord.ok(
+        CHECK_EXAMPLE_DIVERSITY,
+        f"Examples are diverse ({len(examples)} example(s) with I/O pairs)",
+        tier="I3",
+    )
+
+
+def check_feedback_loop_info(document: SkillDocument) -> CheckRecord:
+    """Emit informational signal when verify steps lack loop language."""
+    lines = document.body.splitlines()
+    fenced_indices = build_fenced_line_indices(lines)
+
+    verify_indices: list[int] = []
+    for index, line in enumerate(lines):
+        if index in fenced_indices:
+            continue
+        if VERIFICATION_RE.search(line):
+            verify_indices.append(index)
+
+    if not verify_indices:
+        return CheckRecord.skip(
+            CHECK_FEEDBACK_LOOP,
+            "Feedback loop check skipped - no verification steps found",
+            tier="I8",
+        )
+
+    with_loop = 0
+    for vi in verify_indices:
+        start = max(0, vi - VERIFICATION_WINDOW)
+        end = min(len(lines), vi + VERIFICATION_WINDOW + 1)
+        window_text = " ".join(lines[start:end])
+        if any(p.search(window_text) for p in LOOP_PATTERNS):
+            with_loop += 1
+
+    total = len(verify_indices)
+    if with_loop > 0:
+        return CheckRecord.ok(
+            CHECK_FEEDBACK_LOOP,
+            (
+                f"{with_loop} of {total} verification step(s) have "
+                "loop/retry language"
+            ),
+            tier="I8",
+        )
+
+    return CheckRecord.info(
+        CHECK_FEEDBACK_LOOP,
+        (
+            f"{total} verification step(s) found but none have "
+            "loop/retry language - add retry/repeat/fix-and-rerun"
+        ),
+        tier="I8",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Orchestration (below new checks)
 # ---------------------------------------------------------------------------
@@ -574,6 +731,8 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], CheckRecord]]] = {
     CHECK_CONSTRAINT_REFRESH: check_constraint_refresh_info,
     CHECK_SECTION_ORDER: check_section_order_info,
     CHECK_WHY_RATIONALE: check_why_rationale_info,
+    CHECK_EXAMPLE_DIVERSITY: check_example_diversity_info,
+    CHECK_FEEDBACK_LOOP: check_feedback_loop_info,
 }
 
 
