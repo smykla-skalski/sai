@@ -400,6 +400,59 @@ class BestPracticesScriptBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-over-prompting")
         self.assertIs(record.get("pass"), False)
 
+    def test_over_prompting_in_referenced_text_file_fails(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rules.md](references/rules.md) before Phase 2"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rules.md": (
+                        "Guidance:\n\n"
+                        "You MUST parse the full input.\n"
+                        "ALWAYS validate before returning output.\n"
+                    )
+                },
+            )
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-over-prompting",),
+            )
+
+        record = self.one_check(records, "BP-over-prompting")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("references/rules.md", str(record.get("detail")))
+
+    def test_over_prompting_ignores_inline_code_tokens_in_references(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rules.md](references/rules.md) before Phase 2"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rules.md": (
+                        "Avoid emphasis tokens in prose: `CRITICAL`, `You MUST`, "
+                        "`ALWAYS`, `NEVER`, `IMPORTANT`."
+                    )
+                },
+            )
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-over-prompting",),
+            )
+
+        record = self.one_check(records, "BP-over-prompting")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
     def test_constraint_refresh_info_with_four_phases_and_no_reminder(self) -> None:
         body = (
             "# Skill\n\n## Workflow\n\n"
@@ -742,7 +795,6 @@ class FlagCoverageScriptBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "FC-example-flags")
         self.assertIs(record.get("pass"), True)
         self.assertIn("50%", str(record.get("detail")))
-
 
     def test_hint_doc_empty_arguments_section(self) -> None:
         body = (
@@ -1307,12 +1359,7 @@ class SecurityScriptBehaviorTests(ScriptTestCase):
             skill_dir = self.create_skill(
                 Path(tmp),
                 body=body,
-                files={
-                    "scripts/run.py": (
-                        "import os\n"
-                        "os.system('ls -la')\n"
-                    )
-                },
+                files={"scripts/run.py": ("import os\nos.system('ls -la')\n")},
             )
             _, records = self.run_checker("check-security.py", skill_dir)
 
