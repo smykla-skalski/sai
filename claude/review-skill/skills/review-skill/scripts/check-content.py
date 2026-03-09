@@ -299,9 +299,8 @@ def check_long_prose_lines(document: SkillDocument) -> CheckRecord:
 
     if long_lines:
         first_lineno, first_len = long_lines[0]
-        return CheckRecord(
+        return CheckRecord.info(
             check=CHECK_LONG_PROSE,
-            passed=False,
             detail=(
                 f"{len(long_lines)} prose line(s) exceed {LONG_PROSE_THRESHOLD} chars"
                 f" - first: L{first_lineno} ({first_len} chars)"
@@ -309,9 +308,8 @@ def check_long_prose_lines(document: SkillDocument) -> CheckRecord:
             tier="I24",
         )
 
-    return CheckRecord(
+    return CheckRecord.ok(
         check=CHECK_LONG_PROSE,
-        passed=True,
         detail=f"No prose lines exceed {LONG_PROSE_THRESHOLD} chars",
         tier="I24",
     )
