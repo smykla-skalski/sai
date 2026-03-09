@@ -39,7 +39,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | SC-no-yaml-load | C8 | check-security.py | No yaml.load(), use safe_load |
 | SC-no-pickle | C8 | check-security.py | No pickle usage |
 | CT-no-echo | I13 | check-content.py | No useless echo wrapping |
-| CT-long-prose | I24 | check-content.py | No prose lines over 300 chars |
+| CT-long-prose | I24 | check-content.py | Informational signal when prose lines exceed 300 chars |
 | FR-resolves | C3 | check-file-refs.py | File references resolve to actual files |
 | FR-link-format | I15 | check-file-refs.py | References use markdown links |
 | FR-mentions-file | P3 | check-file-refs.py | SKILL.md mentions all bundled resources |

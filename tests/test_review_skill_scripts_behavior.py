@@ -1356,18 +1356,20 @@ class ContentScriptBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "CT-no-grading")
         self.assertIs(record.get("pass"), True)
 
-    def test_long_prose_line_fails(self) -> None:
+    def test_long_prose_line_is_informational(self) -> None:
         body = "# Skill\n\n## Workflow\n\n" + ("x" * 320)
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(Path(tmp), body=body)
-            _, records = self.run_checker(
+            result, records = self.run_checker(
                 "check-content.py",
                 skill_dir,
                 checks=("CT-long-prose",),
             )
 
         record = self.one_check(records, "CT-long-prose")
-        self.assertIs(record.get("pass"), False)
+        self.assertEqual(result.returncode, 0)
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "info")
 
     def test_long_prose_check_ignores_url_table_and_fenced_lines(self) -> None:
         long_url = "https://example.com/" + ("segment/" * 70)
