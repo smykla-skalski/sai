@@ -33,6 +33,8 @@ from _skill_check_common import (
     CheckRecord,
     SkillDocument,
     compile_patterns,
+    is_instructional_prose_line,
+    iter_reference_inputs,
     matches_any,
     parse_allowed_tools,
     run_check_cli,
@@ -205,6 +207,8 @@ SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
     re.IGNORECASE,
 )
 
+INLINE_CODE_RE: Final[Pattern[str]] = re.compile(r"`[^`]*`")
+
 
 # ---------------------------------------------------------------------------
 # Tool reference helpers
@@ -254,6 +258,28 @@ def _matching_lines(
         if matches_any(line, patterns):
             hits.append(line)
     return tuple(hits)
+
+
+def _iter_reference_actionable_lines(document: SkillDocument) -> tuple[str, ...]:
+    """Return actionable prose lines from referenced text files.
+
+    Filters out headings, tables, blockquotes, and pedagogical sections to avoid
+    false positives from checklist or examples-only content.
+    """
+    hits: list[str] = []
+    for ref in iter_reference_inputs(document):
+        for index, line in enumerate(ref.lines):
+            if index in ref.skip_indices:
+                continue
+            if not is_instructional_prose_line(line):
+                continue
+            sanitized = INLINE_CODE_RE.sub("", line).strip()
+            if not sanitized:
+                continue
+            hits.append(f"{ref.rel_path}: {sanitized}")
+
+    return tuple(hits)
+
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +367,20 @@ def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
     tool_hits = sorted(TOOL_SIDE_EFFECTS & declared_tools)
     api_hits = _matching_lines(document.prose_body, API_SIDE_EFFECT_PATTERNS)
     command_hits = _matching_lines(document.prose_body, (SIDE_EFFECT_PATTERN,))
-    side_effect_hits = len(tool_hits) + len(api_hits) + len(command_hits)
+    ref_lines = _iter_reference_actionable_lines(document)
+    ref_api_hits = tuple(
+        line for line in ref_lines if matches_any(line, API_SIDE_EFFECT_PATTERNS)
+    )
+    ref_command_hits = tuple(
+        line for line in ref_lines if matches_any(line, (SIDE_EFFECT_PATTERN,))
+    )
+    side_effect_hits = (
+        len(tool_hits)
+        + len(api_hits)
+        + len(command_hits)
+        + len(ref_api_hits)
+        + len(ref_command_hits)
+    )
 
     if side_effect_hits == 0:
         return CheckRecord(
@@ -358,6 +397,10 @@ def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
         evidence_parts.append(f"api={_first_line_snippet(api_hits[0])}")
     if command_hits:
         evidence_parts.append(f"cmd={_first_line_snippet(command_hits[0])}")
+    if ref_api_hits:
+        evidence_parts.append(f"ref-api={_first_line_snippet(ref_api_hits[0])}")
+    if ref_command_hits:
+        evidence_parts.append(f"ref-cmd={_first_line_snippet(ref_command_hits[0])}")
     evidence = "; ".join(evidence_parts)
 
     if document.field("disable-model-invocation").lower() == "true":

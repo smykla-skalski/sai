@@ -324,6 +324,58 @@ class ConfigScriptBehaviorTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
         self.assertIn("is set", str(record.get("detail")))
 
+    def test_side_effect_signal_from_referenced_file_requires_dmi(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/ops.md](references/ops.md) before execution"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/ops.md": (
+                        "## Workflow\n\n"
+                        "1. Run git reset --hard before re-applying patches"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-side-effect",),
+            )
+
+        record = self.one_check(records, "CF-side-effect")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("ref-cmd=", str(record.get("detail")))
+
+    def test_side_effect_ignores_checklist_style_reference_prose(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/guide.md](references/guide.md) before execution"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": (
+                        "## Automated checks\n\n"
+                        "- **I17:** If body contains git reset or rm -rf, set "
+                        "disable-model-invocation.\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-side-effect",),
+            )
+
+        record = self.one_check(records, "CF-side-effect")
+        self.assertIs(record.get("pass"), True)
+
 
 class BestPracticesScriptBehaviorTests(ScriptTestCase):
     def test_example_tags_fail_when_missing(self) -> None:
@@ -452,6 +504,34 @@ class BestPracticesScriptBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-over-prompting")
         self.assertIs(record.get("pass"), True)
         self.assertEqual(record.get("level"), "pass")
+
+    def test_over_prompting_ignores_teaching_good_bad_reference_sections(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rules.md](references/rules.md) before Phase 2"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rules.md": (
+                        "## Examples\n\n"
+                        "**Good** — calm language:\n"
+                        "Use the tool when needed.\n\n"
+                        "**Bad** — aggressive language:\n"
+                        "You MUST do this. ALWAYS do that.\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-over-prompting",),
+            )
+
+        record = self.one_check(records, "BP-over-prompting")
+        self.assertIs(record.get("pass"), True)
 
     def test_constraint_refresh_info_with_four_phases_and_no_reminder(self) -> None:
         body = (
@@ -876,6 +956,67 @@ class ScriptsDirBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "SD-no-bash")
         self.assertIs(record.get("pass"), False)
 
+    def test_invocation_prefix_check_fails_in_referenced_file(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/commands.md](references/commands.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.sh": "#!/usr/bin/env bash\necho ok\n",
+                    "references/commands.md": (
+                        "## Workflow\n\n1. Run scripts/run.sh\n"
+                    ),
+                },
+                executable_paths={"scripts/run.sh"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-invocation-prefix",),
+            )
+
+        record = self.one_check(records, "SD-invocation-prefix")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("references/commands.md", str(record.get("detail")))
+
+    def test_invocation_checks_ignore_reference_good_bad_example_blocks(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/commands.md](references/commands.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.sh": "#!/usr/bin/env bash\necho ok\n",
+                    "references/commands.md": (
+                        "## Script Invocation\n\n"
+                        "**Good** — direct invocation:\n\n"
+                        "```bash\n"
+                        '"${CLAUDE_SKILL_DIR}/scripts/run.sh"\n'
+                        "```\n\n"
+                        "**Bad** — bash-prefixed invocation:\n\n"
+                        "```bash\n"
+                        'bash "${CLAUDE_SKILL_DIR}/scripts/run.sh"\n'
+                        "```\n"
+                    ),
+                },
+                executable_paths={"scripts/run.sh"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-no-bash",),
+            )
+
+        record = self.one_check(records, "SD-no-bash")
+        self.assertIs(record.get("pass"), True)
+
     def test_executable_check_fails_for_non_executable_shebang_script(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(
@@ -1159,6 +1300,61 @@ class ContentScriptBehaviorTests(ScriptTestCase):
 
         record = self.one_check(records, "CT-no-grading")
         self.assertIs(record.get("pass"), False)
+
+    def test_grading_detection_fails_on_referenced_file_signals(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rubric.md](references/rubric.md) before execution"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rubric.md": (
+                        "## Workflow\n\n"
+                        "1. Assign 10 points per criterion\n"
+                        "2. Grade: A\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-no-grading",),
+            )
+
+        record = self.one_check(records, "CT-no-grading")
+        self.assertIs(record.get("pass"), False)
+
+    def test_grading_detection_ignores_reference_example_blocks(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rubric.md](references/rubric.md) before execution"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rubric.md": (
+                        "## Grading Style\n\n"
+                        "**Bad** — scoring rubric with points and grades:\n\n"
+                        "```text\n"
+                        "Grade A (90-100%)\n"
+                        "Weight: 40%\n"
+                        "```\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-no-grading",),
+            )
+
+        record = self.one_check(records, "CT-no-grading")
+        self.assertIs(record.get("pass"), True)
 
     def test_long_prose_line_fails(self) -> None:
         body = "# Skill\n\n## Workflow\n\n" + ("x" * 320)
@@ -1584,6 +1780,57 @@ class WhyRationaleBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-why-rationale-info")
         self.assertIn("0 of 1", str(record.get("detail")))
 
+    def test_why_rationale_detects_constraints_in_referenced_guidance(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rules.md](references/rules.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rules.md": (
+                        "## Workflow\n\n"
+                        "1. You MUST validate input because malformed data breaks output\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIs(record.get("pass"), True)
+
+    def test_why_rationale_ignores_teaching_reference_sections(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/rules.md](references/rules.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/rules.md": (
+                        "## Examples\n\n"
+                        "**Bad** — overly strict style:\n"
+                        "You MUST validate because it is safer.\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "skip")
+
 
 class ExampleDiversityBehaviorTests(ScriptTestCase):
     def test_example_diversity_io_pair(self) -> None:
@@ -1692,6 +1939,58 @@ class FeedbackLoopBehaviorTests(ScriptTestCase):
         body = "# Skill\n\n## Workflow\n\n1. Generate output\n2. Save results"
         with tempfile.TemporaryDirectory() as tmp:
             skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertEqual(record.get("level"), "skip")
+
+    def test_feedback_loop_detects_reference_verify_and_retry(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/verify.md](references/verify.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/verify.md": (
+                        "## Workflow\n\n"
+                        "1. Verify generated output quality\n"
+                        "2. If checks fail, retry with stricter constraints\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertIs(record.get("pass"), True)
+
+    def test_feedback_loop_ignores_teaching_reference_sections(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/verify.md](references/verify.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/verify.md": (
+                        "## Examples\n\n"
+                        "**Bad** — missing loop:\n"
+                        "Verify output quality and retry once.\n"
+                    ),
+                },
+            )
             _, records = self.run_checker(
                 "check-best-practices.py",
                 skill_dir,
@@ -1844,6 +2143,151 @@ class PreprocessingBehaviorTests(ScriptTestCase):
 
         record = self.one_check(records, "PP-output-limit")
         self.assertIs(record.get("pass"), True)
+
+    def test_preprocessing_directives_in_references_are_validated(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/context.md](references/context.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/context.md": ("## Context\n\n- Branch: !`git diff`\n"),
+                },
+            )
+            _, records = self.run_checker(
+                "check-preprocessing.py",
+                skill_dir,
+                checks=("PP-output-limit",),
+            )
+
+        record = self.one_check(records, "PP-output-limit")
+        self.assertIs(record.get("pass"), False)
+
+    def test_preprocessing_ignores_non_actionable_reference_examples(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/guide.md](references/guide.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": (
+                        "#### Automated: preprocessing (I18)\n\n"
+                        "- **PP-redundant-dir:** No redundant `` !`echo "
+                        '"${CLAUDE_SKILL_DIR}"` `` wrapping\n'
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-preprocessing.py",
+                skill_dir,
+                checks=("PP-output-limit",),
+            )
+
+        self.assertFalse(
+            any(
+                record.get("check") == "PP-output-limit"
+                for record in self.check_records(records)
+            ),
+        )
+
+
+class AskUserReferenceBehaviorTests(ScriptTestCase):
+    def test_ask_user_implicit_signal_detected_in_referenced_guidance(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/prompts.md](references/prompts.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/prompts.md": (
+                        "## Workflow\n\n1. Ask the user to choose scope\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker("check-ask-user.py", skill_dir)
+
+        implicit = self.one_check(records, "AQ-implicit")
+        self.assertIs(implicit.get("pass"), False)
+
+    def test_ask_user_ignores_checklist_style_reference_mentions(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/guide.md](references/guide.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": (
+                        "## Automated: AskUserQuestion (I21)\n\n"
+                        "- **AQ-declaration:** AskUserQuestion appears in "
+                        "allowed-tools iff the body references it\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker("check-ask-user.py", skill_dir)
+
+        declaration = self.one_check(records, "AQ-declaration")
+        implicit = self.one_check(records, "AQ-implicit")
+        self.assertIs(declaration.get("pass"), True)
+        self.assertIs(implicit.get("pass"), True)
+
+    def test_ask_user_destructive_check_reads_referenced_guidance(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Read [references/ops.md](references/ops.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                frontmatter_overrides={
+                    "allowed-tools": "AskUserQuestion, Read",
+                    "disable-model-invocation": "true",
+                },
+                body=body,
+                files={
+                    "references/ops.md": (
+                        "## Workflow\n\n1. Run git reset --hard before patching\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker("check-ask-user.py", skill_dir)
+
+        destructive = self.one_check(records, "AQ-destructive")
+        self.assertIs(destructive.get("pass"), False)
+
+    def test_ask_user_ignores_good_bad_reference_sections(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/patterns.md](references/patterns.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/patterns.md": (
+                        "## Examples\n\n"
+                        "**Bad** — implicit question flow:\n"
+                        "Ask the user to pick one option.\n"
+                    ),
+                },
+            )
+            _, records = self.run_checker("check-ask-user.py", skill_dir)
+
+        declaration = self.one_check(records, "AQ-declaration")
+        implicit = self.one_check(records, "AQ-implicit")
+        self.assertIs(declaration.get("pass"), True)
+        self.assertIs(implicit.get("pass"), True)
 
 
 class ReadGatesFlowBehaviorTests(ScriptTestCase):

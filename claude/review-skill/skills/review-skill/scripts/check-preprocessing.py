@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate `!` preprocessing directives in SKILL.md prose.
+"""Validate `!` preprocessing directives in SKILL.md and referenced prose.
 
 Sub-checks:
   - `PP-syntax`        - malformed directive markers
@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 from _skill_check_common import (
     CheckRecord,
     SkillDocument,
+    is_instructional_prose_line,
+    iter_reference_inputs,
     run_check_cli,
 )
 
@@ -232,6 +234,20 @@ INTERACTIVE_COMMANDS: Final[frozenset[str]] = frozenset(
     {"vi", "vim", "nvim", "nano", "emacs", "less", "more", "pico"},
 )
 
+NON_ACTIONABLE_DIRECTIVE_LINE_RE: Final[Pattern[str]] = re.compile(
+    r"\b(?:"
+    r"PP-[a-z-]+|"
+    r"check-preprocessing(?:\.py)?|"
+    r"automated\s+by|"
+    r"directive\s+syntax|"
+    r"validates\s+each\s+directive"
+    r")\b",
+    re.IGNORECASE,
+)
+DIRECTIVE_LIST_ITEM_RE: Final[Pattern[str]] = re.compile(
+    r"^\s*(?:[-*+]\s+|\d+\.\s+).*!`[^`]+`",
+)
+
 
 # ---------------------------------------------------------------------------
 # Command-level helpers
@@ -401,6 +417,71 @@ def _extract_directive_commands(prose_body: str) -> tuple[str, ...]:
     return tuple(_strip_directive(match) for match in DIRECTIVE_RE.findall(prose_body))
 
 
+def _is_actionable_directive_line(line: str) -> bool:
+    """Return whether a line with directives is actionable guidance."""
+    if NON_ACTIONABLE_DIRECTIVE_LINE_RE.search(line):
+        return False
+    if DIRECTIVE_LIST_ITEM_RE.search(line):
+        return True
+    return is_instructional_prose_line(line)
+
+
+def _scan_reference_directives(
+    document: SkillDocument,
+) -> tuple[tuple[str, ...], list[CheckRecord]]:
+    """Extract directive commands and syntax errors from references."""
+    commands: list[str] = []
+    syntax_results: list[CheckRecord] = []
+    first_unclosed = ""
+    empty_count = 0
+
+    for ref in iter_reference_inputs(document):
+        for index, line in enumerate(ref.lines):
+            if index in ref.skip_indices:
+                continue
+            if DIRECTIVE_RE.search(line) is None:
+                continue
+            if not _is_actionable_directive_line(line):
+                continue
+
+            commands.extend(
+                _strip_directive(match) for match in DIRECTIVE_RE.findall(line)
+            )
+
+            if UNCLOSED_DIRECTIVE_RE.search(line) and not first_unclosed:
+                first_unclosed = f"{ref.rel_path}:L{index + 1}"
+
+            empty_count += len(EMPTY_DIRECTIVE_RE.findall(line))
+
+    if first_unclosed:
+        syntax_results.append(
+            CheckRecord(
+                check=CHECK_SYNTAX,
+                passed=False,
+                detail=(
+                    "Unclosed preprocessing directive in referenced file "
+                    f"at {first_unclosed} - missing closing backtick"
+                ),
+                tier="I18",
+            ),
+        )
+
+    if empty_count > 0:
+        syntax_results.append(
+            CheckRecord(
+                check=CHECK_SYNTAX,
+                passed=False,
+                detail=(
+                    f"Found {empty_count} empty preprocessing directive(s) "
+                    "in referenced files - !`` contains no command"
+                ),
+                tier="I18",
+            ),
+        )
+
+    return tuple(commands), syntax_results
+
+
 # ---------------------------------------------------------------------------
 # Syntax check (returns 0-2 results)
 # ---------------------------------------------------------------------------
@@ -458,8 +539,7 @@ def _check_err_handling(commands: tuple[str, ...]) -> CheckRecord:
             check=CHECK_ERR,
             passed=True,
             detail=(
-                "All preprocessing directives have error handling"
-                " or use safe commands"
+                "All preprocessing directives have error handling or use safe commands"
             ),
             tier="I18",
         )
@@ -482,8 +562,7 @@ def _check_output_limit(commands: tuple[str, ...]) -> CheckRecord:
             check=CHECK_OUT,
             passed=True,
             detail=(
-                "All preprocessing directives produce bounded"
-                " output or use limiting"
+                "All preprocessing directives produce bounded output or use limiting"
             ),
             tier="I18",
         )
@@ -604,9 +683,7 @@ def _check_interactive(commands: tuple[str, ...]) -> CheckRecord:
     )
 
 
-CHECK_FUNCTIONS: Final[
-    dict[str, Callable[[tuple[str, ...]], CheckRecord]]
-] = {
+CHECK_FUNCTIONS: Final[dict[str, Callable[[tuple[str, ...]], CheckRecord]]] = {
     CHECK_ERR: _check_err_handling,
     CHECK_OUT: _check_output_limit,
     CHECK_SEC: _check_secret_leak,
@@ -628,7 +705,8 @@ def run_checks(
 ) -> tuple[list[CheckRecord], dict[str, object]]:
     """Run preprocessing checks, return results and extra summary."""
     prose_body = document.prose_body
-    directive_commands = _extract_directive_commands(prose_body)
+    ref_commands, ref_syntax_results = _scan_reference_directives(document)
+    directive_commands = _extract_directive_commands(prose_body) + ref_commands
     directive_count = len(directive_commands)
 
     if not directive_commands:
@@ -639,6 +717,7 @@ def run_checks(
 
     if not selected or CHECK_SYNTAX in selected:
         results.extend(_check_syntax(prose_body))
+        results.extend(ref_syntax_results)
 
     for check_name in CHECK_ORDER:
         if check_name == CHECK_SYNTAX:

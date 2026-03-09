@@ -23,7 +23,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | FM-invocable-present | - | validate.py | user-invocable field exists |
 | FM-compat-length | - | validate.py | Compatibility field under 500 chars (when present) |
 | CF-tools-usage | I16 | check-config.py | Listed tools are actually used in body |
-| CF-side-effect | I17 | check-config.py | Side-effect skills have DMI guard |
+| CF-side-effect | I17 | check-config.py | Side-effect guidance in SKILL.md and referenced docs has DMI guard |
 | CF-state-xdg | I11 | check-config.py | Persistent state uses XDG paths |
 | BP-example-tags | I26 | check-best-practices.py | Example tags present in SKILL.md body |
 | BP-over-prompting | I27 | check-best-practices.py | Aggressive all-caps prompting avoided |
@@ -31,7 +31,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | BP-error-section-info | P12 | check-best-practices.py | Error section heading presence signal |
 | BP-scope-boundary-info | P13 | check-best-practices.py | Scope-boundary language signal |
 | BP-constraint-refresh-info | P14 | check-best-practices.py | Constraint refresh signal for 4+ phases |
-| CT-no-grading | C6 | check-content.py | No scoring rubric patterns |
+| CT-no-grading | C6 | check-content.py | No scoring rubric patterns in SKILL.md and referenced docs |
 | CT-no-secrets | C7 | check-content.py | No secrets in skill files |
 | SC-no-shell-true | C8 | check-security.py | No shell=True in subprocess |
 | SC-no-eval-exec | C8 | check-security.py | No eval() or exec() |
@@ -46,8 +46,8 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | FR-no-backslash | P6 | check-file-refs.py | No backslash paths |
 | FR-no-disallowed | - | check-file-refs.py | No disallowed path patterns |
 | FR-one-level | - | check-file-refs.py | References don't cross-reference other refs |
-| SD-invocation-prefix | I6 | check-scripts-dir.py | Scripts use CLAUDE_SKILL_DIR prefix |
-| SD-no-bash | I6 | check-scripts-dir.py | No bash/python3 prefix on invocations |
+| SD-invocation-prefix | I6 | check-scripts-dir.py | Script invocations in SKILL.md and referenced docs use CLAUDE_SKILL_DIR prefix |
+| SD-no-bash | I6 | check-scripts-dir.py | No bash/python3 prefix on script invocations in SKILL.md and referenced docs |
 | SD-executable | I12 | check-scripts-dir.py | Entrypoints have executable bit |
 | SD-legacy-bash-info | P16 | check-scripts-dir.py | Top-level legacy .sh scripts signal |
 | RF-body-lines | C2 | check-references.py | Body under 500 lines |
@@ -57,7 +57,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | RF-dup-codeblocks-info | P8 | check-references.py | No duplicated code blocks |
 | RF-dup-tables-info | P15 | check-references.py | No duplicated markdown tables |
 | RF-dup-prose-info | I4 | check-references.py | Prose duplication signal |
-| PP-* | I18 | check-preprocessing.py | Preprocessing directive hygiene (8 sub-checks) |
+| PP-* | I18 | check-preprocessing.py | Preprocessing directive hygiene across SKILL.md and referenced docs (8 sub-checks) |
 | RG-gate-present | I19 | check-read-gates.py | References have explicit read gates |
 | RG-passive | I19 | check-read-gates.py | No passive mentions before gate |
 | RG-orphan | I19 | check-read-gates.py | No files missing from SKILL.md |
@@ -66,15 +66,15 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | RG-purpose | I19 | check-read-gates.py | Gates explain why |
 | RG-flow | I19 | check-read-gates.py | Multi-flow gates per flow |
 | CL-aggregate | I20 | check-lint.py | Scripts pass static analysis |
-| AQ-declaration | I21 | check-ask-user.py | AskUserQuestion in allowed-tools iff used |
-| AQ-implicit | I21 | check-ask-user.py | Implicit user interaction matches declaration |
-| AQ-required-arg | I21 | check-ask-user.py | Required args have ask/fallback |
+| AQ-declaration | I21 | check-ask-user.py | AskUserQuestion in allowed-tools iff used across SKILL.md and referenced docs |
+| AQ-implicit | I21 | check-ask-user.py | Implicit user interaction in SKILL.md/referenced docs matches declaration |
+| AQ-required-arg | I21 | check-ask-user.py | Required args have ask/fallback coverage across SKILL.md and referenced docs |
 | AQ-spawned-agent | I21 | check-ask-user.py | No AUQ in spawned agent sections |
-| AQ-option-structure | I21 | check-ask-user.py | Usage sites have options documented |
-| AQ-destructive | I21 | check-ask-user.py | Destructive skills have confirmation |
-| AQ-ambiguity | I21 | check-ask-user.py | Ambiguous situations have resolution |
-| AQ-multiselect | I21 | check-ask-user.py | multiSelect has grouping guidance |
-| AQ-wizard | I21 | check-ask-user.py | Wizard patterns have loop termination |
+| AQ-option-structure | I21 | check-ask-user.py | AskUserQuestion usage sites in SKILL.md/referenced docs have options documented |
+| AQ-destructive | I21 | check-ask-user.py | Destructive guidance in SKILL.md/referenced docs has confirmation |
+| AQ-ambiguity | I21 | check-ask-user.py | Ambiguous situations in SKILL.md/referenced docs have resolution |
+| AQ-multiselect | I21 | check-ask-user.py | multiSelect usage in SKILL.md/referenced docs has grouping guidance |
+| AQ-wizard | I21 | check-ask-user.py | Wizard patterns in SKILL.md/referenced docs have loop termination |
 | FC-hint-doc | I22 | check-flag-coverage.py | Hint flags appear in Arguments |
 | FC-doc-hint | I22 | check-flag-coverage.py | Documented flags appear in hint |
 | FC-doc-workflow | I22 | check-flag-coverage.py | Documented flags referenced in workflow |
@@ -92,9 +92,9 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | HK-prefix | I23 | check-hooks.py | Consistent error code prefix |
 | HK-suggestion-info | P10 | check-hooks.py | Hooks recommended for side-effect skills |
 | BP-section-order-info | P17 | check-best-practices.py | Body section order signal |
-| BP-why-rationale-info | I29 | check-best-practices.py | WHY rationale coverage signal |
+| BP-why-rationale-info | I29 | check-best-practices.py | WHY rationale coverage signal in SKILL.md and referenced guidance |
 | BP-example-diversity-info | I3 | check-best-practices.py | Example diversity signal |
-| BP-feedback-loop-info | I8 | check-best-practices.py | Feedback loop signal |
+| BP-feedback-loop-info | I8 | check-best-practices.py | Feedback loop signal in SKILL.md and referenced guidance |
 | FK-recommendation-info | P9 | check-fork-candidate.py | Fork candidate analysis |
 
 ## Manual checks

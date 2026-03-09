@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import stat
+from dataclasses import dataclass
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
@@ -29,9 +30,11 @@ from _skill_check_common import (
     CheckRecord,
     ProseLine,
     SkillDocument,
+    SkipConfig,
     extract_prose_lines,
     format_hit,
     iter_fence_lines,
+    iter_reference_inputs,
     run_check_cli,
 )
 
@@ -90,6 +93,15 @@ _POST_SHORT_FLAG_RE: Final[Pattern[str]] = re.compile(r"^\s+-[a-zA-Z]")
 _POST_LONG_FLAG_RE: Final[Pattern[str]] = re.compile(r"^\s+--[a-zA-Z]")
 
 
+@dataclass(frozen=True)
+class InvocationLine:
+    """Store one script-invocation candidate with source metadata."""
+
+    source: str
+    body_start_line: int
+    line: ProseLine
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -117,21 +129,30 @@ def _strip_list_prefix(text: str) -> str:
     return LIST_PREFIX_RE.sub("", text, count=1).lstrip()
 
 
-def _line_hit(document: SkillDocument, line: ProseLine) -> str:
+def _line_hit(line: InvocationLine) -> str:
     """Format a matching line as `L<line>: <snippet>`."""
-    return format_hit(
-        line.index,
-        line.text,
-        body_start_line=document.body_start_line,
+    hit = format_hit(
+        line.line.index,
+        line.line.text,
+        body_start_line=line.body_start_line,
     )
+    if line.source == "SKILL.md":
+        return hit
+    return f"{line.source} {hit}"
 
 
-def _iter_command_fence_commands(body: str) -> Iterator[ProseLine]:
+def _iter_command_fence_commands(
+    body: str,
+    *,
+    skip_indices: frozenset[int] = frozenset(),
+) -> Iterator[ProseLine]:
     """Yield logical command lines merged across trailing backslashes."""
     pending_text = ""
     pending_index: int | None = None
 
     for line in iter_fence_lines(body, COMMAND_FENCE_LANGUAGES):
+        if line.index in skip_indices:
+            continue
         stripped = line.text.strip()
 
         if not stripped or stripped.startswith("#"):
@@ -183,18 +204,47 @@ def _is_command_like_prose_line(text: str) -> bool:
         return True
     post_match = line[script_match.end() :]
     return bool(
-        _POST_SHORT_FLAG_RE.search(post_match)
-        or _POST_LONG_FLAG_RE.search(post_match),
+        _POST_SHORT_FLAG_RE.search(post_match) or _POST_LONG_FLAG_RE.search(post_match),
     )
 
 
-def _iter_invocation_lines(document: SkillDocument) -> Iterator[ProseLine]:
-    """Yield lines where script-invocation checks should run."""
-    yield from _iter_command_fence_commands(document.body)
+def _iter_invocation_lines_from_text(
+    text: str,
+    *,
+    skip_indices: frozenset[int] = frozenset(),
+) -> Iterator[ProseLine]:
+    """Yield script-invocation candidates from one markdown text source."""
+    yield from _iter_command_fence_commands(text, skip_indices=skip_indices)
 
-    for line in extract_prose_lines(document.body):
+    for line in extract_prose_lines(text):
+        if line.index in skip_indices:
+            continue
         if _is_command_like_prose_line(line.text):
             yield line
+
+
+def _iter_invocation_lines(document: SkillDocument) -> Iterator[InvocationLine]:
+    """Yield script invocation candidates from SKILL.md and referenced text files."""
+    for line in _iter_invocation_lines_from_text(document.body):
+        yield InvocationLine(
+            source="SKILL.md",
+            body_start_line=document.body_start_line,
+            line=line,
+        )
+
+    for ref in iter_reference_inputs(
+        document,
+        skip=SkipConfig(fenced=False),
+    ):
+        for line in _iter_invocation_lines_from_text(
+            "\n".join(ref.lines),
+            skip_indices=ref.skip_indices,
+        ):
+            yield InvocationLine(
+                source=ref.rel_path,
+                body_start_line=1,
+                line=line,
+            )
 
 
 def _read_first_line(path: Path) -> str | None:
@@ -276,15 +326,16 @@ def check_script_invocation_prefix(document: SkillDocument) -> list[CheckRecord]
         return []
 
     violations: list[str] = []
-    seen_lines: set[int] = set()
+    seen_lines: set[tuple[str, int]] = set()
     for line in _iter_invocation_lines(document):
-        for match in SCRIPT_PATH_RE.finditer(line.text):
-            if _has_required_prefix(line.text, match.start()):
+        for match in SCRIPT_PATH_RE.finditer(line.line.text):
+            if _has_required_prefix(line.line.text, match.start()):
                 continue
-            if line.index in seen_lines:
+            line_key = (line.source, line.line.index)
+            if line_key in seen_lines:
                 break
-            seen_lines.add(line.index)
-            violations.append(_line_hit(document, line))
+            seen_lines.add(line_key)
+            violations.append(_line_hit(line))
             break
 
     if violations:
@@ -318,19 +369,20 @@ def check_no_bash_prefix(document: SkillDocument) -> list[CheckRecord]:
         return []
 
     violations: list[str] = []
-    seen_lines: set[int] = set()
+    seen_lines: set[tuple[str, int]] = set()
     for line in _iter_invocation_lines(document):
-        command_text = _strip_list_prefix(line.text.strip())
+        command_text = _strip_list_prefix(line.line.text.strip())
         if not command_text:
             continue
         if BASH_INVOCATION_PREFIX_RE.match(command_text) is None:
             continue
         if SCRIPT_PATH_RE.search(command_text) is None:
             continue
-        if line.index in seen_lines:
+        line_key = (line.source, line.line.index)
+        if line_key in seen_lines:
             continue
-        seen_lines.add(line.index)
-        violations.append(_line_hit(document, line))
+        seen_lines.add(line_key)
+        violations.append(_line_hit(line))
 
     if violations:
         return [

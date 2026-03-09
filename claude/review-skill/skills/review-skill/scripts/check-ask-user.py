@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate AskUserQuestion usage in SKILL.md files.
+"""Validate AskUserQuestion usage in SKILL.md and referenced guidance.
 
 Checks declaration and usage consistency, implicit interaction patterns,
 required-argument fallbacks, spawned-agent misuse, option structure,
@@ -34,6 +34,7 @@ from _skill_check_common import (
     CheckRecord,
     ProseLine,
     SkillArgument,
+    SkillDocument,
     SkillLoadError,
     compile_patterns,
     emit_error,
@@ -41,7 +42,8 @@ from _skill_check_common import (
     extract_prose_lines,
     find_agent_indices,
     find_bundled_indices,
-    format_hit,
+    is_instructional_prose_line,
+    iter_reference_inputs,
     matches_any,
     parse_allowed_tools,
     parse_arguments,
@@ -77,6 +79,7 @@ AMBIGUITY_SCAN_STOP: Final[int] = 6
 CONFIRMATION_SCAN_START: Final[int] = -3
 CONFIRMATION_SCAN_STOP: Final[int] = 4
 DESCRIPTIVE_BULLET_THRESHOLD: Final[int] = 2
+REFERENCE_INDEX_GAP: Final[int] = 50
 
 REQUIRED_DEFAULT_MARKERS: Final[frozenset[str]] = frozenset(
     {"", "-"},
@@ -86,9 +89,7 @@ REQUIRED_DEFAULT_MARKERS: Final[frozenset[str]] = frozenset(
 # AskUserQuestion detection patterns
 # ---------------------------------------------------------------------------
 
-STRONG_INTERACTION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+STRONG_INTERACTION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bask\s+the\s+user\b",
         r"\bask\s+user\b",
@@ -101,9 +102,7 @@ STRONG_INTERACTION_PATTERNS: Final[
     ),
 )
 
-MEDIUM_INTERACTION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+MEDIUM_INTERACTION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\blet\s+the\s+user\s+(choose|decide|pick|select|confirm)\b",
         r"\bget\s+(user\s+|the\s+user's\s+|explicit\s+)?"
@@ -116,9 +115,7 @@ MEDIUM_INTERACTION_PATTERNS: Final[
     ),
 )
 
-NEGATION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+NEGATION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bdo\s+NOT\s+ask\b",
         r"\bdon't\s+ask\b",
@@ -129,9 +126,7 @@ NEGATION_PATTERNS: Final[
     ),
 )
 
-AUQ_NON_WORKFLOW_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+AUQ_NON_WORKFLOW_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bcheck-ask-user(?:-[\w.-]+)?\.py\b",
         r"\bscripts/check-ask-user",
@@ -142,9 +137,7 @@ AUQ_NON_WORKFLOW_PATTERNS: Final[
     ),
 )
 
-SPAWNED_AGENT_PROHIBITION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+SPAWNED_AGENT_PROHIBITION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\b(?:do\s+not|don't|never|cannot|can't)\b"
         r".*\bAskUserQuestion\b",
@@ -193,16 +186,12 @@ DESTRUCTIVE_PATTERN_SPECS: Final[tuple[tuple[str, str], ...]] = (
     ("rm -rf", r"\brm\s+-rf\b"),
     ("git apply --cached", r"git\s+apply\s+--cached"),
 )
-DESTRUCTIVE_PATTERNS: Final[
-    tuple[tuple[str, Pattern[str]], ...]
-] = tuple(
+DESTRUCTIVE_PATTERNS: Final[tuple[tuple[str, Pattern[str]], ...]] = tuple(
     (label, re.compile(pattern, re.IGNORECASE))
     for label, pattern in DESTRUCTIVE_PATTERN_SPECS
 )
 
-CONFIRMATION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+CONFIRMATION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bconfirm\b",
         r"\bapproval\b",
@@ -213,9 +202,7 @@ CONFIRMATION_PATTERNS: Final[
     ),
 )
 
-AMBIGUITY_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+AMBIGUITY_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bif\s+(unclear|ambiguous)\b",
         r"\bmultiple\s+.{0,20}\s+match\b",
@@ -228,9 +215,7 @@ AMBIGUITY_PATTERNS: Final[
     ),
 )
 
-RESOLUTION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+RESOLUTION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bAskUserQuestion\b",
         r"\bask\b",
@@ -243,9 +228,7 @@ RESOLUTION_PATTERNS: Final[
 )
 
 MULTISELECT_RE: Final[Pattern[str]] = re.compile(r"\bmultiSelect\b")
-GROUPING_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+GROUPING_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\bgroup\s+by\b",
         r"\bpre-select\b",
@@ -265,9 +248,7 @@ WIZARD_LOOP_RE: Final[Pattern[str]] = re.compile(
     r"\b(loop|repeat|again|until\s+user\s+confirms)\b",
     re.IGNORECASE,
 )
-WIZARD_TERMINATION_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+WIZARD_TERMINATION_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"\buntil\s+user\s+confirms\b",
         r"\bLoop\s+until\b",
@@ -284,9 +265,7 @@ ARG_PROMPT_TEMPLATES: Final[tuple[str, ...]] = (
     r"{name}.*ask",
     r"{name}.*prompt",
 )
-POSITIONAL_PROMPT_PATTERNS: Final[
-    tuple[Pattern[str], ...]
-] = compile_patterns(
+POSITIONAL_PROMPT_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
         r"ask.*feature",
         r"ask.*name",
@@ -320,6 +299,8 @@ class ParsedSkill:
     agent_indices: frozenset[int]
     arguments: tuple[SkillArgument, ...]
     allowed_tools: frozenset[str]
+    line_sources: dict[int, str]
+    line_numbers: dict[int, int]
 
     @property
     def declares_auq(self) -> bool:
@@ -334,10 +315,7 @@ class ParsedSkill:
     @property
     def is_side_effect(self) -> bool:
         """Return whether disable-model-invocation is true."""
-        return (
-            self.frontmatter.get("disable-model-invocation", "")
-            == "true"
-        )
+        return self.frontmatter.get("disable-model-invocation", "") == "true"
 
     def relevant_lines(
         self,
@@ -349,14 +327,8 @@ class ParsedSkill:
         return tuple(
             line
             for line in self.prose_lines
-            if (
-                not exclude_bundled
-                or line.index not in self.bundled_indices
-            )
-            and (
-                not exclude_agents
-                or line.index not in self.agent_indices
-            )
+            if (not exclude_bundled or line.index not in self.bundled_indices)
+            and (not exclude_agents or line.index not in self.agent_indices)
         )
 
     def relevant_text(
@@ -380,7 +352,19 @@ class ParsedSkill:
 
     def line_number(self, line_index: int) -> int:
         """Return a one-based file line number for a body line index."""
-        return self.body_start_line + line_index
+        return self.line_numbers.get(line_index, self.body_start_line + line_index)
+
+    def source_for_index(self, line_index: int) -> str:
+        """Return source file label for one prose line index."""
+        return self.line_sources.get(line_index, "SKILL.md")
+
+    def line_label(self, line_index: int) -> str:
+        """Return stable line label for detail output."""
+        source = self.source_for_index(line_index)
+        source_line = self.line_number(line_index)
+        if source == "SKILL.md":
+            return f"L{source_line}"
+        return f"{source}:L{source_line}"
 
 
 # ---------------------------------------------------------------------------
@@ -396,10 +380,20 @@ def _format_signal_detail(
     samples = [*strong_hits, *medium_hits][:SUMMARY_HIT_LIMIT]
     result = (
         f"{len(strong_hits)} strong, "
-        f"{len(medium_hits)} medium signal(s): "
-        + "; ".join(samples)
+        f"{len(medium_hits)} medium signal(s): " + "; ".join(samples)
     )
     return result.rstrip(".")
+
+
+def _format_line_hit(
+    doc: ParsedSkill,
+    line: ProseLine,
+    *,
+    width: int = 80,
+) -> str:
+    """Format one matched line with source-aware location."""
+    snippet = line.text.strip()[:width].rstrip(".")
+    return f"{doc.line_label(line.index)}: {snippet}"
 
 
 def parse_skill(skill_dir: Path) -> ParsedSkill:
@@ -426,17 +420,56 @@ def parse_skill(skill_dir: Path) -> ParsedSkill:
     fm_lines, body_lines, body_start = split_frontmatter(content)
     frontmatter = parse_frontmatter_lines(fm_lines)
     body = "\n".join(body_lines)
-    prose_lines = extract_prose_lines(body)
+    skill_prose_lines = extract_prose_lines(body)
+    combined_prose_lines: list[ProseLine] = list(skill_prose_lines)
+
+    line_sources: dict[int, str] = {
+        line.index: "SKILL.md" for line in skill_prose_lines
+    }
+    line_numbers: dict[int, int] = {
+        line.index: body_start + line.index for line in skill_prose_lines
+    }
+
+    next_index = max((line.index for line in skill_prose_lines), default=-1) + 1
+    doc_for_references = SkillDocument(
+        skill_dir=skill_dir,
+        skill_md_path=skill_md_path,
+        content=content,
+        frontmatter=frontmatter,
+        body=body,
+        prose_body="\n".join(line.text for line in skill_prose_lines),
+        body_start_line=body_start,
+        resource_files=(),
+    )
+    for ref_file in iter_reference_inputs(doc_for_references):
+        for index, line_text in enumerate(ref_file.lines):
+            if index in ref_file.skip_indices:
+                continue
+            if not is_instructional_prose_line(line_text):
+                continue
+            if not line_text.strip():
+                continue
+
+            combined_prose_lines.append(
+                ProseLine(index=next_index, text=line_text),
+            )
+            line_sources[next_index] = ref_file.rel_path
+            line_numbers[next_index] = index + 1
+            next_index += 1
+
+        next_index += REFERENCE_INDEX_GAP
 
     return ParsedSkill(
         frontmatter=frontmatter,
         body=body,
         body_start_line=body_start,
-        prose_lines=prose_lines,
-        bundled_indices=find_bundled_indices(prose_lines),
-        agent_indices=find_agent_indices(prose_lines),
+        prose_lines=tuple(combined_prose_lines),
+        bundled_indices=find_bundled_indices(skill_prose_lines),
+        agent_indices=find_agent_indices(skill_prose_lines),
         arguments=parse_arguments(body),
         allowed_tools=parse_allowed_tools(frontmatter),
+        line_sources=line_sources,
+        line_numbers=line_numbers,
     )
 
 
@@ -520,15 +553,11 @@ def _has_ask_mechanism(
     escaped_name = re.escape(argument_name)
     for template in ARG_PROMPT_TEMPLATES:
         pattern = template.format(name=escaped_name)
-        if any(
-            re.search(pattern, unit, re.IGNORECASE)
-            for unit in search_units
-        ):
+        if any(re.search(pattern, unit, re.IGNORECASE) for unit in search_units):
             return True
 
     return "positional" in argument_name and any(
-        matches_any(unit, POSITIONAL_PROMPT_PATTERNS)
-        for unit in search_units
+        matches_any(unit, POSITIONAL_PROMPT_PATTERNS) for unit in search_units
     )
 
 
@@ -564,8 +593,7 @@ def _is_explicit_option_line(line_text: str) -> bool:
     if OPTION_KEYWORD_RE.search(line_text):
         return True
     return bool(
-        NUMBERED_OPTION_RE.search(line_text)
-        and "option" in line_text.lower(),
+        NUMBERED_OPTION_RE.search(line_text) and "option" in line_text.lower(),
     )
 
 
@@ -575,14 +603,14 @@ def _has_nearby_options(
 ) -> bool:
     """Return whether a nearby window has credible option structure."""
     prose = doc.prose_map()
+    source = doc.source_for_index(site_index)
     descriptive_bullets = 0
 
     for offset in range(OPTION_SCAN_START, OPTION_SCAN_STOP):
         check_index = site_index + offset
-        if (
-            check_index in doc.bundled_indices
-            or check_index in doc.agent_indices
-        ):
+        if doc.source_for_index(check_index) != source:
+            continue
+        if check_index in doc.bundled_indices or check_index in doc.agent_indices:
             continue
 
         nearby = prose.get(check_index, "")
@@ -610,10 +638,13 @@ def _window_text(
 ) -> str:
     """Return a joined prose window around one line index."""
     prose = doc.prose_map()
+    source = doc.source_for_index(center_index)
     parts: list[str] = []
 
     for offset in range(start_offset, stop_offset):
         check_index = center_index + offset
+        if doc.source_for_index(check_index) != source:
+            continue
         if check_index in doc.bundled_indices:
             continue
         if exclude_agents and check_index in doc.agent_indices:
@@ -648,9 +679,7 @@ def _matching_destructive_labels(
 ) -> tuple[str, ...]:
     """Return destructive operation labels matching one line."""
     return tuple(
-        label
-        for label, pattern in DESTRUCTIVE_PATTERNS
-        if pattern.search(line_text)
+        label for label, pattern in DESTRUCTIVE_PATTERNS if pattern.search(line_text)
     )
 
 
@@ -728,25 +757,14 @@ def check_implicit_interaction(
             continue
         if matches_any(line.text, STRONG_INTERACTION_PATTERNS):
             strong_hits.append(
-                format_hit(
-                    line.index,
-                    line.text,
-                    body_start_line=doc.body_start_line,
-                ),
+                _format_line_hit(doc, line),
             )
         if matches_any(line.text, MEDIUM_INTERACTION_PATTERNS):
             medium_hits.append(
-                format_hit(
-                    line.index,
-                    line.text,
-                    body_start_line=doc.body_start_line,
-                ),
+                _format_line_hit(doc, line),
             )
 
-    has_implicit = (
-        bool(strong_hits)
-        or len(medium_hits) >= MEDIUM_SIGNAL_THRESHOLD
-    )
+    has_implicit = bool(strong_hits) or len(medium_hits) >= MEDIUM_SIGNAL_THRESHOLD
 
     if doc.declares_auq:
         if has_implicit:
@@ -770,7 +788,7 @@ def check_implicit_interaction(
             detail = (
                 "1 medium signal (below threshold of "
                 f"{MEDIUM_SIGNAL_THRESHOLD}): "
-                f"{medium_hits[0].split(':', maxsplit=1)[0]}"
+                f"{medium_hits[0].rsplit(': ', maxsplit=1)[0]}"
             )
         else:
             detail = "No implicit user interaction patterns detected"
@@ -813,10 +831,7 @@ def check_required_arg_fallback(
             CheckRecord(
                 CHECK_REQUIRED_ARG,
                 passed=True,
-                detail=(
-                    f"{TOOL_NAME} not in allowed-tools - "
-                    "skip required-arg check"
-                ),
+                detail=(f"{TOOL_NAME} not in allowed-tools - skip required-arg check"),
                 tier="I21",
             ),
         ]
@@ -885,8 +900,7 @@ def check_spawned_agent(doc: ParsedSkill) -> CheckRecord:
             CHECK_SPAWNED,
             passed=True,
             detail=(
-                "Skill uses context: fork - entire skill is a subagent, "
-                "check skipped"
+                "Skill uses context: fork - entire skill is a subagent, check skipped"
             ),
             tier="I21",
         )
@@ -900,10 +914,9 @@ def check_spawned_agent(doc: ParsedSkill) -> CheckRecord:
         )
 
     violations = [
-        f"L{doc.line_number(line.index)}"
+        doc.line_label(line.index)
         for line in doc.prose_lines
-        if line.index in doc.agent_indices
-        and _is_spawned_agent_violation(line.text)
+        if line.index in doc.agent_indices and _is_spawned_agent_violation(line.text)
     ]
     if not violations:
         return CheckRecord(
@@ -918,8 +931,7 @@ def check_spawned_agent(doc: ParsedSkill) -> CheckRecord:
         passed=False,
         detail=(
             f"{TOOL_NAME} in spawned agent section (agents "
-            "cannot interact with users): "
-            + ", ".join(violations)
+            "cannot interact with users): " + ", ".join(violations)
         ),
         tier="I21",
     )
@@ -944,10 +956,7 @@ def check_option_structure(doc: ParsedSkill) -> CheckRecord:
         return CheckRecord(
             CHECK_OPTION,
             passed=True,
-            detail=(
-                f"No explicit {TOOL_NAME} mentions "
-                "in workflow prose"
-            ),
+            detail=(f"No explicit {TOOL_NAME} mentions in workflow prose"),
             tier="I21",
         )
 
@@ -959,15 +968,14 @@ def check_option_structure(doc: ParsedSkill) -> CheckRecord:
         if _is_input_collection_context(line_text):
             continue
         if not _has_nearby_options(doc, site_index):
-            violations.append(f"L{doc.line_number(site_index)}")
+            violations.append(doc.line_label(site_index))
 
     if not violations:
         return CheckRecord(
             CHECK_OPTION,
             passed=True,
             detail=(
-                f"All {len(usage_sites)} {TOOL_NAME} site(s) "
-                "have option structure"
+                f"All {len(usage_sites)} {TOOL_NAME} site(s) have option structure"
             ),
             tier="I21",
         )
@@ -989,9 +997,7 @@ def check_destructive(doc: ParsedSkill) -> CheckRecord:
         return CheckRecord(
             CHECK_DESTRUCTIVE,
             passed=True,
-            detail=(
-                "Disable-model-invocation not true - skipped"
-            ),
+            detail=("Disable-model-invocation not true - skipped"),
             tier="I21",
         )
 
@@ -1014,7 +1020,7 @@ def check_destructive(doc: ParsedSkill) -> CheckRecord:
         if not matches_any(local_text, CONFIRMATION_PATTERNS):
             label_text = ", ".join(dict.fromkeys(labels))
             missing_confirmation.append(
-                f"L{doc.line_number(line.index)}: {label_text}",
+                f"{doc.line_label(line.index)}: {label_text}",
             )
 
     if not destructive_hits:
@@ -1061,10 +1067,9 @@ def check_ambiguity(doc: ParsedSkill) -> CheckRecord:
             continue
 
         violations.append(
-            format_hit(
-                line.index,
-                line.text,
-                body_start_line=doc.body_start_line,
+            _format_line_hit(
+                doc,
+                line,
                 width=AMBIGUITY_PREVIEW_WIDTH,
             ),
         )
@@ -1077,9 +1082,8 @@ def check_ambiguity(doc: ParsedSkill) -> CheckRecord:
             tier="I21",
         )
 
-    raw_detail = (
-        "Ambiguity without resolution mechanism: "
-        + "; ".join(violations[:DETAIL_LIMIT])
+    raw_detail = "Ambiguity without resolution mechanism: " + "; ".join(
+        violations[:DETAIL_LIMIT],
     )
     return CheckRecord(
         CHECK_AMBIGUITY,
@@ -1136,10 +1140,7 @@ def check_wizard(doc: ParsedSkill) -> CheckRecord:
         return CheckRecord(
             CHECK_WIZARD,
             passed=True,
-            detail=(
-                "No confirmation wizard pattern detected "
-                "- skipped"
-            ),
+            detail=("No confirmation wizard pattern detected - skipped"),
             tier="I21",
         )
 
@@ -1154,10 +1155,7 @@ def check_wizard(doc: ParsedSkill) -> CheckRecord:
     return CheckRecord(
         CHECK_WIZARD,
         passed=False,
-        detail=(
-            "Wizard pattern detected without explicit "
-            "loop termination"
-        ),
+        detail=("Wizard pattern detected without explicit loop termination"),
         tier="I21",
     )
 
@@ -1191,9 +1189,7 @@ def run_checks(doc: ParsedSkill) -> list[CheckRecord]:
 def _build_parser() -> argparse.ArgumentParser:
     """Build the CLI argument parser."""
     parser = argparse.ArgumentParser(
-        description=(
-            "Validate AskUserQuestion usage in SKILL.md files"
-        ),
+        description=("Validate AskUserQuestion usage in SKILL.md files"),
     )
     parser.add_argument(
         "skill_directory",
