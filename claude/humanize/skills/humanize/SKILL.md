@@ -5,6 +5,8 @@ argument-hint: "[file-path] [--score-only] [--dry-run]"
 allowed-tools: AskUserQuestion, Edit, Read, Task, Write
 user-invocable: true
 disable-model-invocation: true
+context: fork
+agent: general-purpose
 ---
 
 # Humanize
@@ -13,6 +15,10 @@ Remove AI writing patterns from text and replace them with natural, human-soundi
 
 - **Detection**: Wikipedia's "Signs of AI writing" guide (WikiProject AI Cleanup) - what to remove
 - **Composition**: Strunk & White's "The Elements of Style" (1918) - how to write the replacement well
+
+## Scope
+
+Designed for prose text: commit messages, PR descriptions, docs, changelogs, blog posts, review comments. Not for code, structured data (JSON/YAML), or text where AI patterns are intentional.
 
 ## Arguments
 
@@ -117,11 +123,13 @@ Use the hit list from the Phase 2 agent to fix every detected pattern regardless
    - Move the most important word or phrase to the end of each sentence.
    - Keep one topic per paragraph. End paragraphs with the strongest point, not a trailing detail.
 
-Preserve the original meaning. Do not add information the source text does not contain. Do not remove technical accuracy for the sake of style.
+Preserve the original meaning. Never add information the source text does not contain because invented facts undermine trust even when the prose sounds better. Keep technical accuracy intact - style improvements that sacrifice correctness make the text worse, not better.
 
 ### Phase 5: Verification
 
-Re-read the rewritten text and check:
+Re-read the hit list from Phase 2 and the composition principles from [references/elements-of-style.md](references/elements-of-style.md) before checking. This anchors verification against the same criteria used during the rewrite.
+
+Check the rewritten text:
 
 - No AI patterns from [references/patterns.md](references/patterns.md) remain.
 - Core meaning is preserved (no information lost or invented).
@@ -136,6 +144,12 @@ Re-read the rewritten text and check:
 - Text sounds natural when read aloud.
 
 If any check fails, revise the affected sections and re-verify.
+
+### Error handling
+
+- If the file path does not exist or is unreadable, report the error and stop.
+- If the pattern scan agent returns an empty array, skip Phase 4 rewrite and report "no patterns detected."
+- If the text is under 50 characters, warn the user that meaningful pattern detection needs more content.
 
 ### Phase 6: Report
 
