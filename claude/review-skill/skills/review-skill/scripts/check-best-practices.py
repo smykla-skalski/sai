@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate best-practice coverage checks for SKILL.md.
+"""Validate best-practice coverage checks for SKILL.md and references.
 
 Sub-checks:
   - `BP-example-tags`
@@ -35,15 +35,17 @@ from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
 from _skill_check_common import (
     CheckRecord,
+    ReferenceFile,
     SkillDocument,
+    SkipConfig,
     build_fenced_line_indices,
     compile_patterns,
     format_hit,
-    read_text,
+    is_instructional_prose_line,
+    iter_reference_inputs,
     run_check_cli,
 )
 
@@ -90,20 +92,9 @@ EXAMPLE_OPEN_RE: Final[Pattern[str]] = re.compile(
 EXAMPLE_CLOSE_RE: Final[Pattern[str]] = re.compile(r"</example>", re.IGNORECASE)
 HEADING_RE: Final[Pattern[str]] = re.compile(r"^\s*#")
 
-RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
-    r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*",
-)
-IGNORE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
-    r"/(?:\.\.\.|\.\.|foo\.|bar\.|baz\.|example\.)",
-)
-
 INLINE_CODE_RE: Final[Pattern[str]] = re.compile(r"`[^`]*`")
 DOUBLE_QUOTED_RE: Final[Pattern[str]] = re.compile(r'"[^"]*"')
 SINGLE_QUOTED_RE: Final[Pattern[str]] = re.compile(r"'[^']*'")
-
-TEXT_REFERENCE_SUFFIXES: Final[frozenset[str]] = frozenset(
-    {".md", ".markdown", ".mdx", ".txt", ".rst"},
-)
 
 OVER_PROMPT_PATTERNS: Final[tuple[Pattern[str], ...]] = (
     re.compile(r"\bCRITICAL\b"),
@@ -282,29 +273,6 @@ def _is_ignored_line(
     )
 
 
-def _extract_referenced_text_paths(document: SkillDocument) -> tuple[Path, ...]:
-    """Return text-like files referenced from SKILL.md prose.
-
-    The check targets reference guidance files. Script files are excluded to avoid
-    false positives from source code literals and regex patterns.
-    """
-    references = {
-        match
-        for match in RESOURCE_REFERENCE_RE.findall(document.prose_body)
-        if not IGNORE_REFERENCE_RE.search(match)
-    }
-
-    paths: list[Path] = []
-    for reference in sorted(references):
-        candidate = document.skill_dir / reference
-        if not candidate.is_file():
-            continue
-        if candidate.suffix.lower() not in TEXT_REFERENCE_SUFFIXES:
-            continue
-        paths.append(candidate)
-
-    return tuple(paths)
-
 
 def _strip_non_instruction_segments(line: str) -> str:
     """Remove inline-code and quoted snippets before over-prompting scans."""
@@ -319,6 +287,7 @@ def _scan_over_prompting_text(
     *,
     body_start_line: int,
     source: str,
+    extra_skip_indices: frozenset[int] = frozenset(),
 ) -> tuple[int, str | None]:
     """Count over-prompting hits and return first evidence for one source."""
     lines = text.splitlines()
@@ -329,6 +298,8 @@ def _scan_over_prompting_text(
     first_evidence: str | None = None
 
     for index, line in enumerate(lines):
+        if index in extra_skip_indices:
+            continue
         if _is_ignored_line(
             index,
             line,
@@ -403,20 +374,23 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
     if first_evidence is None and skill_evidence is not None:
         first_evidence = skill_evidence
 
-    referenced_text_paths = _extract_referenced_text_paths(document)
-    for referenced_path in referenced_text_paths:
-        rel_path = referenced_path.relative_to(document.skill_dir).as_posix()
+    ref_files = iter_reference_inputs(
+        document,
+        skip=SkipConfig(fenced=False),
+    )
+    for ref in ref_files:
         referenced_hits, referenced_evidence = _scan_over_prompting_text(
-            read_text(referenced_path),
+            "\n".join(ref.lines),
             body_start_line=1,
-            source=rel_path,
+            source=ref.rel_path,
+            extra_skip_indices=ref.skip_indices,
         )
         hit_count += referenced_hits
         if first_evidence is None and referenced_evidence is not None:
             first_evidence = referenced_evidence
 
     scanned_detail = (
-        f"scanned SKILL.md and {len(referenced_text_paths)} referenced text file(s)"
+        f"scanned SKILL.md and {len(ref_files)} referenced text file(s)"
     )
 
     if hit_count >= OVER_PROMPT_FAIL_THRESHOLD:
@@ -629,6 +603,68 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
 
 
+def _count_reference_constraints_with_rationale(
+    ref_inputs: tuple[ReferenceFile, ...],
+    constraint_patterns: tuple[Pattern[str], ...],
+) -> tuple[int, int]:
+    """Return (constraints, with_rationale) from referenced guidance files."""
+    total_constraints = 0
+    total_with_rationale = 0
+
+    for ref in ref_inputs:
+        for index, line in enumerate(ref.lines):
+            if index in ref.skip_indices:
+                continue
+            if not is_instructional_prose_line(line):
+                continue
+            if not any(pattern.search(line) for pattern in constraint_patterns):
+                continue
+
+            total_constraints += 1
+            ref_window_lines = [
+                ref.lines[j]
+                for j in range(index, min(index + 3, len(ref.lines)))
+                if j not in ref.skip_indices
+            ]
+            ref_window_text = " ".join(ref_window_lines)
+            if any(
+                pattern.search(ref_window_text) for pattern in CAUSAL_CONNECTOR_PATTERNS
+            ):
+                total_with_rationale += 1
+
+    return total_constraints, total_with_rationale
+
+
+def _count_reference_verification_loops(
+    ref_inputs: tuple[ReferenceFile, ...],
+) -> tuple[int, int]:
+    """Return (verification_steps, with_loop) from referenced guidance files."""
+    total_verify_steps = 0
+    total_with_loop = 0
+
+    for ref in ref_inputs:
+        for index, line in enumerate(ref.lines):
+            if index in ref.skip_indices:
+                continue
+            if not is_instructional_prose_line(line):
+                continue
+            if VERIFICATION_RE.search(line) is None:
+                continue
+
+            total_verify_steps += 1
+            start = max(0, index - VERIFICATION_WINDOW)
+            end = min(len(ref.lines), index + VERIFICATION_WINDOW + 1)
+            ref_window_text = " ".join(
+                ref.lines[j]
+                for j in range(start, end)
+                if j not in ref.skip_indices
+            )
+            if any(pattern.search(ref_window_text) for pattern in LOOP_PATTERNS):
+                total_with_loop += 1
+
+    return total_verify_steps, total_with_loop
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -721,13 +757,6 @@ def check_why_rationale_info(document: SkillDocument) -> CheckRecord:
         if any(p.search(line) for p in all_constraint_patterns):
             constraint_indices.append(index)
 
-    if not constraint_indices:
-        return CheckRecord.skip(
-            CHECK_WHY_RATIONALE,
-            "WHY rationale check skipped - no constraint patterns found",
-            tier="I29",
-        )
-
     with_rationale = 0
     for ci in constraint_indices:
         window_lines = [
@@ -739,7 +768,20 @@ def check_why_rationale_info(document: SkillDocument) -> CheckRecord:
         if any(p.search(window_text) for p in CAUSAL_CONNECTOR_PATTERNS):
             with_rationale += 1
 
-    total = len(constraint_indices)
+    ref_inputs = iter_reference_inputs(document)
+    reference_constraints, reference_with_rationale = (
+        _count_reference_constraints_with_rationale(ref_inputs, all_constraint_patterns)
+    )
+    with_rationale += reference_with_rationale
+
+    total = len(constraint_indices) + reference_constraints
+    if total == 0:
+        return CheckRecord.skip(
+            CHECK_WHY_RATIONALE,
+            "WHY rationale check skipped - no constraint patterns found",
+            tier="I29",
+        )
+
     ratio = with_rationale / total if total > 0 else 0.0
 
     if ratio >= WHY_RATIONALE_COVERAGE_THRESHOLD:
@@ -808,13 +850,6 @@ def check_feedback_loop_info(document: SkillDocument) -> CheckRecord:
         if VERIFICATION_RE.search(line):
             verify_indices.append(index)
 
-    if not verify_indices:
-        return CheckRecord.skip(
-            CHECK_FEEDBACK_LOOP,
-            "Feedback loop check skipped - no verification steps found",
-            tier="I8",
-        )
-
     with_loop = 0
     for vi in verify_indices:
         start = max(0, vi - VERIFICATION_WINDOW)
@@ -823,7 +858,20 @@ def check_feedback_loop_info(document: SkillDocument) -> CheckRecord:
         if any(p.search(window_text) for p in LOOP_PATTERNS):
             with_loop += 1
 
-    total = len(verify_indices)
+    ref_inputs = iter_reference_inputs(document)
+    reference_verify_steps, reference_with_loop = _count_reference_verification_loops(
+        ref_inputs,
+    )
+    with_loop += reference_with_loop
+
+    total = len(verify_indices) + reference_verify_steps
+    if total == 0:
+        return CheckRecord.skip(
+            CHECK_FEEDBACK_LOOP,
+            "Feedback loop check skipped - no verification steps found",
+            tier="I8",
+        )
+
     if with_loop > 0:
         return CheckRecord.ok(
             CHECK_FEEDBACK_LOOP,

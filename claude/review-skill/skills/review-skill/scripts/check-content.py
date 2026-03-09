@@ -26,6 +26,7 @@ from _skill_check_common import (
     SkillDocument,
     build_fenced_line_indices,
     iter_fence_lines,
+    iter_reference_inputs,
     read_text,
     run_check_cli,
 )
@@ -217,13 +218,36 @@ def _grading_evidence(prose_body: str) -> list[str]:
     return evidence
 
 
+def _grading_evidence_from_lines(
+    lines: list[str],
+    *,
+    skip_indices: frozenset[int],
+) -> list[str]:
+    """Return grading evidence labels from non-skipped lines."""
+    filtered = "\n".join(
+        line for index, line in enumerate(lines) if index not in skip_indices
+    )
+    return _grading_evidence(filtered)
+
+
 def check_no_grading_style(document: SkillDocument) -> CheckRecord:
-    """Detect grading/rubric-style language in prose workflow guidance."""
-    evidence = _grading_evidence(document.prose_body)
-    signal_count = len(evidence)
+    """Detect grading/rubric-style language in SKILL.md and referenced guidance."""
+    evidence = set(_grading_evidence(document.prose_body))
+
+    ref_files = iter_reference_inputs(document)
+    for ref in ref_files:
+        evidence.update(
+            _grading_evidence_from_lines(
+                ref.lines,
+                skip_indices=ref.skip_indices,
+            ),
+        )
+
+    evidence_list = sorted(evidence)
+    signal_count = len(evidence_list)
 
     if signal_count >= GRADING_SIGNAL_THRESHOLD:
-        evidence_text = " ".join(evidence)
+        evidence_text = " ".join(evidence_list)
         return CheckRecord(
             check=CHECK_NO_GRADING_STYLE,
             passed=False,
@@ -238,7 +262,10 @@ def check_no_grading_style(document: SkillDocument) -> CheckRecord:
     return CheckRecord(
         check=CHECK_NO_GRADING_STYLE,
         passed=True,
-        detail="No grading/rubric style detected",
+        detail=(
+            "No grading/rubric style detected "
+            f"(scanned SKILL.md and {len(ref_files)} referenced text file(s))"
+        ),
         tier="C6",
     )
 

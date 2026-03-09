@@ -60,7 +60,7 @@ Read the SKILL.md frontmatter first. Confirm the `description` field contains bo
 
 **C5 (filler):** Scan for filler instructions that restate LLM defaults - if removing a sentence changes nothing about behavior, it fails C5.
 
-**C6 (grading):** Scan for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow - it fails C6.
+**C6 (grading):** Scan SKILL.md and referenced guidance files for grading-style patterns: point values, percentage weights, letter-grade scales, scoring rubric keywords. If two or more signals appear, the skill is structured as a scoring rubric rather than an imperative workflow - it fails C6.
 
 **C7 (secrets):** Scan SKILL.md and all bundled files for secrets: AWS access keys (`AKIA...`), API keys (`sk-...`, `api_key=`), bearer tokens, private key blocks (`-----BEGIN...KEY-----`), inline passwords or tokens. Any match fails C7.
 
@@ -130,7 +130,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 
 #### Script and file hygiene
 
-**I6 (script prefix):** Check script invocations use `"${CLAUDE_SKILL_DIR}/scripts/..."` directly without a `bash` prefix.
+**I6 (script prefix):** Check script invocations in SKILL.md and referenced guidance files use `"${CLAUDE_SKILL_DIR}/scripts/..."` directly without a `bash` prefix.
 
 **I12 (executable bit):** Verify all runnable entrypoints in scripts/ have the executable bit set.
 
@@ -144,11 +144,11 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 
 **I16 (tool cross-reference):** Cross-reference the `allowed-tools` list against the skill body: if `Task` is listed, verify the body mentions spawning agents, tasks, or subagents; if `ToolSearch` is listed, verify the body mentions loading deferred or MCP tools. Flag listed tools with no corresponding usage.
 
-**I17 (side-effect guard):** If the skill body contains destructive or infrastructure-modifying command patterns (k3d cluster operations, git reset, git branch -d/-D, git apply --cached, git clean, git push --force, kubectl delete/drain/cordon, helm uninstall, rm -rf), verify that `disable-model-invocation: true` is present in the frontmatter. Without this guard the model may auto-invoke the skill.
+**I17 (side-effect guard):** If SKILL.md or referenced guidance contains destructive or infrastructure-modifying command patterns (k3d cluster operations, git reset, git branch -d/-D, git apply --cached, git clean, git push --force, kubectl delete/drain/cordon, helm uninstall, rm -rf), verify that `disable-model-invocation: true` is present in the frontmatter. Without this guard the model may auto-invoke the skill.
 
 #### Automated: preprocessing (I18)
 
-Automated by `check-preprocessing.py`. If the skill uses `` !`command` `` preprocessing directives (outside fenced code blocks), the script validates each directive for:
+Automated by `check-preprocessing.py`. If SKILL.md or referenced guidance uses `` !`command` `` preprocessing directives (outside fenced code blocks), the script validates each directive for:
 
 - **PP-syntax:** Preprocessing directive syntax is valid
 - **PP-err-handling:** Error handling on commands that depend on external state
@@ -179,7 +179,7 @@ Also runs shellcheck (if installed) at `-S warning` severity on .sh files; shell
 
 #### Automated: AskUserQuestion (I21)
 
-Automated by `check-ask-user.py`. Runs 9 sub-checks covering AskUserQuestion usage consistency:
+Automated by `check-ask-user.py`. Runs 9 sub-checks covering AskUserQuestion usage consistency across SKILL.md and referenced guidance files:
 
 - **AQ-declaration:** AskUserQuestion appears in `allowed-tools` if and only if the body references it (directly or via implicit patterns)
 - **AQ-implicit:** Natural-language phrases like "ask the user", "prompt the user", "let the user choose" imply user interaction but AskUserQuestion is missing from allowed-tools
@@ -240,7 +240,7 @@ Automated by `check-references.py` (I24) and `validate.py` frontmatter checks (I
 Automated by `check-best-practices.py`.
 
 - **BP-example-tags (I26):** Counts `<example>` tags in SKILL.md. Zero fails, 1-2 emits informational guidance, 3+ passes
-- **BP-over-prompting (I27):** Detects all-caps aggressive emphasis (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) in prose outside fenced blocks, headings, and `<example>` blocks across SKILL.md and text reference files mentioned in SKILL.md. 2+ hits fails, 1 informational, 0 pass
+- **BP-over-prompting (I27):** Detects all-caps aggressive emphasis (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) in prose outside fenced blocks, headings, and `<example>` blocks across SKILL.md and text reference files mentioned in SKILL.md. Pedagogical "good vs bad" example prose is excluded to reduce false positives. 2+ hits fails, 1 informational, 0 pass
 
 ---
 

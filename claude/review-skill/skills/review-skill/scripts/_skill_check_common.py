@@ -47,6 +47,9 @@ RESOURCE_SUBDIRECTORIES: Final[tuple[str, ...]] = (
     "assets",
     "examples",
 )
+DEFAULT_TEXT_REFERENCE_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {".md", ".markdown", ".mdx", ".txt", ".rst"},
+)
 
 # ---------------------------------------------------------------------------
 # NDJSON output format types and constants
@@ -93,6 +96,8 @@ FRONTMATTER_FIELD_RE: Final[Pattern[str]] = re.compile(
     r"^(?P<key>\w[\w-]*):\s*(?P<value>.*)$",
 )
 FENCE_RE: Final[Pattern[str]] = re.compile(r"^\s*```")
+HEADING_LINE_RE: Final[Pattern[str]] = re.compile(r"^\s*#{1,6}\s+")
+HEADING_CAPTURE_RE: Final[Pattern[str]] = re.compile(r"^\s*(#{1,6})\s+(.*)$")
 YAML_LIST_ITEM_RE: Final[Pattern[str]] = re.compile(r"^\s*-\s+(.*)$")
 HEADING_L2_RE: Final[Pattern[str]] = re.compile(r"^##\s+")
 HEADING_L3_RE: Final[Pattern[str]] = re.compile(r"^###\s+")
@@ -101,8 +106,59 @@ ARGUMENTS_HEADING_RE: Final[Pattern[str]] = re.compile(
     r"^##\s+[Aa]rguments",
 )
 TABLE_SEPARATOR_RE: Final[Pattern[str]] = re.compile(r"^\|[\s:-]+\|$")
+TABLE_ROW_RE: Final[Pattern[str]] = re.compile(r"^\s*\|")
+BLOCKQUOTE_RE: Final[Pattern[str]] = re.compile(r"^\s*>")
 BULLET_LIST_ITEM_RE: Final[Pattern[str]] = re.compile(r"^\s*[-*+]\s+")
 NUMBERED_LIST_ITEM_RE: Final[Pattern[str]] = re.compile(r"^\s*\d+\.\s+")
+
+RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
+    r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*",
+)
+IGNORE_RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
+    r"/(?:\.\.\.|\.\.|foo\.|bar\.|baz\.|example\.)",
+)
+
+TEACHING_HEADING_RE: Final[Pattern[str]] = re.compile(
+    r"\b(?:"
+    r"example(?:s)?|"
+    r"good\s+vs\s+bad|"
+    r"anti-?pattern(?:s)?|"
+    r"pitfall(?:s)?|"
+    r"failed\s+approach(?:es)?|"
+    r"must\s+not\s+contain|"
+    r"common\s+pitfalls"
+    r")\b",
+    re.IGNORECASE,
+)
+
+TEACHING_LABEL_RE: Final[Pattern[str]] = re.compile(
+    r"^\s*(?:"
+    r"\*\*(?:good|bad|wrong|correct|problem|solution|root\s+cause|"
+    r"not\s+a\s+candidate)\*\*"
+    r"|(?:good|bad|wrong|correct)\s*[:\-]"
+    r")",
+    re.IGNORECASE,
+)
+
+CHECKLIST_STYLE_LINE_RE: Final[Pattern[str]] = re.compile(
+    r"^\s*(?:\*\*[CIP]\d{1,2}\b|[-*+]\s+\*\*[A-Z]{2,3}-[a-z0-9-]+)",
+)
+
+INSTRUCTION_START_RE: Final[Pattern[str]] = re.compile(
+    r"^\s*(?:[-*+]\s+|\d+\.\s+)?"
+    r"(?:read|run|use|execute|invoke|parse|check|validate|verify|"
+    r"ask|prompt|collect|gather|fetch|search|write|edit|update|create|"
+    r"delete|remove|set|load|list|show|display|retry|repeat|rerun|"
+    r"iterate|apply)\b",
+    re.IGNORECASE,
+)
+
+COMMAND_PREFIX_RE: Final[Pattern[str]] = re.compile(
+    r"^\s*(?:[-*+]\s+|\d+\.\s+)?(?:[`\"'])?"
+    r"(?:git|kubectl|helm|docker|npm|yarn|pnpm|python3?|bash|sh|"
+    r"rm|mv|k3d|kind|terraform|pulumi|gh)\b",
+    re.IGNORECASE,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -852,6 +908,226 @@ def iter_fence_lines(
 
         if in_fence and in_matching_fence:
             yield ProseLine(index=index, text=line)
+
+
+def extract_referenced_text_paths(
+    document: SkillDocument,
+    *,
+    suffixes: frozenset[str] = DEFAULT_TEXT_REFERENCE_SUFFIXES,
+) -> tuple[Path, ...]:
+    """Return text-like files referenced from SKILL.md prose."""
+    references = {
+        match
+        for match in RESOURCE_REFERENCE_RE.findall(document.prose_body)
+        if not IGNORE_RESOURCE_REFERENCE_RE.search(match)
+    }
+
+    paths: list[Path] = []
+    for reference in sorted(references):
+        candidate = document.skill_dir / reference
+        if not candidate.is_file():
+            continue
+        if candidate.suffix.lower() not in suffixes:
+            continue
+        paths.append(candidate)
+
+    return tuple(paths)
+
+
+def _update_teaching_level(
+    stripped: str,
+    current_level: int | None,
+) -> tuple[int | None, bool]:
+    """Return updated teaching-section level and whether current heading is teaching."""
+    heading_match = HEADING_CAPTURE_RE.match(stripped)
+    if heading_match is None:
+        return current_level, False
+
+    level = len(heading_match.group(1))
+    if current_level is not None and level <= current_level:
+        current_level = None
+
+    if TEACHING_HEADING_RE.search(heading_match.group(2)):
+        return level, True
+    return current_level, current_level is not None
+
+
+def _is_meta_teaching_line(stripped: str) -> bool:
+    """Return whether a non-heading line belongs to pedagogical/meta prose."""
+    return bool(
+        TEACHING_LABEL_RE.match(stripped) or CHECKLIST_STYLE_LINE_RE.match(stripped),
+    )
+
+
+def build_teaching_line_indices(
+    lines: list[str],
+    *,
+    fenced_indices: frozenset[int],
+) -> frozenset[int]:
+    """Return indices for pedagogical/example prose that checks should ignore."""
+    teaching_indices: set[int] = set()
+    teaching_level: int | None = None
+
+    for index, line in enumerate(lines):
+        if index in fenced_indices:
+            continue
+
+        stripped = line.strip()
+        teaching_level, heading_is_teaching = _update_teaching_level(
+            stripped,
+            teaching_level,
+        )
+        should_mark = (
+            heading_is_teaching
+            or teaching_level is not None
+            or (bool(stripped) and _is_meta_teaching_line(stripped))
+        )
+        if should_mark:
+            teaching_indices.add(index)
+
+    return frozenset(teaching_indices)
+
+
+def build_teaching_fence_indices(
+    lines: list[str],
+    *,
+    teaching_indices: frozenset[int],
+) -> frozenset[int]:
+    """Return fenced-block indices that belong to teaching/example context."""
+    indices: set[int] = set()
+    in_fence = False
+    skip_fence = False
+    previous_non_empty: int | None = None
+
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+
+        if FENCE_RE.match(line):
+            if not in_fence:
+                skip_fence = (
+                    index in teaching_indices or previous_non_empty in teaching_indices
+                )
+                in_fence = True
+                if skip_fence:
+                    indices.add(index)
+            else:
+                if skip_fence:
+                    indices.add(index)
+                in_fence = False
+                skip_fence = False
+            continue
+
+        if in_fence:
+            if skip_fence:
+                indices.add(index)
+            continue
+
+        if stripped:
+            previous_non_empty = index
+
+    return frozenset(indices)
+
+
+@dataclass(frozen=True)
+class SkipConfig:
+    """Configure which line categories to exclude from reference scanning."""
+
+    fenced: bool = True
+    headings: bool = True
+    tables: bool = True
+    teaching: bool = True
+
+
+SKIP_ALL: Final[SkipConfig] = SkipConfig()
+
+
+@dataclass(frozen=True)
+class ReferenceFile:
+    """One referenced text file with precomputed skip indices."""
+
+    rel_path: str
+    lines: list[str]
+    skip_indices: frozenset[int]
+
+
+def build_reference_skip_indices(
+    lines: list[str],
+    *,
+    skip: SkipConfig = SKIP_ALL,
+) -> frozenset[int]:
+    """Return line indices that referenced-file checks should ignore."""
+    fenced_indices = build_fenced_line_indices(lines)
+    result: set[int] = set()
+
+    if skip.fenced:
+        result.update(fenced_indices)
+
+    if skip.headings:
+        result.update(
+            index
+            for index, line in enumerate(lines)
+            if HEADING_LINE_RE.match(line.strip())
+        )
+
+    result.update(
+        index for index, line in enumerate(lines) if BLOCKQUOTE_RE.match(line)
+    )
+
+    if skip.tables:
+        result.update(
+            index for index, line in enumerate(lines) if TABLE_ROW_RE.match(line)
+        )
+
+    if skip.teaching:
+        teaching_indices = build_teaching_line_indices(
+            lines,
+            fenced_indices=fenced_indices,
+        )
+        result.update(teaching_indices)
+        result.update(
+            build_teaching_fence_indices(
+                lines,
+                teaching_indices=teaching_indices,
+            ),
+        )
+
+    return frozenset(result)
+
+
+def iter_reference_inputs(
+    document: SkillDocument,
+    *,
+    skip: SkipConfig = SKIP_ALL,
+) -> tuple[ReferenceFile, ...]:
+    """Return referenced text files with precomputed skip indices."""
+    inputs: list[ReferenceFile] = []
+    for referenced_path in extract_referenced_text_paths(document):
+        rel_path = referenced_path.relative_to(document.skill_dir).as_posix()
+        lines = read_text(referenced_path).splitlines()
+        skip_indices = build_reference_skip_indices(lines, skip=skip)
+        inputs.append(
+            ReferenceFile(rel_path=rel_path, lines=lines, skip_indices=skip_indices),
+        )
+    return tuple(inputs)
+
+
+def is_instructional_prose_line(line: str) -> bool:
+    """Return whether one prose line likely contains operational guidance."""
+    stripped = line.strip()
+    is_non_instruction = (
+        not stripped
+        or HEADING_LINE_RE.match(stripped) is not None
+        or BLOCKQUOTE_RE.match(stripped) is not None
+        or TABLE_ROW_RE.match(stripped) is not None
+        or CHECKLIST_STYLE_LINE_RE.match(stripped) is not None
+        or TEACHING_LABEL_RE.match(stripped) is not None
+    )
+    if is_non_instruction:
+        return False
+
+    return bool(
+        INSTRUCTION_START_RE.match(stripped) or COMMAND_PREFIX_RE.match(stripped),
+    )
 
 
 # ---------------------------------------------------------------------------
