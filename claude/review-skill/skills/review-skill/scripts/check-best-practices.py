@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 from _skill_check_common import (
     CheckRecord,
@@ -42,6 +43,7 @@ from _skill_check_common import (
     build_fenced_line_indices,
     compile_patterns,
     format_hit,
+    read_text,
     run_check_cli,
 )
 
@@ -87,6 +89,21 @@ EXAMPLE_OPEN_RE: Final[Pattern[str]] = re.compile(
 )
 EXAMPLE_CLOSE_RE: Final[Pattern[str]] = re.compile(r"</example>", re.IGNORECASE)
 HEADING_RE: Final[Pattern[str]] = re.compile(r"^\s*#")
+
+RESOURCE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
+    r"(?:references|scripts|assets|examples)/[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)*",
+)
+IGNORE_REFERENCE_RE: Final[Pattern[str]] = re.compile(
+    r"/(?:\.\.\.|\.\.|foo\.|bar\.|baz\.|example\.)",
+)
+
+INLINE_CODE_RE: Final[Pattern[str]] = re.compile(r"`[^`]*`")
+DOUBLE_QUOTED_RE: Final[Pattern[str]] = re.compile(r'"[^"]*"')
+SINGLE_QUOTED_RE: Final[Pattern[str]] = re.compile(r"'[^']*'")
+
+TEXT_REFERENCE_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {".md", ".markdown", ".mdx", ".txt", ".rst"},
+)
 
 OVER_PROMPT_PATTERNS: Final[tuple[Pattern[str], ...]] = (
     re.compile(r"\bCRITICAL\b"),
@@ -265,6 +282,77 @@ def _is_ignored_line(
     )
 
 
+def _extract_referenced_text_paths(document: SkillDocument) -> tuple[Path, ...]:
+    """Return text-like files referenced from SKILL.md prose.
+
+    The check targets reference guidance files. Script files are excluded to avoid
+    false positives from source code literals and regex patterns.
+    """
+    references = {
+        match
+        for match in RESOURCE_REFERENCE_RE.findall(document.prose_body)
+        if not IGNORE_REFERENCE_RE.search(match)
+    }
+
+    paths: list[Path] = []
+    for reference in sorted(references):
+        candidate = document.skill_dir / reference
+        if not candidate.is_file():
+            continue
+        if candidate.suffix.lower() not in TEXT_REFERENCE_SUFFIXES:
+            continue
+        paths.append(candidate)
+
+    return tuple(paths)
+
+
+def _strip_non_instruction_segments(line: str) -> str:
+    """Remove inline-code and quoted snippets before over-prompting scans."""
+    return SINGLE_QUOTED_RE.sub(
+        "",
+        DOUBLE_QUOTED_RE.sub("", INLINE_CODE_RE.sub("", line)),
+    )
+
+
+def _scan_over_prompting_text(
+    text: str,
+    *,
+    body_start_line: int,
+    source: str,
+) -> tuple[int, str | None]:
+    """Count over-prompting hits and return first evidence for one source."""
+    lines = text.splitlines()
+    fenced_indices = build_fenced_line_indices(lines)
+    example_indices = _build_example_line_indices(lines, fenced_indices)
+
+    hit_count = 0
+    first_evidence: str | None = None
+
+    for index, line in enumerate(lines):
+        if _is_ignored_line(
+            index,
+            line,
+            fenced_indices=fenced_indices,
+            example_indices=example_indices,
+        ):
+            continue
+
+        sanitized = _strip_non_instruction_segments(line)
+        line_hits = sum(
+            len(pattern.findall(sanitized)) for pattern in OVER_PROMPT_PATTERNS
+        )
+        if line_hits == 0:
+            continue
+
+        hit_count += line_hits
+        if first_evidence is None:
+            first_evidence = (
+                f"{source} {format_hit(index, line, body_start_line=body_start_line)}"
+            )
+
+    return hit_count, first_evidence
+
+
 # ---------------------------------------------------------------------------
 # Check implementations
 # ---------------------------------------------------------------------------
@@ -302,34 +390,34 @@ def check_example_tags(document: SkillDocument) -> CheckRecord:
 
 
 def check_over_prompting(document: SkillDocument) -> CheckRecord:
-    """Detect aggressive emphasis patterns in prose guidance."""
-    lines = document.body.splitlines()
-    fenced_indices = build_fenced_line_indices(lines)
-    example_indices = _build_example_line_indices(lines, fenced_indices)
-
+    """Detect aggressive emphasis in SKILL.md and referenced guidance files."""
     hit_count = 0
     first_evidence: str | None = None
 
-    for index, line in enumerate(lines):
-        if _is_ignored_line(
-            index,
-            line,
-            fenced_indices=fenced_indices,
-            example_indices=example_indices,
-        ):
-            continue
+    skill_hits, skill_evidence = _scan_over_prompting_text(
+        document.body,
+        body_start_line=document.body_start_line,
+        source="SKILL.md",
+    )
+    hit_count += skill_hits
+    if first_evidence is None and skill_evidence is not None:
+        first_evidence = skill_evidence
 
-        line_hits = sum(len(pattern.findall(line)) for pattern in OVER_PROMPT_PATTERNS)
-        if line_hits == 0:
-            continue
+    referenced_text_paths = _extract_referenced_text_paths(document)
+    for referenced_path in referenced_text_paths:
+        rel_path = referenced_path.relative_to(document.skill_dir).as_posix()
+        referenced_hits, referenced_evidence = _scan_over_prompting_text(
+            read_text(referenced_path),
+            body_start_line=1,
+            source=rel_path,
+        )
+        hit_count += referenced_hits
+        if first_evidence is None and referenced_evidence is not None:
+            first_evidence = referenced_evidence
 
-        hit_count += line_hits
-        if first_evidence is None:
-            first_evidence = format_hit(
-                index,
-                line,
-                body_start_line=document.body_start_line,
-            )
+    scanned_detail = (
+        f"scanned SKILL.md and {len(referenced_text_paths)} referenced text file(s)"
+    )
 
     if hit_count >= OVER_PROMPT_FAIL_THRESHOLD:
         return CheckRecord.fail(
@@ -337,7 +425,7 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
             (
                 f"Detected {hit_count} aggressive emphasis pattern hit(s) "
                 "outside headings/examples (threshold 2) - first: "
-                f"{first_evidence}"
+                f"{first_evidence} ({scanned_detail})"
             ),
             tier="I27",
         )
@@ -348,14 +436,17 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
             (
                 f"Detected {hit_count} aggressive emphasis pattern hit(s) "
                 "outside headings/examples (below fail threshold of 2) - first: "
-                f"{first_evidence}"
+                f"{first_evidence} ({scanned_detail})"
             ),
             tier="I27",
         )
 
     return CheckRecord.ok(
         CHECK_OVER_PROMPTING,
-        "No aggressive emphasis patterns detected outside headings/examples",
+        (
+            "No aggressive emphasis patterns detected outside "
+            f"headings/examples ({scanned_detail})"
+        ),
         tier="I27",
     )
 
