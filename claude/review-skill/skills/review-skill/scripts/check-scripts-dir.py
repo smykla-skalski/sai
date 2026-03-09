@@ -6,6 +6,9 @@ Sub-checks:
 - `SD-no-bash`
 - `SD-executable`
 - `SD-legacy-bash-info`
+- `SD-help-output-info`
+- `SD-exit-codes-info`
+- `SD-undeclared-deps-info`
 
 Output is NDJSON with one final summary line.
 Exit codes:
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import re
 import stat
+import sys
 from dataclasses import dataclass
 from re import Pattern
 from typing import TYPE_CHECKING, Final
@@ -46,12 +50,18 @@ CHECK_SCRIPT_INVOCATION_PREFIX: Final[str] = "SD-invocation-prefix"
 CHECK_NO_BASH_PREFIX: Final[str] = "SD-no-bash"
 CHECK_SCRIPT_EXECUTABLE: Final[str] = "SD-executable"
 CHECK_LEGACY_BASH_INFO: Final[str] = "SD-legacy-bash-info"
+CHECK_HELP_OUTPUT_INFO: Final[str] = "SD-help-output-info"
+CHECK_EXIT_CODES_INFO: Final[str] = "SD-exit-codes-info"
+CHECK_UNDECLARED_DEPS_INFO: Final[str] = "SD-undeclared-deps-info"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_SCRIPT_INVOCATION_PREFIX,
     CHECK_NO_BASH_PREFIX,
     CHECK_SCRIPT_EXECUTABLE,
     CHECK_LEGACY_BASH_INFO,
+    CHECK_HELP_OUTPUT_INFO,
+    CHECK_EXIT_CODES_INFO,
+    CHECK_UNDECLARED_DEPS_INFO,
 )
 
 # ---------------------------------------------------------------------------
@@ -88,9 +98,40 @@ SHEBANG_PREFIX: Final[str] = "#!"
 EXECUTABLE_MODE_MASK: Final[int] = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 MAX_LISTED_EXAMPLES: Final[int] = 5
 CONTINUATION_DIVISOR: Final[int] = 2
+MIN_DISTINCT_EXIT_CODES: Final[int] = 2
 
 _POST_SHORT_FLAG_RE: Final[Pattern[str]] = re.compile(r"^\s+-[a-zA-Z]")
 _POST_LONG_FLAG_RE: Final[Pattern[str]] = re.compile(r"^\s+--[a-zA-Z]")
+
+_HELP_IMPORT_RE: Final[Pattern[str]] = re.compile(
+    r"^(?:import\s+(?:argparse|click|typer)|from\s+(?:argparse|click|typer)\b)",
+    re.MULTILINE,
+)
+_SHELL_HELP_CASE_RE: Final[Pattern[str]] = re.compile(r"--help\)")
+
+_PY_EXIT_CODE_RE: Final[Pattern[str]] = re.compile(
+    r"(?:sys\.exit|raise\s+SystemExit)\(\s*(\d+)\s*\)",
+)
+_SH_EXIT_CODE_RE: Final[Pattern[str]] = re.compile(
+    r"\bexit\s+(\d+)\b",
+)
+
+_PY_IMPORT_RE: Final[Pattern[str]] = re.compile(
+    r"^(?:import\s+(\w+)|from\s+(\w+))",
+    re.MULTILINE,
+)
+
+_STDLIB_MODULES: Final[frozenset[str]] = (
+    frozenset(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names")
+    else frozenset({"abc", "argparse", "ast", "collections", "contextlib",
+                     "dataclasses", "datetime", "enum", "functools", "hashlib",
+                     "importlib", "io", "itertools", "json", "logging", "math",
+                     "operator", "os", "pathlib", "platform", "pprint", "re",
+                     "shlex", "shutil", "signal", "socket", "stat", "string",
+                     "subprocess", "sys", "tempfile", "textwrap", "threading",
+                     "time", "traceback", "typing", "unittest", "urllib",
+                     "uuid", "warnings"})
+)
 
 
 @dataclass(frozen=True)
@@ -514,6 +555,210 @@ def check_legacy_bash_info(document: SkillDocument) -> list[CheckRecord]:
     ]
 
 
+def check_help_output_info(document: SkillDocument) -> list[CheckRecord]:
+    """Check whether runnable scripts advertise --help support."""
+    scripts_dir = document.skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+
+    runnable_scripts, _ = _collect_runnable_scripts(scripts_dir)
+
+    if not runnable_scripts:
+        return [
+            CheckRecord(
+                check=CHECK_HELP_OUTPUT_INFO,
+                passed=True,
+                detail="No runnable scripts found",
+                tier="I30",
+            ),
+        ]
+
+    missing_help: list[str] = []
+    for path in runnable_scripts:
+        rel = path.relative_to(scripts_dir).as_posix()
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            missing_help.append(rel)
+            continue
+
+        has_help = False
+        if path.suffix.lower() == ".py":
+            has_help = _HELP_IMPORT_RE.search(content) is not None
+        elif path.suffix.lower() == ".sh":
+            has_help = _SHELL_HELP_CASE_RE.search(content) is not None
+
+        if not has_help:
+            missing_help.append(rel)
+
+    if missing_help:
+        return [
+            CheckRecord.info(
+                CHECK_HELP_OUTPUT_INFO,
+                (
+                    f"{len(missing_help)} of {len(runnable_scripts)} runnable "
+                    "script(s) lack --help support: "
+                    f"{_format_examples(missing_help)}"
+                ),
+                tier="I30",
+            ),
+        ]
+
+    return [
+        CheckRecord(
+            check=CHECK_HELP_OUTPUT_INFO,
+            passed=True,
+            detail=(
+                f"All {len(runnable_scripts)} runnable script(s) "
+                "have --help support"
+            ),
+            tier="I30",
+        ),
+    ]
+
+
+def _collect_exit_codes(scripts_dir: Path) -> tuple[int, set[str]]:
+    """Scan eligible scripts and return (eligible_count, distinct_exit_codes)."""
+    distinct_codes: set[str] = set()
+    eligible_count = 0
+
+    for path in _iter_script_files(scripts_dir):
+        if path.name.startswith("_"):
+            continue
+        first_line = _read_first_line(path)
+        if first_line is None or not first_line.startswith(SHEBANG_PREFIX):
+            continue
+
+        eligible_count += 1
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        pattern = _PY_EXIT_CODE_RE if path.suffix.lower() == ".py" else _SH_EXIT_CODE_RE
+        for m in pattern.finditer(content):
+            distinct_codes.add(m.group(1))
+
+    return eligible_count, distinct_codes
+
+
+def check_exit_codes_info(document: SkillDocument) -> list[CheckRecord]:
+    """Check whether scripts use distinct exit codes."""
+    scripts_dir = document.skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+
+    eligible_count, distinct_codes = _collect_exit_codes(scripts_dir)
+
+    if eligible_count == 0:
+        return [
+            CheckRecord(
+                check=CHECK_EXIT_CODES_INFO,
+                passed=True,
+                detail="No eligible scripts found",
+                tier="P18",
+            ),
+        ]
+
+    if len(distinct_codes) >= MIN_DISTINCT_EXIT_CODES:
+        return [
+            CheckRecord(
+                check=CHECK_EXIT_CODES_INFO,
+                passed=True,
+                detail=(
+                    f"Found {len(distinct_codes)} distinct exit code(s) "
+                    f"across {eligible_count} script(s)"
+                ),
+                tier="P18",
+            ),
+        ]
+
+    return [
+        CheckRecord.info(
+            CHECK_EXIT_CODES_INFO,
+            (
+                f"Only {len(distinct_codes)} distinct exit code(s) found "
+                f"across {eligible_count} script(s) - consider using "
+                "distinct codes for pass/fail/usage errors"
+            ),
+            tier="P18",
+        ),
+    ]
+
+
+def _find_third_party_imports(
+    content: str,
+    local_modules: frozenset[str],
+) -> list[str]:
+    """Return list of third-party module names imported in content."""
+    third_party: list[str] = []
+    known = _STDLIB_MODULES | local_modules
+    for m in _PY_IMPORT_RE.finditer(content):
+        module = m.group(1) or m.group(2)
+        if module not in known and module not in third_party:
+            third_party.append(module)
+    return third_party
+
+
+def check_undeclared_deps_info(document: SkillDocument) -> list[CheckRecord]:
+    """Check whether Python scripts import undeclared third-party dependencies."""
+    scripts_dir = document.skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+
+    py_files = sorted(
+        p for p in _iter_script_files(scripts_dir) if p.suffix.lower() == ".py"
+    )
+
+    if not py_files:
+        return [
+            CheckRecord(
+                check=CHECK_UNDECLARED_DEPS_INFO,
+                passed=True,
+                detail="No .py files found in scripts/",
+                tier="I31",
+            ),
+        ]
+
+    local_modules: frozenset[str] = frozenset(p.stem for p in py_files)
+
+    undeclared: list[str] = []
+    for path in py_files:
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+
+        if "# /// script" in content:
+            continue
+
+        file_third_party = _find_third_party_imports(content, local_modules)
+        if file_third_party:
+            rel = path.relative_to(scripts_dir).as_posix()
+            undeclared.append(f"{rel} ({', '.join(file_third_party)})")
+
+    if undeclared:
+        return [
+            CheckRecord.info(
+                CHECK_UNDECLARED_DEPS_INFO,
+                (
+                    f"{len(undeclared)} script(s) import undeclared "
+                    f"third-party module(s): {_format_examples(undeclared)}"
+                ),
+                tier="I31",
+            ),
+        ]
+
+    return [
+        CheckRecord(
+            check=CHECK_UNDECLARED_DEPS_INFO,
+            passed=True,
+            detail="All Python script imports are stdlib or local",
+            tier="I31",
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -523,6 +768,9 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] 
     CHECK_NO_BASH_PREFIX: check_no_bash_prefix,
     CHECK_SCRIPT_EXECUTABLE: check_script_executable,
     CHECK_LEGACY_BASH_INFO: check_legacy_bash_info,
+    CHECK_HELP_OUTPUT_INFO: check_help_output_info,
+    CHECK_EXIT_CODES_INFO: check_exit_codes_info,
+    CHECK_UNDECLARED_DEPS_INFO: check_undeclared_deps_info,
 }
 
 

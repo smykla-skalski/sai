@@ -6,6 +6,7 @@ Sub-checks:
 - CT-no-echo
 - CT-no-grading
 - CT-long-prose
+- CT-unversioned-cmd-info
 
 Output is NDJSON, one object per line, with a summary on the final line.
 Exit codes: 0 when all pass, 1 when any fail, 2 for usage/input errors.
@@ -39,6 +40,7 @@ CHECK_NO_SECRETS: Final[str] = "CT-no-secrets"
 CHECK_NO_USELESS_ECHO: Final[str] = "CT-no-echo"
 CHECK_NO_GRADING_STYLE: Final[str] = "CT-no-grading"
 CHECK_LONG_PROSE: Final[str] = "CT-long-prose"
+CHECK_UNVERSIONED_CMD: Final[str] = "CT-unversioned-cmd-info"
 
 # 2+ distinct grading signals (e.g. point-values + rubric-keywords) = rubric detected
 GRADING_SIGNAL_THRESHOLD: Final[int] = 2
@@ -100,6 +102,20 @@ GRADING_PATTERNS: Final[tuple[tuple[str, Pattern[str]], ...]] = (
         ),
     ),
 )
+
+UNVERSIONED_NPX_RE: Final[Pattern[str]] = re.compile(
+    r"\b(?:npx|uvx)\s+([a-zA-Z0-9@/_-]+?)(?:\s|$)",
+)
+UNVERSIONED_PIPX_RE: Final[Pattern[str]] = re.compile(
+    r"\bpipx\s+run\s+([a-zA-Z0-9_-]+)(?!\S*(?:==|>=|@))",
+)
+UNVERSIONED_PIP_RE: Final[Pattern[str]] = re.compile(
+    r"\b(?:pip|pip3)\s+install\s+([a-zA-Z0-9_-]+)(?!\S*(?:==|>=|~=|@))",
+)
+UNVERSIONED_GO_RE: Final[Pattern[str]] = re.compile(
+    r"\bgo\s+run\s+(\S+?)(?:\s|$)",
+)
+VARIABLE_REF_RE: Final[Pattern[str]] = re.compile(r'["\$]')
 
 
 # ---------------------------------------------------------------------------
@@ -315,6 +331,55 @@ def check_long_prose_lines(document: SkillDocument) -> CheckRecord:
     )
 
 
+def _has_version_specifier(pkg: str) -> bool:
+    """Return whether a package name contains a version specifier (@, ==, >=)."""
+    return bool(re.search(r"[@==>=]", pkg))
+
+
+def check_unversioned_commands(document: SkillDocument) -> CheckRecord:
+    """Detect unversioned runner commands in shell code fences."""
+    body = document.body
+    hits: list[str] = []
+
+    for prose_line in iter_fence_lines(body, SHELL_FENCE_LANGUAGES):
+        line_text = prose_line.text
+        if VARIABLE_REF_RE.search(line_text):
+            continue
+
+        for match in UNVERSIONED_NPX_RE.finditer(line_text):
+            pkg = match.group(1)
+            if not _has_version_specifier(pkg):
+                hits.append(match.group(0).strip())
+
+        hits.extend(
+            m.group(0).strip() for m in UNVERSIONED_PIPX_RE.finditer(line_text)
+        )
+        hits.extend(
+            m.group(0).strip() for m in UNVERSIONED_PIP_RE.finditer(line_text)
+        )
+
+        for match in UNVERSIONED_GO_RE.finditer(line_text):
+            pkg = match.group(1)
+            if not _has_version_specifier(pkg):
+                hits.append(match.group(0).strip())
+
+    if hits:
+        return CheckRecord.info(
+            CHECK_UNVERSIONED_CMD,
+            (
+                f"{len(hits)} unversioned runner command(s) in code fences "
+                f"- first: {hits[0]}"
+            ),
+            tier="P22",
+        )
+
+    return CheckRecord.ok(
+        CHECK_UNVERSIONED_CMD,
+        "No unversioned runner commands in code fences",
+        tier="P22",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -327,6 +392,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_NO_USELESS_ECHO,
     CHECK_NO_GRADING_STYLE,
     CHECK_LONG_PROSE,
+    CHECK_UNVERSIONED_CMD,
 )
 
 CHECK_FUNCTIONS: Final[dict[str, CheckFunction]] = {
@@ -334,6 +400,7 @@ CHECK_FUNCTIONS: Final[dict[str, CheckFunction]] = {
     CHECK_NO_USELESS_ECHO: check_no_useless_echo,
     CHECK_NO_GRADING_STYLE: check_no_grading_style,
     CHECK_LONG_PROSE: check_long_prose_lines,
+    CHECK_UNVERSIONED_CMD: check_unversioned_commands,
 }
 
 

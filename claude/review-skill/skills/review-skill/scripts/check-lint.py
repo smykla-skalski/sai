@@ -2,7 +2,8 @@
 """Static analysis for shell and Python scripts.
 
 This tool runs three layers of checks:
-- custom shell heuristics (`CL-S01`..`CL-S27`)
+- custom shell heuristics (`CL-S01`..`CL-S28`)
+- custom Python heuristics (`CL-P01`)
 - shellcheck integration (when installed)
 - ruff integration for Python files (when installed)
 
@@ -35,6 +36,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     Rule = Callable[["ScanContext"], list["FindingRecord"]]
+    PythonRule = Callable[["PythonScanContext"], list["FindingRecord"]]
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,15 @@ class ScanContext:
     lines: tuple[str, ...]
     has_set_u: bool
     has_pipefail: bool
+
+
+@dataclass(frozen=True)
+class PythonScanContext:
+    """Python script source and derived metadata used by custom checks."""
+
+    path: Path
+    content: str
+    lines: tuple[str, ...]
 
 
 SEVERITY_RANK: Final[dict[str, int]] = {
@@ -233,6 +244,24 @@ _GREP_OPTIONS_WITH_ARG: Final[frozenset[str]] = frozenset({
     "--label", "--include", "--exclude", "--exclude-dir",
     "--color", "--colours",
 })
+
+CHECK_SHELL_INTERACTIVE: Final[str] = "CL-S28"
+CHECK_PYTHON_INTERACTIVE: Final[str] = "CL-P01"
+
+# Shell interactive prompt patterns.
+SHELL_READ_P_RE: Final[re.Pattern[str]] = re.compile(r"\bread\b[^;|&\n]*\s-[A-Za-z]*p")
+SHELL_SELECT_RE: Final[re.Pattern[str]] = re.compile(r"\bselect\s+\w+\s+in\b")
+SHELL_TUI_RE: Final[re.Pattern[str]] = re.compile(r"\bdialog\b|\bwhiptail\b")
+
+# Python interactive prompt patterns.
+PYTHON_INPUT_RE: Final[re.Pattern[str]] = re.compile(r"\binput\(")
+PYTHON_GETPASS_RE: Final[re.Pattern[str]] = re.compile(r"\bgetpass\.getpass\(")
+PYTHON_STDIN_READ_RE: Final[re.Pattern[str]] = re.compile(
+    r"\bsys\.stdin\.read\(|\bsys\.stdin\.readline\(",
+)
+PYTHON_CURSES_RE: Final[re.Pattern[str]] = re.compile(
+    r"\bimport\s+curses\b|\bfrom\s+curses\b",
+)
 
 
 def _is_comment(line: str) -> bool:
@@ -1369,6 +1398,61 @@ def _check_stale_global(context: ScanContext) -> list[FindingRecord]:
     return findings
 
 
+def _check_shell_interactive(context: ScanContext) -> list[FindingRecord]:
+    """Flag shell scripts that prompt for interactive input."""
+    findings: list[FindingRecord] = []
+    for index, line in enumerate(context.lines):
+        if _is_comment(line):
+            continue
+        if (
+            SHELL_READ_P_RE.search(line)
+            or SHELL_SELECT_RE.search(line)
+            or SHELL_TUI_RE.search(line)
+        ):
+            findings.append(
+                FindingRecord(
+                    file=str(context.path),
+                    line=index + 1,
+                    severity="critical",
+                    check=CHECK_SHELL_INTERACTIVE,
+                    message=(
+                        "Interactive prompt detected - skill scripts run "
+                        "without a TTY"
+                    ),
+                    evidence="Use $ARGUMENTS or AskUserQuestion instead",
+                ),
+            )
+    return findings
+
+
+def _check_python_interactive(context: PythonScanContext) -> list[FindingRecord]:
+    """Flag Python scripts that prompt for interactive input."""
+    findings: list[FindingRecord] = []
+    for index, line in enumerate(context.lines):
+        if line.lstrip().startswith("#"):
+            continue
+        if (
+            PYTHON_INPUT_RE.search(line)
+            or PYTHON_GETPASS_RE.search(line)
+            or PYTHON_STDIN_READ_RE.search(line)
+            or PYTHON_CURSES_RE.search(line)
+        ):
+            findings.append(
+                FindingRecord(
+                    file=str(context.path),
+                    line=index + 1,
+                    severity="critical",
+                    check=CHECK_PYTHON_INTERACTIVE,
+                    message=(
+                        "Interactive prompt detected - skill scripts run "
+                        "without a TTY"
+                    ),
+                    evidence="Use $ARGUMENTS or AskUserQuestion instead",
+                ),
+            )
+    return findings
+
+
 CUSTOM_SHELL_CHECKS: Final[tuple[Rule, ...]] = (
     _check_pipe_delimiter,
     _check_suppressed_exit_code,
@@ -1397,6 +1481,11 @@ CUSTOM_SHELL_CHECKS: Final[tuple[Rule, ...]] = (
     _check_fragile_output_parse,
     _check_deep_relative_path,
     _check_stale_global,
+    _check_shell_interactive,
+)
+
+CUSTOM_PYTHON_CHECKS: Final[tuple[PythonRule, ...]] = (
+    _check_python_interactive,
 )
 
 
@@ -1414,6 +1503,28 @@ def _scan_shell_file(path: Path) -> list[FindingRecord]:
     context = _new_context(path, content)
     findings: list[FindingRecord] = []
     for check_fn in CUSTOM_SHELL_CHECKS:
+        findings.extend(check_fn(context))
+    return findings
+
+
+def _scan_python_file(path: Path) -> list[FindingRecord]:
+    """Run custom Python checks on one `.py` file."""
+    if path.suffix.lower() != ".py":
+        return []
+
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as error:
+        _write_stderr(f"Error reading {path}: {error}")
+        return []
+
+    context = PythonScanContext(
+        path=path,
+        content=content,
+        lines=tuple(content.splitlines()),
+    )
+    findings: list[FindingRecord] = []
+    for check_fn in CUSTOM_PYTHON_CHECKS:
         findings.extend(check_fn(context))
     return findings
 
@@ -1609,6 +1720,26 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _gather_findings(
+    shell_files: list[Path],
+    python_files: list[Path],
+    *,
+    run_shellcheck: bool,
+    run_ruff: bool,
+) -> list[FindingRecord]:
+    """Run all check layers and return combined findings."""
+    findings: list[FindingRecord] = []
+    for shell_file in shell_files:
+        findings.extend(_scan_shell_file(shell_file))
+    for python_file in python_files:
+        findings.extend(_scan_python_file(python_file))
+    if run_shellcheck and shell_files:
+        findings.extend(_run_shellcheck(shell_files))
+    if run_ruff and python_files:
+        findings.extend(_run_ruff(python_files))
+    return findings
+
+
 def main(argv: list[str] | None = None) -> int:
     """Run linter and return process exit code."""
     parser = _build_parser()
@@ -1625,15 +1756,12 @@ def main(argv: list[str] | None = None) -> int:
         _write_stderr("No .sh or .py files found")
         return 0
 
-    findings: list[FindingRecord] = []
-    for shell_file in shell_files:
-        findings.extend(_scan_shell_file(shell_file))
-
-    if not args.no_shellcheck and shell_files:
-        findings.extend(_run_shellcheck(shell_files))
-
-    if not args.no_ruff and python_files:
-        findings.extend(_run_ruff(python_files))
+    findings = _gather_findings(
+        shell_files,
+        python_files,
+        run_shellcheck=not args.no_shellcheck,
+        run_ruff=not args.no_ruff,
+    )
 
     filtered = _sort_findings(_apply_severity_filter(findings, args.severity))
 

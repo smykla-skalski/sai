@@ -67,15 +67,15 @@ The orchestrator delegates to companion scripts:
 | :-- | :-- | :-- | :-- |
 | `check-security.py` | C8 | SC-* | Security vulnerabilities (shell=True, eval, pickle) |
 | `check-file-refs.py` | C3, P3, P6, I15 | FR-* | File reference resolution and format |
-| `check-scripts-dir.py` | I6, I12, P16 | SD-* | Script invocation prefix, runnable entrypoint permissions, and legacy shell signal |
+| `check-scripts-dir.py` | I6, I12, I30, I31, P16, P18 | SD-* | Script invocation prefix, runnable entrypoint permissions, help output, exit codes, undeclared deps, and legacy shell signal |
 | `check-references.py` | C2, P1, P8, P15, I14 | RF-* | Body metrics and reference structure |
-| `check-config.py` | I11, I16, I17 | CF-* | Tool usage, XDG state, side-effect guard |
-| `check-content.py` | C6, C7, I13 | CT-* | Secrets, useless echo, grading style |
-| `check-best-practices.py` | I26, I27, P11-P14 | BP-* | Example tags, over-prompting, and best-practice signals |
+| `check-config.py` | I11, I16, I17, P19 | CF-* | Tool usage, XDG state, side-effect guard, MCP format |
+| `check-content.py` | C6, C7, I13, P22 | CT-* | Secrets, useless echo, grading style, unversioned commands |
+| `check-best-practices.py` | I26, I27, P11-P14, P20-P21 | BP-* | Example tags, over-prompting, evals dir, unversioned tools, and best-practice signals |
 | `check-fork-candidate.py` | P9 | FK-* | Fork candidate analysis |
 | `check-preprocessing.py` | I18 | PP-* | Preprocessing directive hygiene |
 | `check-read-gates.py` | I19 (7 sub) | RG-* | Reference read gate analysis |
-| `check-lint.py` | I20 | CL-* | Script static analysis (shellcheck/ruff) |
+| `check-lint.py` | I20 | CL-* | Script static analysis (shellcheck/ruff), interactive prompt detection |
 | `check-ask-user.py` | I21 (9 sub) | AQ-* | AskUserQuestion usage validation |
 | `check-flag-coverage.py` | I22 (3 sub), I28 | FC-* | Flag documentation consistency and example coverage |
 | `check-hooks.py` | I23 (11 sub) | HK-* | Hooks configuration validation |

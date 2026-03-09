@@ -64,12 +64,12 @@ def _find_check(records: list[dict[str, object]], check_id: str) -> dict[str, ob
 
 
 class ValidateScriptTests(unittest.TestCase):
-    def test_frontmatter_missing_fields_emits_all_nine_checks(self) -> None:
+    def test_frontmatter_missing_fields_emits_all_checks(self) -> None:
         doc = _make_doc()
         collector, records = _run_frontmatter(doc)
 
-        self.assertEqual(collector.total, 9)
-        self.assertEqual(len(records), 9)
+        self.assertEqual(collector.total, 11)
+        self.assertEqual(len(records), 11)
         self.assertEqual(
             sum(1 for record in records if record["check"] == "FM-name-format"), 1
         )
@@ -78,6 +78,12 @@ class ValidateScriptTests(unittest.TestCase):
                 1 for record in records if record["check"] == "FM-desc-voice"
             ),
             1,
+        )
+        self.assertEqual(
+            sum(1 for record in records if record["check"] == "FM-name-reserved"), 1
+        )
+        self.assertEqual(
+            sum(1 for record in records if record["check"] == "FM-desc-no-xml"), 1
         )
 
     def test_missing_structure_delegate_emits_runtime_failure(self) -> None:
@@ -689,9 +695,9 @@ class CliTests(unittest.TestCase):
             exit_code = validate.main(["/virtual/fake-skill", "frontmatter"])
 
         self.assertEqual(exit_code, 0)
-        # Should have 9 frontmatter checks + 1 summary
+        # Should have 11 frontmatter checks + 1 summary
         check_records = [r for r in records if "check" in r]
-        self.assertEqual(len(check_records), 9)
+        self.assertEqual(len(check_records), 11)
 
     def test_main_structure_mode_only(self) -> None:
         """Structure mode should not emit frontmatter checks."""
@@ -1124,6 +1130,90 @@ class FlagCoverageUnitTests(unittest.TestCase):
         result = self._mod._get_arguments_section_flags(lines, fenced)
         self.assertIsNotNone(result)
         self.assertEqual(result, {"--foo"})
+
+
+class ReservedNameTests(unittest.TestCase):
+    def test_claude_helper_fails(self) -> None:
+        doc = _make_doc(frontmatter={"name": "claude-helper"})
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-name-reserved")
+        self.assertIs(rec["pass"], False)
+        self.assertIn("claude", str(rec["detail"]))
+
+    def test_my_anthropic_tool_fails(self) -> None:
+        doc = _make_doc(frontmatter={"name": "my-anthropic-tool"})
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-name-reserved")
+        self.assertIs(rec["pass"], False)
+        self.assertIn("anthropic", str(rec["detail"]))
+
+    def test_safe_name_passes(self) -> None:
+        doc = _make_doc(frontmatter={"name": "fake-skill"})
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-name-reserved")
+        self.assertIs(rec["pass"], True)
+
+    def test_missing_name_cascades(self) -> None:
+        doc = _make_doc()
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-name-reserved")
+        self.assertIs(rec["pass"], False)
+        self.assertIn("Cannot validate", str(rec["detail"]))
+
+    def test_both_reserved_words_detected(self) -> None:
+        doc = _make_doc(frontmatter={"name": "claude-anthropic-bot"})
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-name-reserved")
+        self.assertIs(rec["pass"], False)
+        self.assertIn("claude", str(rec["detail"]))
+        self.assertIn("anthropic", str(rec["detail"]))
+
+    def test_substring_not_flagged(self) -> None:
+        doc = _make_doc(frontmatter={"name": "claudette-review"})
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-name-reserved")
+        self.assertIs(rec["pass"], True)
+
+
+class DescriptionXmlTests(unittest.TestCase):
+    def test_bold_tag_fails(self) -> None:
+        doc = _make_doc(
+            frontmatter={"name": "test", "description": "Generate <b>reports</b>."}
+        )
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-desc-no-xml")
+        self.assertIs(rec["pass"], False)
+
+    def test_br_tag_fails(self) -> None:
+        doc = _make_doc(
+            frontmatter={"name": "test", "description": "First line.<br />Second."}
+        )
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-desc-no-xml")
+        self.assertIs(rec["pass"], False)
+
+    def test_clean_description_passes(self) -> None:
+        doc = _make_doc(
+            frontmatter={"name": "test", "description": "Review skills. Use when auditing."}
+        )
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-desc-no-xml")
+        self.assertIs(rec["pass"], True)
+
+    def test_missing_description_cascades(self) -> None:
+        doc = _make_doc(frontmatter={"name": "test"})
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-desc-no-xml")
+        self.assertIs(rec["pass"], False)
+        self.assertIn("Cannot validate", str(rec["detail"]))
+
+    def test_comparison_operator_not_flagged(self) -> None:
+        doc = _make_doc(
+            frontmatter={"name": "test", "description": "Handle cases where count < 10."}
+        )
+        _, records = _run_frontmatter(doc)
+        rec = _find_check(records, "FM-desc-no-xml")
+        self.assertIs(rec["pass"], True)
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ The NDJSON column shows check IDs emitted by validation scripts in JSON output. 
   - [Automated: size checks (I24-I25)](#automated-size-checks-i24-i25)
   - [Automated: best practices (I26-I27)](#automated-best-practices-i26-i27)
 - [Polish checks](#polish-checks)
-  - [Automated polish signals (P11-P16)](#automated-polish-signals-p11-p16)
+  - [Automated polish signals (P11-P22)](#automated-polish-signals-p11-p22)
   - [Reference file quality](#reference-file-quality)
   - [Design quality](#design-quality)
   - [Fork candidate analysis (P9)](#fork-candidate-analysis-p9)
@@ -39,10 +39,10 @@ Any single failure in this tier results in an overall **FAIL** verdict. These re
 
 | ID | NDJSON | Check | Source |
 | :-- | :-- | :-- | :-- |
-| C1 | FM-desc-present, FM-desc-trigger | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) | Anthropic Best Practices, Agent Skills Spec |
+| C1 | FM-desc-present, FM-desc-trigger, FM-desc-no-xml | Description includes what the skill does AND when-to-use trigger phrases (skip trigger check if `disable-model-invocation: true`) and no XML tags | Anthropic Best Practices, Agent Skills Spec |
 | C2 | RF-body-lines | SKILL.md body under 500 lines (excluding frontmatter); see I24 for character limit | Agent Skills Spec, Claude Code Docs |
 | C3 | FR-resolves | All file references in SKILL.md resolve to actual files | Agent Skills Spec |
-| C4 | FM-name-* | Name field valid format and matches directory name | Agent Skills Spec |
+| C4 | FM-name-* | Name field valid format, matches directory name, and no reserved words | Agent Skills Spec, Best Practices |
 | C5 | - | No generic content Claude already knows ("write clean code", "handle errors") | Anthropic skill-creator, Context Engineering |
 | C6 | CT-no-grading | Not structured as a scoring rubric with points, weights, or letter grades | Anthropic Best Practices |
 | C7 | CT-no-secrets | No secrets or credentials in skill files (API keys, tokens, private keys) | Anthropic Best Practices |
@@ -91,7 +91,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I17 | CF-side-effect | Side-effect skills have `disable-model-invocation: true` in frontmatter | Anthropic Best Practices |
 | I18 | PP-* | Preprocessing directives follow best practices (error handling, output limits, no secrets, no mutations, no slow/hanging commands) | Claude Code Docs, Community Best Practices |
 | I19 | RG-* | Reference read gate analysis: gate presence, passive mentions, orphan files, dead bundled-only listings, use-before-gate ordering, gate purpose text, multi-flow coverage | Empirical finding, I5 automated complement |
-| I20 | CL-aggregate | Bundled scripts pass static analysis (shellcheck for .sh, ruff for .py; critical/medium severity) | SAI Script Audit, ShellCheck, Ruff |
+| I20 | CL-aggregate | Bundled scripts pass static analysis (shellcheck for .sh, ruff for .py; critical/medium severity); interactive prompt detection (CL-S28 shell, CL-P01 python) | SAI Script Audit, ShellCheck, Ruff, Using Scripts |
 | I21 | AQ-* | AskUserQuestion declared when body implies user interaction, not used in spawned agents, required args have ask-or-fallback | SAI Convention, Skill Authoring Guide |
 | I22 | FC-* | Flag coverage: every --flag in argument-hint documented in Arguments, every documented flag in argument-hint, every documented flag referenced in workflow | SAI Convention |
 | I23 | HK-* | Hooks configuration: valid events, correct structure, scripts exist/executable, hook patterns (stdin parsing, stop guard, exit codes, error prefix consistency) | SAI Convention, Skill Authoring Guide |
@@ -101,6 +101,8 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I27 | BP-over-prompting | Avoid aggressive all-caps prompting patterns in prose (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) | Anthropic Best Practices |
 | I28 | FC-example-flags | Example Invocations cover at least 50% of documented `--flags` when 3+ flags are documented | SAI Convention |
 | I29 | BP-why-rationale-info | Non-obvious constraints include a short WHY rationale (cause/effect) | Anthropic Best Practices |
+| I30 | SD-help-output-info | Bundled scripts have `--help` support (argparse/click/typer for Python, case pattern for shell) | Using Scripts |
+| I31 | SD-undeclared-deps-info | Python scripts declare non-stdlib dependencies (PEP 723) or use only stdlib/local imports | Using Scripts |
 
 ### How to evaluate
 
@@ -267,10 +269,15 @@ Informational findings. These are only scored when running with `--thorough` and
 | P15 | RF-dup-tables-info | Duplicated markdown tables (3+ rows) between SKILL.md and references | Anthropic Best Practices |
 | P16 | SD-legacy-bash-info | Top-level legacy `.sh` scripts detected in scripts/ | SAI Convention |
 | P17 | BP-section-order-info | Body section order follows: overview, arguments, state, workflow, output, errors, examples | Anthropic Best Practices |
+| P18 | SD-exit-codes-info | Scripts use distinct exit codes (2+ distinct numeric codes across entrypoints) | Using Scripts |
+| P19 | CF-mcp-format | MCP tool references use double-underscore format (`mcp__server__tool`) | Best Practices |
+| P20 | BP-eval-dir-info | Skill has an `evals/` directory for evaluation data | Evaluating Skills |
+| P21 | BP-unversioned-tools-info | Prose references to package installation include version specifiers | Using Scripts |
+| P22 | CT-unversioned-cmd-info | Code block runner commands (npx, uvx, pipx, pip, go run) include version specifiers | Using Scripts |
 
 ### How to evaluate
 
-#### Automated polish signals (P11-P16)
+#### Automated polish signals (P11-P22)
 
 These checks are emitted by scripts and stay informational:
 
@@ -280,6 +287,11 @@ These checks are emitted by scripts and stay informational:
 - **P14 (BP-constraint-refresh-info):** If 4+ phase headings exist, checks for reminder/recall/re-read/re-anchor language
 - **P15 (RF-dup-tables-info):** Detects duplicated markdown tables (3+ rows) between SKILL.md and references
 - **P16 (SD-legacy-bash-info):** Reports top-level `scripts/*.sh` files to help track migration from legacy shell scripts
+- **P18 (SD-exit-codes-info):** Checks scripts for 2+ distinct exit codes across entrypoints (skips library files)
+- **P19 (CF-mcp-format):** Validates MCP tool references use `mcp__server__tool` double-underscore format, detects single-underscore typos
+- **P20 (BP-eval-dir-info):** Checks for `evals/` directory presence with content
+- **P21 (BP-unversioned-tools-info):** Detects unversioned package installation references in prose
+- **P22 (CT-unversioned-cmd-info):** Detects unversioned runner commands (npx, uvx, pipx, pip, go run) in code blocks
 
 #### Reference file quality
 
