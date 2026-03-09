@@ -182,10 +182,12 @@ When `--dry-run` is active, do NOT use Edit or Write. Skip Phase 6 and Phase 7. 
 
 If `--dry-run` was NOT passed (default fix mode):
 
-Always present findings to the user before making any changes because even a single info-level finding may need attention.
-Use AskUserQuestion with multiSelect listing every finding (failures and informational).
+MUST use AskUserQuestion with multiSelect listing every finding (failures and informational) - even when the verdict is PASS.
+Never output findings as plain text and ask a freeform question instead because that bypasses the user's ability to select individual items.
 Pre-select all failing checks. Include info-level findings as unselected options so the user can opt in.
+When all checks pass and only info items exist, still present them via AskUserQuestion multiSelect with none pre-selected - the user decides which info items to address.
 Never auto-fix without user approval because the user controls which findings to address.
+If the user deselects everything, skip fixes and proceed to Phase 7.
 
 1. Address every check the user selected
 2. Apply these principles when rewriting:
