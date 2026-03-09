@@ -12,6 +12,8 @@ Sub-checks:
   - `BP-why-rationale-info`
   - `BP-example-diversity-info`
   - `BP-feedback-loop-info`
+  - `BP-eval-dir-info`
+  - `BP-unversioned-tools-info`
 
 Usage:
     ./check-best-practices.py <skill-directory>
@@ -63,6 +65,8 @@ CHECK_SECTION_ORDER: Final[str] = "BP-section-order-info"
 CHECK_WHY_RATIONALE: Final[str] = "BP-why-rationale-info"
 CHECK_EXAMPLE_DIVERSITY: Final[str] = "BP-example-diversity-info"
 CHECK_FEEDBACK_LOOP: Final[str] = "BP-feedback-loop-info"
+CHECK_EVAL_DIR: Final[str] = "BP-eval-dir-info"
+CHECK_UNVERSIONED_TOOLS: Final[str] = "BP-unversioned-tools-info"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_EXAMPLE_TAGS,
@@ -75,6 +79,8 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_WHY_RATIONALE,
     CHECK_EXAMPLE_DIVERSITY,
     CHECK_FEEDBACK_LOOP,
+    CHECK_EVAL_DIR,
+    CHECK_UNVERSIONED_TOOLS,
 )
 
 EXAMPLE_TAG_PASS_THRESHOLD: Final[int] = 3
@@ -209,6 +215,10 @@ LOOP_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
 )
 
 VERIFICATION_WINDOW: Final[int] = 5
+
+UNVERSIONED_TOOL_RE: Final[Pattern[str]] = re.compile(
+    r"\b(?:pip|pip3)\s+install\s+([a-zA-Z0-9_-]+)(?!\S*(?:==|>=|~=|@))",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -889,6 +899,43 @@ def check_feedback_loop_info(document: SkillDocument) -> CheckRecord:
     )
 
 
+def check_eval_dir_info(document: SkillDocument) -> CheckRecord:
+    """Emit informational signal for evals directory presence."""
+    evals_dir = document.skill_dir / "evals"
+    if evals_dir.is_dir() and any(evals_dir.iterdir()):
+        return CheckRecord.ok(
+            CHECK_EVAL_DIR,
+            "Evals directory found with content",
+            tier="P20",
+        )
+
+    return CheckRecord.info(
+        CHECK_EVAL_DIR,
+        "No evals/ directory detected",
+        tier="P20",
+    )
+
+
+def check_unversioned_tools_info(document: SkillDocument) -> CheckRecord:
+    """Emit informational signal for unversioned tool install references in prose."""
+    match = UNVERSIONED_TOOL_RE.search(document.prose_body)
+    if match:
+        return CheckRecord.info(
+            CHECK_UNVERSIONED_TOOLS,
+            (
+                f"Unversioned tool install detected in prose: {match.group(0).strip()} "
+                "- consider pinning a version"
+            ),
+            tier="P21",
+        )
+
+    return CheckRecord.ok(
+        CHECK_UNVERSIONED_TOOLS,
+        "No unversioned tool install references detected in prose",
+        tier="P21",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Orchestration (below new checks)
 # ---------------------------------------------------------------------------
@@ -904,6 +951,8 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], CheckRecord]]] = {
     CHECK_WHY_RATIONALE: check_why_rationale_info,
     CHECK_EXAMPLE_DIVERSITY: check_example_diversity_info,
     CHECK_FEEDBACK_LOOP: check_feedback_loop_info,
+    CHECK_EVAL_DIR: check_eval_dir_info,
+    CHECK_UNVERSIONED_TOOLS: check_unversioned_tools_info,
 }
 
 

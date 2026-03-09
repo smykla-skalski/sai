@@ -1,7 +1,7 @@
 {
   "name": "review-skill",
   "description": "Review and fix Claude Code skill definitions using tiered binary checklist",
-  "version": "5.0.3",
+  "version": "5.1.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },

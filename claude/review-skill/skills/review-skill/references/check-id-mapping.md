@@ -20,11 +20,14 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | FM-desc-length | I25 | validate.py | Description under 1,024 chars |
 | FM-desc-voice | P5 | validate.py | Description uses third-person form |
 | FM-tools-present | I9 | validate.py | allowed-tools field exists |
+| FM-name-reserved | C4 | validate.py | Name contains no reserved words (anthropic, claude) |
+| FM-desc-no-xml | C1 | validate.py | Description contains no XML tags |
 | FM-invocable-present | - | validate.py | user-invocable field exists |
 | FM-compat-length | - | validate.py | Compatibility field under 500 chars (when present) |
 | CF-tools-usage | I16 | check-config.py | Listed tools are actually used in body |
 | CF-side-effect | I17 | check-config.py | Side-effect guidance in SKILL.md and referenced docs has DMI guard |
 | CF-state-xdg | I11 | check-config.py | Persistent state uses XDG paths |
+| CF-mcp-format | P19 | check-config.py | MCP tool references use double-underscore format |
 | BP-example-tags | I26 | check-best-practices.py | Example tags present in SKILL.md body |
 | BP-over-prompting | I27 | check-best-practices.py | Aggressive all-caps prompting avoided |
 | BP-negative-instr-info | P11 | check-best-practices.py | Negative instruction density signal |
@@ -40,6 +43,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | SC-no-pickle | C8 | check-security.py | No pickle usage |
 | CT-no-echo | I13 | check-content.py | No useless echo wrapping |
 | CT-long-prose | I24 | check-content.py | Informational signal when prose lines exceed 300 chars |
+| CT-unversioned-cmd-info | P22 | check-content.py | Unversioned runner commands in code blocks |
 | FR-resolves | C3 | check-file-refs.py | File references resolve to actual files |
 | FR-link-format | I15 | check-file-refs.py | References use markdown links |
 | FR-mentions-file | P3 | check-file-refs.py | SKILL.md mentions all bundled resources |
@@ -50,6 +54,9 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | SD-no-bash | I6 | check-scripts-dir.py | No bash/python3 prefix on script invocations in SKILL.md and referenced docs |
 | SD-executable | I12 | check-scripts-dir.py | Entrypoints have executable bit |
 | SD-legacy-bash-info | P16 | check-scripts-dir.py | Top-level legacy .sh scripts signal |
+| SD-help-output-info | I30 | check-scripts-dir.py | Bundled scripts have --help support |
+| SD-exit-codes-info | P18 | check-scripts-dir.py | Scripts use distinct exit codes |
+| SD-undeclared-deps-info | I31 | check-scripts-dir.py | Python scripts declare non-stdlib dependencies |
 | RF-body-lines | C2 | check-references.py | Body under 500 lines |
 | RF-body-chars | I24 | check-references.py | Body under 20,000 chars |
 | RF-phase-numbering | I14 | check-references.py | Consistent phase numbering |
@@ -66,6 +73,8 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | RG-purpose | I19 | check-read-gates.py | Gates explain why |
 | RG-flow | I19 | check-read-gates.py | Multi-flow gates per flow |
 | CL-aggregate | I20 | check-lint.py | Scripts pass static analysis |
+| CL-S28 | I20 | check-lint.py | Shell scripts contain no interactive prompts (read -p, select, dialog) |
+| CL-P01 | I20 | check-lint.py | Python scripts contain no interactive prompts (input, getpass, curses) |
 | AQ-declaration | I21 | check-ask-user.py | AskUserQuestion in allowed-tools iff used across SKILL.md and referenced docs |
 | AQ-implicit | I21 | check-ask-user.py | Implicit user interaction in SKILL.md/referenced docs matches declaration |
 | AQ-required-arg | I21 | check-ask-user.py | Required args have ask/fallback coverage across SKILL.md and referenced docs |
@@ -95,6 +104,8 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | BP-why-rationale-info | I29 | check-best-practices.py | WHY rationale coverage signal in SKILL.md and referenced guidance |
 | BP-example-diversity-info | I3 | check-best-practices.py | Example diversity signal |
 | BP-feedback-loop-info | I8 | check-best-practices.py | Feedback loop signal in SKILL.md and referenced guidance |
+| BP-eval-dir-info | P20 | check-best-practices.py | Evals directory presence signal |
+| BP-unversioned-tools-info | P21 | check-best-practices.py | Unversioned package installation in prose |
 | FK-recommendation-info | P9 | check-fork-candidate.py | Fork candidate analysis |
 
 ## Manual checks

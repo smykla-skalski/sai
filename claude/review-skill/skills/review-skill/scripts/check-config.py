@@ -5,6 +5,7 @@ Sub-checks:
   - `CF-state-xdg` - persistent state uses XDG paths
   - `CF-tools-usage` - declared high-signal tools are actually referenced
   - `CF-side-effect` - side-effect skills set `disable-model-invocation: true`
+  - `CF-mcp-format` - MCP tool references use double-underscore format
 
 Usage:
     ./check-config.py <skill-directory>
@@ -47,11 +48,13 @@ from _skill_check_common import (
 PERSISTENT_STATE_CHECK: Final[str] = "CF-state-xdg"
 ALLOWED_TOOLS_CHECK: Final[str] = "CF-tools-usage"
 SIDE_EFFECT_CHECK: Final[str] = "CF-side-effect"
+MCP_FORMAT_CHECK: Final[str] = "CF-mcp-format"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     PERSISTENT_STATE_CHECK,
     ALLOWED_TOOLS_CHECK,
     SIDE_EFFECT_CHECK,
+    MCP_FORMAT_CHECK,
 )
 
 # ---------------------------------------------------------------------------
@@ -208,6 +211,15 @@ SIDE_EFFECT_PATTERN: Final[Pattern[str]] = re.compile(
 )
 
 INLINE_CODE_RE: Final[Pattern[str]] = re.compile(r"`[^`]*`")
+
+MCP_PRESENCE_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
+    (
+        r"\bMCP\b",
+        r"\bmcp__\w+",
+        r"\bmcp_\w+",
+    ),
+)
+MCP_SINGLE_UNDERSCORE_RE: Final[Pattern[str]] = re.compile(r"\bmcp_(?!_)\w+")
 
 
 # ---------------------------------------------------------------------------
@@ -424,6 +436,33 @@ def check_side_effect_guard(document: SkillDocument) -> CheckRecord:
     )
 
 
+def check_mcp_format(document: SkillDocument) -> CheckRecord | None:
+    """Validate that MCP tool references use double-underscore format."""
+    combined_text = document.prose_body
+    for ref in iter_reference_inputs(document):
+        combined_text += "\n" + "\n".join(ref.lines)
+
+    if not matches_any(combined_text, MCP_PRESENCE_PATTERNS):
+        return None
+
+    typo_match = MCP_SINGLE_UNDERSCORE_RE.search(combined_text)
+    if typo_match:
+        return CheckRecord.info(
+            MCP_FORMAT_CHECK,
+            (
+                f"Single-underscore MCP reference detected: {typo_match.group(0)} "
+                "- use double-underscore format (mcp__server__tool)"
+            ),
+            tier="P19",
+        )
+
+    return CheckRecord.ok(
+        MCP_FORMAT_CHECK,
+        "MCP tool references use correct double-underscore format",
+        tier="P19",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -432,6 +471,7 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], CheckRecord | None]]]
     PERSISTENT_STATE_CHECK: check_persistent_state_xdg,
     ALLOWED_TOOLS_CHECK: check_allowed_tools_usage,
     SIDE_EFFECT_CHECK: check_side_effect_guard,
+    MCP_FORMAT_CHECK: check_mcp_format,
 }
 
 

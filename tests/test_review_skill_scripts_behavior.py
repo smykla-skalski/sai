@@ -2768,5 +2768,607 @@ class ValidateDelegationBehaviorTests(ScriptTestCase):
         self.assertNotIn("CF-tools-usage", check_ids)
 
 
+class ScriptsDirNewChecksTests(ScriptTestCase):
+    def test_help_output_passes_with_argparse(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import argparse\n"
+                        "p = argparse.ArgumentParser()\n"
+                        "p.parse_args()\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        record = self.one_check(records, "SD-help-output-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+
+    def test_help_output_detects_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "print('hello')\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        record = self.one_check(records, "SD-help-output-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("run.py", str(record.get("detail")))
+
+    def test_help_output_skips_when_no_scripts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp))
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        check_ids = {
+            r.get("check")
+            for r in self.check_records(records)
+        }
+        self.assertNotIn("SD-help-output-info", check_ids)
+
+    def test_exit_codes_passes_with_distinct_codes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import sys\n"
+                        "if True:\n"
+                        "    sys.exit(0)\n"
+                        "elif False:\n"
+                        "    sys.exit(1)\n"
+                        "else:\n"
+                        "    sys.exit(2)\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-exit-codes-info",),
+            )
+
+        record = self.one_check(records, "SD-exit-codes-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+
+    def test_exit_codes_info_with_single_code(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import sys\n"
+                        "sys.exit(0)\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-exit-codes-info",),
+            )
+
+        record = self.one_check(records, "SD-exit-codes-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "info")
+
+    def test_undeclared_deps_passes_stdlib_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import json\n"
+                        "import sys\n"
+                        "import os\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-undeclared-deps-info",),
+            )
+
+        record = self.one_check(records, "SD-undeclared-deps-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+
+    def test_undeclared_deps_detects_third_party(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import requests\n"
+                        "print(requests.get('http://example.com'))\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-undeclared-deps-info",),
+            )
+
+        record = self.one_check(records, "SD-undeclared-deps-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("requests", str(record.get("detail")))
+
+    def test_undeclared_deps_passes_with_pep723(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "# /// script\n"
+                        "# dependencies = ['requests']\n"
+                        "# ///\n"
+                        "import requests\n"
+                        "print(requests.get('http://example.com'))\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-undeclared-deps-info",),
+            )
+
+        record = self.one_check(records, "SD-undeclared-deps-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+
+    def test_undeclared_deps_local_imports_not_flagged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/_skill_check_common.py": (
+                        "# Shared helpers\n"
+                        "def helper(): pass\n"
+                    ),
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "import json\n"
+                        "from _skill_check_common import helper\n"
+                        "helper()\n"
+                    ),
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-undeclared-deps-info",),
+            )
+
+        record = self.one_check(records, "SD-undeclared-deps-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+
+
+class LintInteractiveTests(ScriptTestCase):
+    def _run_lint(self, scripts_dir: Path) -> list[dict[str, object]]:
+        result = subprocess.run(
+            [
+                str(SCRIPTS_DIR / "check-lint.py"),
+                str(scripts_dir),
+                "--json",
+                "--no-shellcheck",
+                "--no-ruff",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        records: list[dict[str, object]] = []
+        for raw_line in result.stdout.splitlines():
+            stripped = raw_line.strip()
+            if stripped:
+                records.append(json.loads(stripped))
+        return records
+
+    def _write_script(
+        self,
+        scripts_dir: Path,
+        name: str,
+        content: str,
+    ) -> Path:
+        path = scripts_dir / name
+        path.write_text(content, encoding="utf-8")
+        path.chmod(0o755)
+        return path
+
+    def test_python_input_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "prompt.py",
+                '#!/usr/bin/env python3\nx = input("prompt")\n',
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-P01"
+        ]
+        self.assertEqual(len(findings), 1)
+
+    def test_python_getpass_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "secret.py",
+                "#!/usr/bin/env python3\nimport getpass\npw = getpass.getpass()\n",
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-P01"
+        ]
+        self.assertEqual(len(findings), 1)
+
+    def test_python_stdin_read_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "reader.py",
+                "#!/usr/bin/env python3\nimport sys\ndata = sys.stdin.read()\n",
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-P01"
+        ]
+        self.assertEqual(len(findings), 1)
+
+    def test_python_curses_import_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "tui.py",
+                "#!/usr/bin/env python3\nimport curses\n",
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-P01"
+        ]
+        self.assertEqual(len(findings), 1)
+
+    def test_python_input_in_comment_not_flagged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "safe.py",
+                '#!/usr/bin/env python3\n# x = input("prompt")\nprint("ok")\n',
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-P01"
+        ]
+        self.assertEqual(len(findings), 0)
+
+    def test_shell_read_p_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "prompt.sh",
+                '#!/usr/bin/env bash\nread -p "Enter: " name\n',
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-S28"
+        ]
+        self.assertEqual(len(findings), 1)
+
+    def test_shell_select_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "menu.sh",
+                "#!/usr/bin/env bash\nselect opt in a b c; do\n"
+                '  echo "$opt"\ndone\n',
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-S28"
+        ]
+        self.assertEqual(len(findings), 1)
+
+    def test_shell_while_read_not_flagged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts_dir = Path(tmp) / "scripts"
+            scripts_dir.mkdir()
+            self._write_script(
+                scripts_dir,
+                "reader.sh",
+                "#!/usr/bin/env bash\nwhile read -r line; do\n"
+                '  echo "$line"\ndone < file.txt\n',
+            )
+            records = self._run_lint(scripts_dir)
+        findings = [
+            r for r in records
+            if r.get("kind") == "finding" and r.get("check") == "CL-S28"
+        ]
+        self.assertEqual(len(findings), 0)
+
+
+class ConfigMcpFormatTests(ScriptTestCase):
+    def test_mcp_format_skips_no_mcp(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read input and process"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-mcp-format",),
+            )
+
+        matching = [
+            r for r in self.check_records(records) if r.get("check") == "CF-mcp-format"
+        ]
+        self.assertEqual(len(matching), 0)
+
+    def test_mcp_format_passes_double_underscore(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Use mcp__notion__search to find pages"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-mcp-format",),
+            )
+
+        record = self.one_check(records, "CF-mcp-format")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_mcp_format_detects_typo(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Use mcp_notion_search to find pages"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-mcp-format",),
+            )
+
+        record = self.one_check(records, "CF-mcp-format")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("mcp_notion_search", str(record.get("detail")))
+
+    def test_mcp_format_scans_refs(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Read [references/tools.md](references/tools.md) for setup"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/tools.md": (
+                        "## MCP tools\n\n"
+                        "Use mcp__slack__send_message to notify the channel."
+                    ),
+                },
+            )
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-mcp-format",),
+            )
+
+        record = self.one_check(records, "CF-mcp-format")
+        self.assertIs(record.get("pass"), True)
+
+
+class BestPracticesNewChecksTests(ScriptTestCase):
+    def test_eval_dir_missing_info(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read input"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-eval-dir-info",),
+            )
+
+        record = self.one_check(records, "BP-eval-dir-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("No evals/", str(record.get("detail")))
+
+    def test_eval_dir_present_passes(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read input"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            evals_dir = skill_dir / "evals"
+            evals_dir.mkdir()
+            (evals_dir / "test_basic.py").write_text("# test\n", encoding="utf-8")
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-eval-dir-info",),
+            )
+
+        record = self.one_check(records, "BP-eval-dir-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_unversioned_tool_detected(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Run pip install requests to set up dependencies"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-unversioned-tools-info",),
+            )
+
+        record = self.one_check(records, "BP-unversioned-tools-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("pip install requests", str(record.get("detail")))
+
+    def test_unversioned_tool_versioned_passes(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Run pip install requests==2.31.0 to set up dependencies"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-unversioned-tools-info",),
+            )
+
+        record = self.one_check(records, "BP-unversioned-tools-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+
+class ContentUnversionedTests(ScriptTestCase):
+    def test_no_fences_passes(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read input and process"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-unversioned-cmd-info",),
+            )
+
+        record = self.one_check(records, "CT-unversioned-cmd-info")
+        self.assertIs(record.get("pass"), True)
+
+    def test_versioned_npx_passes(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Run setup\n\n"
+            "```bash\nnpx create-react-app@latest my-app\n```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-unversioned-cmd-info",),
+            )
+
+        record = self.one_check(records, "CT-unversioned-cmd-info")
+        self.assertIs(record.get("pass"), True)
+
+    def test_unversioned_npx_detected(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Run setup\n\n"
+            "```bash\nnpx create-react-app my-app\n```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-unversioned-cmd-info",),
+            )
+
+        record = self.one_check(records, "CT-unversioned-cmd-info")
+        self.assertEqual(record.get("level"), "info")
+
+    def test_unversioned_pip_detected(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Install deps\n\n"
+            "```bash\npip install requests\n```"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-unversioned-cmd-info",),
+            )
+
+        record = self.one_check(records, "CT-unversioned-cmd-info")
+        self.assertEqual(record.get("level"), "info")
+
+    def test_variable_refs_ignored(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n1. Install deps\n\n"
+            '```bash\npip install "$PACKAGE"\n```'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-content.py",
+                skill_dir,
+                checks=("CT-unversioned-cmd-info",),
+            )
+
+        record = self.one_check(records, "CT-unversioned-cmd-info")
+        self.assertIs(record.get("pass"), True)
+
+
 if __name__ == "__main__":
     unittest.main()

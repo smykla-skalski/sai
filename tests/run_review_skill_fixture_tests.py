@@ -35,62 +35,92 @@ ExpectationValue = Union[bool, dict[str, object]]  # noqa: UP007
 # dict -> supports keys: pass, level, detail_contains
 EXPECTATIONS: dict[str, dict[str, ExpectationValue]] = {
     "bullet-args": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "FC-hint-doc": True,
         "FC-doc-hint": True,
         "FC-doc-workflow": True,
         "FC-example-flags": True,
     },
     "attributed-examples": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "BP-example-tags": True,
     },
     "api-side-effect-no-dmi": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "CF-side-effect": False,
     },
     "api-side-effect-with-dmi": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "CF-side-effect": True,
     },
     "duplicate-tables": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "RF-dup-tables-info": True,
     },
     "example-flags-good-coverage": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "FC-example-flags": True,
     },
     "example-flags-low-coverage": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "FC-example-flags": False,
     },
     "failing-read-gate": {
         "FM-name-present": True,
+        "FM-name-reserved": True,
         "FM-desc-present": True,
+        "FM-desc-no-xml": True,
         "RG-gate-present": False,
         "RG-passive": False,
     },
     "good-examples": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "BP-example-tags": True,
         "BP-over-prompting": True,
     },
     "legacy-shell-info": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "SD-legacy-bash-info": True,
     },
     "limited-examples": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "BP-example-tags": True,
     },
     "long-description": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "FM-desc-length": False,
         "FM-desc-present": True,
     },
     "missing-examples": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": False,
         "BP-example-tags": False,
         "BP-over-prompting": False,
     },
     "overdeclared-tools": {
         "FM-name-present": True,
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "CF-tools-usage": False,
     },
     "passing-skill": {
         "FM-name-present": True,
         "FM-name-format": True,
+        "FM-name-reserved": True,
         "FM-desc-present": True,
         "FM-desc-length": True,
+        "FM-desc-no-xml": True,
         "FM-tools-present": True,
         "CT-no-secrets": True,
         "CT-no-grading": True,
@@ -102,6 +132,8 @@ EXPECTATIONS: dict[str, dict[str, ExpectationValue]] = {
         "FC-example-flags": True,
     },
     "side-effect-no-dmi": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
         "CF-tools-usage": False,
         "CF-side-effect": False,
     },

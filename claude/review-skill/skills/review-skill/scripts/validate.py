@@ -68,6 +68,8 @@ NON_THIRD_PERSON_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(I can|You can)\b",
     re.IGNORECASE,
 )
+NAME_RESERVED_WORDS: Final[tuple[str, ...]] = ("anthropic", "claude")
+XML_TAG_RE: Final[re.Pattern[str]] = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>")
 
 VALID_MODES: Final[tuple[str, ...]] = ("all", "frontmatter", "structure")
 LINT_TOP_FINDINGS_LIMIT: Final[int] = 3
@@ -113,8 +115,35 @@ FIELD_COMPATIBILITY: Final[str] = "compatibility"
 # ---------------------------------------------------------------------------
 
 
+def _check_name_reserved(name: str, collector: ResultCollector) -> None:
+    """Check whether name contains reserved words (anthropic, claude)."""
+    segments = name.split("-")
+    reserved_hits = [w for w in NAME_RESERVED_WORDS if w in segments]
+    if reserved_hits:
+        collector.add(
+            CheckRecord(
+                check="FM-name-reserved",
+                passed=False,
+                detail=(
+                    f"Name '{name}' contains reserved word(s): "
+                    f"{', '.join(reserved_hits)}"
+                ),
+                tier="C4",
+            ),
+        )
+    else:
+        collector.add(
+            CheckRecord(
+                check="FM-name-reserved",
+                passed=True,
+                detail=f"Name '{name}' contains no reserved words",
+                tier="C4",
+            ),
+        )
+
+
 def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa: PLR0912
-    """Run name-present, name-format, name-matches-dir checks."""
+    """Run name-present, name-format, name-matches-dir, name-reserved checks."""
     name = doc.field(FIELD_NAME)
     dir_name = doc.skill_dir.name
 
@@ -148,6 +177,14 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa
                 check="FM-name-matches-dir",
                 passed=False,
                 detail=f"Cannot compare name to directory: {detail.lower()}",
+                tier="C4",
+            ),
+        )
+        collector.add(
+            CheckRecord(
+                check="FM-name-reserved",
+                passed=False,
+                detail=f"Cannot validate reserved words: {detail.lower()}",
                 tier="C4",
             ),
         )
@@ -217,6 +254,31 @@ def _check_name(doc: SkillDocument, collector: ResultCollector) -> None:  # noqa
             ),
         )
 
+    _check_name_reserved(name, collector)
+
+
+def _check_desc_xml(description: str, collector: ResultCollector) -> None:
+    """Check whether description contains XML tags."""
+    xml_match = XML_TAG_RE.search(description)
+    if xml_match:
+        collector.add(
+            CheckRecord(
+                check="FM-desc-no-xml",
+                passed=False,
+                detail=(f"Description contains XML tag: {xml_match.group(0)}"),
+                tier="C1",
+            ),
+        )
+    else:
+        collector.add(
+            CheckRecord(
+                check="FM-desc-no-xml",
+                passed=True,
+                detail="Description contains no XML tags",
+                tier="C1",
+            ),
+        )
+
 
 def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run description-present, description-length, trigger-phrases, third-person."""
@@ -261,6 +323,14 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                 passed=False,
                 detail=f"Cannot validate voice: {missing_detail.lower()}",
                 tier="P5",
+            ),
+        )
+        collector.add(
+            CheckRecord(
+                check="FM-desc-no-xml",
+                passed=False,
+                detail=f"Cannot validate XML tags: {missing_detail.lower()}",
+                tier="C1",
             ),
         )
         return
@@ -354,6 +424,8 @@ def _check_description(doc: SkillDocument, collector: ResultCollector) -> None:
                 tier="P5",
             ),
         )
+
+    _check_desc_xml(description, collector)
 
 
 def _check_allowed_tools(doc: SkillDocument, collector: ResultCollector) -> None:
@@ -913,12 +985,14 @@ STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
         "CT-no-echo",
         "CT-no-grading",
         "CT-long-prose",
+        "CT-unversioned-cmd-info",
     ),
     _delegate_checks(
         "check-config.py",
         "CF-state-xdg",
         "CF-tools-usage",
         "CF-side-effect",
+        "CF-mcp-format",
     ),
     _delegate("check-best-practices.py"),
     _delegate("check-read-gates.py", guard_field="refs"),
