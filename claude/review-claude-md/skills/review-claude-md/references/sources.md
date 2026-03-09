@@ -8,7 +8,7 @@
 
 ## Authoritative References
 
-When citing deductions, use these sources:
+When citing deductions, use these sources. Last verified: 2026-03-09. Re-verify URLs quarterly or when a link fails.
 
 - **Official Best Practices**: https://code.claude.com/docs/en/best-practices
 - **Official Memory Docs**: https://code.claude.com/docs/en/memory

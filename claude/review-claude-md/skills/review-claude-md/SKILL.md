@@ -5,6 +5,8 @@ argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
 allowed-tools: Bash, Edit, Glob, Read, Task, Write
 user-invocable: true
 disable-model-invocation: true
+context: fork
+agent: general-purpose
 ---
 
 # Review CLAUDE.md
@@ -68,7 +70,7 @@ Use these results directly in Phase 5 (Synthesize Verdict). Do not re-run the sc
 
 ### Phase 4: Manual Evaluation
 
-Read [references/rubric.md](references/rubric.md) in full before starting this phase.
+Re-read [references/rubric.md](references/rubric.md) in full before starting this phase to prevent drift from the checklist criteria.
 
 For each criterion not already covered by automated scripts, evaluate as binary pass/fail:
 
@@ -98,7 +100,7 @@ Read [references/output-format.md](references/output-format.md) for the verdict 
 If `--score-only` was NOT passed (`--fix` mode, the default):
 
 1. Address every failing Critical and Important check
-2. Read [references/sources.md](references/sources.md) for rewriting principles (brevity, pointers over copies, commands as highest-value items)
+2. Re-read [references/sources.md](references/sources.md) for rewriting principles before editing because fixes that violate source guidelines create new failures
 3. Create `.claude/rules/` files if root exceeds 150 lines
 4. Target: under 150 lines (ideally 50-100 for root)
 
