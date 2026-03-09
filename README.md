@@ -1,6 +1,6 @@
 # SAI - Skills for Agentic Intelligence
 
-A collection of independent Claude Code plugins for development workflows, automation, and productivity.
+A collection of Claude Code plugins and Codex skills for development workflows, automation, and productivity.
 
 ## Overview
 
@@ -21,6 +21,13 @@ Repository layout:
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
+
+Codex skills:
+
+| Skill                  | Description                                                                      | Source Path                  |
+|:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
+| **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
+| **review-skill**       | Audit Codex skills for routing, metadata, shell safety, and approval flow        | `codex/review-skill/`        |
 
 ## Installation
 

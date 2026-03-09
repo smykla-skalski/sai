@@ -28,14 +28,26 @@ run = "python3 tests/run_review_skill_fixture_tests.py"
 description = "Run review-skill checker behavior tests"
 run = "python3 -m unittest tests.test_review_skill_scripts_behavior -v"
 
+[tasks."test:codex-review-skill"]
+description = "Run Codex review-skill tests"
+run = "python3 -m unittest tests.test_codex_review_skill -v"
+
 [tasks."test:best-practices"]
 description = "Run best-practices checker behavior tests only"
 run = "python3 -m unittest tests.test_review_skill_scripts_behavior.BestPracticesScriptBehaviorTests -v"
 
 [tasks."lint:ruff"]
 description = "Run ruff check on review-skill scripts"
-run = "ruff check claude/review-skill/skills/review-skill/scripts/ tests/"
+run = "ruff check claude/review-skill/skills/review-skill/scripts/ codex/review-skill/scripts/ tests/"
+
+[tasks."lint:ruff-imports-fix"]
+description = "Auto-fix Ruff import ordering for review-skill files"
+run = "ruff check --select I001 --fix codex/review-skill/scripts/ tests/test_codex_review_skill.py"
 
 [tasks."lint:mypy"]
 description = "Run mypy type checks"
-run = "uvx mypy --config-file mypy.ini"
+run = """
+set -e
+MYPYPATH=claude/review-skill/skills/review-skill/scripts uvx mypy --config-file mypy.ini claude/review-skill/skills/review-skill/scripts tests/test_validate_review_skill.py tests/test_review_skill_scripts_behavior.py tests/run_review_skill_fixture_tests.py
+MYPYPATH=codex/review-skill/scripts uvx mypy --config-file mypy.ini codex/review-skill/scripts tests/test_codex_review_skill.py
+"""
