@@ -79,6 +79,8 @@ AMBIGUITY_SCAN_STOP: Final[int] = 6
 CONFIRMATION_SCAN_START: Final[int] = -3
 CONFIRMATION_SCAN_STOP: Final[int] = 4
 DESCRIPTIVE_BULLET_THRESHOLD: Final[int] = 2
+# Gap inserted between reference files so window-based checks
+# (_has_nearby_options, _window_text) never bleed across file boundaries.
 REFERENCE_INDEX_GAP: Final[int] = 50
 
 REQUIRED_DEFAULT_MARKERS: Final[frozenset[str]] = frozenset(

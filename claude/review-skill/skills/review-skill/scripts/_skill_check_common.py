@@ -1069,6 +1069,8 @@ def build_reference_skip_indices(
             if HEADING_LINE_RE.match(line.strip())
         )
 
+    # Blockquotes are always excluded - they contain quoted material or
+    # admonitions, never actionable skill guidance worth scanning.
     result.update(
         index for index, line in enumerate(lines) if BLOCKQUOTE_RE.match(line)
     )
