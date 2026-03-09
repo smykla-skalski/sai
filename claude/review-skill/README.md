@@ -34,9 +34,11 @@ claude --plugin-dir /path/to/sai/claude/review-skill
 
 ## Checklist tiers
 
-- **Critical (C1-C8)** - hard requirements, any failure = FAIL verdict
-- **Important (I1-I31)** - best practices, 3+ failures = NEEDS WORK
-- **Polish (P1-P22)** - informational signals, shown with `--thorough`
+| Tier | Range | Verdict rule |
+| :-- | :-- | :-- |
+| Critical | C1-C8 | Any failure = FAIL |
+| Important | I1-I31 | 3+ failures = NEEDS WORK |
+| Polish | P1-P22 | Informational, shown with `--thorough` |
 
 ## Automated checks
 
