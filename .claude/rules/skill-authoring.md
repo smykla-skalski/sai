@@ -313,6 +313,8 @@ SubagentStop and Stop hooks must check `stop_hook_active` from stdin JSON. If tr
 
 All new scripts MUST be written in Python (.py). Never create new bash/sh/zsh scripts. Existing .sh scripts are legacy and still work, but any new automation - skill scripts, hook scripts, validators, helpers - goes in Python. Use `#!/usr/bin/env python3` shebang and set the executable bit.
 
+For script format, structure, NDJSON conventions, and code quality defaults, see [.claude/rules/script-authoring-conventions.md](.claude/rules/script-authoring-conventions.md).
+
 ## Plugin Integration
 
 - Install: `claude --plugin-dir claude/{plugin-name}/`

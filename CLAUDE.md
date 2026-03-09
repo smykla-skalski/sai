@@ -8,7 +8,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 
 - Test plugin locally: `claude --plugin-dir claude/{plugin-name}/`
 - Test specific skill: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
-- No build step (pure markdown + shell scripts)
+- No build step (pure markdown + scripts)
 
 ## Running tests and linters
 
@@ -73,6 +73,12 @@ See [.claude/rules/skill-authoring.md](.claude/rules/skill-authoring.md) for:
 - State management via XDG persistent data directory
 - External integration patterns (MCP tools, Notion, etc.)
 - Tool usage patterns and plugin integration
+
+See [.claude/rules/script-authoring-conventions.md](.claude/rules/script-authoring-conventions.md) for:
+
+- Python script format and structure conventions
+- NDJSON output contract and check/result patterns
+- Code quality guardrails used by review-skill scripts
 
 ## File safety
 

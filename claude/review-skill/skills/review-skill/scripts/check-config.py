@@ -281,7 +281,6 @@ def _iter_reference_actionable_lines(document: SkillDocument) -> tuple[str, ...]
     return tuple(hits)
 
 
-
 # ---------------------------------------------------------------------------
 # Check implementations
 # ---------------------------------------------------------------------------
