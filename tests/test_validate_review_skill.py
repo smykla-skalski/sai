@@ -1216,5 +1216,105 @@ class DescriptionXmlTests(unittest.TestCase):
         self.assertIs(rec["pass"], True)
 
 
+class JustificationTests(unittest.TestCase):
+    def test_parse_justifications_single_comment(self) -> None:
+        body = "<!-- justify: CF-side-effect Write targets user files -->\n# Skill"
+        result = _skill_check_common.parse_justifications(body)
+        self.assertEqual(result, {"CF-side-effect": "Write targets user files"})
+
+    def test_parse_justifications_multiple_comments(self) -> None:
+        body = (
+            "<!-- justify: CF-side-effect Safe for auto-invoke -->\n"
+            "<!-- justify: BP-over-prompting Intentional emphasis -->\n"
+        )
+        result = _skill_check_common.parse_justifications(body)
+        self.assertEqual(len(result), 2)
+        self.assertIn("CF-side-effect", result)
+        self.assertIn("BP-over-prompting", result)
+
+    def test_parse_justifications_empty_body(self) -> None:
+        self.assertEqual(_skill_check_common.parse_justifications(""), {})
+
+    def test_parse_justifications_invalid_check_id_ignored(self) -> None:
+        body = "<!-- justify: INVALID reason text -->"
+        self.assertEqual(_skill_check_common.parse_justifications(body), {})
+
+    def test_parse_justifications_empty_reason_ignored(self) -> None:
+        body = "<!-- justify: CF-side-effect -->"
+        self.assertEqual(_skill_check_common.parse_justifications(body), {})
+
+    def test_apply_justification_converts_fail_to_pass(self) -> None:
+        record = CheckRecord.fail("CF-side-effect", "Missing DMI", tier="I17")
+        justifications = {"CF-side-effect": "Safe for auto-invoke"}
+        result = _skill_check_common.apply_justification(record, justifications)
+        self.assertTrue(result.passed)
+        self.assertEqual(result.level, "pass")
+        self.assertIn("Justified:", result.detail)
+        self.assertEqual(result.tier, "I17")
+
+    def test_apply_justification_leaves_pass_unchanged(self) -> None:
+        record = CheckRecord.ok("CF-side-effect", "No issues", tier="I17")
+        justifications = {"CF-side-effect": "Reason"}
+        result = _skill_check_common.apply_justification(record, justifications)
+        self.assertIs(result, record)
+
+    def test_apply_justification_leaves_info_unchanged(self) -> None:
+        record = CheckRecord.info("BP-negative-instr-info", "Some signal", tier="P11")
+        justifications = {"BP-negative-instr-info": "Reason"}
+        result = _skill_check_common.apply_justification(record, justifications)
+        self.assertIs(result, record)
+
+    def test_apply_justification_no_match_unchanged(self) -> None:
+        record = CheckRecord.fail("CF-side-effect", "Missing DMI", tier="I17")
+        result = _skill_check_common.apply_justification(record, {})
+        self.assertIs(result, record)
+
+    def test_apply_justifications_batch(self) -> None:
+        results = [
+            CheckRecord.fail("CF-side-effect", "Missing DMI", tier="I17"),
+            CheckRecord.ok("CF-tools-usage", "All good", tier="I16"),
+            CheckRecord.fail("BP-over-prompting", "2 hits", tier="I27"),
+        ]
+        justifications = {"CF-side-effect": "Safe"}
+        adjusted = _skill_check_common.apply_justifications(results, justifications)
+        self.assertTrue(adjusted[0].passed)
+        self.assertTrue(adjusted[1].passed)
+        self.assertFalse(adjusted[2].passed)
+
+    def test_collector_applies_justifications(self) -> None:
+        collector = _skill_check_common.ResultCollector(
+            justifications={"CF-side-effect": "Safe for auto-invoke"},
+        )
+        records: list[dict[str, object]] = []
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
+            collector.add(CheckRecord.fail("CF-side-effect", "Missing DMI", tier="I17"))
+        self.assertEqual(collector.failed, 0)
+        self.assertEqual(collector.passed, 1)
+        self.assertEqual(collector.justified, 1)
+        self.assertIs(records[0]["pass"], True)
+        self.assertIn("Justified:", str(records[0]["detail"]))
+
+    def test_collector_without_justifications_unchanged(self) -> None:
+        collector = _skill_check_common.ResultCollector()
+        records: list[dict[str, object]] = []
+        with patch.object(_skill_check_common, "emit_record", side_effect=records.append):
+            collector.add(CheckRecord.fail("CF-side-effect", "Missing DMI", tier="I17"))
+        self.assertEqual(collector.failed, 1)
+        self.assertEqual(collector.justified, 0)
+
+    def test_skill_document_justifications_populated(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "test-skill"
+            skill_dir.mkdir()
+            (skill_dir / "SKILL.md").write_text(
+                "---\nname: test-skill\n---\n\n"
+                "<!-- justify: CF-side-effect Safe -->\n# Skill\n",
+                encoding="utf-8",
+            )
+            doc = _skill_check_common.load_skill_document(skill_dir)
+        self.assertIn("CF-side-effect", doc.justifications)
+        self.assertEqual(doc.justifications["CF-side-effect"], "Safe")
+
+
 if __name__ == "__main__":
     unittest.main()

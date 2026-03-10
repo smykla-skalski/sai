@@ -80,6 +80,14 @@ EXPECTATIONS: dict[str, dict[str, ExpectationValue]] = {
         "RG-gate-present": False,
         "RG-passive": False,
     },
+    "justified-side-effect": {
+        "FM-name-reserved": True,
+        "FM-desc-no-xml": True,
+        "CF-side-effect": {
+            "pass": True,
+            "detail_contains": "Justified:",
+        },
+    },
     "good-examples": {
         "FM-name-reserved": True,
         "FM-desc-no-xml": True,
@@ -203,6 +211,22 @@ SCRIPT_CASES: tuple[dict[str, object], ...] = (
             "CF-side-effect": {
                 "pass": True,
                 "detail_contains": ["api=", "is set"],
+            },
+        },
+    },
+    {
+        "name": "config-justified-side-effect",
+        "fixture": "justified-side-effect",
+        "command": [
+            str(CHECKERS_DIR / "check-config.py"),
+            "{fixture}",
+            "--check",
+            "CF-side-effect",
+        ],
+        "expectations": {
+            "CF-side-effect": {
+                "pass": True,
+                "detail_contains": "Justified:",
             },
         },
     },

@@ -144,6 +144,10 @@ CHECKLIST_STYLE_LINE_RE: Final[Pattern[str]] = re.compile(
     r"^\s*(?:\*\*[CIP]\d{1,2}\b|[-*+]\s+\*\*[A-Z]{2,3}-[a-z0-9-]+)",
 )
 
+JUSTIFY_RE: Final[Pattern[str]] = re.compile(
+    r"<!--\s*justify:\s+(\S+)\s+(.+?)\s*-->",
+)
+
 INSTRUCTION_START_RE: Final[Pattern[str]] = re.compile(
     r"^\s*(?:[-*+]\s+|\d+\.\s+)?"
     r"(?:read|run|use|execute|invoke|parse|check|validate|verify|"
@@ -173,6 +177,22 @@ def compile_patterns(
 ) -> tuple[Pattern[str], ...]:
     """Compile a tuple of raw regex strings into Pattern objects."""
     return tuple(re.compile(p, flags) for p in raw_patterns)
+
+
+def parse_justifications(prose_body: str) -> dict[str, str]:
+    """Parse ``<!-- justify: CHECK-ID reason -->`` HTML comments.
+
+    Only matches check IDs that pass CHECK_ID_RE validation and have a
+    non-empty reason string. Uses prose_body (fenced blocks stripped) so
+    justify comments inside code examples are ignored.
+    """
+    justifications: dict[str, str] = {}
+    for match in JUSTIFY_RE.finditer(prose_body):
+        check_id = match.group(1)
+        reason = match.group(2).strip()
+        if CHECK_ID_RE.match(check_id) and reason:
+            justifications[check_id] = reason
+    return justifications
 
 
 AGENT_SECTION_START_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
@@ -249,6 +269,7 @@ class SkillDocument:
     prose_body: str
     body_start_line: int
     resource_files: tuple[Path, ...]
+    justifications: dict[str, str] = field(default_factory=dict)
 
     def field(self, name: str) -> str:
         """Return a parsed frontmatter field or an empty string."""
@@ -407,6 +428,37 @@ class CheckRecord:
         return result
 
 
+def apply_justification(
+    record: CheckRecord,
+    justifications: dict[str, str],
+) -> CheckRecord:
+    """Return a passing record if a matching justification exists.
+
+    Only transforms ``fail`` records. Pass, info, and skip are unchanged.
+    """
+    if record.level != "fail":
+        return record
+    reason = justifications.get(record.check)
+    if reason is None:
+        return record
+    return CheckRecord.ok(
+        record.check,
+        f"Justified: {reason}",
+        tier=record.tier,
+        item=record.item,
+    )
+
+
+def apply_justifications(
+    results: list[CheckRecord],
+    justifications: dict[str, str],
+) -> list[CheckRecord]:
+    """Apply justification overrides to a list of check results."""
+    if not justifications:
+        return results
+    return [apply_justification(r, justifications) for r in results]
+
+
 @dataclass(frozen=True)
 class SignalRecord:
     """One signal detection record for fork-candidate analysis."""
@@ -534,11 +586,13 @@ def emit_results(
 class ResultCollector:
     """Collect check results and stream them as NDJSON."""
 
+    justifications: dict[str, str] = field(default_factory=dict)
     total: int = field(default=0, init=False)
     passed: int = field(default=0, init=False)
     failed: int = field(default=0, init=False)
     skipped: int = field(default=0, init=False)
     info: int = field(default=0, init=False)
+    justified: int = field(default=0, init=False)
     delegate_warnings: list[tuple[str, str]] = field(
         default_factory=list,
         init=False,
@@ -546,6 +600,10 @@ class ResultCollector:
 
     def add(self, result: CheckRecord) -> None:
         """Record one result and emit it immediately."""
+        original_level = result.level
+        result = apply_justification(result, self.justifications)
+        if original_level == "fail" and result.level != "fail":
+            self.justified += 1
         self.total += 1
         level = result.level
         if level == "fail":
@@ -574,12 +632,16 @@ class ResultCollector:
                     "detail": f"Delegate {script} skipped: {reason}",
                 },
             )
+        extras: dict[str, object] = {}
+        if self.justified > 0:
+            extras["justified"] = self.justified
         summary = SummaryRecord(
             total=self.total,
             passed=self.passed,
             failed=self.failed,
             skipped=self.skipped,
             info=self.info,
+            extras=extras,
         )
         emit_record(summary.payload())
 
@@ -1414,6 +1476,7 @@ def load_skill_document(skill_dir: Path) -> SkillDocument:
     fm_lines, body_lines, body_start = split_frontmatter(content)
     frontmatter = parse_frontmatter_lines(fm_lines)
     body = "\n".join(body_lines)
+    prose_body = strip_fenced_code_blocks(body)
 
     return SkillDocument(
         skill_dir=skill_dir,
@@ -1421,12 +1484,13 @@ def load_skill_document(skill_dir: Path) -> SkillDocument:
         content=content,
         frontmatter=frontmatter,
         body=body,
-        prose_body=strip_fenced_code_blocks(body),
+        prose_body=prose_body,
         body_start_line=body_start,
         resource_files=_collect_resource_files(
             skill_dir,
             skill_md_path,
         ),
+        justifications=parse_justifications(prose_body),
     )
 
 
@@ -1483,8 +1547,12 @@ def run_check_cli(
 
     selected_checks = tuple(args.checks or ()) if check_order else ()
     outcome = run_checks_fn(document, selected_checks)
+    justifications = document.justifications
 
     if isinstance(outcome, tuple):
         results, extra_summary = outcome
+        results = apply_justifications(results, justifications)
         return emit_results(results, extra_summary=extra_summary)
-    return emit_results(outcome)
+    return emit_results(
+        apply_justifications(outcome, justifications),
+    )

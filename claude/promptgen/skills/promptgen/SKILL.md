@@ -4,8 +4,9 @@ description: Turn rough instructions into optimized, evidence-based AI prompts. 
 argument-hint: "<prompt-description> [--for claude|gpt|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]"
 allowed-tools: AskUserQuestion, Bash, Read, Task
 user-invocable: true
-disable-model-invocation: true
 ---
+
+<!-- justify: CF-side-effect Clipboard copy is the only side effect and is non-destructive -->
 
 # Promptgen
 

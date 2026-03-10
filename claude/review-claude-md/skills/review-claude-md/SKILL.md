@@ -4,10 +4,11 @@ description: Audit and fix CLAUDE.md files using a tiered binary checklist based
 argument-hint: "[path/to/repo] [--score-only] [--fix] [--verbose] [--thorough]"
 allowed-tools: Bash, Edit, Glob, Read, Task, Write
 user-invocable: true
-disable-model-invocation: true
 context: fork
 agent: general-purpose
 ---
+
+<!-- justify: CF-side-effect Edit/Write fix detected issues in CLAUDE.md with user approval -->
 
 # Review CLAUDE.md
 
