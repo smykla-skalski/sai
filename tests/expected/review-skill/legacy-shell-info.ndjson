@@ -23,13 +23,15 @@
 {"kind": "check", "check": "FR-no-disallowed", "pass": true, "level": "pass", "detail": "'INSTALLATION_GUIDE.md' not present (correct)"}
 {"kind": "check", "check": "FR-mentions-file", "pass": false, "level": "fail", "tier": "P3", "detail": "SKILL.md does not mention 'scripts/legacy.sh' - all bundled files should be referenced"}
 {"kind": "check", "check": "FR-link-format", "pass": true, "level": "pass", "tier": "I15", "detail": "Reference file paths use markdown link format"}
+{"kind": "check", "check": "FR-ref-link-format", "pass": true, "level": "skip", "tier": "I15", "detail": "No text files in references/ or examples/ to check"}
 {"kind": "check", "check": "SD-invocation-prefix", "pass": true, "level": "pass", "tier": "I6", "detail": "All detected script invocations use ${CLAUDE_SKILL_DIR} prefix"}
 {"kind": "check", "check": "SD-no-bash", "pass": true, "level": "pass", "tier": "I6", "detail": "No bash-prefixed script invocations found"}
 {"kind": "check", "check": "SD-executable", "pass": true, "level": "pass", "tier": "I12", "detail": "All 1 runnable script entrypoint(s) in scripts/ have executable bit set"}
 {"kind": "check", "check": "SD-legacy-bash-info", "pass": true, "level": "info", "tier": "P16", "detail": "INFO: Found 1 legacy .sh script(s) in scripts/: legacy.sh"}
-{"kind": "check", "check": "SD-help-output-info", "pass": true, "level": "info", "tier": "I30", "detail": "INFO: 1 of 1 runnable script(s) lack --help support: legacy.sh"}
+{"kind": "check", "check": "SD-help-output-info", "pass": true, "level": "info", "tier": "I30", "detail": "INFO: 1 of 1 workflow script(s) lack --help support: legacy.sh"}
 {"kind": "check", "check": "SD-exit-codes-info", "pass": true, "level": "info", "tier": "P18", "detail": "INFO: Only 0 distinct exit code(s) found across 1 script(s) - consider using distinct codes for pass/fail/usage errors"}
 {"kind": "check", "check": "SD-undeclared-deps-info", "pass": true, "level": "pass", "tier": "I31", "detail": "No .py files found in scripts/"}
+{"kind": "check", "check": "SD-unreferenced", "pass": false, "level": "fail", "tier": "I32", "detail": "1 script(s) not referenced in SKILL.md body, references, or hooks: legacy.sh"}
 {"kind": "check", "check": "CT-no-secrets", "pass": true, "level": "pass", "tier": "C7", "detail": "No secrets or credentials detected"}
 {"kind": "check", "check": "CT-no-echo", "pass": true, "level": "pass", "tier": "I13", "detail": "No useless echo patterns in code blocks"}
 {"kind": "check", "check": "CT-no-grading", "pass": true, "level": "pass", "tier": "C6", "detail": "No grading/rubric style detected (scanned SKILL.md and 0 referenced text file(s))"}
@@ -60,4 +62,4 @@
 {"kind": "check", "check": "AQ-multiselect", "pass": true, "level": "pass", "tier": "I21", "detail": "No multiSelect usage - skipped"}
 {"kind": "check", "check": "AQ-wizard", "pass": true, "level": "pass", "tier": "I21", "detail": "No confirmation wizard pattern detected - skipped"}
 {"kind": "check", "check": "FK-recommendation-info", "pass": true, "level": "info", "tier": "P9", "detail": "INFO: No fork recommendation - Blocked by FK-B3 - not a fork candidate"}
-{"kind": "summary", "total": 62, "passed": 60, "failed": 2, "skipped": 5, "info": 8}
+{"kind": "summary", "total": 64, "passed": 61, "failed": 3, "skipped": 6, "info": 8}

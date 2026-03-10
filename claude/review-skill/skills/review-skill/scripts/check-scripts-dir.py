@@ -20,15 +20,16 @@ Exit codes:
 from __future__ import annotations
 
 import re
+import shlex
 import stat
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from re import Pattern
 from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
-    from pathlib import Path
 
 from _skill_check_common import (
     CheckRecord,
@@ -40,6 +41,8 @@ from _skill_check_common import (
     iter_fence_lines,
     iter_reference_inputs,
     run_check_cli,
+    split_frontmatter,
+    strip_wrapping_quotes,
 )
 
 # ---------------------------------------------------------------------------
@@ -53,6 +56,7 @@ CHECK_LEGACY_BASH_INFO: Final[str] = "SD-legacy-bash-info"
 CHECK_HELP_OUTPUT_INFO: Final[str] = "SD-help-output-info"
 CHECK_EXIT_CODES_INFO: Final[str] = "SD-exit-codes-info"
 CHECK_UNDECLARED_DEPS_INFO: Final[str] = "SD-undeclared-deps-info"
+CHECK_UNREFERENCED: Final[str] = "SD-unreferenced"
 
 CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_SCRIPT_INVOCATION_PREFIX,
@@ -62,6 +66,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_HELP_OUTPUT_INFO,
     CHECK_EXIT_CODES_INFO,
     CHECK_UNDECLARED_DEPS_INFO,
+    CHECK_UNREFERENCED,
 )
 
 # ---------------------------------------------------------------------------
@@ -119,6 +124,13 @@ _SH_EXIT_CODE_RE: Final[Pattern[str]] = re.compile(
 _PY_IMPORT_RE: Final[Pattern[str]] = re.compile(
     r"^(?:import\s+(\w+)|from\s+(\w+))",
     re.MULTILINE,
+)
+
+# Hook script detection patterns
+_HOOKS_BLOCK_START_RE: Final[Pattern[str]] = re.compile(r"^hooks:\s*$")
+_HOOK_COMMAND_RE: Final[Pattern[str]] = re.compile(r"^\s+command:\s*(.+?)\s*$")
+_HOOK_INTERPRETER_NAMES: Final[frozenset[str]] = frozenset(
+    {"bash", "node", "perl", "python", "python3", "ruby", "sh", "zsh"},
 )
 
 _STDLIB_MODULES: Final[frozenset[str]] = (
@@ -592,14 +604,192 @@ def check_legacy_bash_info(document: SkillDocument) -> list[CheckRecord]:
     ]
 
 
+def _skip_env_assignments(tokens: list[str], start: int) -> int:
+    """Return index past any leading KEY=val env assignments."""
+    idx = start
+    while idx < len(tokens) and "=" in tokens[idx] and not tokens[idx].startswith("/"):
+        idx += 1
+    return idx
+
+
+def _resolve_env_wrapper(tokens: list[str], idx: int) -> int:
+    """Advance past /usr/bin/env wrapper and its flags/assignments."""
+    if idx >= len(tokens) or Path(tokens[idx]).name != "env":
+        return idx
+    idx += 1
+    while idx < len(tokens):
+        if tokens[idx].startswith("-") or (
+            "=" in tokens[idx] and not tokens[idx].startswith("/")
+        ):
+            idx += 1
+        else:
+            break
+    return idx
+
+
+def _skip_interpreter(tokens: list[str], idx: int) -> int:
+    """Advance past interpreter binary and its flags."""
+    if idx >= len(tokens) or Path(tokens[idx]).name not in _HOOK_INTERPRETER_NAMES:
+        return idx
+    idx += 1
+    while idx < len(tokens) and tokens[idx].startswith("-"):
+        idx += 1
+    return idx
+
+
+def _extract_hook_script_target(tokens: list[str]) -> str | None:
+    """Extract the script path token from a hook command's tokenized form."""
+    if not tokens:
+        return None
+
+    idx = _skip_env_assignments(tokens, 0)
+    if idx >= len(tokens):
+        return None
+
+    idx = _resolve_env_wrapper(tokens, idx)
+    if idx >= len(tokens):
+        return None
+
+    idx = _skip_interpreter(tokens, idx)
+    if idx >= len(tokens):
+        return None
+
+    return tokens[idx]
+
+
+def _extract_hook_commands(fm_lines: list[str]) -> list[str]:
+    """Extract command: values from the hooks: frontmatter block."""
+    in_hooks = False
+    commands: list[str] = []
+    for line in fm_lines:
+        if _HOOKS_BLOCK_START_RE.match(line):
+            in_hooks = True
+            continue
+        if in_hooks:
+            if line and not line[0].isspace():
+                break
+            m = _HOOK_COMMAND_RE.match(line)
+            if m:
+                commands.append(strip_wrapping_quotes(m.group(1).strip()))
+    return commands
+
+
+def _resolve_hook_command(cmd: str, skill_dir: Path) -> Path | None:
+    """Resolve a single hook command string to a filesystem path."""
+    if "$CLAUDE_PROJECT_DIR" in cmd:
+        return None
+
+    dir_str = str(skill_dir)
+    resolved = cmd.replace("${CLAUDE_SKILL_DIR}", dir_str).replace(
+        "$CLAUDE_SKILL_DIR",
+        dir_str,
+    )
+
+    try:
+        tokens = shlex.split(resolved, posix=True)
+    except ValueError:
+        tokens = resolved.split()
+
+    target = _extract_hook_script_target(tokens)
+    if target is None:
+        return None
+
+    path = Path(target)
+    try:
+        if path.is_file():
+            return path.resolve()
+    except OSError:
+        pass
+    return None
+
+
+def _collect_hook_script_paths(document: SkillDocument) -> frozenset[Path]:
+    """Collect resolved paths of scripts referenced in hooks: frontmatter.
+
+    Hook scripts have a fixed JSON-in/JSON-out contract invoked by the
+    Claude Code runtime, not by the agent. They don't need --help.
+    """
+    fm_lines, _, _ = split_frontmatter(document.content)
+    commands = _extract_hook_commands(fm_lines)
+    if not commands:
+        return frozenset()
+
+    paths: set[Path] = set()
+    for cmd in commands:
+        resolved = _resolve_hook_command(cmd, document.skill_dir)
+        if resolved is not None:
+            paths.add(resolved)
+    return frozenset(paths)
+
+
+def _is_hook_only_script(
+    path: Path,
+    hook_paths: frozenset[Path],
+) -> bool:
+    """Return whether script is wired as a hook command target.
+
+    Only scripts explicitly referenced in the hooks: frontmatter block
+    are considered hook scripts. Directory naming (scripts/hooks/) alone
+    is not sufficient - the script must be wired.
+    """
+    try:
+        return path.resolve() in hook_paths
+    except OSError:
+        return False
+
+
+def _partition_hook_scripts(
+    runnable_scripts: tuple[Path, ...],
+    hook_paths: frozenset[Path],
+) -> tuple[list[Path], int]:
+    """Split runnable scripts into workflow scripts and hook count."""
+    workflow: list[Path] = []
+    hook_count = 0
+    for path in runnable_scripts:
+        if _is_hook_only_script(path, hook_paths):
+            hook_count += 1
+        else:
+            workflow.append(path)
+    return workflow, hook_count
+
+
+def _find_missing_help(
+    scripts: list[Path],
+    scripts_dir: Path,
+) -> list[str]:
+    """Return relative paths of scripts lacking --help support."""
+    missing: list[str] = []
+    for path in scripts:
+        rel = path.relative_to(scripts_dir).as_posix()
+        try:
+            content = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            missing.append(rel)
+            continue
+
+        has_help = False
+        if path.suffix.lower() == ".py":
+            has_help = _HELP_IMPORT_RE.search(content) is not None
+        elif path.suffix.lower() == ".sh":
+            has_help = _SHELL_HELP_CASE_RE.search(content) is not None
+
+        if not has_help:
+            missing.append(rel)
+    return missing
+
+
 def check_help_output_info(document: SkillDocument) -> list[CheckRecord]:
-    """Check whether runnable scripts advertise --help support."""
+    """Check whether runnable scripts advertise --help support.
+
+    Hook scripts are excluded - they have a fixed JSON-in/JSON-out
+    contract invoked by the Claude Code runtime, not by the agent,
+    so --help is not applicable per agentskills.io guidance.
+    """
     scripts_dir = document.skill_dir / "scripts"
     if not scripts_dir.is_dir():
         return []
 
     runnable_scripts, _ = _collect_runnable_scripts(scripts_dir)
-
     if not runnable_scripts:
         return [
             CheckRecord(
@@ -610,31 +800,34 @@ def check_help_output_info(document: SkillDocument) -> list[CheckRecord]:
             ),
         ]
 
-    missing_help: list[str] = []
-    for path in runnable_scripts:
-        rel = path.relative_to(scripts_dir).as_posix()
-        try:
-            content = path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            missing_help.append(rel)
-            continue
+    hook_paths = _collect_hook_script_paths(document)
+    workflow_scripts, hook_count = _partition_hook_scripts(
+        runnable_scripts, hook_paths,
+    )
+    hook_note = f" ({hook_count} hook script(s) excluded)" if hook_count else ""
 
-        has_help = False
-        if path.suffix.lower() == ".py":
-            has_help = _HELP_IMPORT_RE.search(content) is not None
-        elif path.suffix.lower() == ".sh":
-            has_help = _SHELL_HELP_CASE_RE.search(content) is not None
+    if not workflow_scripts:
+        return [
+            CheckRecord(
+                check=CHECK_HELP_OUTPUT_INFO,
+                passed=True,
+                detail=(
+                    f"All {len(runnable_scripts)} runnable script(s) are "
+                    "hook scripts (--help not applicable)"
+                ),
+                tier="I30",
+            ),
+        ]
 
-        if not has_help:
-            missing_help.append(rel)
+    missing_help = _find_missing_help(workflow_scripts, scripts_dir)
 
     if missing_help:
         return [
             CheckRecord.info(
                 CHECK_HELP_OUTPUT_INFO,
                 (
-                    f"{len(missing_help)} of {len(runnable_scripts)} runnable "
-                    "script(s) lack --help support: "
+                    f"{len(missing_help)} of {len(workflow_scripts)} workflow "
+                    f"script(s) lack --help support{hook_note}: "
                     f"{_format_examples(missing_help)}"
                 ),
                 tier="I30",
@@ -646,7 +839,8 @@ def check_help_output_info(document: SkillDocument) -> list[CheckRecord]:
             check=CHECK_HELP_OUTPUT_INFO,
             passed=True,
             detail=(
-                f"All {len(runnable_scripts)} runnable script(s) have --help support"
+                f"All {len(workflow_scripts)} workflow script(s) have "
+                f"--help support{hook_note}"
             ),
             tier="I30",
         ),
@@ -795,6 +989,149 @@ def check_undeclared_deps_info(document: SkillDocument) -> list[CheckRecord]:
     ]
 
 
+def _collect_body_referenced_scripts(document: SkillDocument) -> frozenset[str]:
+    """Return relative paths (from scripts/) mentioned in body or refs.
+
+    Collects script paths from both fenced code blocks and prose lines
+    in SKILL.md and all referenced text files.
+    """
+    referenced: set[str] = set()
+    for line in _iter_invocation_lines(document):
+        for match in SCRIPT_PATH_RE.finditer(line.line.text):
+            full_match = match.group(0)
+            if full_match.startswith("scripts/"):
+                referenced.add(full_match[len("scripts/"):])
+    return frozenset(referenced)
+
+
+def _read_script_contents(scripts: list[Path]) -> dict[Path, str]:
+    """Read all script files and return {path: content} dict."""
+    contents: dict[Path, str] = {}
+    for path in scripts:
+        text = _read_file_text(path)
+        if text is not None:
+            contents[path] = text
+    return contents
+
+
+def _read_file_text(path: Path) -> str | None:
+    """Read file as UTF-8 with replacement. Return None on error."""
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
+def _collect_script_internal_refs(scripts_dir: Path) -> frozenset[str]:
+    """Return relative paths of scripts referenced by other scripts.
+
+    Detects filename mentions (subprocess calls, string literals,
+    orchestrator mappings) within other scripts in the same directory.
+    Self-references are excluded - only cross-script references count.
+    """
+    all_scripts = list(_iter_script_files(scripts_dir))
+
+    # Read all scripts once and cache contents
+    contents = _read_script_contents(all_scripts)
+
+    referenced: set[str] = set()
+    for target in all_scripts:
+        target_name = target.name
+        for source, content in contents.items():
+            if source == target:
+                continue
+            if target_name in content:
+                referenced.add(target.relative_to(scripts_dir).as_posix())
+                break
+
+    return frozenset(referenced)
+
+
+def _collect_all_referenced_scripts(
+    document: SkillDocument,
+    hook_paths: frozenset[Path],
+    scripts_dir: Path,
+) -> frozenset[str]:
+    """Return relative paths of all referenced scripts.
+
+    A script is referenced if any of:
+    1. Its resolved path is a hook command target in frontmatter
+    2. Its scripts/-relative path appears in SKILL.md body or refs
+    3. Its name or stem appears in other scripts (internal tooling)
+    """
+    # Hook-referenced scripts (filter to those under scripts_dir).
+    # Resolve scripts_dir to match hook_paths (which are resolved).
+    hook_rels = set[str]()
+    resolved_scripts_dir = scripts_dir.resolve()
+    for path in hook_paths:
+        if path.is_relative_to(resolved_scripts_dir):
+            hook_rels.add(path.relative_to(resolved_scripts_dir).as_posix())
+
+    # Body/reference-referenced scripts
+    body_rels = _collect_body_referenced_scripts(document)
+
+    # Inter-script references (orchestrator -> checkers pattern)
+    internal_rels = _collect_script_internal_refs(scripts_dir)
+
+    return frozenset(hook_rels | body_rels | internal_rels)
+
+
+def check_unreferenced_scripts(document: SkillDocument) -> list[CheckRecord]:
+    """Check for runnable scripts not referenced anywhere in the skill.
+
+    A script is unreferenced if it is not:
+    - Wired as a hook command in frontmatter
+    - Invoked in SKILL.md body or reference files
+    - A library file (underscore prefix convention)
+    """
+    scripts_dir = document.skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return []
+
+    runnable_scripts, _ = _collect_runnable_scripts(scripts_dir)
+    if not runnable_scripts:
+        return []
+
+    # Filter out library files (underscore prefix = imported, not invoked)
+    entrypoints = [p for p in runnable_scripts if not p.name.startswith("_")]
+    if not entrypoints:
+        return []
+
+    hook_paths = _collect_hook_script_paths(document)
+    all_refs = _collect_all_referenced_scripts(document, hook_paths, scripts_dir)
+
+    unreferenced: list[str] = []
+    for path in entrypoints:
+        rel = path.relative_to(scripts_dir).as_posix()
+        if rel not in all_refs:
+            unreferenced.append(rel)
+
+    if unreferenced:
+        return [
+            CheckRecord(
+                check=CHECK_UNREFERENCED,
+                passed=False,
+                detail=(
+                    f"{len(unreferenced)} script(s) not referenced in "
+                    "SKILL.md body, references, or hooks: "
+                    f"{_format_examples(unreferenced)}"
+                ),
+                tier="I32",
+            ),
+        ]
+
+    return [
+        CheckRecord(
+            check=CHECK_UNREFERENCED,
+            passed=True,
+            detail=(
+                f"All {len(entrypoints)} entrypoint script(s) are referenced"
+            ),
+            tier="I32",
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -807,6 +1144,7 @@ CHECK_FUNCTIONS: Final[dict[str, Callable[[SkillDocument], list[CheckRecord]]]] 
     CHECK_HELP_OUTPUT_INFO: check_help_output_info,
     CHECK_EXIT_CODES_INFO: check_exit_codes_info,
     CHECK_UNDECLARED_DEPS_INFO: check_undeclared_deps_info,
+    CHECK_UNREFERENCED: check_unreferenced_scripts,
 }
 
 

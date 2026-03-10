@@ -101,8 +101,9 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I27 | BP-over-prompting | Avoid aggressive all-caps prompting patterns in prose (`CRITICAL`, `You MUST`, `ALWAYS`, `NEVER`, `IMPORTANT`) | Anthropic Best Practices |
 | I28 | FC-example-flags | Example Invocations cover at least 50% of documented `--flags` when 3+ flags are documented | SAI Convention |
 | I29 | BP-why-rationale-info | Non-obvious constraints include a short WHY rationale (cause/effect) | Anthropic Best Practices |
-| I30 | SD-help-output-info | Bundled scripts have `--help` support (argparse/click/typer for Python, case pattern for shell) | Using Scripts |
+| I30 | SD-help-output-info | Workflow scripts have `--help` support (hook scripts excluded; argparse/click/typer for Python, case pattern for shell) | Using Scripts |
 | I31 | SD-undeclared-deps-info | Python scripts declare non-stdlib dependencies (PEP 723) or use only stdlib/local imports | Using Scripts |
+| I32 | SD-unreferenced | Runnable scripts are referenced in SKILL.md body, reference files, hooks frontmatter, or other scripts | Using Scripts |
 
 ### How to evaluate
 
