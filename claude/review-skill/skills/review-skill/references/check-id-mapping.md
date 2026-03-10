@@ -55,9 +55,10 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | SD-no-bash | I6 | check-scripts-dir.py | No bash/python3 prefix on script invocations in SKILL.md and referenced docs |
 | SD-executable | I12 | check-scripts-dir.py | Entrypoints have executable bit |
 | SD-legacy-bash-info | P16 | check-scripts-dir.py | Top-level legacy .sh scripts signal |
-| SD-help-output-info | I30 | check-scripts-dir.py | Bundled scripts have --help support |
+| SD-help-output-info | I30 | check-scripts-dir.py | Workflow scripts have --help support (hook scripts excluded) |
 | SD-exit-codes-info | P18 | check-scripts-dir.py | Scripts use distinct exit codes |
 | SD-undeclared-deps-info | I31 | check-scripts-dir.py | Python scripts declare non-stdlib dependencies |
+| SD-unreferenced | I32 | check-scripts-dir.py | Runnable scripts are referenced in body, refs, or hooks |
 | RF-body-lines | C2 | check-references.py | Body under 500 lines |
 | RF-body-chars | I24 | check-references.py | Body under 20,000 chars |
 | RF-phase-numbering | I14 | check-references.py | Consistent phase numbering |

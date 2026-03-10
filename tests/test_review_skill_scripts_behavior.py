@@ -3877,6 +3877,369 @@ class ScriptsDirNewChecksTests(ScriptTestCase):
         self.assertIs(record.get("pass"), True)
         self.assertNotEqual(record.get("level"), "info")
 
+    # ---- Hook script exclusion from --help check ----
+
+    def _write_skill_md_raw(self, skill_dir: Path, content: str) -> None:
+        """Write raw SKILL.md content (for hooks frontmatter tests)."""
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+
+    def test_help_output_excludes_hook_scripts_via_frontmatter(self) -> None:
+        """Hook scripts wired in frontmatter should be excluded from --help."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "scripts" / "hooks").mkdir(parents=True)
+
+            hook_script = skill_dir / "scripts" / "hooks" / "guard.py"
+            hook_script.write_text(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "input = sys.stdin.read()\nprint(json.dumps({}))\n",
+                encoding="utf-8",
+            )
+            hook_script.chmod(0o755)
+
+            self._write_skill_md_raw(
+                skill_dir,
+                "---\n"
+                "name: sample-skill\n"
+                "description: Test skill. Use when testing.\n"
+                "allowed-tools: Bash\n"
+                "user-invocable: true\n"
+                "hooks:\n"
+                "  PreToolUse:\n"
+                "    - matcher: Bash\n"
+                "      hooks:\n"
+                "        - type: command\n"
+                '          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard.py"\n'
+                "---\n\n"
+                "# Test\n\n## Workflow\n\n1. Do something\n",
+            )
+
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        record = self.one_check(records, "SD-help-output-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+        self.assertIn("hook script", str(record.get("detail")))
+
+    def test_help_output_hooks_subdir_not_auto_excluded(self) -> None:
+        """Scripts in hooks/ subdir without frontmatter wiring are NOT excluded."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "scripts" / "hooks").mkdir(parents=True)
+
+            hook_script = skill_dir / "scripts" / "hooks" / "guard.py"
+            hook_script.write_text(
+                "#!/usr/bin/env python3\nprint('not wired')\n",
+                encoding="utf-8",
+            )
+            hook_script.chmod(0o755)
+
+            self._write_skill_md_raw(
+                skill_dir,
+                "---\n"
+                "name: sample-skill\n"
+                "description: Test skill. Use when testing.\n"
+                "allowed-tools: Bash\n"
+                "user-invocable: true\n"
+                "---\n\n"
+                "# Test\n\n## Workflow\n\n1. Do something\n",
+            )
+
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        record = self.one_check(records, "SD-help-output-info")
+        # Not excluded - still flagged as missing --help
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("guard.py", str(record.get("detail")))
+
+    def test_help_output_mixed_hook_and_workflow(self) -> None:
+        """Hook scripts excluded, workflow scripts still checked."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "scripts" / "hooks").mkdir(parents=True)
+
+            hook_script = skill_dir / "scripts" / "hooks" / "guard.py"
+            hook_script.write_text(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "input = sys.stdin.read()\nprint(json.dumps({}))\n",
+                encoding="utf-8",
+            )
+            hook_script.chmod(0o755)
+
+            workflow_script = skill_dir / "scripts" / "run.py"
+            workflow_script.write_text(
+                "#!/usr/bin/env python3\nprint('hello')\n",
+                encoding="utf-8",
+            )
+            workflow_script.chmod(0o755)
+
+            self._write_skill_md_raw(
+                skill_dir,
+                "---\n"
+                "name: sample-skill\n"
+                "description: Test skill. Use when testing.\n"
+                "allowed-tools: Bash\n"
+                "user-invocable: true\n"
+                "hooks:\n"
+                "  PreToolUse:\n"
+                "    - matcher: Bash\n"
+                "      hooks:\n"
+                "        - type: command\n"
+                '          command: "${CLAUDE_SKILL_DIR}/scripts/hooks/guard.py"\n'
+                "---\n\n"
+                "# Test\n\n## Workflow\n\n1. Do something\n",
+            )
+
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        record = self.one_check(records, "SD-help-output-info")
+        self.assertEqual(record.get("level"), "info")
+        detail = str(record.get("detail"))
+        # Hook script excluded, workflow script flagged
+        self.assertIn("run.py", detail)
+        self.assertNotIn("guard.py", detail)
+        self.assertIn("1 hook script(s) excluded", detail)
+
+    def test_help_output_all_scripts_are_hooks(self) -> None:
+        """When all runnable scripts are hooks, report accordingly."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "scripts").mkdir(parents=True)
+
+            hook_script = skill_dir / "scripts" / "guard.py"
+            hook_script.write_text(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "input = sys.stdin.read()\nprint(json.dumps({}))\n",
+                encoding="utf-8",
+            )
+            hook_script.chmod(0o755)
+
+            self._write_skill_md_raw(
+                skill_dir,
+                "---\n"
+                "name: sample-skill\n"
+                "description: Test skill. Use when testing.\n"
+                "allowed-tools: Bash\n"
+                "user-invocable: true\n"
+                "hooks:\n"
+                "  PreToolUse:\n"
+                "    - matcher: Bash\n"
+                "      hooks:\n"
+                "        - type: command\n"
+                '          command: "${CLAUDE_SKILL_DIR}/scripts/guard.py"\n'
+                "---\n\n"
+                "# Test\n\n## Workflow\n\n1. Do something\n",
+            )
+
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-help-output-info",),
+            )
+
+        record = self.one_check(records, "SD-help-output-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertNotEqual(record.get("level"), "info")
+        self.assertIn("hook scripts", str(record.get("detail")))
+
+    # ---- Unreferenced scripts check ----
+
+    def test_unreferenced_passes_when_script_in_body(self) -> None:
+        """Scripts referenced in SKILL.md body should pass."""
+        body = (
+            "# Test\n\n## Workflow\n\n"
+            '1. Run `"${CLAUDE_SKILL_DIR}/scripts/run.py"`\n'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/run.py": "#!/usr/bin/env python3\nprint('ok')\n",
+                },
+                executable_paths={"scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-unreferenced",),
+            )
+
+        record = self.one_check(records, "SD-unreferenced")
+        self.assertIs(record.get("pass"), True)
+
+    def test_unreferenced_fails_for_orphan_script(self) -> None:
+        """Scripts not referenced anywhere should fail."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/orphan.py": "#!/usr/bin/env python3\nprint('lost')\n",
+                },
+                executable_paths={"scripts/orphan.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-unreferenced",),
+            )
+
+        record = self.one_check(records, "SD-unreferenced")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("orphan.py", str(record.get("detail")))
+
+    def test_unreferenced_passes_for_hook_wired_script(self) -> None:
+        """Hook-wired scripts count as referenced."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "scripts").mkdir(parents=True)
+
+            hook_script = skill_dir / "scripts" / "guard.py"
+            hook_script.write_text(
+                "#!/usr/bin/env python3\nimport json, sys\n"
+                "input = sys.stdin.read()\nprint(json.dumps({}))\n",
+                encoding="utf-8",
+            )
+            hook_script.chmod(0o755)
+
+            self._write_skill_md_raw(
+                skill_dir,
+                "---\n"
+                "name: sample-skill\n"
+                "description: Test skill. Use when testing.\n"
+                "allowed-tools: Bash\n"
+                "user-invocable: true\n"
+                "hooks:\n"
+                "  PreToolUse:\n"
+                "    - matcher: Bash\n"
+                "      hooks:\n"
+                "        - type: command\n"
+                '          command: "${CLAUDE_SKILL_DIR}/scripts/guard.py"\n'
+                "---\n\n"
+                "# Test\n\n## Workflow\n\n1. Do something\n",
+            )
+
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-unreferenced",),
+            )
+
+        record = self.one_check(records, "SD-unreferenced")
+        self.assertIs(record.get("pass"), True)
+
+    def test_unreferenced_fails_for_unwired_hooks_subdir(self) -> None:
+        """Scripts in hooks/ subdir not wired in frontmatter are unreferenced."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = Path(tmp) / "sample-skill"
+            skill_dir.mkdir(parents=True)
+            (skill_dir / "scripts" / "hooks").mkdir(parents=True)
+
+            hook_script = skill_dir / "scripts" / "hooks" / "guard.py"
+            hook_script.write_text(
+                "#!/usr/bin/env python3\nprint('not wired')\n",
+                encoding="utf-8",
+            )
+            hook_script.chmod(0o755)
+
+            self._write_skill_md_raw(
+                skill_dir,
+                "---\n"
+                "name: sample-skill\n"
+                "description: Test skill. Use when testing.\n"
+                "allowed-tools: Bash\n"
+                "user-invocable: true\n"
+                "---\n\n"
+                "# Test\n\n## Workflow\n\n1. Do something\n",
+            )
+
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-unreferenced",),
+            )
+
+        record = self.one_check(records, "SD-unreferenced")
+        self.assertIs(record.get("pass"), False)
+        self.assertIn("hooks/guard.py", str(record.get("detail")))
+
+    def test_unreferenced_skips_underscore_libraries(self) -> None:
+        """Library files with underscore prefix are not flagged."""
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                files={
+                    "scripts/_helpers.py": (
+                        "#!/usr/bin/env python3\n"
+                        "def helper(): pass\n"
+                    ),
+                    "scripts/run.py": (
+                        "#!/usr/bin/env python3\n"
+                        "from _helpers import helper\n"
+                        "helper()\n"
+                    ),
+                },
+                executable_paths={"scripts/_helpers.py", "scripts/run.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-unreferenced",),
+            )
+
+        record = self.one_check(records, "SD-unreferenced")
+        detail = str(record.get("detail"))
+        # _helpers.py should not appear as unreferenced
+        self.assertNotIn("_helpers.py", detail)
+
+    def test_unreferenced_passes_for_script_referenced_by_other_script(self) -> None:
+        """Scripts referenced by other scripts (orchestrator pattern) pass."""
+        body = (
+            "# Test\n\n## Workflow\n\n"
+            '1. Run `"${CLAUDE_SKILL_DIR}/scripts/validate.py"`\n'
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "scripts/validate.py": (
+                        "#!/usr/bin/env python3\n"
+                        "# Orchestrator that calls check-foo.py\n"
+                        'SCRIPTS = {"check-foo.py": "CF"}\n'
+                    ),
+                    "scripts/check-foo.py": (
+                        "#!/usr/bin/env python3\nprint('checking')\n"
+                    ),
+                },
+                executable_paths={"scripts/validate.py", "scripts/check-foo.py"},
+            )
+            _, records = self.run_checker(
+                "check-scripts-dir.py",
+                skill_dir,
+                checks=("SD-unreferenced",),
+            )
+
+        record = self.one_check(records, "SD-unreferenced")
+        self.assertIs(record.get("pass"), True)
+
 
 class LintInteractiveTests(ScriptTestCase):
     def _run_lint(self, scripts_dir: Path) -> list[dict[str, object]]:
