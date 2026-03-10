@@ -46,6 +46,7 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | CT-unversioned-cmd-info | P22 | check-content.py | Unversioned runner commands in code blocks |
 | FR-resolves | C3 | check-file-refs.py | File references resolve to actual files |
 | FR-link-format | I15 | check-file-refs.py | References use markdown links |
+| FR-ref-link-format | I15 | check-file-refs.py | Referenced files use markdown links |
 | FR-mentions-file | P3 | check-file-refs.py | SKILL.md mentions all bundled resources |
 | FR-no-backslash | P6 | check-file-refs.py | No backslash paths |
 | FR-no-disallowed | - | check-file-refs.py | No disallowed path patterns |

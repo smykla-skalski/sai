@@ -977,6 +977,7 @@ STRUCTURE_DELEGATIONS: Final[tuple[DelegateConfig, ...]] = (
         "FR-one-level",
         "FR-mentions-file",
         "FR-link-format",
+        "FR-ref-link-format",
     ),
     _delegate("check-scripts-dir.py"),
     _delegate_checks(

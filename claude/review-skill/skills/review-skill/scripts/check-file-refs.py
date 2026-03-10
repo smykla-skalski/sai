@@ -8,6 +8,7 @@ Sub-checks:
 - `FR-one-level`
 - `FR-mentions-file`
 - `FR-link-format`
+- `FR-ref-link-format`
 
 Output is NDJSON with a summary line.
 Exit codes: 0 (all pass), 1 (any fail), 2 (usage/input error).
@@ -21,8 +22,10 @@ from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
 from _skill_check_common import (
+    DEFAULT_TEXT_REFERENCE_SUFFIXES,
     RESOURCE_SUBDIRECTORIES,
     SNIPPET_WIDTH,
     CheckRecord,
@@ -43,6 +46,9 @@ CHECK_NO_DISALLOWED_FILES: Final[str] = "FR-no-disallowed"
 CHECK_REFS_ONE_LEVEL: Final[str] = "FR-one-level"
 CHECK_SKILL_MENTIONS_FILE: Final[str] = "FR-mentions-file"
 CHECK_REF_LINK_FORMAT: Final[str] = "FR-link-format"
+CHECK_REF_LINK_FORMAT_FILES: Final[str] = "FR-ref-link-format"
+
+LINK_FORMAT_SUBDIRS: Final[tuple[str, ...]] = ("references", "examples")
 
 DISALLOWED_FILES: Final[tuple[str, ...]] = (
     "README.md",
@@ -74,6 +80,17 @@ DOUBLE_QUOTED_RE: Final[Pattern[str]] = re.compile(r'"[^"]*"')
 INLINE_CODE_RE: Final[Pattern[str]] = re.compile(r"`[^`]*`")
 
 PATH_CHAR_RE: Final[str] = r"[a-zA-Z0-9._-]"
+
+MARKDOWN_LINK_RE: Final[Pattern[str]] = re.compile(r"\[[^\]]*\]\([^)]*\)")
+EXAMPLE_OPEN_TAG_RE: Final[Pattern[str]] = re.compile(
+    r"<example(?:\s[^>]*)?>",
+    re.IGNORECASE,
+)
+EXAMPLE_CLOSE_TAG_RE: Final[Pattern[str]] = re.compile(
+    r"</example>",
+    re.IGNORECASE,
+)
+BLOCKQUOTE_LINE_RE: Final[Pattern[str]] = re.compile(r"^\s*>")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -120,6 +137,36 @@ def _has_cross_reference(
                 return True
 
     return False
+
+
+def _strip_example_blocks(text: str) -> str:
+    """Remove content between <example> and </example> tags."""
+    lines: list[str] = []
+    in_example = False
+    for line in text.splitlines():
+        if not in_example and EXAMPLE_OPEN_TAG_RE.search(line):
+            in_example = True
+            continue
+        if in_example and EXAMPLE_CLOSE_TAG_RE.search(line):
+            in_example = False
+            continue
+        if not in_example:
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def _prepare_prose_for_link_check(content: str) -> str:
+    """Strip non-prose regions from file content for backtick link checking.
+
+    Removes fenced code blocks, <example> tag content, markdown link
+    constructs (so backtick-formatted link text doesn't false-positive),
+    and blockquote lines.
+    """
+    text = strip_fenced_code_blocks(content)
+    text = _strip_example_blocks(text)
+    text = MARKDOWN_LINK_RE.sub("", text)
+    lines = [line for line in text.splitlines() if not BLOCKQUOTE_LINE_RE.match(line)]
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -358,6 +405,93 @@ def check_ref_link_format(document: SkillDocument) -> list[CheckRecord]:
     ]
 
 
+def _scan_file_for_backtick_refs(
+    document: SkillDocument,
+    path: Path,
+) -> list[CheckRecord]:
+    """Scan one text file for backtick-wrapped resource paths.
+
+    Only flags paths that resolve to an existing file in the skill
+    directory (hypothetical example paths are not flagged).
+    """
+    content = read_text(path)
+    prepared = _prepare_prose_for_link_check(content)
+    hits = INLINE_CODE_REFERENCE_RE.findall(prepared)
+    rel_path = path.relative_to(document.skill_dir).as_posix()
+
+    results: list[CheckRecord] = []
+    for hit in hits:
+        bare_path = hit.strip("`")
+        if not (document.skill_dir / bare_path).is_file():
+            continue
+        results.append(
+            CheckRecord(
+                check=CHECK_REF_LINK_FORMAT_FILES,
+                passed=False,
+                detail=(
+                    f"Backtick path in '{rel_path}' - use markdown link "
+                    f"[file](path) for progressive disclosure: "
+                    f"{hit[:SNIPPET_WIDTH]}"
+                ),
+                tier="I15",
+            ),
+        )
+    return results
+
+
+def check_ref_link_format_in_files(document: SkillDocument) -> list[CheckRecord]:
+    """Validate referenced files use markdown links for resource paths.
+
+    Scans text files under references/ and examples/ for backtick-wrapped
+    resource paths that should be markdown links for progressive disclosure.
+    Excludes content inside fenced code blocks, <example> tags, markdown
+    link constructs, and blockquote lines.  Only flags paths that resolve
+    to an existing file in the skill directory (hypothetical example paths
+    like ``references/api.md`` are not flagged when the file does not exist).
+    """
+    results: list[CheckRecord] = []
+    scanned = 0
+
+    for subdir in LINK_FORMAT_SUBDIRS:
+        subdir_path = document.skill_dir / subdir
+        if not subdir_path.is_dir():
+            continue
+
+        for path in sorted(subdir_path.rglob("*")):
+            if not path.is_file():
+                continue
+            if path.name.startswith(".") or path.name.startswith("_"):
+                continue
+            if path.suffix.lower() not in DEFAULT_TEXT_REFERENCE_SUFFIXES:
+                continue
+
+            scanned += 1
+            results.extend(_scan_file_for_backtick_refs(document, path))
+
+    if not results:
+        if scanned == 0:
+            return [
+                CheckRecord.skip(
+                    CHECK_REF_LINK_FORMAT_FILES,
+                    "No text files in references/ or examples/ to check",
+                    tier="I15",
+                ),
+            ]
+        return [
+            CheckRecord(
+                check=CHECK_REF_LINK_FORMAT_FILES,
+                passed=True,
+                detail=(
+                    f"All {scanned} text file(s) in references/examples "
+                    "use markdown link format"
+                ),
+                tier="I15",
+            ),
+        ]
+
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -372,6 +506,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_REFS_ONE_LEVEL,
     CHECK_SKILL_MENTIONS_FILE,
     CHECK_REF_LINK_FORMAT,
+    CHECK_REF_LINK_FORMAT_FILES,
 )
 
 CHECK_RUNNERS: Final[dict[str, CheckRunner]] = {
@@ -381,6 +516,7 @@ CHECK_RUNNERS: Final[dict[str, CheckRunner]] = {
     CHECK_REFS_ONE_LEVEL: check_refs_one_level,
     CHECK_SKILL_MENTIONS_FILE: check_skill_md_mentions_file,
     CHECK_REF_LINK_FORMAT: check_ref_link_format,
+    CHECK_REF_LINK_FORMAT_FILES: check_ref_link_format_in_files,
 }
 
 
