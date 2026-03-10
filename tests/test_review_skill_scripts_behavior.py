@@ -1807,6 +1807,193 @@ class WhyRationaleBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "BP-why-rationale-info")
         self.assertIs(record.get("pass"), True)
 
+    def test_why_rationale_with_bare_so(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST track session IDs so runs can be traced back"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("1 of 1", str(record.get("detail")))
+
+    def test_why_rationale_with_to_keep(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST split large groups to keep output scannable"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("1 of 1", str(record.get("detail")))
+
+    def test_why_rationale_with_to_reduce(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST batch requests to reduce API calls"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("1 of 1", str(record.get("detail")))
+
+    def test_why_rationale_with_to_maintain(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST use consistent naming to maintain readability"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("1 of 1", str(record.get("detail")))
+
+    def test_why_rationale_so_far_not_causal(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST validate all entries collected so far"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
+    def test_why_rationale_so_on_not_causal(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST check names, IDs, and so on"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
+    def test_why_rationale_so_much_not_causal(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST NOT generate so much output"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
+    def test_why_rationale_so_many_not_causal(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. NEVER create so many files at once"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
+    def test_why_rationale_do_so_not_causal(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST do so before proceeding"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
+    def test_why_rationale_so_long_not_causal(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. NEVER wait so long between retries"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
+    def test_why_rationale_also_no_false_match(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. You MUST also validate the schema"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-why-rationale-info",),
+            )
+
+        record = self.one_check(records, "BP-why-rationale-info")
+        self.assertEqual(record.get("level"), "info")
+        self.assertIn("0 of 1", str(record.get("detail")))
+
     def test_why_rationale_ignores_teaching_reference_sections(self) -> None:
         body = (
             "# Skill\n\n## Workflow\n\n"
@@ -1975,6 +2162,82 @@ class FeedbackLoopBehaviorTests(ScriptTestCase):
 
         record = self.one_check(records, "BP-feedback-loop-info")
         self.assertIs(record.get("pass"), True)
+
+    def test_feedback_loop_verify_with_rerun_hyphenated(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Generate output\n"
+            "2. Verify output quality\n"
+            "3. If checks fail, re-run the generation step"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_feedback_loop_verify_with_rerun_unhyphenated(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Generate output\n"
+            "2. Verify output quality\n"
+            "3. If checks fail, rerun the generation step"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_feedback_loop_verify_with_reverify(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Generate output\n"
+            "2. Verify output quality\n"
+            "3. Fix issues and re-verify before continuing"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_feedback_loop_verify_with_repeat_until_passes(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. Generate output\n"
+            "2. Verify output quality\n"
+            "3. Repeat until the output passes all checks"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-best-practices.py",
+                skill_dir,
+                checks=("BP-feedback-loop-info",),
+            )
+
+        record = self.one_check(records, "BP-feedback-loop-info")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
 
     def test_feedback_loop_ignores_teaching_reference_sections(self) -> None:
         body = (

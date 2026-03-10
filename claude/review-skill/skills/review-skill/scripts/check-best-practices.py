@@ -174,9 +174,13 @@ CAUSAL_CONNECTOR_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
         r"\bbecause\b",
         r"\bsince\b(?!\s+\d{4})(?!\s+last\b)",
         r"\bso\s+that\b",
+        r"(?<!do )\bso\b(?!\s+(?:far|on|much|many|long|few)\b)",
         r"\bto\s+prevent\b",
         r"\bto\s+avoid\b",
         r"\bto\s+ensure\b",
+        r"\bto\s+keep\b",
+        r"\bto\s+reduce\b",
+        r"\bto\s+maintain\b",
         r"\botherwise\b",
         r"\bthis\s+(?:prevents|ensures|avoids)\b",
         r"\breason:",
@@ -206,11 +210,11 @@ VERIFICATION_RE: Final[Pattern[str]] = re.compile(
 
 LOOP_PATTERNS: Final[tuple[Pattern[str], ...]] = compile_patterns(
     (
-        r"\b(?:loop|repeat|retry|re-run|iterate)\b",
+        r"\b(?:loop|repeat|retry|re-?run|re-?verify|iterate)\b",
         r"\bfix\s+and\s+re",
         r"\breturn\s+to\b",
         r"\bgo\s+back\b",
-        r"\buntil\b.*\bpass\b",
+        r"\buntil\b.*\bpass(?:es|ed|ing)?\b",
     ),
 )
 
@@ -800,7 +804,7 @@ def check_why_rationale_info(document: SkillDocument) -> CheckRecord:
         CHECK_WHY_RATIONALE,
         (
             f"{with_rationale} of {total} constraint(s) have WHY rationale "
-            "- add because/so that/to prevent for non-obvious rules"
+            "- add because/so/to keep/to prevent for non-obvious rules"
         ),
         tier="I29",
     )

@@ -36,7 +36,7 @@
 {"kind": "check", "check": "BP-scope-boundary-info", "pass": true, "level": "info", "tier": "P13", "detail": "INFO: No scope-boundary language detected (for example: when not to use, avoid using, not designed for, limitations)"}
 {"kind": "check", "check": "BP-constraint-refresh-info", "pass": true, "level": "skip", "tier": "P14", "detail": "Constraint refresh check skipped - fewer than 4 phases detected (1)"}
 {"kind": "check", "check": "BP-section-order-info", "pass": true, "level": "skip", "tier": "P17", "detail": "Section order check skipped - fewer than 2 classifiable H2 headings (1)"}
-{"kind": "check", "check": "BP-why-rationale-info", "pass": true, "level": "info", "tier": "I29", "detail": "INFO: 0 of 1 constraint(s) have WHY rationale - add because/so that/to prevent for non-obvious rules"}
+{"kind": "check", "check": "BP-why-rationale-info", "pass": true, "level": "info", "tier": "I29", "detail": "INFO: 0 of 1 constraint(s) have WHY rationale - add because/so/to keep/to prevent for non-obvious rules"}
 {"kind": "check", "check": "BP-example-diversity-info", "pass": true, "level": "skip", "tier": "I3", "detail": "Example diversity check skipped - no <example> tags found"}
 {"kind": "check", "check": "BP-feedback-loop-info", "pass": true, "level": "skip", "tier": "I8", "detail": "Feedback loop check skipped - no verification steps found"}
 {"kind": "check", "check": "BP-eval-dir-info", "pass": true, "level": "info", "tier": "P20", "detail": "INFO: No evals/ directory detected"}
