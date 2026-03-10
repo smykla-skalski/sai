@@ -133,11 +133,28 @@ RUFF_PREFIX_SEVERITY: Final[tuple[tuple[str, FindingSeverity], ...]] = (
     ("TRIO", "low"),
 )
 
-PROSE_COMMAND_WORDS: Final[frozenset[str]] = frozenset({
-    "make", "test", "find", "sort", "head", "cut",
-    "split", "join", "read", "link", "diff", "patch",
-    "date", "time", "file", "last", "watch", "kill",
-})
+PROSE_COMMAND_WORDS: Final[frozenset[str]] = frozenset(
+    {
+        "make",
+        "test",
+        "find",
+        "sort",
+        "head",
+        "cut",
+        "split",
+        "join",
+        "read",
+        "link",
+        "diff",
+        "patch",
+        "date",
+        "time",
+        "file",
+        "last",
+        "watch",
+        "kill",
+    },
+)
 
 SET_U_LINE_RE: Final[re.Pattern[str]] = re.compile(
     r"\bset\b[^#\n]*\s-[A-Za-z]*u[A-Za-z]*\b|\bset\s+-o\s+nounset\b",
@@ -237,13 +254,28 @@ HEREDOC_TAG_RE: Final[re.Pattern[str]] = re.compile(r"<<-?\s*(\w+)")
 HEREDOC_QUOTED_RE: Final[re.Pattern[str]] = re.compile(r"<<-?\s*['\"]")
 HEREDOC_ESCAPED_RE: Final[re.Pattern[str]] = re.compile(r"<<-?\s*\\")
 
-_GREP_OPTIONS_WITH_ARG: Final[frozenset[str]] = frozenset({
-    "-e", "-f", "-m", "-A", "-B", "-C",
-    "--regexp", "--file", "--max-count",
-    "--after-context", "--before-context", "--context",
-    "--label", "--include", "--exclude", "--exclude-dir",
-    "--color", "--colours",
-})
+_GREP_OPTIONS_WITH_ARG: Final[frozenset[str]] = frozenset(
+    {
+        "-e",
+        "-f",
+        "-m",
+        "-A",
+        "-B",
+        "-C",
+        "--regexp",
+        "--file",
+        "--max-count",
+        "--after-context",
+        "--before-context",
+        "--context",
+        "--label",
+        "--include",
+        "--exclude",
+        "--exclude-dir",
+        "--color",
+        "--colours",
+    },
+)
 
 CHECK_SHELL_INTERACTIVE: Final[str] = "CL-S28"
 CHECK_PYTHON_INTERACTIVE: Final[str] = "CL-P01"
@@ -1416,8 +1448,7 @@ def _check_shell_interactive(context: ScanContext) -> list[FindingRecord]:
                     severity="critical",
                     check=CHECK_SHELL_INTERACTIVE,
                     message=(
-                        "Interactive prompt detected - skill scripts run "
-                        "without a TTY"
+                        "Interactive prompt detected - skill scripts run without a TTY"
                     ),
                     evidence="Use $ARGUMENTS or AskUserQuestion instead",
                 ),
@@ -1444,8 +1475,7 @@ def _check_python_interactive(context: PythonScanContext) -> list[FindingRecord]
                     severity="critical",
                     check=CHECK_PYTHON_INTERACTIVE,
                     message=(
-                        "Interactive prompt detected - skill scripts run "
-                        "without a TTY"
+                        "Interactive prompt detected - skill scripts run without a TTY"
                     ),
                     evidence="Use $ARGUMENTS or AskUserQuestion instead",
                 ),
@@ -1484,9 +1514,7 @@ CUSTOM_SHELL_CHECKS: Final[tuple[Rule, ...]] = (
     _check_shell_interactive,
 )
 
-CUSTOM_PYTHON_CHECKS: Final[tuple[PythonRule, ...]] = (
-    _check_python_interactive,
-)
+CUSTOM_PYTHON_CHECKS: Final[tuple[PythonRule, ...]] = (_check_python_interactive,)
 
 
 def _scan_shell_file(path: Path) -> list[FindingRecord]:

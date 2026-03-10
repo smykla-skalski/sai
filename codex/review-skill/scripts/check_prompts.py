@@ -161,11 +161,14 @@ def _body_claude_only_terms(body: str) -> list[str]:
 
 
 def _is_negative_context_line(raw_line: str) -> bool:
-    return re.match(
-        r"^\s*(?:[-*+]|\d+\.)?\s*(?:do not apply|do not use|claude-only)\b",
-        raw_line,
-        re.IGNORECASE,
-    ) is not None
+    return (
+        re.match(
+            r"^\s*(?:[-*+]|\d+\.)?\s*(?:do not apply|do not use|claude-only)\b",
+            raw_line,
+            re.IGNORECASE,
+        )
+        is not None
+    )
 
 
 CHECKS = {

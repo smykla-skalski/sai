@@ -351,12 +351,8 @@ def check_unversioned_commands(document: SkillDocument) -> CheckRecord:
             if not _has_version_specifier(pkg):
                 hits.append(match.group(0).strip())
 
-        hits.extend(
-            m.group(0).strip() for m in UNVERSIONED_PIPX_RE.finditer(line_text)
-        )
-        hits.extend(
-            m.group(0).strip() for m in UNVERSIONED_PIP_RE.finditer(line_text)
-        )
+        hits.extend(m.group(0).strip() for m in UNVERSIONED_PIPX_RE.finditer(line_text))
+        hits.extend(m.group(0).strip() for m in UNVERSIONED_PIP_RE.finditer(line_text))
 
         for match in UNVERSIONED_GO_RE.finditer(line_text):
             pkg = match.group(1)
