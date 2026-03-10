@@ -86,10 +86,7 @@ def _check_read_directives(skill_dir: Path) -> CheckRecord:
 def _check_bundled_docs_mentioned(skill_dir: Path) -> CheckRecord:
     doc = load_skill_document(skill_dir)
     missing_docs: list[str] = []
-    linked_targets = {
-        link.target.split("#", 1)[0]
-        for link in relative_links(doc.body)
-    }
+    linked_targets = {link.target.split("#", 1)[0] for link in relative_links(doc.body)}
 
     for path in doc.resource_files:
         relative_path = file_relative_to(path, doc.skill_dir)
@@ -165,8 +162,7 @@ def _check_long_ref_toc(skill_dir: Path) -> CheckRecord:
 
 def _is_surface_doc(relative_path: str) -> bool:
     return (
-        relative_path.startswith("references/")
-        or relative_path == AGENT_METADATA_PATH
+        relative_path.startswith("references/") or relative_path == AGENT_METADATA_PATH
     )
 
 

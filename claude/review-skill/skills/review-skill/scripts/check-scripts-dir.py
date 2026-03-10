@@ -122,15 +122,52 @@ _PY_IMPORT_RE: Final[Pattern[str]] = re.compile(
 )
 
 _STDLIB_MODULES: Final[frozenset[str]] = (
-    frozenset(sys.stdlib_module_names) if hasattr(sys, "stdlib_module_names")
-    else frozenset({"abc", "argparse", "ast", "collections", "contextlib",
-                     "dataclasses", "datetime", "enum", "functools", "hashlib",
-                     "importlib", "io", "itertools", "json", "logging", "math",
-                     "operator", "os", "pathlib", "platform", "pprint", "re",
-                     "shlex", "shutil", "signal", "socket", "stat", "string",
-                     "subprocess", "sys", "tempfile", "textwrap", "threading",
-                     "time", "traceback", "typing", "unittest", "urllib",
-                     "uuid", "warnings"})
+    frozenset(sys.stdlib_module_names)
+    if hasattr(sys, "stdlib_module_names")
+    else frozenset(
+        {
+            "abc",
+            "argparse",
+            "ast",
+            "collections",
+            "contextlib",
+            "dataclasses",
+            "datetime",
+            "enum",
+            "functools",
+            "hashlib",
+            "importlib",
+            "io",
+            "itertools",
+            "json",
+            "logging",
+            "math",
+            "operator",
+            "os",
+            "pathlib",
+            "platform",
+            "pprint",
+            "re",
+            "shlex",
+            "shutil",
+            "signal",
+            "socket",
+            "stat",
+            "string",
+            "subprocess",
+            "sys",
+            "tempfile",
+            "textwrap",
+            "threading",
+            "time",
+            "traceback",
+            "typing",
+            "unittest",
+            "urllib",
+            "uuid",
+            "warnings",
+        },
+    )
 )
 
 
@@ -609,8 +646,7 @@ def check_help_output_info(document: SkillDocument) -> list[CheckRecord]:
             check=CHECK_HELP_OUTPUT_INFO,
             passed=True,
             detail=(
-                f"All {len(runnable_scripts)} runnable script(s) "
-                "have --help support"
+                f"All {len(runnable_scripts)} runnable script(s) have --help support"
             ),
             tier="I30",
         ),

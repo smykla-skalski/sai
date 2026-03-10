@@ -283,7 +283,6 @@ def _is_ignored_line(
     )
 
 
-
 def _strip_non_instruction_segments(line: str) -> str:
     """Remove inline-code and quoted snippets before over-prompting scans."""
     return SINGLE_QUOTED_RE.sub(
@@ -399,9 +398,7 @@ def check_over_prompting(document: SkillDocument) -> CheckRecord:
         if first_evidence is None and referenced_evidence is not None:
             first_evidence = referenced_evidence
 
-    scanned_detail = (
-        f"scanned SKILL.md and {len(ref_files)} referenced text file(s)"
-    )
+    scanned_detail = f"scanned SKILL.md and {len(ref_files)} referenced text file(s)"
 
     if hit_count >= OVER_PROMPT_FAIL_THRESHOLD:
         return CheckRecord.fail(
@@ -665,9 +662,7 @@ def _count_reference_verification_loops(
             start = max(0, index - VERIFICATION_WINDOW)
             end = min(len(ref.lines), index + VERIFICATION_WINDOW + 1)
             ref_window_text = " ".join(
-                ref.lines[j]
-                for j in range(start, end)
-                if j not in ref.skip_indices
+                ref.lines[j] for j in range(start, end) if j not in ref.skip_indices
             )
             if any(pattern.search(ref_window_text) for pattern in LOOP_PATTERNS):
                 total_with_loop += 1

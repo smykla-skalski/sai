@@ -203,7 +203,7 @@ def _block_lines_from_lines(
     *,
     indent: int,
 ) -> list[str] | None:
-    header_re = re.compile(rf'^{" " * indent}{re.escape(key)}:\s*$')
+    header_re = re.compile(rf"^{' ' * indent}{re.escape(key)}:\s*$")
     for index, line in enumerate(lines):
         if header_re.match(line) is None:
             continue
@@ -233,7 +233,7 @@ def _tools_block_has_valid_entries(lines: list[str]) -> bool:
 def _tool_items(lines: list[str]) -> list[list[str]]:
     items: list[list[str]] = []
     current: list[str] = []
-    item_start_re = re.compile(rf'^{" " * TOOLS_ITEM_INDENT}-(?:\s|$)')
+    item_start_re = re.compile(rf"^{' ' * TOOLS_ITEM_INDENT}-(?:\s|$)")
 
     for line in lines:
         if not line.strip():

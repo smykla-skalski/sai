@@ -228,19 +228,23 @@ def run_checks(
             continue
         files = scan.hits[sc.check_id]
         if files:
-            results.append(CheckRecord(
-                check=sc.check_id,
-                passed=False,
-                detail=sc.fail_detail.format(files=", ".join(files)) + skip_suffix,
-                tier="C8",
-            ))
+            results.append(
+                CheckRecord(
+                    check=sc.check_id,
+                    passed=False,
+                    detail=sc.fail_detail.format(files=", ".join(files)) + skip_suffix,
+                    tier="C8",
+                ),
+            )
         else:
-            results.append(CheckRecord(
-                check=sc.check_id,
-                passed=True,
-                detail=sc.ok_detail + skip_suffix,
-                tier="C8",
-            ))
+            results.append(
+                CheckRecord(
+                    check=sc.check_id,
+                    passed=True,
+                    detail=sc.ok_detail + skip_suffix,
+                    tier="C8",
+                ),
+            )
     return results
 
 
