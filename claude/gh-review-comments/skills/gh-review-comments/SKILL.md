@@ -4,8 +4,9 @@ description: List, reply to, resolve, and create GitHub PR review comment thread
 argument-hint: "<owner/repo> <pr-number> [--author <login>] [--reply <message>] [--resolve] [--unresolve] [--create-review] [--thread-id <id>] [--unresolved-only]"
 allowed-tools: AskUserQuestion, Bash, Read, Task
 user-invocable: true
-disable-model-invocation: true
 ---
+
+<!-- justify: CF-side-effect All gh API operations target a specific PR the user is actively working on -->
 
 # GH Review Comments
 

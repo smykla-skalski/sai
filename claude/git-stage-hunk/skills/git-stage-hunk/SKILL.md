@@ -1,23 +1,24 @@
 ---
 name: git-stage-hunk
 description: >-
-  Stage only your changes when a file has edits from multiple sessions
-  or agents. Commit part of a file without git add -p. Works without
-  a TTY. Use when the working tree has mixed changes and you need to
-  commit selectively - list hunks, pick by ID or file or pattern,
-  then commit. Non-interactive partial staging, selective git add,
-  split hunks, stage by line range.
+  Stage only specific hunks from the working tree for selective commits.
+  Use when a file has changes from multiple sessions, parallel AI agents,
+  or mixed user and agent edits and you need to commit only the changes
+  made by the current session. Use when git add -p is unavailable or
+  when you need non-interactive partial staging. Lists hunks with IDs,
+  stages by hunk ID, file, regex pattern, or line range.
 argument-hint: "[--list [--file PATH] [--split] [--table]] [--hunk H1,H3.1,H5:5-10] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--verify] [--dry-run] [--table]"
 allowed-tools: AskUserQuestion, Bash
 user-invocable: true
-disable-model-invocation: true
 ---
+
+<!-- justify: CF-side-effect Stages hunks via git apply --cached which is additive and reversible - safe to auto-invoke -->
 
 # git-stage-hunk
 
-Non-interactive hunk staging for selective `git add` without a TTY. Replaces `git add -p` in scripted and multi-agent environments.
+Non-interactive hunk staging for selective `git add` without a TTY. Replaces `git add -p` in scripted and multi-agent environments. Use when only some changes in a file belong in the current commit, when multiple sessions or agents modified the same file and you need to commit selectively, or when `git add -p` is unavailable because there is no TTY.
 
-This skill has `disable-model-invocation: true` - it is only invoked by the user. The heavy lifting happens in the Python script. Your first action MUST be Bash - call the script directly, then present the output. Do not re-implement git diff/apply logic yourself.
+The heavy lifting happens in the Python script. Your first action MUST be Bash - call the script directly, then present the output. Do not re-implement git diff/apply logic yourself.
 
 ```
 "${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --table

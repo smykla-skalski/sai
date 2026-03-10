@@ -4,8 +4,9 @@ description: Review and fix Claude Code skill definitions (SKILL.md) using a tie
 argument-hint: "[path/to/skill] [--dry-run] [--verbose] [--thorough] [--json-report] [--strict]"
 allowed-tools: AskUserQuestion, Bash, Edit, Glob, Grep, Read, Task, Write
 user-invocable: true
-disable-model-invocation: true
 ---
+
+<!-- justify: CF-side-effect Edit/Write fix detected issues in SKILL.md with user approval -->
 
 # Review Skill
 

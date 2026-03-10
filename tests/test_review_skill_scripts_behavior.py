@@ -376,6 +376,49 @@ class ConfigScriptBehaviorTests(ScriptTestCase):
         record = self.one_check(records, "CF-side-effect")
         self.assertIs(record.get("pass"), True)
 
+    def test_side_effect_justified_via_html_comment(self) -> None:
+        body = (
+            "<!-- justify: CF-side-effect Write targets user files not infra -->\n\n"
+            "# Skill\n\n## Workflow\n\n"
+            "1. Use GitHub create comment on an issue"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+            )
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-side-effect",),
+            )
+
+        record = self.one_check(records, "CF-side-effect")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("Justified:", str(record.get("detail")))
+
+    def test_side_effect_justify_inside_fenced_block_ignored(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "```markdown\n"
+            "<!-- justify: CF-side-effect This is inside a code block -->\n"
+            "```\n\n"
+            "1. Use GitHub create comment on an issue"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+            )
+            _, records = self.run_checker(
+                "check-config.py",
+                skill_dir,
+                checks=("CF-side-effect",),
+            )
+
+        record = self.one_check(records, "CF-side-effect")
+        self.assertIs(record.get("pass"), False)
+
 
 class BestPracticesScriptBehaviorTests(ScriptTestCase):
     def test_example_tags_fail_when_missing(self) -> None:

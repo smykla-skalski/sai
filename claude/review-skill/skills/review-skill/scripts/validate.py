@@ -1435,7 +1435,7 @@ def main(argv: list[str] | None = None) -> int:
         collector.emit_summary()
         return EXIT_USAGE_ERROR
 
-    collector = ResultCollector()
+    collector = ResultCollector(justifications=doc.justifications)
 
     if args.mode in {"all", "frontmatter"}:
         run_frontmatter(doc, collector)

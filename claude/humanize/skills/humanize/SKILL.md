@@ -4,10 +4,11 @@ description: Identify and remove AI writing patterns to make text sound natural 
 argument-hint: "[file-path] [--score-only] [--dry-run]"
 allowed-tools: AskUserQuestion, Edit, Read, Task, Write
 user-invocable: true
-disable-model-invocation: true
 context: fork
 agent: general-purpose
 ---
+
+<!-- justify: CF-side-effect Edit/Write are used on user-provided files, not infrastructure - safe to auto-invoke -->
 
 # Humanize
 
