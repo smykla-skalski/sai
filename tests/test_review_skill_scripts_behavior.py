@@ -2364,6 +2364,636 @@ class FileRefOneLevelBehaviorTests(ScriptTestCase):
         self.assertIs(alpha_records[0].get("pass"), True)
 
 
+class RefLinkFormatInFilesBehaviorTests(ScriptTestCase):
+    """Tests for FR-ref-link-format check."""
+
+    # ---- True positives: should flag ----
+
+    def test_backtick_ref_in_references_file(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read [references/guide.md](references/guide.md)"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": "See `references/rules.md` for details",
+                    "references/rules.md": "# Rules\n\nBe kind.",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        check_records = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format"
+        ]
+        self.assertTrue(any(r.get("pass") is False for r in check_records))
+        self.assertIn("guide.md", str(check_records[0].get("detail")))
+
+    def test_backtick_ref_in_examples_file(self) -> None:
+        body = (
+            "# Skill\n\n## Workflow\n\n"
+            "1. See [examples/template.md](examples/template.md)"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "examples/template.md": (
+                        "Follow the contract in `references/agent.md`"
+                    ),
+                    "references/agent.md": "# Agent\n\nContract here.",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        check_records = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format"
+        ]
+        self.assertTrue(any(r.get("pass") is False for r in check_records))
+        self.assertIn("template.md", str(check_records[0].get("detail")))
+
+    def test_multiple_backtick_refs_in_one_file(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": (
+                        "See `references/rules.md` and `references/api.md`"
+                    ),
+                    "references/rules.md": "# Rules",
+                    "references/api.md": "# API",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        self.assertEqual(len(fails), 2)
+
+    def test_backtick_examples_path_in_ref_file(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": "See `examples/template.md` for a sample",
+                    "examples/template.md": "# Template",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        self.assertTrue(fails)
+        self.assertIn("examples/template.md", str(fails[0].get("detail")))
+
+    def test_nested_path_flagged(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": "See `references/hooks/guard.md` for details",
+                    "references/hooks/guard.md": "# Guard",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        self.assertTrue(fails)
+
+    def test_backtick_ref_in_bullet_list(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": "- See `references/rules.md`\n- Another item",
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        self.assertTrue(fails)
+
+    # ---- True negatives: should NOT flag ----
+
+    def test_no_backtick_refs_passes(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": "This is standalone content with no refs",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+        self.assertEqual(record.get("level"), "pass")
+
+    def test_no_refs_or_examples_dir_skips(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Do work"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(Path(tmp), body=body)
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertEqual(record.get("level"), "skip")
+
+    def test_backtick_ref_inside_fenced_code_block(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = (
+            "# Guide\n\n"
+            "Example:\n\n"
+            "```markdown\n"
+            "See `references/rules.md` for details\n"
+            "```\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_backtick_ref_inside_example_tags(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = (
+            "# Guide\n\n"
+            "<example>\n"
+            "See `references/rules.md` for details\n"
+            "</example>\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_backtick_ref_inside_attributed_example_tags(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = (
+            "# Guide\n\n"
+            '<example description="demo">\n'
+            "See `references/rules.md` for details\n"
+            "</example>\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_markdown_link_format_not_flagged(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = "See [references/rules.md](references/rules.md) for details"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_backtick_in_markdown_link_text_not_flagged(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = "See [`references/rules.md`](references/rules.md) for details"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_backtick_ref_in_blockquote_not_flagged(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = "> See `references/rules.md` for details"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_nonexistent_file_ref_not_flagged(self) -> None:
+        """Backtick path to a non-existent file is a hypothetical example."""
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = "Paths like `references/api.md` resolve from skill dir"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_backtick_scripts_path_not_flagged(self) -> None:
+        """scripts/ paths are not in scope for the link format check."""
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = "Run `scripts/validate.py` to check"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "scripts/validate.py": "#!/usr/bin/env python3\npass",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_hidden_files_skipped(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/.hidden.md": "See `references/rules.md`",
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        # .hidden.md skipped, rules.md has no backtick refs -> pass
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_underscore_prefixed_files_skipped(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/_internal.md": "See `references/rules.md`",
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_non_text_files_skipped(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/data.json": '{"ref": "`references/rules.md`"}',
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        # json file skipped; rules.md has no backtick refs -> pass
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    # ---- Edge cases ----
+
+    def test_both_dirs_scanned(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read docs"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": "See `references/rules.md`",
+                    "examples/demo.md": "See `examples/other.md`",
+                    "references/rules.md": "# Rules",
+                    "examples/other.md": "# Other",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        self.assertEqual(len(fails), 2)
+        details = [str(r.get("detail")) for r in fails]
+        self.assertTrue(any("references/guide.md" in d for d in details))
+        self.assertTrue(any("examples/demo.md" in d for d in details))
+
+    def test_mix_of_valid_and_invalid_refs(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = (
+            "Use [references/rules.md](references/rules.md) for rules.\n"
+            "Also check `references/api.md` for API details.\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                    "references/api.md": "# API",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        # Only `references/api.md` in backticks flagged, not the markdown link
+        self.assertEqual(len(fails), 1)
+        self.assertIn("api.md", str(fails[0].get("detail")))
+
+    def test_empty_reference_file(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={"references/empty.md": ""},
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_only_fenced_code_refs_in_file(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = (
+            "# Guide\n\n"
+            "```yaml\n"
+            "path: `references/rules.md`\n"
+            "```\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+
+    def test_prose_outside_and_inside_fence(self) -> None:
+        """Backtick ref outside fence flagged, inside fence ignored."""
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        ref_content = (
+            "Check `references/rules.md` before proceeding.\n\n"
+            "```markdown\n"
+            "Also see `references/api.md` in examples\n"
+            "```\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/guide.md": ref_content,
+                    "references/rules.md": "# Rules",
+                    "references/api.md": "# API",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        # Only the one outside the fence
+        self.assertEqual(len(fails), 1)
+        self.assertIn("rules.md", str(fails[0].get("detail")))
+
+    def test_deeply_nested_examples_file(self) -> None:
+        """Files in subdirectories of examples/ are also scanned."""
+        body = "# Skill\n\n## Workflow\n\n1. Read docs"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "examples/suites/demo.md": "See `references/rules.md`",
+                    "references/rules.md": "# Rules",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        fails = [
+            r
+            for r in self.check_records(records)
+            if r.get("check") == "FR-ref-link-format" and r.get("pass") is False
+        ]
+        self.assertTrue(fails)
+        self.assertIn("examples/suites/demo.md", str(fails[0].get("detail")))
+
+    def test_scanned_count_in_pass_detail(self) -> None:
+        body = "# Skill\n\n## Workflow\n\n1. Read references"
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_dir = self.create_skill(
+                Path(tmp),
+                body=body,
+                files={
+                    "references/alpha.md": "Standalone",
+                    "references/beta.md": "Also standalone",
+                    "examples/demo.md": "Example content",
+                },
+            )
+            _, records = self.run_checker(
+                "check-file-refs.py",
+                skill_dir,
+                checks=("FR-ref-link-format",),
+            )
+
+        record = self.one_check(records, "FR-ref-link-format")
+        self.assertIs(record.get("pass"), True)
+        self.assertIn("3 text file(s)", str(record.get("detail")))
+
+
 class PreprocessingBehaviorTests(ScriptTestCase):
     def test_git_dash_c_option_bounded(self) -> None:
         body = (
