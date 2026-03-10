@@ -26,6 +26,7 @@
 {"kind": "check", "check": "FR-one-level", "pass": true, "level": "pass", "detail": "Reference 'guide.md' does not cross-reference other files"}
 {"kind": "check", "check": "FR-mentions-file", "pass": true, "level": "pass", "tier": "P3", "detail": "SKILL.md mentions 'references/guide.md'"}
 {"kind": "check", "check": "FR-link-format", "pass": true, "level": "pass", "tier": "I15", "detail": "Reference file paths use markdown link format"}
+{"kind": "check", "check": "FR-ref-link-format", "pass": true, "level": "pass", "tier": "I15", "detail": "All 1 text file(s) in references/examples use markdown link format"}
 {"kind": "check", "check": "CT-no-secrets", "pass": true, "level": "pass", "tier": "C7", "detail": "No secrets or credentials detected"}
 {"kind": "check", "check": "CT-no-echo", "pass": true, "level": "pass", "tier": "I13", "detail": "No useless echo patterns in code blocks"}
 {"kind": "check", "check": "CT-no-grading", "pass": true, "level": "pass", "tier": "C6", "detail": "No grading/rubric style detected (scanned SKILL.md and 1 referenced text file(s))"}
@@ -63,4 +64,4 @@
 {"kind": "check", "check": "AQ-multiselect", "pass": true, "level": "pass", "tier": "I21", "detail": "No multiSelect usage - skipped"}
 {"kind": "check", "check": "AQ-wizard", "pass": true, "level": "pass", "tier": "I21", "detail": "No confirmation wizard pattern detected - skipped"}
 {"kind": "check", "check": "FK-recommendation-info", "pass": true, "level": "info", "tier": "P9", "detail": "INFO: No fork recommendation - Blocked by FK-B3 - not a fork candidate"}
-{"kind": "summary", "total": 65, "passed": 62, "failed": 3, "skipped": 5, "info": 5}
+{"kind": "summary", "total": 66, "passed": 63, "failed": 3, "skipped": 5, "info": 5}

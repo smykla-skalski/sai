@@ -86,7 +86,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 | I12 | SD-executable | All runnable entrypoints in scripts/ have executable bit set | SAI Convention |
 | I13 | CT-no-echo | No useless echo wrapping literals (`$(echo "text")`, not `$(echo "${VAR}")`) | ShellCheck SC2116 |
 | I14 | RF-phase-numbering | Consistent phase/step numbering between SKILL.md and references | Anthropic Best Practices |
-| I15 | FR-link-format | Reference file paths use markdown links, not inline code, for progressive disclosure | Agent Skills Spec, Progressive Disclosure |
+| I15 | FR-link-format, FR-ref-link-format | Reference file paths use markdown links, not inline code, for progressive disclosure (SKILL.md body and referenced files) | Agent Skills Spec, Progressive Disclosure |
 | I16 | CF-tools-usage | allowed-tools only lists tools actually referenced in the skill body | Anthropic Best Practices |
 | I17 | CF-side-effect | Side-effect skills have `disable-model-invocation: true` in frontmatter | Anthropic Best Practices |
 | I18 | PP-* | Preprocessing directives follow best practices (error handling, output limits, no secrets, no mutations, no slow/hanging commands) | Claude Code Docs, Community Best Practices |
@@ -138,7 +138,7 @@ Two or fewer failures are tolerated; three or more result in a **NEEDS WORK** ve
 
 **I13 (useless echo):** Scan bash/sh code blocks for useless echo wrapping literal strings - `VAR="$(echo "text")"` should be `VAR="text"` (ShellCheck SC2116). Do NOT flag `$(echo "${VAR:-default}")` - in a skills context, the agent interprets code blocks as intent descriptions (see [GitHub #23813](https://github.com/anthropics/claude-code/issues/23813)), and the subshell wrapper can affect agent behavior even when it is a no-op in bash.
 
-**I15 (link format):** Scan the body (outside fenced code blocks) for backtick-wrapped reference file paths like `` `references/foo.md` `` - these should use markdown link syntax `[references/foo.md](references/foo.md)` so Claude Code recognizes them for progressive disclosure (on-demand loading).
+**I15 (link format):** Scan the SKILL.md body (outside fenced code blocks) and text files under references/ and examples/ for backtick-wrapped resource paths like `` `references/foo.md` `` - these should use markdown link syntax `[references/foo.md](references/foo.md)` so Claude Code recognizes them for progressive disclosure (on-demand loading). In referenced files, the check excludes content inside fenced code blocks, `<example>` tags, markdown link constructs, and blockquote lines.
 
 #### Tool and safety declarations
 

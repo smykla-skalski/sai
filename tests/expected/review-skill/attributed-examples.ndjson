@@ -22,6 +22,7 @@
 {"kind": "check", "check": "FR-no-disallowed", "pass": true, "level": "pass", "detail": "'CHANGELOG.md' not present (correct)"}
 {"kind": "check", "check": "FR-no-disallowed", "pass": true, "level": "pass", "detail": "'INSTALLATION_GUIDE.md' not present (correct)"}
 {"kind": "check", "check": "FR-link-format", "pass": true, "level": "pass", "tier": "I15", "detail": "Reference file paths use markdown link format"}
+{"kind": "check", "check": "FR-ref-link-format", "pass": true, "level": "skip", "tier": "I15", "detail": "No text files in references/ or examples/ to check"}
 {"kind": "check", "check": "CT-no-secrets", "pass": true, "level": "pass", "tier": "C7", "detail": "No secrets or credentials detected"}
 {"kind": "check", "check": "CT-no-echo", "pass": true, "level": "pass", "tier": "I13", "detail": "No useless echo patterns in code blocks"}
 {"kind": "check", "check": "CT-no-grading", "pass": true, "level": "pass", "tier": "C6", "detail": "No grading/rubric style detected (scanned SKILL.md and 0 referenced text file(s))"}
@@ -56,4 +57,4 @@
 {"kind": "check", "check": "FC-doc-workflow", "pass": false, "level": "fail", "tier": "I22", "detail": "Flags documented but not referenced in workflow: --dry-run, --format, --verbose"}
 {"kind": "check", "check": "FC-example-flags", "pass": false, "level": "fail", "tier": "I28", "detail": "Example invocations cover 0/3 documented flags (0%) - below 50% threshold; missing: --dry-run, --format, --verbose"}
 {"kind": "check", "check": "FK-recommendation-info", "pass": true, "level": "info", "tier": "P9", "detail": "INFO: No fork recommendation - Blocked by FK-B3 - not a fork candidate"}
-{"kind": "summary", "total": 58, "passed": 56, "failed": 2, "skipped": 3, "info": 5}
+{"kind": "summary", "total": 59, "passed": 57, "failed": 2, "skipped": 4, "info": 5}
