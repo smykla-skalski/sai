@@ -8,7 +8,7 @@ This monorepo contains independent plugins, each providing specialized capabilit
 
 Repository layout:
 - `claude/` contains all Claude Code plugins.
- - `codex/` contains Codex/Codex Desktop skills.
+- `codex/` contains Codex/Codex Desktop skills.
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
