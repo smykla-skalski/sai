@@ -20,6 +20,7 @@ Repository layout:
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
+| **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
 
 Codex skills:
 
@@ -47,6 +48,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/promptgen
 /plugin install sai/review-claude-md
 /plugin install sai/review-skill
+/plugin install sai/staff-resume
 ```
 
 Each plugin is independent - install only what you need.
@@ -66,6 +68,7 @@ claude --plugin-dir /path/to/sai/claude/humanize
 claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/review-skill
+claude --plugin-dir /path/to/sai/claude/staff-resume
 ```
 
 ## Plugins
@@ -133,6 +136,14 @@ Review and fix Claude Code skill definitions (SKILL.md) using tiered binary chec
 **Usage**: `/review-skill [path/to/SKILL.md]`
 
 [Full documentation ->](./claude/review-skill/README.md)
+
+### staff-resume
+
+Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.
+
+**Usage**: `/staff-resume <resume-path> [--job-url URL] [--mode coach|tailor|full]`
+
+[Full documentation ->](./claude/staff-resume/README.md)
 
 ## Development
 

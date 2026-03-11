@@ -1,0 +1,11 @@
+{
+  "name": "staff-resume",
+  "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"]
+}
