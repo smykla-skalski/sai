@@ -199,6 +199,20 @@ class ScriptNdjsonContractTests(ScriptTestCase):
         summary = self.summary_record(records)
         self.assertIn("findings", summary)
 
+    def test_check_lint_json_mode_emits_summary_when_no_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            empty_dir = Path(tmp) / "no_scripts"
+            empty_dir.mkdir()
+            command = [
+                str(SCRIPTS_DIR / "check-lint.py"),
+                str(empty_dir),
+                "--json",
+            ]
+            result, records = self.run_ndjson(command)
+        self.assertEqual(result.returncode, 0)
+        summary = self.summary_record(records)
+        self.assertEqual(summary.get("findings"), 0)
+
 
 class ConfigScriptBehaviorTests(ScriptTestCase):
     def test_state_path_bad_relative_fails(self) -> None:
