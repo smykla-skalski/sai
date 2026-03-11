@@ -94,6 +94,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["skill", "review", "best-practices"]
+    },
+    {
+      "name": "staff-resume",
+      "source": "./claude/staff-resume",
+      "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"]
     }
   ]
 }
