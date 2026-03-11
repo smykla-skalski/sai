@@ -1782,6 +1782,14 @@ def main(argv: list[str] | None = None) -> int:
     all_files = shell_files + python_files
     if not all_files:
         _write_stderr("No .sh or .py files found")
+        if args.json:
+            summary = SummaryRecord(
+                total=0,
+                passed=0,
+                failed=0,
+                extras={"critical": 0, "findings": 0, "low": 0, "medium": 0},
+            )
+            _write_stdout(json.dumps(summary.payload(), ensure_ascii=False))
         return 0
 
     findings = _gather_findings(
