@@ -3,7 +3,9 @@ name: staff-resume
 description: Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring. Use when building, improving, or tailoring a resume for Staff/Principal engineer roles.
 argument-hint: "<resume-path> [--job-url URL] [--mode coach|tailor|full]"
 user-invocable: true
-allowed-tools: AskUserQuestion, Edit, Glob, Grep, Read, WebFetch, WebSearch, Write
+allowed-tools: AskUserQuestion, Edit, Glob, Read, WebFetch, WebSearch, Write
+context: fork
+agent: general-purpose
 ---
 
 # Staff Resume Builder
@@ -15,6 +17,10 @@ Parse from `$ARGUMENTS`:
 - **resume-path:** Path to LaTeX or markdown resume file (required — ask if not provided)
 - **--job-url:** Optional — URL of specific job posting to tailor for
 - **--mode:** Optional — `coach` (default), `tailor`, `full` (both)
+
+## Scope
+
+Build and refine staff/principal-level engineering resumes. Not designed for non-technical resumes, cover letters, junior/mid-level roles, or academic CVs.
 
 ---
 
@@ -39,6 +45,8 @@ Parse from `$ARGUMENTS`:
 Read [references/staff-resume-patterns.md](references/staff-resume-patterns.md) in full before starting this phase.
 
 ### Web Searches (3-4 searches)
+
+Use WebSearch for each query:
 
 1. `"staff engineer resume" best practices {current_year}` — latest trends
 2. `"staff software engineer resume" quantify impact examples` — bullet point patterns
@@ -83,13 +91,15 @@ Determine which archetype the target role maps to (see reference file for defini
 
 ### Present Gap Analysis
 
-Show results as a clear table of present/missing/weak findings, then ask:
+Show results as a clear table of present/missing/weak findings, then use AskUserQuestion:
 
 > "Here's how your resume maps against staff-level criteria. Which gaps should we tackle first? Or should we go through all of them systematically?"
 
 ---
 
 ## Phase 4: Interactive Coaching Session
+
+Skip this phase when `--mode tailor`. Re-read [references/staff-resume-patterns.md](references/staff-resume-patterns.md) Senior vs Staff Language section before rewriting bullets.
 
 **This is the core of the skill.** Go deep on each role, one at a time.
 
@@ -99,9 +109,11 @@ Show results as a clear table of present/missing/weak findings, then ask:
 
 For each bullet point, ask probing questions:
 
+<example>
 - "This bullet says you 'drove X initiative.' How many teams were involved? What was the business outcome?"
 - "You mention 800% throughput improvement. What was the business context? How many users did this affect?"
 - "This reads as team-level scope. Was there any cross-team or org-wide impact you're not mentioning?"
+</example>
 
 #### Step 2: Mine for Hidden Achievements
 
@@ -131,6 +143,11 @@ Ask these questions systematically:
 
 For each bullet, propose a staff-level rewrite using the XYZ formula from the reference file.
 
+<example description="Before/after bullet rewrite">
+Before: "Improved Kafka pipeline performance by 800%"
+After: "Architected event-driven pipeline redesign processing 2M events/day, reducing p99 latency 800% across 12 downstream services — adopted as org-wide messaging standard"
+</example>
+
 **Power verbs (Staff-level):**
 ```
 architected, drove, established, influenced, defined strategy,
@@ -144,7 +161,7 @@ helped, assisted, worked on, participated in, was responsible for,
 involved in, contributed to, basic knowledge of
 ```
 
-Show before/after for each bullet and ask for confirmation or additional context.
+Show before/after for each bullet and use AskUserQuestion for confirmation or additional context.
 
 ### Summary Section
 
@@ -172,13 +189,15 @@ AI/ML Infrastructure:   [honest representation of current skills]
 
 Rules:
 - Remove anything assumed at Staff level (Git, SQL, basic tools)
-- Never say "basic" — either you know it or don't list it
+- Never say "basic" — either you know it or don't list it, because "basic" signals a hobbyist level that undermines Staff positioning
 - Add "(contributor)" for OSS projects you maintain
 - Categorize by domain, not alphabetically
 
 ---
 
 ## Phase 5: Job-Specific Tailoring (if job-url provided)
+
+Skip this phase when `--mode coach`. Re-read [references/staff-resume-patterns.md](references/staff-resume-patterns.md) ATS Optimization and Staff Archetypes sections before tailoring.
 
 ### Keyword Mapping
 
@@ -258,7 +277,7 @@ Before delivering, verify:
 - [ ] Speaking/community has its own section (if applicable)
 - [ ] 2 pages max, every line adds value
 - [ ] If job-tailored: keywords from JD are present naturally
-- [ ] No "basic knowledge of" anything
+- [ ] No "basic knowledge of" anything — to prevent diluting the Staff-level signal
 - [ ] Career progression shows increasing scope
 
 ### Present Final Output
