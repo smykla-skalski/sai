@@ -340,13 +340,14 @@ class ParsedSkill:
         exclude_agents: bool = False,
     ) -> str:
         """Return filtered prose joined into one searchable string."""
-        return " ".join(
+        text = " ".join(
             line.text
             for line in self.relevant_lines(
                 exclude_bundled=exclude_bundled,
                 exclude_agents=exclude_agents,
             )
         )
+        return re.sub(r"<!--.*?-->", " ", text, flags=re.DOTALL).strip()
 
     def prose_map(self) -> dict[int, str]:
         """Return a mapping from prose line index to line text."""
