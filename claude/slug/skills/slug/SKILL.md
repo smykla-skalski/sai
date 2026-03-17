@@ -23,10 +23,10 @@ Review the **entire conversation from start to finish** and generate a semantic 
 1. Scan the full conversation from the first message to the last - identify the core work across all tasks (what was built, fixed, changed, or researched). If the session covered multiple things, pick the dominant theme or the one that best characterizes the session as a whole.
 2. Pick the type that best fits. When in doubt: `feat` for new things, `fix` for bugs, `chore` for maintenance/config, `docs` for documentation, `refactor` for restructuring, `test` for test work.
 3. Write a short kebab-case slug (2-4 words, no filler like "update" or "changes").
-4. Run: `printf '/rename <type>/<slug>' | pbcopy`
+4. **Use the Bash tool** to execute: `printf '/rename <type>/<slug>' | pbcopy` - do not display this command, execute it.
 5. Reply with exactly one line: `Copied: /rename <type>/<slug>`
 
-Copy and confirm on one line. Nothing else.
+You MUST call the Bash tool to run the pbcopy command. Do not just display it as code.
 
 ## When not to use
 
