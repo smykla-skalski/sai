@@ -20,6 +20,7 @@ Repository layout:
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
+| **slug**                | Generate a semantic slug for the current session and copy `/rename` command to clipboard | `claude/slug/`                |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
 
 Codex skills:
@@ -48,6 +49,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/promptgen
 /plugin install sai/review-claude-md
 /plugin install sai/review-skill
+/plugin install sai/slug
 /plugin install sai/staff-resume
 ```
 
