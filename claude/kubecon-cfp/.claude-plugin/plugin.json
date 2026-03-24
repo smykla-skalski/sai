@@ -1,0 +1,11 @@
+{
+  "name": "kubecon-cfp",
+  "description": "Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks and official reviewer criteria.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["kubecon", "cfp", "conference", "talk", "proposal", "cncf", "cloudnativecon"]
+}
