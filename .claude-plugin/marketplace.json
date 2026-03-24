@@ -63,6 +63,17 @@
       "tags": ["writing", "ai-cleanup", "text"]
     },
     {
+      "name": "kubecon-cfp",
+      "source": "./claude/kubecon-cfp",
+      "description": "Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["kubecon", "cfp", "conference", "cncf", "talk-proposal"]
+    },
+    {
       "name": "promptgen",
       "source": "./claude/promptgen",
       "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents",
