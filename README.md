@@ -17,6 +17,7 @@ Repository layout:
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
+| **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
@@ -46,6 +47,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
 /plugin install sai/humanize
+/plugin install sai/kubecon-cfp
 /plugin install sai/promptgen
 /plugin install sai/review-claude-md
 /plugin install sai/review-skill
@@ -67,6 +69,7 @@ claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/humanize
+claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/review-skill
@@ -114,6 +117,14 @@ Make text sound natural by removing AI writing patterns. Based on Wikipedia's Si
 **Usage**: `/humanize path/to/file.md [--score-only] [--inline]`
 
 [Full documentation ->](./claude/humanize/README.md)
+
+### kubecon-cfp
+
+Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks across 7 KubeCon events (2024-2025). Guides through topic assessment, title crafting, abstract writing, and review scoring.
+
+**Usage**: `/kubecon-cfp [topic or talk idea] [--track AI|Security|Platform|...] [--format session|lightning|tutorial|panel] [--review]`
+
+[Full documentation ->](./claude/kubecon-cfp/README.md)
 
 ### promptgen
 
