@@ -16,12 +16,14 @@ Repository layout:
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
+| **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `claude/go-code-review/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
 | **slug**                | Generate a semantic slug for the current session and copy `/rename` command to clipboard | `claude/slug/`                |
+| **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
 
 Codex skills:
@@ -46,12 +48,14 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/gh-review-comments
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
+/plugin install sai/go-code-review
 /plugin install sai/humanize
 /plugin install sai/kubecon-cfp
 /plugin install sai/promptgen
 /plugin install sai/review-claude-md
 /plugin install sai/review-skill
 /plugin install sai/slug
+/plugin install sai/staff-code-review
 /plugin install sai/staff-resume
 ```
 
@@ -68,11 +72,13 @@ claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
+claude --plugin-dir /path/to/sai/claude/go-code-review
 claude --plugin-dir /path/to/sai/claude/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/review-skill
+claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
 ```
 
@@ -109,6 +115,14 @@ Non-interactive hunk staging for selective `git add` without a TTY. Lists hunks 
 **Usage**: `/git-stage-hunk [--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]`
 
 [Full documentation ->](./claude/git-stage-hunk/README.md)
+
+### go-code-review
+
+Auto-review Go code for 100+ common mistakes from [100go.co](https://100go.co/). Auto-triggers when reviewing `.go` files or Go PRs. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage with severity tiers and direct mistake references.
+
+**Usage**: `/go-code-review` (auto-triggers on `.go` files and Go PRs)
+
+[Full documentation ->](./claude/go-code-review/README.md)
 
 ### humanize
 
@@ -149,6 +163,14 @@ Review and fix Claude Code skill definitions (SKILL.md) using tiered binary chec
 **Usage**: `/review-skill [path/to/SKILL.md]`
 
 [Full documentation ->](./claude/review-skill/README.md)
+
+### staff-code-review
+
+Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, observability, security, and cross-team impact. Three-pass workflow: triage, codebase research, parallel deep review across Architecture & Design, Reliability & Operations, and Security & Dependencies.
+
+**Usage**: `/staff-code-review <PR URL>` — also triggers on "review this PR", "staff review", "thorough code review"
+
+[Full documentation ->](./claude/staff-code-review/README.md)
 
 ### staff-resume
 
