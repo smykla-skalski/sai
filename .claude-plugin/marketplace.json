@@ -52,6 +52,17 @@
       "tags": ["git", "staging", "hunk", "partial-add", "automation"]
     },
     {
+      "name": "go-code-review",
+      "source": "./claude/go-code-review",
+      "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["go", "golang", "code-review", "100go", "best-practices"]
+    },
+    {
       "name": "humanize",
       "source": "./claude/humanize",
       "description": "Make text sound natural by removing AI writing patterns",
@@ -116,6 +127,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["session", "rename", "slug", "clipboard", "workflow"]
+    },
+    {
+      "name": "staff-code-review",
+      "source": "./claude/staff-code-review",
+      "description": "Staff-engineer-level code review evaluating architectural alignment, failure modes, observability, security, and cross-team impact.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["code-review", "staff-engineer", "architecture", "security", "reliability", "pr-review"]
     },
     {
       "name": "staff-resume",
