@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
-# add-review-comment.sh — Add a comment to an existing pending review via GraphQL.
+# add-review-comment.sh — Manage comments on a pending review via GraphQL.
 #
 # Usage:
 #   ./add-review-comment.sh <review_node_id> <body> --reply-to <comment_node_id>
 #   ./add-review-comment.sh <review_node_id> <body> --new-thread <path> <line> [<side>]
+#   ./add-review-comment.sh --edit <comment_node_id> <body>
+#   ./add-review-comment.sh --delete <comment_node_id>
 #
 # Modes:
 #   --reply-to    Reply to an existing thread (requires comment node_id)
 #   --new-thread  Create a new thread on a file/line (requires path and line)
+#   --edit        Edit an existing pending review comment
+#   --delete      Delete an existing pending review comment
 #
 # Arguments:
 #   review_node_id  — GraphQL node ID of the pending review (PRR_...)
 #   body            — Comment text (supports Markdown)
-#   comment_node_id — GraphQL node ID of the comment to reply to (PRRC_...)
+#   comment_node_id — GraphQL node ID of the comment (PRRC_...)
 #   path            — File path for new thread
 #   line            — Line number for new thread
 #   side            — RIGHT (default) or LEFT
@@ -22,10 +26,73 @@
 # Dependencies: gh (GitHub CLI), python3 (for JSON encoding)
 set -euo pipefail
 
+if [[ $# -lt 2 ]]; then
+  echo "Usage:" >&2
+  echo "  $0 <review_node_id> <body> --reply-to <comment_node_id>" >&2
+  echo "  $0 <review_node_id> <body> --new-thread <path> <line> [<side>]" >&2
+  echo "  $0 --edit <comment_node_id> <body>" >&2
+  echo "  $0 --delete <comment_node_id>" >&2
+  exit 1
+fi
+
+# Check if first arg is a mode flag (--edit, --delete)
+case "$1" in
+  --edit)
+    if [[ $# -lt 3 ]]; then
+      echo "Error: --edit requires <comment_node_id> <body>" >&2
+      exit 1
+    fi
+    COMMENT_NODE_ID="$2"
+    BODY="$3"
+
+    BODY_ESCAPED=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$BODY")
+
+    gh api graphql -f query="
+      mutation {
+        updatePullRequestReviewComment(input: {
+          pullRequestReviewCommentId: \"${COMMENT_NODE_ID}\"
+          body: ${BODY_ESCAPED}
+        }) {
+          pullRequestReviewComment {
+            id
+            url
+            body
+          }
+        }
+      }
+    " --jq '.data.updatePullRequestReviewComment.pullRequestReviewComment | {id, url}'
+    exit 0
+    ;;
+
+  --delete)
+    if [[ $# -lt 2 ]]; then
+      echo "Error: --delete requires <comment_node_id>" >&2
+      exit 1
+    fi
+    COMMENT_NODE_ID="$2"
+
+    gh api graphql -f query="
+      mutation {
+        deletePullRequestReviewComment(input: {
+          id: \"${COMMENT_NODE_ID}\"
+        }) {
+          pullRequestReviewComment {
+            id
+          }
+        }
+      }
+    " --jq '.data.deletePullRequestReviewComment.pullRequestReviewComment | {id}'
+    exit 0
+    ;;
+esac
+
+# Original modes: --reply-to and --new-thread
 if [[ $# -lt 4 ]]; then
   echo "Usage:" >&2
   echo "  $0 <review_node_id> <body> --reply-to <comment_node_id>" >&2
   echo "  $0 <review_node_id> <body> --new-thread <path> <line> [<side>]" >&2
+  echo "  $0 --edit <comment_node_id> <body>" >&2
+  echo "  $0 --delete <comment_node_id>" >&2
   exit 1
 fi
 
