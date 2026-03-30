@@ -84,6 +84,22 @@ Reopen a resolved review thread via GraphQL.
 "${CLAUDE_SKILL_DIR}/scripts/unresolve-thread.sh" <thread_id>
 ```
 
+### `scripts/add-review-comment.sh`
+
+Add a comment to an existing pending review via GraphQL.
+Supports both replying to existing threads and creating new threads.
+
+```
+"${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --reply-to <comment_node_id>
+"${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --new-thread <path> <line> [<side>]
+```
+
+- `review_node_id`: GraphQL node ID of the pending review (`PRR_...`)
+- `comment_node_id`: GraphQL node ID of the comment to reply to (`PRRC_...`)
+- `--reply-to`: reply to an existing thread
+- `--new-thread`: create a new thread on a file/line
+- `side`: `RIGHT` (default) or `LEFT`
+
 ### `scripts/create-review.sh`
 
 Create a PR review with line-level comments via REST API.
@@ -92,7 +108,7 @@ Create a PR review with line-level comments via REST API.
 "${CLAUDE_SKILL_DIR}/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
 ```
 
-- `event`: `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`
+- `event`: `PENDING`, `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`. `PENDING` omits the event field from the API payload, creating a draft review that is not yet submitted.
 - `comments_json`: JSON array of comment objects, each with `path`, `line`, `body` (and optional `side`, defaults to `RIGHT`)
 - Pass `-` as last arg to read comments from stdin
 
@@ -153,7 +169,7 @@ For each matched thread, execute the requested action:
 
 When `--create-review` is specified, skip Phase 2 actions and instead:
 
-1. Use AskUserQuestion for the review event type (COMMENT, APPROVE, or REQUEST_CHANGES)
+1. Use AskUserQuestion for the review event type (PENDING, COMMENT, APPROVE, or REQUEST_CHANGES)
 2. Use AskUserQuestion for the review body text
 3. Use AskUserQuestion for inline comments - for each comment, collect:
    - File path (validate it exists in the PR diff)
