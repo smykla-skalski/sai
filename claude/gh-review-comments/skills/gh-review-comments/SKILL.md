@@ -86,18 +86,22 @@ Reopen a resolved review thread via GraphQL.
 
 ### `scripts/add-review-comment.sh`
 
-Add a comment to an existing pending review via GraphQL.
-Supports both replying to existing threads and creating new threads.
+Manage comments on a pending review via GraphQL.
+Supports adding (reply/new thread), editing, and deleting comments.
 
 ```
 "${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --reply-to <comment_node_id>
 "${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --new-thread <path> <line> [<side>]
+"${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" --edit <comment_node_id> <body>
+"${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" --delete <comment_node_id>
 ```
 
 - `review_node_id`: GraphQL node ID of the pending review (`PRR_...`)
-- `comment_node_id`: GraphQL node ID of the comment to reply to (`PRRC_...`)
+- `comment_node_id`: GraphQL node ID of the comment (`PRRC_...`)
 - `--reply-to`: reply to an existing thread
 - `--new-thread`: create a new thread on a file/line
+- `--edit`: edit an existing pending review comment body
+- `--delete`: delete an existing pending review comment
 - `side`: `RIGHT` (default) or `LEFT`
 
 ### `scripts/create-review.sh`
