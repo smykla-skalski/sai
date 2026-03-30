@@ -91,7 +91,7 @@ Supports adding (reply/new thread), editing, and deleting comments.
 
 ```
 "${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --reply-to <comment_node_id>
-"${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --new-thread <path> <line> [<side>]
+"${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" <review_node_id> <body> --new-thread <path> <line> [--start-line <start_line>] [<side>]
 "${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" --edit <comment_node_id> <body>
 "${CLAUDE_SKILL_DIR}/scripts/add-review-comment.sh" --delete <comment_node_id>
 ```
@@ -99,7 +99,8 @@ Supports adding (reply/new thread), editing, and deleting comments.
 - `review_node_id`: GraphQL node ID of the pending review (`PRR_...`)
 - `comment_node_id`: GraphQL node ID of the comment (`PRRC_...`)
 - `--reply-to`: reply to an existing thread
-- `--new-thread`: create a new thread on a file/line
+- `--new-thread`: create a new thread on a file/line (single-line or multi-line)
+- `--start-line`: (optional, with `--new-thread`) start line for multi-line comments. Required for suggestion blocks that span multiple lines.
 - `--edit`: edit an existing pending review comment body
 - `--delete`: delete an existing pending review comment
 - `side`: `RIGHT` (default) or `LEFT`
