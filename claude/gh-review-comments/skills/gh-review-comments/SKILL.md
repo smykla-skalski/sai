@@ -92,7 +92,7 @@ Create a PR review with line-level comments via REST API.
 "${CLAUDE_SKILL_DIR}/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
 ```
 
-- `event`: `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`
+- `event`: `PENDING`, `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`. `PENDING` omits the event field from the API payload, creating a draft review that is not yet submitted.
 - `comments_json`: JSON array of comment objects, each with `path`, `line`, `body` (and optional `side`, defaults to `RIGHT`)
 - Pass `-` as last arg to read comments from stdin
 
@@ -153,7 +153,7 @@ For each matched thread, execute the requested action:
 
 When `--create-review` is specified, skip Phase 2 actions and instead:
 
-1. Use AskUserQuestion for the review event type (COMMENT, APPROVE, or REQUEST_CHANGES)
+1. Use AskUserQuestion for the review event type (PENDING, COMMENT, APPROVE, or REQUEST_CHANGES)
 2. Use AskUserQuestion for the review body text
 3. Use AskUserQuestion for inline comments - for each comment, collect:
    - File path (validate it exists in the PR diff)

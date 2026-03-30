@@ -8,7 +8,8 @@
 #   owner         — Repository owner (e.g., "smykla-skalski")
 #   repo          — Repository name (e.g., "sai")
 #   pr_number     — Pull request number
-#   event         — Review event: COMMENT, APPROVE, or REQUEST_CHANGES
+#   event         — Review event: PENDING, COMMENT, APPROVE, or REQUEST_CHANGES
+#                   PENDING omits the event field, creating a draft review.
 #   body          — Review body text (use "" for no body)
 #   comments_json — JSON array of comment objects (optional, read from stdin if "-")
 #
@@ -31,12 +32,16 @@
 #   # Approve with no comments
 #   ./create-review.sh owner repo 123 APPROVE "Looks good!"
 #
+#   # Pending (draft) review
+#   ./create-review.sh owner repo 123 PENDING "WIP review" \
+#     '[{"path":"main.go","line":10,"body":"Nit: unused import"}]'
+#
 # Dependencies: gh (GitHub CLI), python3 (for JSON encoding)
 set -euo pipefail
 
 if [[ $# -lt 5 ]]; then
   echo "Usage: $0 <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]" >&2
-  echo "  event: COMMENT, APPROVE, or REQUEST_CHANGES" >&2
+  echo "  event: PENDING, COMMENT, APPROVE, or REQUEST_CHANGES" >&2
   exit 1
 fi
 
@@ -49,9 +54,9 @@ COMMENTS_SOURCE="${6:-}"
 
 # Validate event
 case "$EVENT" in
-  COMMENT|APPROVE|REQUEST_CHANGES) ;;
+  PENDING|COMMENT|APPROVE|REQUEST_CHANGES) ;;
   *)
-    echo "Error: event must be COMMENT, APPROVE, or REQUEST_CHANGES (got: $EVENT)" >&2
+    echo "Error: event must be PENDING, COMMENT, APPROVE, or REQUEST_CHANGES (got: $EVENT)" >&2
     exit 1
     ;;
 esac
@@ -66,7 +71,7 @@ else
 fi
 
 # Validate: COMMENT/REQUEST_CHANGES require either body or comments
-if [[ "$EVENT" != "APPROVE" && -z "$BODY" && ("$COMMENTS_JSON" == "[]" || -z "$COMMENTS_JSON") ]]; then
+if [[ "$EVENT" != "APPROVE" && "$EVENT" != "PENDING" && -z "$BODY" && ("$COMMENTS_JSON" == "[]" || -z "$COMMENTS_JSON") ]]; then
   echo "Error: $EVENT review requires a body or comments (got neither)" >&2
   exit 1
 fi
@@ -74,7 +79,7 @@ fi
 # Use python3 to safely construct the full JSON payload and count comments.
 # Outputs two lines: first is the comment count, second is the JSON payload.
 # This avoids a separate python invocation for counting.
-BUILT=$(python3 -c "
+PYTHON_SCRIPT='
 import json, sys
 
 body = sys.argv[1]
@@ -83,17 +88,21 @@ comments_raw = sys.argv[3]
 
 comments = json.loads(comments_raw) if comments_raw.strip() else []
 
-# Ensure each comment has 'side' defaulting to 'RIGHT'
+# Ensure each comment has "side" defaulting to "RIGHT"
 for c in comments:
-    c.setdefault('side', 'RIGHT')
+    c.setdefault("side", "RIGHT")
 
-payload = {'event': event, 'comments': comments}
+payload = {"comments": comments}
+# PENDING omits the event field so GitHub creates a draft review
+if event != "PENDING":
+    payload["event"] = event
 if body:
-    payload['body'] = body
+    payload["body"] = body
 
 print(len(comments))
 print(json.dumps(payload))
-" "$BODY" "$EVENT" "$COMMENTS_JSON")
+'
+BUILT=$(python3 -c "$PYTHON_SCRIPT" "$BODY" "$EVENT" "$COMMENTS_JSON")
 
 # Split the two-line output: line 1 = comment count, line 2 = JSON payload
 COMMENT_COUNT=$(head -n1 <<< "$BUILT")
