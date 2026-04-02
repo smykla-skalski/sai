@@ -1,6 +1,6 @@
 ---
 name: staff-code-review
-description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
+description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, performance, scalability, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
 ---
 
 # Staff-Level Code Review
@@ -96,7 +96,6 @@ Spawn parallel Agent subagents (subagent_type: "general-purpose") for each dimen
 - Failure mode analysis: what happens when downstream is unavailable? Blast radius? Retry idempotency? Race conditions?
 - Observability: can you diagnose a 3am outage? Structured logging with correlation IDs? Metrics for new paths? Alertability?
 - Migration/rollback safety: backward-compatible with current version? Rollback procedure? Expand-and-contract for schema changes?
-- Performance: N+1 queries, missing indexes, unbounded operations, lock contention, cache invalidation strategy
 - **Use Research Brief:** Use "Callers & Consumers" to quantify blast radius (e.g., "47 callers affected" vs "unused internal helper"). Check "Related Tests" for coverage gaps on critical paths. Use "Git History" to calibrate risk — high-volatility areas deserve more scrutiny.
 
 **Agent 3: Security & Dependencies**
@@ -104,6 +103,33 @@ Spawn parallel Agent subagents (subagent_type: "general-purpose") for each dimen
 - Dependency management: license, CVEs, maintenance status, transitive footprint, supply chain risk
 - Could this be done without the new dependency?
 - **Use Research Brief:** Use "Callers & Consumers" to trace data flow through changed functions — identify where untrusted input enters. Check "Existing Patterns" for security practice consistency (e.g., does similar code validate inputs?). Reference "Architecture Context" for security-related ADRs.
+
+**Agent 4: Performance & Scalability**
+
+Read [references/performance-scalability.md](references/performance-scalability.md) before starting this analysis.
+
+Evaluate the PR through three lenses: resource efficiency, scalability under growth, and operational readiness.
+
+- **Data access**: N+1 queries, unbounded fetching, missing pagination/LIMIT, SELECT *, client-side filtering/aggregation, missing indexes for new query patterns, offset pagination on large datasets, transaction scope too wide
+- **Resource management**: connection/file/socket leaks, goroutine/thread leaks without cancellation path, unbounded in-memory collections, missing cleanup in error paths (defer/finally), connection pool exhaustion risks
+- **Caching**: missing cache for expensive repeated computation, cache stampede risk (no singleflight/locking), TTLs without jitter, unbounded cache growth, cache failure mode (fail vs degrade)
+- **Concurrency**: race conditions on shared mutable state, lock granularity too coarse, deadlock risk from inconsistent lock ordering, unbounded goroutine/thread spawning, queues/buffers without max size (backpressure failure)
+- **Compute efficiency**: string concatenation in loops (Go/Java), nested loops where hash lookup suffices, JSON serialization on hot paths where binary format is viable, regex compilation inside loops, sequential awaits that could be parallel
+- **Network & I/O**: chatty inter-service calls (3+ sequential per request), missing batching, connection reuse disabled, synchronous blocking I/O on hot path, retry without exponential backoff + jitter, missing timeouts on all outbound calls
+- **Scalability questions**: does this hold at 10x data volume? At 100x request rate? Is there backpressure? Fan-out bounded? Hot spots distributed?
+- **Instrumentation**: new code paths missing latency/error/throughput metrics, no benchmark results for perf-sensitive changes, missing circuit breaker for downstream dependencies
+
+Apply analysis frameworks contextually:
+- **USE** (Utilization/Saturation/Errors) for resource-bound code (pools, queues, locks)
+- **RED** (Rate/Errors/Duration) for new or modified service endpoints
+- **Four Golden Signals** for production readiness assessment
+
+Severity calibration:
+- **blocking:** resource leaks, N+1 queries, missing timeouts, race conditions, unbounded fetching, retry storms — these cause outages at scale
+- **issue:** missing indexes, coarse locks, no caching strategy, chatty APIs, verbose logging on hot paths — will degrade under growth
+- **suggestion:** missing instrumentation, suboptimal algorithm at current scale, pool sizing undocumented, no graceful degradation strategy
+
+- **Use Research Brief:** Use "Callers & Consumers" to determine if changed code is on a hot path (high caller count = higher severity). Check "Related Tests" for perf test coverage. Use "Git History" to identify recently optimized areas where the PR may regress. Reference "Existing Patterns" to check if the codebase has established patterns for caching, batching, or connection management that the PR should follow.
 
 Each agent returns findings as conventional comments (see format below).
 
@@ -176,6 +202,10 @@ The threshold for blocking: only block when code will degrade system health, cre
 
 [Findings from Agent 3]
 
+## Performance & Scalability
+
+[Findings from Agent 4]
+
 ## Cross-Cutting Observations
 
 [Insights that emerge from seeing all dimensions together]
@@ -208,4 +238,5 @@ Flag (don't block, but strongly recommend) when the PR:
 
 ## Reference
 
-For detailed background on each review dimension, see [references/review-dimensions.md](references/review-dimensions.md).
+- Review dimensions overview: [references/review-dimensions.md](references/review-dimensions.md)
+- Performance & scalability deep reference: [references/performance-scalability.md](references/performance-scalability.md)
