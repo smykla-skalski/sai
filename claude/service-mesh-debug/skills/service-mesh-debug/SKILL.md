@@ -1,5 +1,5 @@
 ---
-name: fix-flaky-e2e
+name: service-mesh-debug
 description: >
   Diagnose and fix flaky e2e tests and general connectivity issues in service mesh environments
   (Kuma, Istio, Linkerd, Consul). Trigger when: a user mentions intermittent test failures,

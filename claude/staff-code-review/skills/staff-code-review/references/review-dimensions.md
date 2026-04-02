@@ -65,18 +65,14 @@ APIs are the hardest thing to change. Disproportionate scrutiny is warranted.
 
 ## Performance
 
-"Does the performance profile hold at 10x current load?"
+> **Agent 4 has a dedicated deep reference.** See `performance-scalability.md` for the full checklist with 3-tier severity, language-specific patterns, and USE/RED/Four Golden Signals frameworks.
 
-- N+1 query patterns (ORM misuse creating N database calls)
-- Missing database indexes for new query patterns
-- Unbounded operations (pagination missing on list endpoints)
-- Cache strategy: what's cached? Invalidation strategy? Failure mode on miss?
-- Synchronous operations that should be async in the hot path
-- Memory allocation patterns in high-throughput code paths
-- Connection pool exhaustion risks
-- Lock contention in concurrent code
-- String concatenation in loops (language-dependent)
-- Unbounded in-memory collections
+Quick summary — key questions for triage:
+- Does the performance profile hold at 10x current load?
+- N+1 query patterns, unbounded fetching, missing pagination?
+- Resource leaks (connections, goroutines, file handles)?
+- Missing timeouts on outbound calls?
+- Cache strategy present and stampede-safe?
 
 ---
 
