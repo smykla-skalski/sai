@@ -13,7 +13,7 @@ Repository layout:
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
-| **fix-flaky-e2e**       | Diagnose and fix flaky e2e tests in Kuma: 11 root causes, Envoy debug scripts, minimal fixes | `claude/fix-flaky-e2e/`       |
+| **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
@@ -26,6 +26,7 @@ Repository layout:
 | **slug**                | Generate a semantic slug for the current session and copy `/rename` command to clipboard | `claude/slug/`                |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
+| **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `claude/test-writer/`         |
 
 Codex skills:
 
@@ -46,7 +47,7 @@ Add the SAI marketplace, then install individual plugins:
 
 # Install individual plugins
 /plugin install sai/ai-daily-digest
-/plugin install sai/fix-flaky-e2e
+/plugin install sai/service-mesh-debug
 /plugin install sai/gh-review-comments
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
@@ -59,6 +60,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/slug
 /plugin install sai/staff-code-review
 /plugin install sai/staff-resume
+/plugin install sai/test-writer
 ```
 
 Each plugin is independent - install only what you need.
@@ -71,7 +73,7 @@ Clone the repository and point directly to plugin directories:
 git clone git@github.com:smykla-skalski/sai.git
 
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
-claude --plugin-dir /path/to/sai/claude/fix-flaky-e2e
+claude --plugin-dir /path/to/sai/claude/service-mesh-debug
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
@@ -83,6 +85,7 @@ claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/review-skill
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
+claude --plugin-dir /path/to/sai/claude/test-writer
 ```
 
 ## Plugins
@@ -95,13 +98,13 @@ Daily AI news digest covering technical advances, business news, and engineering
 
 [Full documentation ->](./claude/ai-daily-digest/README.md)
 
-### fix-flaky-e2e
+### service-mesh-debug
 
-Diagnose and fix flaky e2e tests in the [Kuma](https://kuma.io/) service mesh. Covers 11 root causes sourced from real Kuma PR history: timing races, xDS propagation delays, Gomega misuse (`Expect` inside `Eventually`), pod availability races, mTLS/SDS cert delivery, Envoy circuit breakers, and outlier detection ejection. Includes Python scripts for live Envoy sidecar diagnostics.
+Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul). Covers 11 root causes: timing races, xDS propagation delays, Gomega misuse (`Expect` inside `Eventually`), pod availability races, mTLS/SDS cert delivery, Envoy circuit breakers, and outlier detection ejection. Includes Python scripts for live Envoy sidecar diagnostics.
 
-**Usage**: `/fix-flaky-e2e` (auto-triggers on flaky test mentions, `test/e2e/` paths, intermittent CI failures)
+**Usage**: `/service-mesh-debug` (auto-triggers on flaky test mentions, `test/e2e/` paths, intermittent CI failures, 503 errors, mTLS failures)
 
-[Full documentation ->](./claude/fix-flaky-e2e/README.md)
+[Full documentation ->](./claude/service-mesh-debug/README.md)
 
 ### gh-review-comments
 
@@ -190,6 +193,14 @@ Build and refine staff-level engineering resumes through interactive coaching, r
 **Usage**: `/staff-resume <resume-path> [--job-url URL] [--mode coach|tailor|full]`
 
 [Full documentation ->](./claude/staff-resume/README.md)
+
+### test-writer
+
+Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.
+
+**Usage**: `/test-writer [file-or-function] [--review] [--lang go|python|ts|java|rust]`
+
+[Full documentation ->](./claude/test-writer/README.md)
 
 ## Development
 
