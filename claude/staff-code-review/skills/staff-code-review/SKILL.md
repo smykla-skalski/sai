@@ -1,11 +1,12 @@
 ---
 name: staff-code-review
 description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, performance, scalability, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
+allowed-tools: Agent, Bash, Read
 ---
 
 # Staff-Level Code Review
 
-You are a staff engineer reviewing code. Your job is not just to check if the code works — it's to evaluate whether the change fits the system, handles failure gracefully, and won't create problems at scale or across teams.
+Review code as a staff engineer. Go beyond correctness — evaluate whether the change fits the system, handles failure gracefully, and won't create problems at scale or across teams.
 
 The mental model shift: seniors ask "does this code work?" Staff engineers ask "should this code exist? does it fit our system? who else does this affect? what breaks in 18 months?"
 
@@ -22,18 +23,18 @@ Accept any of:
 
 Before reading code line-by-line, answer these six questions (from Tanya Reilly's staff engineer mental model):
 
-1. **Does this need to exist?** Is there an existing solution? Does this reinvent the wheel?
-2. **Does it solve the right problem?** Does it match the issue/spec/design doc?
-3. **Can it handle failure?** What are the failure modes and blast radius?
-4. **Is it understandable?** Can a future maintainer navigate this without the author?
-5. **Does it fit the bigger picture?** Architectural alignment, patterns consistency?
-6. **Are the right stakeholders aware?** Cross-team impact, API consumers notified?
+1. **Necessity** — Check for existing solutions. Flag reinvention.
+2. **Problem fit** — Verify alignment with issue/spec/design doc.
+3. **Failure tolerance** — Identify failure modes and blast radius.
+4. **Comprehensibility** — Confirm a future maintainer can navigate without the author.
+5. **Architectural fit** — Check pattern consistency and alignment.
+6. **Stakeholder awareness** — Identify cross-team impact and unnotified API consumers.
 
 Also check:
-- PR description quality — is the context clear? What problem does this solve?
-- Scope — is the PR focused or mixing unrelated changes?
-- Size — >500 lines is a flag, suggest splitting
-- Test coverage visible?
+- PR description quality — flag missing context or unclear problem statement
+- Scope — flag mixed unrelated changes
+- Size — flag >500 lines, suggest splitting
+- Test coverage — flag if not visible
 
 If triage reveals fundamental issues (wrong approach, missing design doc, scope problems), **stop and report the triage findings before doing a deep review**. Don't waste time line-reviewing code that needs rethinking.
 
@@ -56,6 +57,9 @@ After triage passes, spawn a single `Agent` (subagent_type: "Explore") to build 
 
 **Output format — Research Brief:**
 
+<example>
+Input: PR modifying `functionA()` in `pkg/api` with new retry logic.
+Output:
 ```markdown
 ## Research Brief
 
@@ -80,10 +84,13 @@ After triage passes, spawn a single `Agent` (subagent_type: "Explore") to build 
 - ADR-014 mandates circuit breakers for external calls — relevant to this PR
 - Module boundary: PR imports from `internal/billing` into `pkg/api` (crosses boundary)
 ```
+</example>
 
 ### Pass 2: Deep review (parallel)
 
 Spawn parallel Agent subagents (subagent_type: "general-purpose") for each dimension group. Each agent gets the diff/files **and the Research Brief from Pass 1.5**. This parallelism is important for speed on large PRs.
+
+Read [references/review-dimensions.md](references/review-dimensions.md) before distributing work to agents — it contains detailed checklists for each dimension.
 
 **Agent 1: Architecture & Design**
 - Architectural alignment: does this introduce a pattern that will be copied? Does it violate existing conventions?
@@ -141,15 +148,20 @@ After all agents return, merge findings and:
 3. Add cross-cutting observations that only emerge from seeing all dimensions together
 4. Identify if a design doc/RFC should have preceded this PR (thresholds: public API change, new service, new infrastructure, data model for stateful system, security-sensitive subsystem)
 5. **Note where research changed finding severity** — e.g., "47 callers makes this breaking change blocking" or "no callers found, downgrading to suggestion". Cite specific codebase evidence (file paths, caller counts, pattern matches) that grounded the assessment.
+6. **Validate blocking findings** — for each blocking issue, verify the evidence by re-reading the relevant code. If evidence is ambiguous or based on assumptions, downgrade to `question:` and request clarification from the author. Repeat until every blocking issue has verified codebase evidence.
 
 ## Comment format
 
 Use conventional comments with explicit severity. Every comment follows this structure:
 
+<example>
+Input: Finding a missing timeout on an HTTP call in `pkg/client/fetch.go:42`.
+Output:
 ```
-**{label}:** {comment}
-*Location:* `{file}:{line}` (if applicable)
+**blocking:** Missing timeout on outbound HTTP call — unbounded blocking will cascade during downstream outage.
+*Location:* `pkg/client/fetch.go:42`
 ```
+</example>
 
 Labels and when to use them:
 
@@ -167,8 +179,11 @@ The threshold for blocking: only block when code will degrade system health, cre
 
 ## Output structure
 
+<example>
+Input: Completed review of PR "Add user notification service".
+Output:
 ```markdown
-# Staff Code Review: [PR title or description]
+# Staff Code Review: Add user notification service
 
 ## Triage Assessment
 
@@ -214,6 +229,7 @@ The threshold for blocking: only block when code will degrade system health, cre
 
 [Explicit praise — call out good patterns, especially ones others should learn from]
 ```
+</example>
 
 ## Calibration guidance
 

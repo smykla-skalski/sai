@@ -8,7 +8,7 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
-"claude/fix-flaky-e2e/skills/fix-flaky-e2e/scripts/**" = [
+"claude/service-mesh-debug/skills/service-mesh-debug/scripts/**" = [
     "S603", # subprocess is intentional: wraps kubectl with validated k8s resource names
     "S607", # partial path resolved via shutil.which; fallback retained for portability
 ]
