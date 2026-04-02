@@ -19,6 +19,17 @@
       "tags": ["ai-news", "digest", "automation"]
     },
     {
+      "name": "service-mesh-debug",
+      "source": "./claude/service-mesh-debug",
+      "description": "Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul). 11 root causes, Envoy debug scripts, minimal fixes.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["kuma", "istio", "linkerd", "consul", "envoy", "service-mesh", "e2e", "flaky-tests", "debugging", "xds", "mtls"]
+    },
+    {
       "name": "gh-review-comments",
       "source": "./claude/gh-review-comments",
       "description": "List, reply to, resolve, and create GitHub PR review comment threads",
