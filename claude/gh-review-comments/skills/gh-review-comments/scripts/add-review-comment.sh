@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ./add-review-comment.sh <review_node_id> <body> --reply-to <comment_node_id>
-#   ./add-review-comment.sh <review_node_id> <body> --new-thread <path> <line> [<side>]
+#   ./add-review-comment.sh <review_node_id> <body> --new-thread <path> <line> [--start-line <start_line>] [<side>]
 #   ./add-review-comment.sh --edit <comment_node_id> <body>
 #   ./add-review-comment.sh --delete <comment_node_id>
 #
@@ -29,7 +29,7 @@ set -euo pipefail
 if [[ $# -lt 2 ]]; then
   echo "Usage:" >&2
   echo "  $0 <review_node_id> <body> --reply-to <comment_node_id>" >&2
-  echo "  $0 <review_node_id> <body> --new-thread <path> <line> [<side>]" >&2
+  echo "  $0 <review_node_id> <body> --new-thread <path> <line> [--start-line <start_line>] [<side>]" >&2
   echo "  $0 --edit <comment_node_id> <body>" >&2
   echo "  $0 --delete <comment_node_id>" >&2
   exit 1
@@ -90,7 +90,7 @@ esac
 if [[ $# -lt 4 ]]; then
   echo "Usage:" >&2
   echo "  $0 <review_node_id> <body> --reply-to <comment_node_id>" >&2
-  echo "  $0 <review_node_id> <body> --new-thread <path> <line> [<side>]" >&2
+  echo "  $0 <review_node_id> <body> --new-thread <path> <line> [--start-line <start_line>] [<side>]" >&2
   echo "  $0 --edit <comment_node_id> <body>" >&2
   echo "  $0 --delete <comment_node_id>" >&2
   exit 1
@@ -128,14 +128,39 @@ case "$MODE" in
 
   --new-thread)
     if [[ $# -lt 5 ]]; then
-      echo "Error: --new-thread requires <path> <line> [<side>]" >&2
+      echo "Error: --new-thread requires <path> <line> [--start-line <start_line>] [<side>]" >&2
       exit 1
     fi
     PATH_ARG="$4"
     LINE="$5"
-    SIDE="${6:-RIGHT}"
+    START_LINE=""
+    SIDE="RIGHT"
+
+    # Parse remaining optional args
+    shift 5
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --start-line)
+          if [[ $# -lt 2 ]]; then
+            echo "Error: --start-line requires a line number" >&2
+            exit 1
+          fi
+          START_LINE="$2"
+          shift 2
+          ;;
+        *)
+          SIDE="$1"
+          shift
+          ;;
+      esac
+    done
 
     BODY_ESCAPED=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1]))" "$BODY")
+
+    START_LINE_FIELD=""
+    if [[ -n "$START_LINE" ]]; then
+      START_LINE_FIELD="startLine: ${START_LINE}"
+    fi
 
     gh api graphql -f query="
       mutation {
@@ -143,6 +168,7 @@ case "$MODE" in
           pullRequestReviewId: \"${REVIEW_NODE_ID}\"
           path: \"${PATH_ARG}\"
           line: ${LINE}
+          ${START_LINE_FIELD}
           side: ${SIDE}
           body: ${BODY_ESCAPED}
         }) {
