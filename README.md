@@ -13,6 +13,7 @@ Repository layout:
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
+| **fix-flaky-e2e**       | Diagnose and fix flaky e2e tests in Kuma: 11 root causes, Envoy debug scripts, minimal fixes | `claude/fix-flaky-e2e/`       |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
@@ -45,6 +46,7 @@ Add the SAI marketplace, then install individual plugins:
 
 # Install individual plugins
 /plugin install sai/ai-daily-digest
+/plugin install sai/fix-flaky-e2e
 /plugin install sai/gh-review-comments
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
@@ -69,6 +71,7 @@ Clone the repository and point directly to plugin directories:
 git clone git@github.com:smykla-skalski/sai.git
 
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
+claude --plugin-dir /path/to/sai/claude/fix-flaky-e2e
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
@@ -91,6 +94,14 @@ Daily AI news digest covering technical advances, business news, and engineering
 **Usage**: `/ai-daily-digest [--focus technical|business|engineering|leadership] [--notion-page-id ID] [--no-notion]`
 
 [Full documentation ->](./claude/ai-daily-digest/README.md)
+
+### fix-flaky-e2e
+
+Diagnose and fix flaky e2e tests in the [Kuma](https://kuma.io/) service mesh. Covers 11 root causes sourced from real Kuma PR history: timing races, xDS propagation delays, Gomega misuse (`Expect` inside `Eventually`), pod availability races, mTLS/SDS cert delivery, Envoy circuit breakers, and outlier detection ejection. Includes Python scripts for live Envoy sidecar diagnostics.
+
+**Usage**: `/fix-flaky-e2e` (auto-triggers on flaky test mentions, `test/e2e/` paths, intermittent CI failures)
+
+[Full documentation ->](./claude/fix-flaky-e2e/README.md)
 
 ### gh-review-comments
 
