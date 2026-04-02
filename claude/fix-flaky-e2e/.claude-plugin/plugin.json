@@ -1,0 +1,11 @@
+{
+  "name": "fix-flaky-e2e",
+  "description": "Diagnose and fix flaky e2e tests in the Kuma service mesh. Covers 11 root causes sourced from real PR history: timing races, xDS propagation delays, Gomega misuse, pod availability races, mTLS/SDS readiness, Envoy circuit breakers, and outlier detection. Includes Python scripts for live Envoy diagnostics.",
+  "version": "1.1.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["kuma", "envoy", "e2e", "testing", "flaky", "ginkgo", "gomega", "service-mesh", "xds", "mtls"]
+}
