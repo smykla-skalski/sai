@@ -14,6 +14,8 @@ Reference material for each review dimension. Read the section relevant to your 
 8. [Data Model Evolution](#data-model-evolution)
 9. [Dependency Management](#dependency-management)
 10. [Cross-Team Impact](#cross-team-impact)
+11. [Backward Compatibility](#backward-compatibility)
+12. [Dead Code](#dead-code)
 
 ---
 
@@ -164,6 +166,35 @@ Treat new dependencies as untrusted third-party input.
 - Will this require on-call burden for another team?
 - Does this change a shared library or internal package?
 - If code review reveals competing patterns for the same problem, that signals an undocumented decision that needs an ADR.
+
+---
+
+## Backward Compatibility
+
+> **Agent 5 has a dedicated deep reference.** See `backward-compatibility.md` for the full checklist with 3-tier severity, Hyrum's Law analysis, expand-and-contract patterns, and cross-service coordination guidance.
+
+Quick summary — key questions for triage:
+- Does this remove, rename, or change types of any public API surface?
+- Are new required fields added to existing requests/schemas?
+- Do behavioral changes (defaults, error codes, ordering) affect existing consumers?
+- Is there a migration path (expand-and-contract, versioned endpoints, deprecation notices)?
+- Can the system rollback after this deploys?
+- Do wire format changes require coordinated multi-service deployment?
+
+---
+
+## Dead Code
+
+> **Agent 7 has a dedicated deep reference.** See `dead-code.md` for the full checklist with detection categories, language-specific patterns, and false positive guardrails.
+
+Quick summary — key questions:
+- Does the PR introduce functions, types, or exports with zero callers?
+- Does the PR orphan existing code by changing call sites without removing the old target?
+- Are there commented-out code blocks that should be deleted (version control has history)?
+- Is there unreachable code after unconditional returns, impossible branches, or exhaustive switches?
+- Do any tests cover functionality that was removed or refactored by the PR?
+
+**Anti-pattern:** Leaving orphaned helper functions after a refactor because "someone might need them later." They won't — and they'll mislead the next person reading the module.
 
 ---
 

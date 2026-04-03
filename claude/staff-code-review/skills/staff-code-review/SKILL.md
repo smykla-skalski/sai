@@ -1,6 +1,6 @@
 ---
 name: staff-code-review
-description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, performance, scalability, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
+description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, performance, scalability, backward compatibility, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
 allowed-tools: Agent, Bash, Read
 ---
 
@@ -94,7 +94,7 @@ Read [references/review-dimensions.md](references/review-dimensions.md) before d
 
 **Agent 1: Architecture & Design**
 - Architectural alignment: does this introduce a pattern that will be copied? Does it violate existing conventions?
-- API design: backward compatibility, Hyrum's Law exposure, deprecation path, error contract stability
+- API design: deprecation path, error contract stability, surface area minimization
 - Data model evolution: schema impact on existing records, unbounded growth, denormalization
 - Cross-team impact: which teams consume affected APIs? Paved road drift?
 - **Use Research Brief:** Check "Existing Patterns" for convention violations. Use "Callers & Consumers" to assess cross-team impact with real caller counts. Reference "Architecture Context" for ADR compliance.
@@ -102,7 +102,7 @@ Read [references/review-dimensions.md](references/review-dimensions.md) before d
 **Agent 2: Reliability & Operations**
 - Failure mode analysis: what happens when downstream is unavailable? Blast radius? Retry idempotency? Race conditions?
 - Observability: can you diagnose a 3am outage? Structured logging with correlation IDs? Metrics for new paths? Alertability?
-- Migration/rollback safety: backward-compatible with current version? Rollback procedure? Expand-and-contract for schema changes?
+- Migration/rollback safety: rollback procedure? Feature flags for disable without rollback? Progressive rollout path?
 - **Use Research Brief:** Use "Callers & Consumers" to quantify blast radius (e.g., "47 callers affected" vs "unused internal helper"). Check "Related Tests" for coverage gaps on critical paths. Use "Git History" to calibrate risk — high-volatility areas deserve more scrutiny.
 
 **Agent 3: Security & Dependencies**
@@ -137,6 +137,75 @@ Severity calibration:
 - **suggestion:** missing instrumentation, suboptimal algorithm at current scale, pool sizing undocumented, no graceful degradation strategy
 
 - **Use Research Brief:** Use "Callers & Consumers" to determine if changed code is on a hot path (high caller count = higher severity). Check "Related Tests" for perf test coverage. Use "Git History" to identify recently optimized areas where the PR may regress. Reference "Existing Patterns" to check if the codebase has established patterns for caching, batching, or connection management that the PR should follow.
+
+**Agent 5: Backward Compatibility**
+
+Read [references/backward-compatibility.md](references/backward-compatibility.md) before starting this analysis.
+
+Evaluate the PR for breaking changes across three compatibility dimensions: source, binary/wire, and behavioral.
+
+- **API surface**: removed/renamed endpoints, fields, methods, types, parameters. Type changes (even widening). Required fields added to existing requests. Response envelope changes. Error code/format changes.
+- **Wire format**: serialization format changes, JSON key casing, float/date representation, encoding, protobuf field number reuse/changes, streaming mode changes.
+- **Behavioral/semantic**: default value changes, algorithm changes, error handling changes, side effect changes (sync→async), idempotency changes, event ordering changes.
+- **Hyrum's Law exposure**: JSON key ordering, array element ordering, error message text, timing characteristics, numeric precision, response size patterns — any implicit contract a consumer may depend on.
+- **Database schema**: column removals/renames/type changes, NOT NULL additions without defaults, constraint additions that reject existing data. Check for expand-and-contract pattern.
+- **Configuration**: removed/renamed env vars, config keys, CLI flags. Changed defaults. Changed precedence. Feature flag default flips. Format changes without dual support.
+- **Dependency impact**: minimum SDK/runtime version increases, diamond dependency conflicts, peer dependency narrowing, dropped platform support.
+- **Rollback safety**: can the previous version still work after this deploys? Reversible migrations? Old code handles new schema/cache/queue formats?
+- **Migration path**: if breaking, is expand-and-contract used? Versioned endpoints? Deprecation notices with sunset dates? Migration guide?
+
+Severity calibration:
+- **blocking:** existing consumers will fail, no migration path provided — removals, type changes, required field additions, wire format changes, schema destructive changes
+- **issue:** breaking change with incomplete or undocumented migration path
+- **question:** potentially breaking but need consumer usage data to assess
+- **suggestion:** non-breaking but creates future compatibility surface without guardrails
+
+- **Use Research Brief:** Use "Callers & Consumers" to count affected consumers and quantify blast radius — high caller count + breaking change = blocking, zero callers = downgrade severity. Check "Existing Patterns" for versioning/deprecation conventions the PR should follow. Reference "Architecture Context" for API contracts and compatibility policies. Use "Git History" to identify recent breaking changes that may compound with this one.
+
+**Agent 6: Convention Conformance & Code Reuse**
+
+Read [references/convention-conformance.md](references/convention-conformance.md) before starting this analysis.
+
+Evaluate whether the PR follows repository conventions and reuses existing code instead of reimplementing.
+
+- **Naming conventions**: do new functions, types, variables, files, and packages follow the naming patterns established in surrounding code? Check casing, prefixes/suffixes, verb choices (e.g., `Handle` vs `Process`, `Get` vs `Fetch`).
+- **Structural patterns**: does the PR follow the project's established patterns for error handling, logging, configuration, initialization, and request/response flow? Grep for how similar operations are done elsewhere.
+- **Existing utilities**: does the codebase already have helpers, shared packages, or internal libraries that solve what the PR implements from scratch? Check `pkg/`, `internal/`, `lib/`, `utils/`, `common/`, `shared/` directories.
+- **Code duplication**: does the PR duplicate logic that already exists elsewhere? Look for near-identical implementations of the same algorithm, validation, transformation, or I/O pattern.
+- **Test patterns**: do new tests follow the project's testing conventions (table-driven, fixtures, test helpers, assertion style, naming)?
+- **Config & constants**: does the PR hardcode values that the project typically externalizes? Does it use the established config loading pattern?
+- **Error handling style**: does error wrapping, sentinel errors, error types, and error message format match the codebase conventions?
+- **Project structure**: are new files placed in the correct directories following the project's module/package organization? Do import paths follow established patterns?
+
+Severity calibration:
+- **blocking:** reimplements critical shared infrastructure (auth, retry, circuit breaker, validation) that exists as a maintained internal package — creates divergence and maintenance burden
+- **issue:** inconsistent patterns that will confuse future contributors or cause bugs when mixed with existing code (e.g., different error handling approach in the same package)
+- **suggestion:** naming divergence, minor style inconsistencies, opportunities to use existing helpers for non-critical code
+- **nit:** trivial naming preferences within valid alternatives
+
+- **Use Research Brief:** Use "Existing Patterns" as primary input — this is the core data for convention analysis. Grep for function/type names similar to what the PR introduces. Check "Callers & Consumers" to understand if the PR's new code will be called alongside existing code with different conventions (inconsistency risk). Reference "Architecture Context" for documented conventions in READMEs or ADRs.
+
+**Agent 7: Dead Code Detection**
+
+Read [references/dead-code.md](references/dead-code.md) before starting this analysis.
+
+Identify code the PR introduces as dead or makes dead by orphaning existing code.
+
+- **Newly introduced dead code**: functions, types, exports, variables, parameters, branches added by the PR that have zero callers/readers in the codebase. Grep for every new symbol.
+- **Code orphaned by the PR**: the PR changes call sites, removes features, or refactors logic — check if old functions, constants, imports, types, or error handlers lost their last consumer.
+- **Commented-out code**: blocks commented out instead of deleted. Version control exists for history.
+- **Unreachable code**: code after unconditional return/break/panic/throw, impossible branches, exhaustive switches with redundant default.
+- **Test dead code**: tests covering removed functionality, unused test helpers/fixtures, stale mocks for changed interfaces.
+
+Before flagging, verify indirect reachability — interface implementations, reflection, serialization tags, framework conventions, plugin registration, and public API surface are NOT dead code. When uncertain, use `question:` severity.
+
+Severity calibration:
+- **issue:** entire functions, types, or modules with zero callers introduced or orphaned by the PR
+- **suggestion:** small dead code — unused parameter, single orphaned constant, commented-out block
+- **nit:** arguable cases with plausible indirect reachability
+- **thought:** pre-existing dead code adjacent to the PR's changes (not the PR's fault)
+
+- **Use Research Brief:** Use "Callers & Consumers" as primary input — cross-reference every new/modified symbol against its caller count. Zero callers on a non-public, non-interface symbol = dead code. Check "Existing Patterns" for framework conventions that create indirect reachability. Use "Git History" to identify recently removed features whose cleanup may be incomplete.
 
 Each agent returns findings as conventional comments (see format below).
 
@@ -221,6 +290,18 @@ Output:
 
 [Findings from Agent 4]
 
+## Backward Compatibility
+
+[Findings from Agent 5]
+
+## Convention Conformance & Code Reuse
+
+[Findings from Agent 6]
+
+## Dead Code
+
+[Findings from Agent 7]
+
 ## Cross-Cutting Observations
 
 [Insights that emerge from seeing all dimensions together]
@@ -256,3 +337,6 @@ Flag (don't block, but strongly recommend) when the PR:
 
 - Review dimensions overview: [references/review-dimensions.md](references/review-dimensions.md)
 - Performance & scalability deep reference: [references/performance-scalability.md](references/performance-scalability.md)
+- Backward compatibility deep reference: [references/backward-compatibility.md](references/backward-compatibility.md)
+- Convention conformance deep reference: [references/convention-conformance.md](references/convention-conformance.md)
+- Dead code detection deep reference: [references/dead-code.md](references/dead-code.md)
