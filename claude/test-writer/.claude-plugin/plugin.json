@@ -1,0 +1,11 @@
+{
+  "name": "test-writer",
+  "description": "Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["testing", "table-driven", "behavior-testing", "tdd", "mocking", "test-quality", "go", "python", "typescript", "java", "rust"]
+}

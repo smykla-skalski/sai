@@ -52,7 +52,7 @@ This applies to all linters: ruff, mypy, shellcheck, and any future linters. Fix
 - `claude/{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
 - `claude/{plugin-name}/skills/{skill-name}/references/` — supporting docs; `claude/{plugin-name}/skills/{skill-name}/scripts/` — automation scripts
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
-- Plugins: `ai-daily-digest`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `promptgen`, `review-claude-md`, `review-skill`, `staff-code-review`, `staff-resume`
+- Plugins: `ai-daily-digest`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `promptgen`, `review-claude-md`, `review-skill`, `staff-code-review`, `staff-resume`, `test-writer`
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins

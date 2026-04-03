@@ -102,7 +102,7 @@ Read [references/review-dimensions.md](references/review-dimensions.md) before d
 **Agent 2: Reliability & Operations**
 - Failure mode analysis: what happens when downstream is unavailable? Blast radius? Retry idempotency? Race conditions?
 - Observability: can you diagnose a 3am outage? Structured logging with correlation IDs? Metrics for new paths? Alertability?
-- Migration/rollback safety: rollback procedure? Feature flags for disable without rollback? Progressive rollout path?
+- Migration/rollback safety: backward-compatible with current version? Rollback procedure? Feature flags for disable without rollback? Expand-and-contract for schema changes? Progressive rollout path?
 - **Use Research Brief:** Use "Callers & Consumers" to quantify blast radius (e.g., "47 callers affected" vs "unused internal helper"). Check "Related Tests" for coverage gaps on critical paths. Use "Git History" to calibrate risk — high-volatility areas deserve more scrutiny.
 
 **Agent 3: Security & Dependencies**
