@@ -1,7 +1,7 @@
 ---
 name: staff-code-review
 description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, performance, scalability, backward compatibility, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
-allowed-tools: Agent, Bash, Read
+allowed-tools: Agent, Bash, Read, Write
 ---
 
 # Staff-Level Code Review
@@ -219,9 +219,79 @@ After all agents return, merge findings and:
 5. **Note where research changed finding severity** — e.g., "47 callers makes this breaking change blocking" or "no callers found, downgrading to suggestion". Cite specific codebase evidence (file paths, caller counts, pattern matches) that grounded the assessment.
 6. **Validate blocking findings** — for each blocking issue, verify the evidence by re-reading the relevant code. If evidence is ambiguous or based on assumptions, downgrade to `question:` and request clarification from the author. Repeat until every blocking issue has verified codebase evidence.
 
+### Save Review
+
+After synthesis completes, persist the full review markdown for reference.
+
+1. Resolve the persistent data directory:
+   ```bash
+   DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sai/staff-code-review/reviews"
+   mkdir -p "$DATA_DIR"
+   ```
+2. Determine the PR number:
+   - If input was a GitHub PR URL: extract number via URL parsing (the `/pull/{number}` segment)
+   - Otherwise: use `"local"` as prefix
+3. Generate timestamp: `date -u +%Y%m%dT%H%M%S`
+4. Save the complete review markdown to `${DATA_DIR}/{pr_number}-{timestamp}.md` using the Write tool
+5. Report the saved file path to the user
+
+### Post to GitHub
+
+**Skip this phase entirely if the input was NOT a GitHub PR URL.**
+
+Create a PENDING (draft) review on the PR with inline comments. The review is invisible to the PR author until manually submitted from GitHub's UI — you can edit, delete, or add comments before publishing.
+
+1. Parse owner, repo, and PR number from the URL (e.g., `https://github.com/{owner}/{repo}/pull/{number}`)
+
+2. Extract inline comments from the saved review file using the parsing script:
+   ```bash
+   COMMENTS_JSON=$(python3 "${CLAUDE_SKILL_DIR}/scripts/parse_review_comments.py" "$REVIEW_FILE")
+   ```
+   The script extracts comments with `*Location:*` annotations and filters to: all blockers, all issues, up to 5 suggestions, and up to 3 praises. Questions, thoughts, and nits are excluded from inline comments.
+
+3. Extract the Review Summary section from the review markdown as the top-level review body. Include the verdict line and blocking/non-blocking counts.
+
+4. Build the API payload and submit:
+   ```bash
+   python3 -c "
+   import json, sys
+   body = sys.argv[1]
+   comments = json.loads(sys.argv[2])
+   for c in comments:
+       c.setdefault('side', 'RIGHT')
+   payload = {'body': body, 'comments': comments}
+   print(json.dumps(payload))
+   " "$REVIEW_BODY" "$COMMENTS_JSON" | gh api "repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews" --input -
+   ```
+   The payload omits the `event` field, which makes the API create a PENDING/draft review.
+
+5. Report to the user:
+   - Review URL and comment count
+   - Remind them the review is **PENDING** — they must open GitHub and click "Submit review" to publish
+   - They can edit or delete individual comments before submitting
+
+6. If the API call fails:
+   - Most common cause: a file path or line number in a comment doesn't match the PR diff (GitHub requires the line to be visible in the diff)
+   - Report the error and the saved review file path so the user can inspect and retry
+
+**Do NOT re-run the API call after it exits 0.** The review creation is atomic — all comments are attached in a single request.
+
 ## Comment format
 
-Use conventional comments with explicit severity. Every comment follows this structure:
+Use conventional comments with explicit severity. Every comment **MUST** follow this exact two-line structure — the parsing script depends on it for GitHub review posting:
+
+```
+**{label}:** {message}
+*Location:* `{path/to/file}:{line_number}`
+```
+
+Rules:
+- `**{label}:**` on the first line, followed by the message on the same line (may wrap to additional lines)
+- `*Location:*` on its own line immediately after the message, with backtick-wrapped `path:line`
+- Path must be relative to repo root, no leading `./`
+- Line number must reference the exact line in the current file (not the diff)
+- Every file-specific comment MUST have a `*Location:*` line — comments without location cannot be posted as inline GitHub review comments
+- General observations (cross-cutting, overall praise) that don't map to a specific line may omit `*Location:*` — these go in the review body instead
 
 <example>
 Input: Finding a missing timeout on an HTTP call in `pkg/client/fetch.go:42`.
