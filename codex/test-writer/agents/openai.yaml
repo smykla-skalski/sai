@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Writer"
+  short_description: "Write behavior-first tests"
+  default_prompt: "Use $test-writer to add or review tests for this code with a behavior-first approach and language-appropriate patterns."

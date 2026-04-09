@@ -1,0 +1,4 @@
+interface:
+  display_name: "KubeCon CFP"
+  short_description: "Draft and refine KubeCon CFPs"
+  default_prompt: "Use $kubecon-cfp to shape this KubeCon talk idea into a stronger submission with title, abstract, benefits, and review feedback."

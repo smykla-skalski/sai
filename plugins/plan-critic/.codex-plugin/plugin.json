@@ -1,0 +1,39 @@
+{
+  "name": "plan-critic",
+  "version": "0.1.0",
+  "description": "Challenge implementation plans before coding starts",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "plan-critic"
+  ],
+  "skills": "../../codex/plan-critic",
+  "interface": {
+    "displayName": "Plan Critic",
+    "shortDescription": "Challenge implementation plans before coding starts",
+    "longDescription": "Plan Critic from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $plan-critic for this task.",
+      "Open the Plan Critic skill and apply it to the current request.",
+      "Run the Plan Critic workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

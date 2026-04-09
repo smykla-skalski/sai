@@ -1,0 +1,8 @@
+[lint]
+select = ["ALL"]
+ignore = [
+    "D203",   # incompatible with D211
+    "D213",   # incompatible with D212
+    "T201",   # print is the correct output mechanism
+    "INP001", # standalone scripts, not a package
+]

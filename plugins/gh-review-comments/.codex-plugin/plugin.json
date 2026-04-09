@@ -1,0 +1,39 @@
+{
+  "name": "gh-review-comments",
+  "version": "0.1.0",
+  "description": "Manage GitHub PR review threads with gh",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "gh-review-comments"
+  ],
+  "skills": "../../codex/gh-review-comments",
+  "interface": {
+    "displayName": "GitHub Review Comments",
+    "shortDescription": "Manage GitHub PR review threads with gh",
+    "longDescription": "GitHub Review Comments from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $gh-review-comments for this task.",
+      "Open the GitHub Review Comments skill and apply it to the current request.",
+      "Run the GitHub Review Comments workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

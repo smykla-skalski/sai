@@ -1,0 +1,200 @@
+{
+  "name": "sai-codex",
+  "interface": {
+    "displayName": "SAI Codex Skills"
+  },
+  "plugins": [
+    {
+      "name": "ai-daily-digest",
+      "source": {
+        "source": "local",
+        "path": "./plugins/ai-daily-digest"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Research"
+    },
+    {
+      "name": "gh-review-comments",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gh-review-comments"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "git-clean-gone",
+      "source": {
+        "source": "local",
+        "path": "./plugins/git-clean-gone"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "git-stage-hunk",
+      "source": {
+        "source": "local",
+        "path": "./plugins/git-stage-hunk"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "go-code-review",
+      "source": {
+        "source": "local",
+        "path": "./plugins/go-code-review"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "humanize",
+      "source": {
+        "source": "local",
+        "path": "./plugins/humanize"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Writing"
+    },
+    {
+      "name": "kubecon-cfp",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kubecon-cfp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Writing"
+    },
+    {
+      "name": "plan-critic",
+      "source": {
+        "source": "local",
+        "path": "./plugins/plan-critic"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "promptgen",
+      "source": {
+        "source": "local",
+        "path": "./plugins/promptgen"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "review-claude-md",
+      "source": {
+        "source": "local",
+        "path": "./plugins/review-claude-md"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "review-skill",
+      "source": {
+        "source": "local",
+        "path": "./plugins/review-skill"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "service-mesh-debug",
+      "source": {
+        "source": "local",
+        "path": "./plugins/service-mesh-debug"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "slug",
+      "source": {
+        "source": "local",
+        "path": "./plugins/slug"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "staff-code-review",
+      "source": {
+        "source": "local",
+        "path": "./plugins/staff-code-review"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
+      "name": "staff-resume",
+      "source": {
+        "source": "local",
+        "path": "./plugins/staff-resume"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Writing"
+    },
+    {
+      "name": "test-writer",
+      "source": {
+        "source": "local",
+        "path": "./plugins/test-writer"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

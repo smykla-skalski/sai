@@ -1,0 +1,39 @@
+{
+  "name": "git-stage-hunk",
+  "version": "0.1.0",
+  "description": "Stage selected git hunks without a TTY",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "git-stage-hunk"
+  ],
+  "skills": "../../codex/git-stage-hunk",
+  "interface": {
+    "displayName": "Git Stage Hunk",
+    "shortDescription": "Stage selected git hunks without a TTY",
+    "longDescription": "Git Stage Hunk from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $git-stage-hunk for this task.",
+      "Open the Git Stage Hunk skill and apply it to the current request.",
+      "Run the Git Stage Hunk workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

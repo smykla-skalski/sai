@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Clean Gone"
+  short_description: "Clean stale local branches safely"
+  default_prompt: "Use $git-clean-gone to find local branches whose upstream is gone, preview cleanup, and then remove approved stale branches safely."

@@ -1,0 +1,39 @@
+{
+  "name": "git-clean-gone",
+  "version": "0.1.0",
+  "description": "Clean stale local branches and worktrees safely",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "git-clean-gone"
+  ],
+  "skills": "../../codex/git-clean-gone",
+  "interface": {
+    "displayName": "Git Clean Gone",
+    "shortDescription": "Clean stale local branches and worktrees safely",
+    "longDescription": "Git Clean Gone from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $git-clean-gone for this task.",
+      "Open the Git Clean Gone skill and apply it to the current request.",
+      "Run the Git Clean Gone workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

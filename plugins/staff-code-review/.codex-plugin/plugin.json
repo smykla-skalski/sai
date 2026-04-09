@@ -1,0 +1,39 @@
+{
+  "name": "staff-code-review",
+  "version": "0.1.0",
+  "description": "Review code changes with staff-level depth",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "staff-code-review"
+  ],
+  "skills": "../../codex/staff-code-review",
+  "interface": {
+    "displayName": "Staff Code Review",
+    "shortDescription": "Review code changes with staff-level depth",
+    "longDescription": "Staff Code Review from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $staff-code-review for this task.",
+      "Open the Staff Code Review skill and apply it to the current request.",
+      "Run the Staff Code Review workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}
