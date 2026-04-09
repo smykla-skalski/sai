@@ -1,50 +1,45 @@
 ---
 name: git-clean-gone
-description: Clean up local git branches whose upstreams are gone, including associated worktrees. Use when merged or abandoned work leaves stale local branches behind.
+description: Clean stale local branches and worktrees by reusing the source workflow under `claude/git-clean-gone`. Use when merged or abandoned work leaves gone branches behind.
 metadata:
   short-description: Clean stale local branches safely
 ---
 
 # Git Clean Gone
 
-Use this skill when the user wants to prune stale local branches or clean related worktrees after PRs have been merged or removed upstream.
+Use this skill when the user wants to prune stale local branches or related worktrees.
 
-This is a Codex-oriented port of the Claude skill at `claude/git-clean-gone/skills/git-clean-gone`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/git-clean-gone/skills/git-clean-gone/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user wants to prune stale local branches or clean related worktrees after PRs have been merged or removed upstream.
+- Use this skill when the user wants to prune stale local branches or related worktrees.
 
 ## Do Not Use This Skill
 
-- Do not use this skill for general branch management, rebases, or arbitrary repository cleanup unrelated to gone branches.
+- Do not use this skill for general branch management or arbitrary repository cleanup unrelated to gone branches.
+
+## Source Material
+
+- Source skill: `claude/git-clean-gone/skills/git-clean-gone/SKILL.md`
+- Source directory: `claude/git-clean-gone/skills/git-clean-gone/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Infer whether the user wants a preview or an actual cleanup. Default to preview when intent is unclear.
-2. Set `SKILL_DIR` to this skill directory and run `scripts/clean-gone.sh` rather than re-implementing the cleanup logic.
-3. Treat deletion as destructive. If the request is not explicit, start with `--dry-run` and show what would be removed before doing irreversible cleanup.
-4. Never delete the current branch or the primary worktree. Report skipped branches and the reason.
-5. Summarize deletions, skipped branches, preserved worktrees, and any partial failures.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `scripts/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/git-clean-gone/skills/git-clean-gone/SKILL.md` as the source workflow and translate Claude-only mechanics into normal Codex steps.
+2. Run the helper from `claude/git-clean-gone/skills/git-clean-gone/scripts/clean-gone.sh` instead of reimplementing cleanup logic.
+3. Default to preview mode when intent is unclear, and treat deletions as destructive actions that need explicit user intent.
+4. Summarize deletions, skips, preserved worktrees, and any partial failures.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- If git or gh operations fail because of sandboxing, rerun the exact command with escalation and a short justification.
-- Do not silently broaden the cleanup scope beyond the user request.
 
 ## Verification
 
@@ -57,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Preview stale branches I can delete from this repo."
-Assistant: Runs the cleanup script with `--dry-run`, shows what would be removed, and asks before destructive cleanup.
+User: "Use Git Clean Gone for this task."
+Assistant: Opens `claude/git-clean-gone/skills/git-clean-gone/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Delete gone branches and their worktrees."
-Assistant: Confirms the request is explicit, runs the script, and summarizes deletions and skips.
+User: "Apply the Git Clean Gone workflow here."
+Assistant: Reuses the source material from `claude/git-clean-gone/skills/git-clean-gone/` instead of relying on duplicated Codex-side resources.
 </example>

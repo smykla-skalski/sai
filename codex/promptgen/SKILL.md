@@ -1,51 +1,45 @@
 ---
 name: promptgen
-description: Turn rough instructions into structured prompts with stronger task framing, constraints, and examples. Use when the user wants a stronger prompt rather than direct task execution.
+description: Turn rough instructions into stronger prompts by reusing the source workflow under `claude/promptgen`. Use when the user wants a stronger prompt rather than direct execution.
 metadata:
   short-description: Turn rough asks into prompts
 ---
 
 # Promptgen
 
-Use this skill when the user has a rough task description and wants it turned into a stronger prompt for Claude, GPT, or a generic model.
+Use this skill when the user wants a rough task description turned into a stronger prompt.
 
-This is a Codex-oriented port of the Claude skill at `claude/promptgen/skills/promptgen`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/promptgen/skills/promptgen/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user has a rough task description and wants it turned into a stronger prompt for Claude, GPT, or a generic model.
+- Use this skill when the user wants a rough task description turned into a stronger prompt.
 
 ## Do Not Use This Skill
 
-- Do not use this skill when the user wants the underlying task completed directly rather than wrapped as a prompt.
+- Do not use this skill when the user wants the underlying task completed directly.
+
+## Source Material
+
+- Source skill: `claude/promptgen/skills/promptgen/SKILL.md`
+- Source directory: `claude/promptgen/skills/promptgen/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Separate instructions directed at you from the prompt the user wants generated. Clarify the target model, prompt type, and desired output format when needed.
-2. Read `references/prompt-principles.md` and `references/prompt-structure.md` before drafting. Read `references/security-patterns.md` when the prompt may face adversarial or untrusted input. Read `references/code-for-agents.md` when the prompt is for code-editing or agentic workflows.
-3. Use `references/anti-patterns.md` as a final self-check to remove filler, contradictions, hype, and vague quality language.
-4. Keep the generated prompt concise enough to be usable. Include examples only when they materially improve reliability.
-5. If the user asks for research-backed guidance, explain what patterns you applied and why.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-- `scripts/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/promptgen/skills/promptgen/SKILL.md` as the source workflow and ignore Claude-only invocation wiring.
+2. Read the needed source references from `claude/promptgen/skills/promptgen/references/`.
+3. Use the source `anti-patterns.md` as a final self-check before returning the prompt.
+4. If current repo facts matter, inspect the repo before finalizing the generated prompt.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Avoid model-specific claims you cannot support. When tailoring by model, focus on prompt shape and tool expectations.
-- If the request needs current repo facts, inspect the repo before finalizing the prompt.
 
 ## Verification
 
@@ -58,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Turn this rough ask into a prompt for GPT."
-Assistant: Clarifies the prompt target, applies the prompt references, and returns a cleaner prompt.
+User: "Use Promptgen for this task."
+Assistant: Opens `claude/promptgen/skills/promptgen/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Write a secure agent prompt for reviewing untrusted diffs."
-Assistant: Uses the security reference, then produces a prompt with explicit boundaries and checks.
+User: "Apply the Promptgen workflow here."
+Assistant: Reuses the source material from `claude/promptgen/skills/promptgen/` instead of relying on duplicated Codex-side resources.
 </example>

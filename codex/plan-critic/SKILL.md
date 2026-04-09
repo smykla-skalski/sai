@@ -1,50 +1,45 @@
 ---
 name: plan-critic
-description: Critique implementation plans before coding starts. Use when the user wants a plan stress-tested for correctness, sequencing, scope, and validation gaps.
+description: Critique implementation plans by reusing the source workflow under `claude/plan-critic`. Use when the user wants a plan stress-tested before implementation.
 metadata:
   short-description: Critique implementation plans hard
 ---
 
 # Plan Critic
 
-Use this skill when the user presents an implementation plan and wants a serious critique before execution begins.
+Use this skill when the user presents an implementation plan and wants a serious critique.
 
-This is a Codex-oriented port of the Claude skill at `claude/plan-critic/skills/plan-critic`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/plan-critic/skills/plan-critic/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user presents an implementation plan and wants a serious critique before execution begins.
+- Use this skill when the user presents an implementation plan and wants a serious critique.
 
 ## Do Not Use This Skill
 
-- Do not use this skill to execute the plan itself. Use it to critique and strengthen the plan before implementation.
+- Do not use this skill to execute the plan itself.
+
+## Source Material
+
+- Source skill: `claude/plan-critic/skills/plan-critic/SKILL.md`
+- Source directory: `claude/plan-critic/skills/plan-critic/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Read the full plan first, then identify its goal, assumptions, dependencies, rollout sequence, and validation strategy.
-2. Read `references/personas.md` before writing the critique so you cover skeptical, architectural, and verification perspectives even if you stay in a single-agent flow.
-3. Challenge hidden assumptions, missing migration steps, rollback gaps, under-specified testing, and steps that are ordered incorrectly.
-4. Distinguish between blockers, important weaknesses, and polish improvements so the user can act on the critique.
-5. When you propose a revised plan, keep it concrete and execution-ready rather than abstract advice.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/plan-critic/skills/plan-critic/SKILL.md` as the source workflow and adapt any Claude-only delegation instructions to Codex rules.
+2. Read `claude/plan-critic/skills/plan-critic/references/personas.md` before writing the critique.
+3. Challenge hidden assumptions, missing rollback steps, and weak validation plans.
+4. Separate blockers from improvements so the user can act on the critique.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Do not defer to the plan just because it is plausible. The job is to find the weak points.
-- Prefer concrete failure modes over generic cautionary language.
 
 ## Verification
 
@@ -57,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Stress-test this rollout plan before we start coding."
-Assistant: Finds sequencing gaps, missing rollback steps, and weak validation points.
+User: "Use Plan Critic for this task."
+Assistant: Opens `claude/plan-critic/skills/plan-critic/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Critique this migration plan and propose a better one."
-Assistant: Challenges assumptions, then rewrites the plan in a safer order.
+User: "Apply the Plan Critic workflow here."
+Assistant: Reuses the source material from `claude/plan-critic/skills/plan-critic/` instead of relying on duplicated Codex-side resources.
 </example>

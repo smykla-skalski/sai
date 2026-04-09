@@ -1,6 +1,6 @@
 ---
 name: staff-resume
-description: Coach and tailor staff-level engineering resumes using bundled patterns for scope, impact, archetypes, and ATS alignment. Use when the user wants a staff-oriented resume review or rewrite.
+description: Coach and tailor staff-level resumes by reusing the source workflow under `claude/staff-resume`. Use when the user wants a staff-oriented resume review or rewrite in Codex.
 metadata:
   short-description: Coach and tailor staff resumes
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Use this skill when the user wants a resume reviewed, rewritten, or tailored for staff-level engineering roles.
 
-This is a Codex-oriented port of the Claude skill at `claude/staff-resume/skills/staff-resume`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/staff-resume/skills/staff-resume/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
@@ -17,34 +17,29 @@ This is a Codex-oriented port of the Claude skill at `claude/staff-resume/skills
 
 ## Do Not Use This Skill
 
-- Do not use this skill for general copyediting unrelated to resume positioning or job targeting.
+- Do not use this skill for generic copyediting unrelated to resume positioning or job targeting.
+
+## Source Material
+
+- Source skill: `claude/staff-resume/skills/staff-resume/SKILL.md`
+- Source directory: `claude/staff-resume/skills/staff-resume/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Determine whether the user wants coaching, tailoring to a job, or both.
-2. Read `references/staff-resume-patterns.md` before rewriting so the advice stays grounded in staff-level expectations.
-3. Look for evidence of scope, decision-making authority, cross-team influence, technical depth, and measurable impact.
-4. Rewrite bullets to make outcomes, ownership, and scale explicit without exaggeration.
-5. If a job description is provided, map the resume to that role’s needs and call out remaining gaps.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/staff-resume/skills/staff-resume/SKILL.md` as the source workflow.
+2. Read `claude/staff-resume/skills/staff-resume/references/staff-resume-patterns.md` before rewriting.
+3. Sharpen ownership, scope, and measurable impact without exaggerating the candidate’s experience.
+4. Ask focused follow-up questions when critical achievements or metrics are missing.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Do not inflate the candidate’s experience. Sharpen what is already true.
-- If critical achievements or metrics are missing, ask focused questions instead of guessing.
 
 ## Verification
 
@@ -57,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Tailor my resume for this staff platform role."
-Assistant: Reviews the resume against the job needs and proposes sharper bullets and positioning.
+User: "Use Staff Resume for this task."
+Assistant: Opens `claude/staff-resume/skills/staff-resume/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Coach me on making this resume look more staff-level."
-Assistant: Finds missing scope and impact signals, then suggests focused rewrites and follow-up questions.
+User: "Apply the Staff Resume workflow here."
+Assistant: Reuses the source material from `claude/staff-resume/skills/staff-resume/` instead of relying on duplicated Codex-side resources.
 </example>

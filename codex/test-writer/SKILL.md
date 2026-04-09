@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Write or review tests that focus on behaviour, minimize mocking, and use language-appropriate patterns. Use when the user wants tests added or existing tests reviewed for quality.
+description: Write or review behavior-first tests by reusing the source workflow under `claude/test-writer`. Use when the user wants tests added or existing tests reviewed in Codex.
 metadata:
   short-description: Write behavior-first tests
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Use this skill when the user wants new tests added or existing tests reviewed for quality and maintainability.
 
-This is a Codex-oriented port of the Claude skill at `claude/test-writer/skills/test-writer`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/test-writer/skills/test-writer/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
@@ -17,34 +17,29 @@ This is a Codex-oriented port of the Claude skill at `claude/test-writer/skills/
 
 ## Do Not Use This Skill
 
-- Do not use this skill for production code changes that happen to mention tests but do not actually require test design or review.
+- Do not use this skill for production code changes that do not actually require test design or review.
+
+## Source Material
+
+- Source skill: `claude/test-writer/skills/test-writer/SKILL.md`
+- Source directory: `claude/test-writer/skills/test-writer/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Determine whether the task is to write tests, review tests, or both. Infer the language from the repo when possible.
-2. Read `references/testing-principles.md` before drafting. Read `references/language-patterns.md` for the target language before writing or reviewing concrete tests.
-3. Test behaviour rather than implementation details. Prefer table-driven or parameterized structures when multiple cases share the same assertion shape.
-4. Use mocks only at true external boundaries and keep them minimal.
-5. When reviewing tests, flag brittle assertions, over-mocking, missing edge cases, and gaps in behavioural coverage.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/test-writer/skills/test-writer/SKILL.md` as the source workflow.
+2. Read the needed source references from `claude/test-writer/skills/test-writer/references/` before writing or reviewing tests.
+3. Focus on behaviour, edge cases, and minimal mocking rather than implementation-coupled tests.
+4. Run the narrowest relevant verification available after adding or changing tests.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Keep the tests aligned with existing repo conventions unless those conventions are clearly harmful.
-- When adding tests, run the narrowest relevant verification available and report what was or was not executed.
 
 ## Verification
 
@@ -57,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Add tests for `pkg/parser.go`."
-Assistant: Uses the language patterns and testing principles to write behaviour-first tests.
+User: "Use Test Writer for this task."
+Assistant: Opens `claude/test-writer/skills/test-writer/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Review these tests for brittleness."
-Assistant: Flags over-mocking, missing edge cases, and implementation-coupled assertions.
+User: "Apply the Test Writer workflow here."
+Assistant: Reuses the source material from `claude/test-writer/skills/test-writer/` instead of relying on duplicated Codex-side resources.
 </example>

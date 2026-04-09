@@ -1,53 +1,45 @@
 ---
 name: staff-code-review
-description: Review code changes like a staff engineer, with emphasis on architecture, system fit, failure modes, compatibility, and operational risk. Use when the user wants a thorough review beyond line-level correctness.
+description: Review code changes with staff-level depth by reusing the source workflow under `claude/staff-code-review`. Use when the user wants a thorough review beyond line-level correctness.
 metadata:
   short-description: Review changes at staff level
 ---
 
 # Staff Code Review
 
-Use this skill when the user wants a thorough review of a PR, diff, or code change that goes beyond line-level correctness.
+Use this skill when the user wants a staff-level review of a PR, diff, or code change.
 
-This is a Codex-oriented port of the Claude skill at `claude/staff-code-review/skills/staff-code-review`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/staff-code-review/skills/staff-code-review/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user wants a thorough review of a PR, diff, or code change that goes beyond line-level correctness.
+- Use this skill when the user wants a staff-level review of a PR, diff, or code change.
 
 ## Do Not Use This Skill
 
-- Do not use this skill for a quick syntax check or trivial lint feedback where a lighter review is enough.
+- Do not use this skill for a quick syntax check or lightweight lint feedback.
+
+## Source Material
+
+- Source skill: `claude/staff-code-review/skills/staff-code-review/SKILL.md`
+- Source directory: `claude/staff-code-review/skills/staff-code-review/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Start with triage: necessity, problem fit, failure tolerance, comprehensibility, architectural fit, and cross-team impact.
-2. Read `references/review-dimensions.md` before the deep review. Read `references/backward-compatibility.md`, `references/convention-conformance.md`, `references/dead-code.md`, and `references/performance-scalability.md` when those dimensions matter to the change under review.
-3. Ground the review in the actual codebase: inspect callers, existing patterns, tests, git history, and any design context before escalating findings.
-4. Report findings first, ordered by severity, with concrete file evidence and an explanation of blast radius or long-term risk.
-5. If the evidence only supports uncertainty, downgrade to a question instead of presenting a blocking claim as fact.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-- `scripts/`
-
-Read the specific review references named in the workflow before escalating findings in those areas.
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/staff-code-review/skills/staff-code-review/SKILL.md` as the source workflow.
+2. Read the needed source references from `claude/staff-code-review/skills/staff-code-review/references/` before escalating findings in those dimensions.
+3. Ground the review in actual codebase context and report findings first, ordered by severity.
+4. Where the source skill suggests agent fan-out, follow Codex delegation rules instead of copying Claude-specific agent usage blindly.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Do not use subagents unless the user explicitly asks for delegation. Cover the review dimensions in a single coherent pass instead.
-- A good staff review is selective. Focus on the highest-leverage risks, not exhaustive nitpicking.
 
 ## Verification
 
@@ -60,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Do a staff-level review of this PR."
-Assistant: Triage the change, grounds the review in codebase context, and reports high-leverage findings first.
+User: "Use Staff Code Review for this task."
+Assistant: Opens `claude/staff-code-review/skills/staff-code-review/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Review these changes for architectural and operational risk."
-Assistant: Uses the review dimensions and cites concrete evidence for each finding.
+User: "Apply the Staff Code Review workflow here."
+Assistant: Reuses the source material from `claude/staff-code-review/skills/staff-code-review/` instead of relying on duplicated Codex-side resources.
 </example>

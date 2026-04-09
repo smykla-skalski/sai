@@ -1,49 +1,45 @@
 ---
 name: slug
-description: Generate a semantic branch-style slug for the current session. Use when the user wants a concise name for the work or a ready-to-use `/rename` command.
+description: Generate a semantic session slug by reusing the source workflow under `claude/slug`. Use when the user wants a branch-style name or `/rename` command in Codex.
 metadata:
   short-description: Generate a concise session slug
 ---
 
 # Session Slug
 
-Use this skill when the user wants a concise, branch-style name for the work completed in the conversation.
+Use this skill when the user wants a concise branch-style name for the work in the session.
 
-This is a Codex-oriented port of the Claude skill at `claude/slug/skills/slug`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/slug/skills/slug/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user wants a concise, branch-style name for the work completed in the conversation.
+- Use this skill when the user wants a concise branch-style name for the work in the session.
 
 ## Do Not Use This Skill
 
-- Do not use this skill when the conversation had no meaningful work or when the user wants a product name rather than a session slug.
+- Do not use this skill when there was no meaningful work or when the user wants a product name.
+
+## Source Material
+
+- Source skill: `claude/slug/skills/slug/SKILL.md`
+- Source directory: `claude/slug/skills/slug/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Review the full session context, not just the last message, and identify the dominant unit of work.
-2. Choose the most fitting type prefix from `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, or `perf`.
-3. Produce a short kebab-case slug with two to four words and avoid generic filler like `update` or `changes`.
-4. If clipboard automation is useful and the user wants it, use a platform-appropriate copy command with escalation only if required. Otherwise return the rename command directly in chat.
-5. Keep the final output concise and directly usable.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/slug/skills/slug/SKILL.md` as the source workflow.
+2. Review the full session context, not just the last message, before proposing a slug.
+3. Return a directly usable rename command, and only use clipboard automation if the user wants it.
+4. If the session had no meaningful implementation work, say so instead of inventing a weak slug.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- If the session had no meaningful implementation work, say so instead of inventing a weak slug.
-- If multiple unrelated topics exist, choose the dominant one and state the ambiguity briefly when needed.
 
 ## Verification
 
@@ -56,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Give me a good session name for this work."
-Assistant: Reviews the conversation, picks a type and slug, and returns a ready-to-use rename command.
+User: "Use Session Slug for this task."
+Assistant: Opens `claude/slug/skills/slug/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "What should I rename this session to?"
-Assistant: Produces a concise branch-style slug based on the dominant work in the session.
+User: "Apply the Session Slug workflow here."
+Assistant: Reuses the source material from `claude/slug/skills/slug/` instead of relying on duplicated Codex-side resources.
 </example>

@@ -1,50 +1,45 @@
 ---
 name: humanize
-description: Rewrite text to remove common AI-writing patterns and produce more natural prose. Use when the user wants writing to sound less formulaic or less obviously AI-generated.
+description: Rewrite text to sound less formulaic by reusing the source workflow under `claude/humanize`. Use when the user wants writing to sound more natural in Codex.
 metadata:
   short-description: Rewrite text to sound natural
 ---
 
 # Humanize
 
-Use this skill when the user wants a draft rewritten to sound more natural, less formulaic, and less obviously AI-generated.
+Use this skill when the user wants a draft rewritten to sound more natural and less AI-generated.
 
-This is a Codex-oriented port of the Claude skill at `claude/humanize/skills/humanize`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/humanize/skills/humanize/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user wants a draft rewritten to sound more natural, less formulaic, and less obviously AI-generated.
+- Use this skill when the user wants a draft rewritten to sound more natural and less AI-generated.
 
 ## Do Not Use This Skill
 
-- Do not use this skill for factual editing where the user wants wording preserved exactly or for translation tasks.
+- Do not use this skill for translation or for edits where wording must stay nearly exact.
+
+## Source Material
+
+- Source skill: `claude/humanize/skills/humanize/SKILL.md`
+- Source directory: `claude/humanize/skills/humanize/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Read the target text first and decide whether the user wants scoring only, a rewrite, or both.
-2. Read `references/patterns.md` to detect common AI-writing artifacts, `references/elements-of-style.md` for rewriting principles, and `references/voice-guide.md` to maintain a direct, varied voice.
-3. Preserve the original meaning, factual claims, and structure unless the user asked for deeper rewriting.
-4. Call out repetitive phrasing, inflated claims, filler transitions, and unnatural emphasis before or alongside the rewrite when that helps the user learn the pattern.
-5. If rewriting, provide text that is ready to use, not a commentary-heavy essay.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/humanize/skills/humanize/SKILL.md` as the source workflow.
+2. Read the needed source references from `claude/humanize/skills/humanize/references/`.
+3. Preserve meaning and factual claims while improving rhythm, specificity, and tone.
+4. If the user only wants scoring, report patterns without rewriting the text.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Avoid replacing one formula with another. Vary rhythm and keep the prose specific.
-- Do not introduce new claims while rewriting.
 
 ## Verification
 
@@ -57,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Rewrite this post so it sounds less AI-generated."
-Assistant: Identifies the main patterns, then rewrites the text in a more natural voice.
+User: "Use Humanize for this task."
+Assistant: Opens `claude/humanize/skills/humanize/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Score this draft for AI-writing patterns only."
-Assistant: Reports the patterns found without rewriting the text.
+User: "Apply the Humanize workflow here."
+Assistant: Reuses the source material from `claude/humanize/skills/humanize/` instead of relying on duplicated Codex-side resources.
 </example>

@@ -1,6 +1,6 @@
 ---
 name: kubecon-cfp
-description: Draft and refine KubeCon CFP submissions using accepted-talk patterns, reviewer criteria, and reusable output templates. Use when the user wants to assess, draft, or improve a KubeCon proposal.
+description: Draft and refine KubeCon CFPs by reusing the source workflow under `claude/kubecon-cfp`. Use when the user wants to assess or improve a KubeCon proposal in Codex.
 metadata:
   short-description: Draft and refine KubeCon CFPs
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Use this skill when the user wants to assess, draft, or improve a KubeCon CFP proposal.
 
-This is a Codex-oriented port of the Claude skill at `claude/kubecon-cfp/skills/kubecon-cfp`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/kubecon-cfp/skills/kubecon-cfp/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
@@ -17,35 +17,29 @@ This is a Codex-oriented port of the Claude skill at `claude/kubecon-cfp/skills/
 
 ## Do Not Use This Skill
 
-- Do not use this skill for generic blog writing or conference submissions that are not KubeCon-style CFP work.
+- Do not use this skill for generic blog writing or unrelated conference submissions.
+
+## Source Material
+
+- Source skill: `claude/kubecon-cfp/skills/kubecon-cfp/SKILL.md`
+- Source directory: `claude/kubecon-cfp/skills/kubecon-cfp/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Confirm the talk topic, target track, format, and whether the user wants ideation, drafting, or review of an existing proposal.
-2. Read `references/cfp-criteria.md`, `references/talk-patterns.md`, and `references/output-template.md` before drafting or scoring. Use `evals/eval-cases.md` only when calibrating the approach.
-3. Assess the idea first: novelty, audience relevance, practical payoff, and fit for the chosen format.
-4. Write titles and abstracts that are concrete, teachable, and outcome-oriented rather than buzzword-heavy.
-5. When reviewing an existing draft, score it against the copied criteria and explain the highest-leverage changes.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `evals/`
-- `references/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/kubecon-cfp/skills/kubecon-cfp/SKILL.md` as the source workflow.
+2. Read the needed source references and evals from `claude/kubecon-cfp/skills/kubecon-cfp/`.
+3. Assess topic strength before drafting, then write concrete titles and abstracts rather than buzzword-heavy copy.
+4. When reviewing an existing draft, score it against the copied source criteria and explain the highest-leverage changes.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- Keep claims believable and specific. CFP reviewers penalize vague hype.
-- When the user gives weak topic detail, elicit missing specifics before producing a polished abstract.
 
 ## Verification
 
@@ -58,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "Turn this service-mesh idea into a stronger KubeCon abstract."
-Assistant: Assesses topic strength, uses the copied criteria and template, and drafts a tighter proposal.
+User: "Use KubeCon CFP for this task."
+Assistant: Opens `claude/kubecon-cfp/skills/kubecon-cfp/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Review my CFP draft for the security track."
-Assistant: Scores it against the criteria and suggests the highest-leverage changes.
+User: "Apply the KubeCon CFP workflow here."
+Assistant: Reuses the source material from `claude/kubecon-cfp/skills/kubecon-cfp/` instead of relying on duplicated Codex-side resources.
 </example>

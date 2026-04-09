@@ -1,51 +1,45 @@
 ---
 name: git-stage-hunk
-description: Stage selected git diff hunks non-interactively. Use when only part of a file should be committed or when `git add -p` is unavailable.
+description: Stage selected git hunks non-interactively by reusing the source workflow under `claude/git-stage-hunk`. Use when only part of a file should be committed.
 metadata:
   short-description: Stage selected diff hunks safely
 ---
 
 # Git Stage Hunk
 
-Use this skill when the user wants selective staging without an interactive TTY, including hunk IDs, regex matching, file filters, or line ranges.
+Use this skill when the user wants selective staging without an interactive TTY.
 
-This is a Codex-oriented port of the Claude skill at `claude/git-stage-hunk/skills/git-stage-hunk`. Keep the domain workflow and bundled resources, but ignore Claude-only frontmatter and runtime wiring.
+This is a thin Codex wrapper around `claude/git-stage-hunk/skills/git-stage-hunk/SKILL.md`. Reuse the source workflow, references, scripts, and eval material from the Claude skill directory instead of maintaining duplicated Codex copies.
 
 ## Use This Skill
 
-- Use this skill when the user wants selective staging without an interactive TTY, including hunk IDs, regex matching, file filters, or line ranges.
+- Use this skill when the user wants selective staging without an interactive TTY.
 
 ## Do Not Use This Skill
 
-- Do not use this skill when the user wants to stage every change in full files or when ordinary `git add` already solves the task.
+- Do not use this skill when ordinary `git add` already solves the task or when the user wants every change staged.
+
+## Source Material
+
+- Source skill: `claude/git-stage-hunk/skills/git-stage-hunk/SKILL.md`
+- Source directory: `claude/git-stage-hunk/skills/git-stage-hunk/`
+- Codex metadata: `agents/openai.yaml`
+
+Load only the source files needed for the current task. Do not recreate or copy the Claude-side bundled resources into this Codex skill.
 
 ## Workflow
 
-1. Start by determining whether the user wants to list hunks, split a hunk, stage a selection, or verify the staged result.
-2. Read `references/output-format.md` before presenting hunk listings. Read `references/split-hunk-guide.md` and `references/patchutils-guide.md` when the request needs sub-hunks, regex staging, or line-range staging.
-3. Set `SKILL_DIR` to this skill directory and use `scripts/git-stage-hunk.py` and `scripts/split_hunk.py` instead of rebuilding patch logic manually.
-4. Prefer a dry run or listing first unless the user clearly requested staging.
-5. After staging, run the verification mode and summarize what is now staged versus still unstaged.
-
-## Bundled Resources
-
-- `agents/openai.yaml`
-- `references/`
-- `scripts/`
-
-Load only the files needed for the current task. Prefer bundled scripts over ad hoc reimplementation when they already encode the workflow safely.
+1. Treat `claude/git-stage-hunk/skills/git-stage-hunk/SKILL.md` as the source workflow and map it to Codex interaction patterns.
+2. Use the helper programs in `claude/git-stage-hunk/skills/git-stage-hunk/scripts/`.
+3. Read the relevant source references from `claude/git-stage-hunk/skills/git-stage-hunk/references/` when the task needs split hunks, regex staging, or line-range staging.
+4. Prefer listing or dry-run output first unless the user clearly requested staging.
 
 ## Codex Notes
 
-- Infer inputs from the user request, current repository state, and nearby files before asking follow-up questions.
-- If a networked or sandboxed command is important and fails because of restrictions, rerun it with escalation and a short justification.
+- Ignore Claude-only frontmatter and runtime wiring such as `allowed-tools`, `user-invocable`, `$ARGUMENTS`, and `CLAUDE_SKILL_DIR`.
+- Infer inputs from the user request and local context before asking follow-up questions.
+- If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
-- Keep outputs concise and evidence-based. Cite files, commands, or sources that materially support the conclusion.
-
-## Porting Notes
-
-- If `patchutils`-dependent modes are unavailable, explain the limitation and fall back to supported modes.
-- Keep the user’s existing index state intact except for the requested hunks.
 
 ## Verification
 
@@ -58,11 +52,11 @@ After any fix or state-changing action, rerun the narrowest relevant validator, 
 ## Examples
 
 <example>
-User: "List the unstaged hunks in `src/auth.ts`."
-Assistant: Uses the listing mode first, then presents hunk IDs and previews in the documented format.
+User: "Use Git Stage Hunk for this task."
+Assistant: Opens `claude/git-stage-hunk/skills/git-stage-hunk/SKILL.md`, loads only the needed source references or scripts, adapts the workflow to Codex conventions, and completes the task.
 </example>
 
 <example>
-User: "Stage only the validation changes from `src/auth.ts`."
-Assistant: Identifies the relevant hunks, stages only that subset, and verifies the staged result.
+User: "Apply the Git Stage Hunk workflow here."
+Assistant: Reuses the source material from `claude/git-stage-hunk/skills/git-stage-hunk/` instead of relying on duplicated Codex-side resources.
 </example>
