@@ -96,6 +96,17 @@
       "tags": ["kubecon", "cfp", "conference", "cncf", "talk-proposal"]
     },
     {
+      "name": "plan-critic",
+      "source": "./claude/plan-critic",
+      "description": "Critique a Claude implementation plan before approving execution. Spawns parallel persona subagents (Skeptic, Architect, Verifier) to evaluate the plan against the codebase.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["plan-review", "plan-mode", "critique", "verifier", "architect", "skeptic", "grounding", "pre-execution"]
+    },
+    {
       "name": "promptgen",
       "source": "./claude/promptgen",
       "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents",
