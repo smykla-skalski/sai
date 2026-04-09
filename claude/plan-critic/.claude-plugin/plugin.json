@@ -1,0 +1,11 @@
+{
+  "name": "plan-critic",
+  "description": "Critique a Claude implementation plan before approving execution. Spawns parallel persona subagents (Skeptic, Architect, Verifier) to evaluate the plan against the codebase.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["plan-review", "plan-mode", "critique", "verifier", "architect", "skeptic", "grounding", "pre-execution"]
+}
