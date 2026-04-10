@@ -33,7 +33,7 @@ These principles guide both scoring and fixing:
 - **Pointers over copies**: Use `file:line` references, not embedded code snippets (HumanLayer)
 - **Alternatives, not negatives**: "Use Y instead of X" not "Never use X" (Arize)
 - **No README duplication**: CLAUDE.md is for AI-operational context, not human onboarding (Official)
-- **Modularize with rules/**: Use `.claude/rules/` for detailed topic files, keep root CLAUDE.md lean (Official)
+- **Modularize with rules/**: Use [.claude/rules/](.claude/rules/) for detailed topic files, keep root CLAUDE.md lean (Official)
 - **Use hooks for deterministic actions**: "Unlike CLAUDE.md instructions which are advisory, hooks are deterministic" (Official)
 - **The "First 5 Minutes" Test**: Could a new dev build, test, and contribute reading only this file? (Community)
 - **Treat it like code**: Review when things go wrong, prune regularly (Official)
