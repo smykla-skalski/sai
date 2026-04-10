@@ -38,7 +38,7 @@
 | I6  | Bullets over paragraphs throughout                               | Official Best Practices, Maxitect |
 | I7  | Pointers over copies (file:line refs, not embedded code blocks)  | HumanLayer                        |
 | I8  | Style rules only where they differ from language defaults        | Official Best Practices           |
-| I9  | Modularized with `.claude/rules/` if root file is complex        | Official Memory Docs              |
+| I9  | Modularized with [.claude/rules/](.claude/rules/) if root file is complex | Official Memory Docs       |
 
 **How to evaluate:** For I1, check that the architecture section explains how components interact, not just where files live. For I3, gotchas must be specific to this project — "always run migrations before tests" qualifies, "handle errors gracefully" does not. For I7, flag any embedded code block over 5 lines that could be replaced with a file reference.
 
