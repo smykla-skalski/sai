@@ -34,7 +34,7 @@ Read [references/rubric.md](references/rubric.md) for the full tiered checklist 
 
 1. Identify target repo root (from argument or cwd)
 2. Find all CLAUDE.md files: root, `.claude/CLAUDE.md`, `CLAUDE.local.md`, subdirectories
-3. Find `.claude/rules/*.md` files
+3. Find [.claude/rules/](.claude/rules/) `*.md` files
 4. Note git-tracked vs gitignored status
 
 ### Phase 2: Codebase Context
@@ -42,7 +42,7 @@ Read [references/rubric.md](references/rubric.md) for the full tiered checklist 
 Spawn an `Explore` agent to scan the target repository. Pass the agent: the repo root path.
 
 Agent reads: Makefile, package.json, Cargo.toml, go.mod, pyproject.toml, CI configs (.github/workflows/, .gitlab-ci.yml), README.md, test configs (jest.config, pytest.ini, vitest.config), lint configs (.eslintrc, biome.json, .prettierrc, rustfmt.toml).
-Also reads: top-level directory structure, `git log --oneline -20`, `.claude/rules/` contents.
+Also reads: top-level directory structure, `git log --oneline -20`, [.claude/rules/](.claude/rules/) contents.
 
 Agent returns ONLY a structured summary with these fields:
 
@@ -50,7 +50,7 @@ Agent returns ONLY a structured summary with these fields:
 - Test framework and test commands
 - Lint/format tool and commands
 - CI provider and workflow names
-- Existing `.claude/rules/` files and their topics
+- Existing [.claude/rules/](.claude/rules/) files and their topics
 - Commit message convention observed
 - README sections that overlap with CLAUDE.md content
 
@@ -102,7 +102,7 @@ If `--score-only` was NOT passed (`--fix` mode, the default):
 
 1. Address every failing Critical and Important check
 2. Re-read [references/sources.md](references/sources.md) for rewriting principles before editing because fixes that violate source guidelines create new failures
-3. Create `.claude/rules/` files if root exceeds 150 lines
+3. Create [.claude/rules/](.claude/rules/) files if root exceeds 150 lines
 4. Target: under 150 lines (ideally 50-100 for root)
 
 ### Phase 8: Final Report

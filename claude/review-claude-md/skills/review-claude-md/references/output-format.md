@@ -45,6 +45,6 @@
 ...
 
 ### Rules Files Created
-- .claude/rules/<name>.md — <purpose>
+- [.claude/rules/<name>.md](.claude/rules/<name>.md) — <purpose>
 ...
 ```
