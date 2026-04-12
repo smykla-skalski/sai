@@ -216,11 +216,11 @@ Automated by `check-flag-coverage.py` via `FC-example-flags`.
 
 Automated by `check-hooks.py`. Runs 11 sub-checks against the hooks frontmatter block and all referenced hook scripts:
 
-- **HK-events:** All event names must be from the valid set (PreToolUse, PostToolUse, PostToolUseFailure, SubagentStart, SubagentStop, Stop)
-- **HK-structure:** Matcher-based events (all except Stop) must have a `matcher:` field; Stop must not
-- **HK-type:** Every hook entry needs `type: "command"` with a non-empty `command:` field
-- **HK-resolve:** All command paths resolve to existing files after `${CLAUDE_SKILL_DIR}` substitution
-- **HK-exec:** All resolved scripts have the executable bit set
+- **HK-events:** All event names must be from the valid set of 26 events: SessionStart, InstructionsLoaded, UserPromptSubmit, PreToolUse, PermissionRequest, PermissionDenied, PostToolUse, PostToolUseFailure, Notification, SubagentStart, SubagentStop, TaskCreated, TaskCompleted, TeammateIdle, Stop, StopFailure, ConfigChange, CwdChanged, FileChanged, WorktreeCreate, WorktreeRemove, PreCompact, PostCompact, Elicitation, ElicitationResult, SessionEnd
+- **HK-structure:** Matcher-based events must have a `matcher:` field; events without matcher support (Stop, UserPromptSubmit, TaskCreated, TaskCompleted, TeammateIdle, WorktreeCreate, WorktreeRemove, CwdChanged) must not
+- **HK-type:** Every hook entry needs a valid `type` field (`command`, `http`, `prompt`, or `agent`) with its required field (`command` for command, `url` for http, `prompt` for prompt/agent). Optional fields vary by type: command hooks support `async`, `shell` (bash/powershell); all types support `if` (permission rule filter, tool events only), `timeout` (seconds), `statusMessage` (spinner text), `once` (run once per session, skills only); http hooks support `headers` and `allowedEnvVars`; prompt/agent hooks support `model`
+- **HK-resolve:** All command-type hook paths resolve to existing files after `${CLAUDE_SKILL_DIR}` substitution (http/prompt/agent hooks are skipped)
+- **HK-exec:** All resolved command-type scripts have the executable bit set (http/prompt/agent hooks are skipped)
 - **HK-duplicate:** No duplicate event+matcher combinations
 - **HK-stdin:** Every hook script parses stdin JSON (e.g., `input="$(cat)"`)
 - **HK-loop:** Stop and SubagentStop scripts must check `stop_hook_active` to prevent infinite recursion
@@ -236,7 +236,9 @@ Automated by `check-references.py` (I24) and `validate.py` frontmatter checks (I
 
 **I24:** SKILL.md body must be under 20,000 characters. The ~5,000 token limit matters more than line count for how much context the agent retains from skill content. Skills exceeding this limit should extract content to reference files.
 
-**I25:** The `description` frontmatter field must be under 1,024 characters. Long descriptions waste context when Claude Code loads them for auto-invocation matching.
+**I25:** The `description` frontmatter field must be under 1,024 characters. Claude Code truncates descriptions at **250 characters** in the skill listing, so front-load the key use case and trigger phrases. FM-desc-truncation emits an informational signal when the description exceeds 250 chars.
+
+Note: the word `ultrathink` in a skill body triggers `high` effort for that turn (Opus 4.6/Sonnet 4.6 only). This is a recognized Claude Code keyword, not aggressive prompting. The `effort` frontmatter field is the persistent alternative.
 
 #### Automated: best practices (I26-I27)
 
@@ -322,7 +324,7 @@ These checks are emitted by scripts and stay informational:
 
 Automated by `check-fork-candidate.py`. Analyzes six positive signals (high phase count, structured output, data gathering, manual subagent usage, heavy reference loading, self-contained inputs), four blockers (already forked, conversation-dependent, tiny skill, background knowledge), and one counter-signal (side-effect skill).
 
-A "strong" recommendation means 3+ effective positive signals with no blockers - suggest adding `context: fork` and `agent` to frontmatter. A "soft" recommendation (2 effective) means fork is worth considering. Report the recommendation and detected signals.
+A "strong" recommendation means 3+ effective positive signals with no blockers - suggest adding `context: fork` and `agent` to frontmatter. A "soft" recommendation (2 effective) means fork is worth considering. Report the recommendation and detected signals. The `agent` field accepts built-in types (`Explore`, `Plan`, `general-purpose`) and custom agent names defined in `.claude/agents/`.
 
 #### Hook guardrails (P10)
 

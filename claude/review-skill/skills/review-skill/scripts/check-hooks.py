@@ -7,7 +7,7 @@ correctness against the Skill Authoring Guide conventions.
 Sub-checks:
   HK-events:    All event names are valid
   HK-structure: Matcher-based events have matcher field; Stop has none
-  HK-type:      Every hook entry has type: "command" with non-empty command
+  HK-type:      Every hook entry has a valid type (command/http/prompt/agent) with its required field
   HK-resolve:   All command paths resolve to existing files
   HK-exec:      All resolved hook scripts are executable
   HK-duplicate: No duplicate event+matcher combinations
@@ -58,19 +58,70 @@ from _skill_check_common import (
 
 VALID_EVENTS: Final[frozenset[str]] = frozenset(
     {
+        "SessionStart",
+        "InstructionsLoaded",
+        "UserPromptSubmit",
         "PreToolUse",
+        "PermissionRequest",
+        "PermissionDenied",
         "PostToolUse",
         "PostToolUseFailure",
+        "Notification",
         "SubagentStart",
         "SubagentStop",
+        "TaskCreated",
+        "TaskCompleted",
+        "TeammateIdle",
         "Stop",
+        "StopFailure",
+        "ConfigChange",
+        "CwdChanged",
+        "FileChanged",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "PreCompact",
+        "PostCompact",
+        "Elicitation",
+        "ElicitationResult",
+        "SessionEnd",
     },
 )
 
-MATCHER_EVENTS: Final[frozenset[str]] = VALID_EVENTS - frozenset({"Stop"})
+# Events that require a matcher: field.  Events listed here do NOT support
+# matchers (always fire or use non-matcher semantics).
+NO_MATCHER_EVENTS: Final[frozenset[str]] = frozenset(
+    {
+        "Stop",
+        "UserPromptSubmit",
+        "TaskCreated",
+        "TaskCompleted",
+        "TeammateIdle",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "CwdChanged",
+    },
+)
+
+MATCHER_EVENTS: Final[frozenset[str]] = VALID_EVENTS - NO_MATCHER_EVENTS
 
 # YAML indentation levels in the hooks: block
 INDENT_EVENT: Final[int] = 2
+# All scalar keys recognized at the hook-entry level (INDENT_HOOK_KEY).
+# Used by the parser to extract any per-hook field value.
+_HOOK_SCALAR_KEYS: Final[tuple[str, ...]] = (
+    "type",
+    "command",
+    "url",
+    "prompt",
+    "model",
+    "shell",
+    "timeout",
+    "statusMessage",
+    "if",
+    "async",
+    "once",
+)
+
 INDENT_ENTRY_LIST: Final[int] = 4
 INDENT_ENTRY_KEY: Final[int] = 6
 INDENT_HOOK_LIST: Final[int] = 8
@@ -99,7 +150,9 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
     - No anchors (&), aliases (*), or merge keys (<<)
     - No multi-line strings (| or >)
     - Values may be bare, single-quoted, or double-quoted
-    - Only 'matcher', 'hooks', 'type', 'command' keys are recognized
+    - Recognized entry keys: 'matcher', 'hooks'
+    - Recognized hook keys: type, command, url, prompt, model, shell,
+      timeout, statusMessage, if, async, once
     - Unexpected indentation levels are silently skipped
     """
     hooks_start: int | None = None
@@ -187,13 +240,11 @@ def parse_hooks(  # noqa: C901, PLR0912, PLR0915
 
         if indent == INDENT_HOOK_KEY and current_hook is not None:
             key_content = stripped.strip()
-            command_value = _extract_scalar_for_key(key_content, "command")
-            if command_value is not None:
-                current_hook["command"] = command_value
-            else:
-                type_value = _extract_scalar_for_key(key_content, "type")
-                if type_value is not None:
-                    current_hook["type"] = type_value
+            for hook_key in _HOOK_SCALAR_KEYS:
+                value = _extract_scalar_for_key(key_content, hook_key)
+                if value is not None:
+                    current_hook[hook_key] = value
+                    break
             continue
 
         # Unexpected indentation - warn on stderr
@@ -349,15 +400,14 @@ def resolve_command_path(command: str, skill_dir: Path) -> Path | None:
 
 def collect_hook_entries(
     hooks: dict[str, list[dict[str, object]]],
-) -> list[tuple[str, str, str]]:
-    """Return list of (event, matcher, command) tuples."""
-    entries: list[tuple[str, str, str]] = []
+) -> list[tuple[str, str, dict[str, object]]]:
+    """Return list of (event, matcher, hook_dict) tuples."""
+    entries: list[tuple[str, str, dict[str, object]]] = []
     for event, event_entries in hooks.items():
         for entry in event_entries:
             matcher = cast("str", entry.get("matcher", "")) or ""
             for hook in cast("list[dict[str, object]]", entry.get("hooks", [])):
-                cmd = cast("str", hook.get("command", "")) or ""
-                entries.append((event, str(matcher), str(cmd)))
+                entries.append((event, str(matcher), hook))
     return entries
 
 
@@ -369,7 +419,8 @@ def _scripts_for_events(
     """Return unique resolved paths for scripts referenced by given events."""
     paths: list[Path] = []
     seen: set[Path] = set()
-    for event, _matcher, cmd in collect_hook_entries(hooks):
+    for event, _matcher, hook in collect_hook_entries(hooks):
+        cmd = cast("str", hook.get("command", "")) or ""
         if event not in events or not cmd or uses_project_dir(cmd):
             continue
         resolved = resolve_command_path(cmd, skill_dir)
@@ -478,10 +529,23 @@ def _check_structure(
     ]
 
 
+VALID_HOOK_TYPES: Final[frozenset[str]] = frozenset(
+    {"command", "http", "prompt", "agent"},
+)
+
+# Fields required per hook type
+HOOK_TYPE_REQUIRED_FIELD: Final[dict[str, str]] = {
+    "command": "command",
+    "http": "url",
+    "prompt": "prompt",
+    "agent": "prompt",
+}
+
+
 def _check_type(
     hooks: dict[str, list[dict[str, object]]],
 ) -> list[CheckRecord]:
-    """HK-TYPE: every hook entry has type: command with non-empty command."""
+    """HK-TYPE: every hook entry has a valid type with its required field."""
     problems: list[str] = []
     total_hooks = 0
     for event, entries in hooks.items():
@@ -489,12 +553,16 @@ def _check_type(
             for hook in cast("list[dict[str, object]]", entry.get("hooks", [])):
                 total_hooks += 1
                 hook_type = cast("str", hook.get("type", "(missing)"))
-                if hook_type != "command":
+                if hook_type not in VALID_HOOK_TYPES:
                     problems.append(
-                        f"{event}: type is '{hook_type}', expected 'command'",
+                        f"{event}: type is '{hook_type}', expected one of {sorted(VALID_HOOK_TYPES)}",
                     )
-                if not hook.get("command"):
-                    problems.append(f"{event}: empty or missing command field")
+                else:
+                    required = HOOK_TYPE_REQUIRED_FIELD[hook_type]
+                    if not hook.get(required):
+                        problems.append(
+                            f"{event}: type '{hook_type}' missing required '{required}' field",
+                        )
     if problems:
         return [
             CheckRecord(
@@ -508,7 +576,7 @@ def _check_type(
         CheckRecord(
             check="HK-type",
             passed=True,
-            detail=f"All {total_hooks} hook entries have type: command",
+            detail=f"All {total_hooks} hook entries have valid type and required fields",
             tier="I23",
         ),
     ]
@@ -522,7 +590,11 @@ def _check_resolve(
     missing: list[str] = []
     checked = 0
     skipped = 0
-    for event, matcher, cmd in collect_hook_entries(hooks):
+    for event, matcher, hook in collect_hook_entries(hooks):
+        hook_type = cast("str", hook.get("type", "command"))
+        if hook_type != "command":
+            continue
+        cmd = cast("str", hook.get("command", "")) or ""
         if not cmd:
             continue
         if uses_project_dir(cmd):
@@ -558,7 +630,10 @@ def _check_exec(
     """HK-EXEC: all resolved hook scripts are executable."""
     not_exec: list[str] = []
     seen: set[Path] = set()
-    for _event, _matcher, cmd in collect_hook_entries(hooks):
+    for _event, _matcher, hook in collect_hook_entries(hooks):
+        if cast("str", hook.get("type", "command")) != "command":
+            continue
+        cmd = cast("str", hook.get("command", "")) or ""
         if not cmd or uses_project_dir(cmd):
             continue
         resolved = resolve_command_path(cmd, skill_dir)

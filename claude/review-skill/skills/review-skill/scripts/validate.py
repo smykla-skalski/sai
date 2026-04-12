@@ -108,6 +108,24 @@ FIELD_ALLOWED_TOOLS: Final[str] = "allowed-tools"
 FIELD_USER_INVOCABLE: Final[str] = "user-invocable"
 FIELD_DMI: Final[str] = "disable-model-invocation"
 FIELD_COMPATIBILITY: Final[str] = "compatibility"
+FIELD_MODEL: Final[str] = "model"
+FIELD_EFFORT: Final[str] = "effort"
+FIELD_PATHS: Final[str] = "paths"
+FIELD_SHELL: Final[str] = "shell"
+FIELD_CONTEXT: Final[str] = "context"
+FIELD_AGENT: Final[str] = "agent"
+FIELD_ARGUMENT_HINT: Final[str] = "argument-hint"
+FIELD_HOOKS: Final[str] = "hooks"
+
+# Description truncation threshold (Claude Code truncates at 250 chars in listing)
+DESCRIPTION_TRUNCATION_THRESHOLD: Final[int] = 250
+
+# Valid values for new fields
+VALID_EFFORT_VALUES: Final[frozenset[str]] = frozenset(
+    {"low", "medium", "high", "max"},
+)
+VALID_SHELL_VALUES: Final[frozenset[str]] = frozenset({"bash", "powershell"})
+VALID_CONTEXT_VALUES: Final[frozenset[str]] = frozenset({"fork"})
 
 
 # ---------------------------------------------------------------------------
@@ -527,13 +545,128 @@ def _check_compatibility(doc: SkillDocument, collector: ResultCollector) -> None
         )
 
 
+def _check_desc_truncation(doc: SkillDocument, collector: ResultCollector) -> None:
+    """FM-desc-truncation: informational when description exceeds 250-char listing limit."""
+    description = doc.field(FIELD_DESCRIPTION)
+    if not description:
+        return
+    if len(description) > DESCRIPTION_TRUNCATION_THRESHOLD:
+        collector.add(
+            CheckRecord(
+                check="FM-desc-truncation",
+                passed=True,
+                level="info",
+                detail=(
+                    f"INFO: Description is {len(description)} chars - Claude Code "
+                    f"truncates at {DESCRIPTION_TRUNCATION_THRESHOLD} chars in the "
+                    "skill listing, which may hide trigger keywords"
+                ),
+                tier="I25",
+            ),
+        )
+
+
+def _check_new_fields(doc: SkillDocument, collector: ResultCollector) -> None:
+    """Validate model, effort, paths, and shell frontmatter fields."""
+    # model - just check presence (any string value is valid)
+    if doc.has_field(FIELD_MODEL):
+        model = doc.field(FIELD_MODEL).strip()
+        if model:
+            collector.add(
+                CheckRecord(
+                    check="FM-model-valid",
+                    passed=True,
+                    detail=f"Field 'model' is '{model}'",
+                ),
+            )
+        else:
+            collector.add(
+                CheckRecord(
+                    check="FM-model-valid",
+                    passed=False,
+                    detail="Field 'model' is present but empty",
+                ),
+            )
+
+    # effort - must be low/medium/high/max
+    if doc.has_field(FIELD_EFFORT):
+        effort = doc.field(FIELD_EFFORT).strip().lower()
+        if effort in VALID_EFFORT_VALUES:
+            collector.add(
+                CheckRecord(
+                    check="FM-effort-valid",
+                    passed=True,
+                    detail=f"Field 'effort' is '{effort}'",
+                ),
+            )
+        else:
+            collector.add(
+                CheckRecord(
+                    check="FM-effort-valid",
+                    passed=False,
+                    detail=(
+                        f"Field 'effort' is '{effort}', expected one of "
+                        f"{sorted(VALID_EFFORT_VALUES)}"
+                    ),
+                ),
+            )
+
+    # shell - must be bash or powershell
+    if doc.has_field(FIELD_SHELL):
+        shell = doc.field(FIELD_SHELL).strip().lower()
+        if shell in VALID_SHELL_VALUES:
+            collector.add(
+                CheckRecord(
+                    check="FM-shell-valid",
+                    passed=True,
+                    detail=f"Field 'shell' is '{shell}'",
+                ),
+            )
+        else:
+            collector.add(
+                CheckRecord(
+                    check="FM-shell-valid",
+                    passed=False,
+                    detail=(
+                        f"Field 'shell' is '{shell}', expected one of "
+                        f"{sorted(VALID_SHELL_VALUES)}"
+                    ),
+                ),
+            )
+
+    # context - must be fork
+    if doc.has_field(FIELD_CONTEXT):
+        context = doc.field(FIELD_CONTEXT).strip().lower()
+        if context in VALID_CONTEXT_VALUES:
+            collector.add(
+                CheckRecord(
+                    check="FM-context-valid",
+                    passed=True,
+                    detail=f"Field 'context' is '{context}'",
+                ),
+            )
+        else:
+            collector.add(
+                CheckRecord(
+                    check="FM-context-valid",
+                    passed=False,
+                    detail=(
+                        f"Field 'context' is '{context}', expected one of "
+                        f"{sorted(VALID_CONTEXT_VALUES)}"
+                    ),
+                ),
+            )
+
+
 def run_frontmatter(doc: SkillDocument, collector: ResultCollector) -> None:
     """Run all frontmatter checks."""
     _check_name(doc, collector)
     _check_description(doc, collector)
+    _check_desc_truncation(doc, collector)
     _check_allowed_tools(doc, collector)
     _check_user_invocable(doc, collector)
     _check_compatibility(doc, collector)
+    _check_new_fields(doc, collector)
 
 
 # ---------------------------------------------------------------------------

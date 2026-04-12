@@ -24,6 +24,11 @@ Maps every JSON check name emitted by validation scripts to its checklist criter
 | FM-desc-no-xml | C1 | validate.py | Description contains no XML tags |
 | FM-invocable-present | - | validate.py | user-invocable field exists |
 | FM-compat-length | - | validate.py | Compatibility field under 500 chars (when present) |
+| FM-desc-truncation | I25 | validate.py | Description truncation warning at 250 chars (info) |
+| FM-model-valid | - | validate.py | model field is non-empty (when present) |
+| FM-effort-valid | - | validate.py | effort field is low/medium/high/max (when present) |
+| FM-shell-valid | - | validate.py | shell field is bash/powershell (when present) |
+| FM-context-valid | - | validate.py | context field is fork (when present) |
 | CF-tools-usage | I16 | check-config.py | Listed tools are actually used in body |
 | CF-side-effect | I17 | check-config.py | Side-effect guidance in SKILL.md and referenced docs has DMI guard |
 | CF-state-xdg | I11 | check-config.py | Persistent state uses XDG paths |

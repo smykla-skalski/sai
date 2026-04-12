@@ -7,6 +7,7 @@
 {"kind": "check", "check": "FM-desc-trigger", "pass": true, "level": "pass", "tier": "C1", "detail": "Description includes trigger phrase (when/use/for)"}
 {"kind": "check", "check": "FM-desc-voice", "pass": true, "level": "pass", "tier": "P5", "detail": "Description uses appropriate voice"}
 {"kind": "check", "check": "FM-desc-no-xml", "pass": true, "level": "pass", "tier": "C1", "detail": "Description contains no XML tags"}
+{"kind": "check", "check": "FM-desc-truncation", "pass": true, "level": "info", "tier": "I25", "detail": "INFO: Description is 1129 chars - Claude Code truncates at 250 chars in the skill listing, which may hide trigger keywords"}
 {"kind": "check", "check": "FM-tools-present", "pass": true, "level": "pass", "tier": "I9", "detail": "Field 'allowed-tools' is present: Read"}
 {"kind": "check", "check": "FM-invocable-present", "pass": true, "level": "pass", "detail": "Field 'user-invocable' is 'true'"}
 {"kind": "check", "check": "SC-no-shell-true", "pass": true, "level": "pass", "tier": "C8", "detail": "No shell=True detected in scripts"}
@@ -53,4 +54,4 @@
 {"kind": "check", "check": "AQ-multiselect", "pass": true, "level": "pass", "tier": "I21", "detail": "No multiSelect usage - skipped"}
 {"kind": "check", "check": "AQ-wizard", "pass": true, "level": "pass", "tier": "I21", "detail": "No confirmation wizard pattern detected - skipped"}
 {"kind": "check", "check": "FK-recommendation-info", "pass": true, "level": "info", "tier": "P9", "detail": "INFO: No fork recommendation - Blocked by FK-B3 - not a fork candidate"}
-{"kind": "summary", "total": 55, "passed": 53, "failed": 2, "skipped": 6, "info": 5}
+{"kind": "summary", "total": 56, "passed": 53, "failed": 2, "skipped": 6, "info": 6}
