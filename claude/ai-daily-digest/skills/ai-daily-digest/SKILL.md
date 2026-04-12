@@ -1,7 +1,7 @@
 ---
 name: ai-daily-digest
 description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
-argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion]"
+argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion] [--obsidian-vault PATH]"
 allowed-tools: AskUserQuestion, Bash, Read, Task, ToolSearch, WebFetch, WebSearch, Write
 user-invocable: true
 disable-model-invocation: true
@@ -18,6 +18,7 @@ Parse from `$ARGUMENTS`:
 - `--focus [technical|business|engineering|leadership|all]` — Default: all
 - `--notion-page-id [UUID]` — Notion parent page ID for digest publishing (overrides env var)
 - `--no-notion` — Skip Notion publishing entirely (archive-only mode)
+- `--obsidian-vault [PATH]` — Obsidian vault path for digest output (overrides env var)
 
 ## Configuration
 
@@ -52,12 +53,47 @@ Or in `~/.claude/settings.json` under the `"env"` key:
 }
 ```
 
+### Obsidian Vault (fallback when Notion not configured)
+
+When Notion is not configured (no page ID resolved and no `--no-notion` flag), the digest is written to an Obsidian vault instead.
+
+Resolve the Obsidian vault path using this precedence (first match wins):
+
+1. `--obsidian-vault` argument
+2. `OBSIDIAN_VAULT_PATH` environment variable
+3. **Auto-detect** — scan for `.obsidian/` directories in common locations:
+   - `~/Documents/*/` (one level deep)
+   - `~/*/` (one level deep, e.g. `~/vault/`, `~/notes/`)
+   - `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/*/` (iCloud sync)
+   Use: `find ~/Documents ~/Library/Mobile\ Documents/iCloud~md~obsidian/Documents ~ -maxdepth 2 -name .obsidian -type d 2>/dev/null`
+   If exactly one vault found, use its parent directory. If multiple found, present choices via AskUserQuestion. If none found, fall back to archive-only mode.
+4. Within the resolved vault, prefer an `0_Inbox/` subdirectory if it exists, otherwise write to vault root.
+
+The digest is saved as `AI Digest {YYYY-MM-DD}.md` in the resolved path. Integrates with Obsidian's file-based workflow — the digest appears as a regular note with full markdown rendering.
+
+Persist via env var in `~/.zshrc` / `~/.bashrc`:
+
+```bash
+export OBSIDIAN_VAULT_PATH="$HOME/Documents/my-vault/0_Inbox"
+```
+
+Or in `~/.claude/settings.json` under the `"env"` key:
+
+```json
+{
+  "env": {
+    "OBSIDIAN_VAULT_PATH": "/Users/you/Documents/your-vault/0_Inbox"
+  }
+}
+```
+
 ## Preprocessed context
 
 - Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest"`
 - Today: !`date +%Y-%m-%d`
 - Day of week: !`date +%A`
 - Notion page ID (env): !`echo "${NOTION_PARENT_PAGE_ID:-}"`
+- Obsidian vault path (env): !`echo "${OBSIDIAN_VAULT_PATH:-}"`
 
 ## Persistent Data Directory
 
@@ -95,14 +131,17 @@ Example:
 1. Read [references/sources.md](references/sources.md) for source URLs and tiers
 2. Read [references/output-template.md](references/output-template.md) for digest format
 3. Parse arguments for `--focus` area and `--notion-page-id`
-4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null` (archive-only mode).
+4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null`.
    Otherwise check in order: `--notion-page-id` arg → Notion page ID from preprocessed context → prompt user interactively.
    Store resolved value as `notion_page_id` for Phase 18.
-   If the preprocessed value is empty and user declines to provide an ID, skip Notion publishing (archive-only mode).
-5. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
-6. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context
-7. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
-8. Check day of week from preprocessed context — if Friday, enable weekly recap mode (Friday Weekly Recap section in search patterns)
+   If the preprocessed value is empty and user declines to provide an ID, set `notion_page_id` to `null`.
+5. **Resolve Obsidian vault** — only when `notion_page_id` is `null` (Notion not configured).
+   Check in order: `--obsidian-vault` arg → Obsidian vault path from preprocessed context → auto-detect (see Configuration section above).
+   Store resolved value as `obsidian_path` for Phase 18. If no vault found, fall back to archive-only mode.
+6. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
+7. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context
+8. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
+9. Check day of week from preprocessed context — if Friday, enable weekly recap mode (Friday Weekly Recap section in search patterns)
 
 ### Phases 2-15: Research
 
@@ -177,17 +216,22 @@ Every section in the template must have content before proceeding.
 
 DO NOT update `.covered-stories` in this phase — wait for verification.
 
-**Step 1: Save to Notion**
+**Step 1: Publish digest**
 
-Skip this step if `notion_page_id` was not resolved in Phase 1 (archive-only mode).
+Choose ONE based on Phase 1 resolution:
 
-Load Notion tool via ToolSearch (`select:mcp__notion__notion-create-pages`), then create page:
+- **Notion** (when `notion_page_id` is set): Load Notion tool via ToolSearch (`select:mcp__notion__notion-create-pages`), then create page:
+  - Parent page ID: use `notion_page_id` resolved in Phase 1
+  - Title: `🤖 AI Digest {YYYY-MM-DD}`
+  - Content: Full digest markdown (excluding H1 title)
+  - If page creation fails, warn the user and continue — the archive copy in Step 2 still provides value.
 
-- Parent page ID: use `notion_page_id` resolved in Phase 1
-- Title: `🤖 AI Digest {YYYY-MM-DD}`
-- Content: Full digest markdown (excluding H1 title)
+- **Obsidian** (when `obsidian_path` is set): Write digest to `{obsidian_path}/AI Digest {YYYY-MM-DD}.md`.
+  - Include full digest with H1 title
+  - Checkboxes `- [ ]` render natively in Obsidian
+  - If the vault path does not exist, warn and fall back to archive-only
 
-If page creation fails, warn the user and continue — the archive copy in Step 2 still provides value.
+- **Archive-only** (neither set): Skip publishing, archive copy in Step 2 still provides value.
 
 **Step 2:** Write archive copy to `$DATA_DIR/ai-digest-{YYYY-MM-DD}.md`
 
@@ -236,7 +280,7 @@ Keep file under 300 lines — trim oldest from top if over.
 
 ## Newsletter Integration
 
-Story items use `- [ ]` checkbox format for newsletter curation. User checks stories in Notion → `/ai-newsletter` extracts checked items.
+Story items use `- [ ]` checkbox format for newsletter curation. User checks stories in Notion or Obsidian → `/ai-newsletter` extracts checked items.
 
 ## Example Invocations
 
@@ -264,5 +308,13 @@ Explicit Notion page or archive-only mode:
 /ai-digest --notion-page-id 12345678-abcd-1234-efgh-123456789abc
 /ai-digest --no-notion
 /ai-digest --focus technical --no-notion
+```
+</example>
+
+<example>
+Explicit Obsidian vault path:
+
+```bash
+/ai-digest --obsidian-vault ~/Documents/my-vault/0_Inbox
 ```
 </example>
