@@ -1,0 +1,39 @@
+{
+  "name": "ai-daily-digest",
+  "version": "0.1.0",
+  "description": "Daily AI news digests for engineers and leaders",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "ai-daily-digest"
+  ],
+  "skills": "../../codex/ai-daily-digest",
+  "interface": {
+    "displayName": "AI Daily Digest",
+    "shortDescription": "Daily AI news digests for engineers and leaders",
+    "longDescription": "AI Daily Digest from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Research",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $ai-daily-digest for this task.",
+      "Open the AI Daily Digest skill and apply it to the current request.",
+      "Run the AI Daily Digest workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

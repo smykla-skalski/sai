@@ -1,0 +1,4 @@
+interface:
+  display_name: "Plan Critic"
+  short_description: "Critique implementation plans hard"
+  default_prompt: "Use $plan-critic to challenge this implementation plan, surface execution risks, and suggest a stronger version before coding starts."

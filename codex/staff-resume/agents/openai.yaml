@@ -1,0 +1,4 @@
+interface:
+  display_name: "Staff Resume"
+  short_description: "Coach and tailor staff resumes"
+  default_prompt: "Use $staff-resume to review this resume for staff-level positioning and propose stronger bullets, summaries, and tailoring."

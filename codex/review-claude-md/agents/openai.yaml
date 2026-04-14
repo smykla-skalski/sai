@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review CLAUDE.md"
+  short_description: "Audit CLAUDE.md files quickly"
+  default_prompt: "Use $review-claude-md to audit this repository’s CLAUDE.md, report concrete issues, and fix the approved ones."

@@ -1,0 +1,39 @@
+{
+  "name": "slug",
+  "version": "0.1.0",
+  "description": "Generate a concise branch-style session slug",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "slug"
+  ],
+  "skills": "../../codex/slug",
+  "interface": {
+    "displayName": "Session Slug",
+    "shortDescription": "Generate a concise branch-style session slug",
+    "longDescription": "Session Slug from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $slug for this task.",
+      "Open the Session Slug skill and apply it to the current request.",
+      "Run the Session Slug workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "kubecon-cfp",
+  "version": "0.1.0",
+  "description": "Draft and refine KubeCon CFP submissions",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "kubecon-cfp"
+  ],
+  "skills": "../../codex/kubecon-cfp",
+  "interface": {
+    "displayName": "KubeCon CFP",
+    "shortDescription": "Draft and refine KubeCon CFP submissions",
+    "longDescription": "KubeCon CFP from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Writing",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $kubecon-cfp for this task.",
+      "Open the KubeCon CFP skill and apply it to the current request.",
+      "Run the KubeCon CFP workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

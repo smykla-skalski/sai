@@ -1,0 +1,39 @@
+{
+  "name": "test-writer",
+  "version": "0.1.0",
+  "description": "Write and review behavior-first tests",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "test-writer"
+  ],
+  "skills": "../../codex/test-writer",
+  "interface": {
+    "displayName": "Test Writer",
+    "shortDescription": "Write and review behavior-first tests",
+    "longDescription": "Test Writer from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $test-writer for this task.",
+      "Open the Test Writer skill and apply it to the current request.",
+      "Run the Test Writer workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

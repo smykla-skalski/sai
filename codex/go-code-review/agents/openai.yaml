@@ -1,0 +1,4 @@
+interface:
+  display_name: "Go Code Review"
+  short_description: "Review Go code for common mistakes"
+  default_prompt: "Use $go-code-review to review these Go changes against common mistake patterns and report concrete findings with file evidence."

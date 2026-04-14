@@ -1,0 +1,4 @@
+interface:
+  display_name: "Service Mesh Debug"
+  short_description: "Debug flaky mesh tests and traffic"
+  default_prompt: "Use $service-mesh-debug to diagnose this flaky service-mesh test or connectivity issue and propose the smallest credible fix."

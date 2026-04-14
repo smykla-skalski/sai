@@ -1,0 +1,4 @@
+interface:
+  display_name: "Humanize"
+  short_description: "Rewrite text to sound natural"
+  default_prompt: "Use $humanize to review this draft for AI-writing patterns and rewrite it in a more natural, direct voice."

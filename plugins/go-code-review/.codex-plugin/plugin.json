@@ -1,0 +1,39 @@
+{
+  "name": "go-code-review",
+  "version": "0.1.0",
+  "description": "Review Go code against common mistake patterns",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "go-code-review"
+  ],
+  "skills": "../../codex/go-code-review",
+  "interface": {
+    "displayName": "Go Code Review",
+    "shortDescription": "Review Go code against common mistake patterns",
+    "longDescription": "Go Code Review from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $go-code-review for this task.",
+      "Open the Go Code Review skill and apply it to the current request.",
+      "Run the Go Code Review workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

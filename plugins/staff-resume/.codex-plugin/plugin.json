@@ -1,0 +1,39 @@
+{
+  "name": "staff-resume",
+  "version": "0.1.0",
+  "description": "Coach and tailor staff-level engineering resumes",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "staff-resume"
+  ],
+  "skills": "../../codex/staff-resume",
+  "interface": {
+    "displayName": "Staff Resume",
+    "shortDescription": "Coach and tailor staff-level engineering resumes",
+    "longDescription": "Staff Resume from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Writing",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $staff-resume for this task.",
+      "Open the Staff Resume skill and apply it to the current request.",
+      "Run the Staff Resume workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

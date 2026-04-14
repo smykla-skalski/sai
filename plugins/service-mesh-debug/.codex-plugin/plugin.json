@@ -1,0 +1,39 @@
+{
+  "name": "service-mesh-debug",
+  "version": "0.1.0",
+  "description": "Debug flaky mesh tests and connectivity issues",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "service-mesh-debug"
+  ],
+  "skills": "../../codex/service-mesh-debug",
+  "interface": {
+    "displayName": "Service Mesh Debug",
+    "shortDescription": "Debug flaky mesh tests and connectivity issues",
+    "longDescription": "Service Mesh Debug from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $service-mesh-debug for this task.",
+      "Open the Service Mesh Debug skill and apply it to the current request.",
+      "Run the Service Mesh Debug workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

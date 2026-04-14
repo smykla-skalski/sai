@@ -1,0 +1,4 @@
+interface:
+  display_name: "Staff Code Review"
+  short_description: "Review changes at staff level"
+  default_prompt: "Use $staff-code-review to review these changes like a staff engineer, prioritizing architectural, operational, and security risks."
