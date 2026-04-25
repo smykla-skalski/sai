@@ -1,7 +1,7 @@
 ---
 name: promptgen
-description: Turn rough instructions into optimized, evidence-based AI prompts. For system prompts, task prompts, agent instructions, or any scenario where a well-structured prompt is needed. Copies to clipboard.
-argument-hint: "<prompt-description> [--for claude|gpt|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]"
+description: Use when turning rough instructions into optimized, evidence-based AI prompts for system prompts, task prompts, coding-agent instructions, tools, eval graders, or prompt-improvement work. Copies to clipboard.
+argument-hint: "<prompt-description> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]"
 allowed-tools: AskUserQuestion, Bash, Read, Task
 user-invocable: true
 ---
@@ -10,7 +10,7 @@ user-invocable: true
 
 # Promptgen
 
-Generate optimized, evidence-based prompts from rough human instructions. Built on research from 35+ academic papers, Anthropic/OpenAI vendor docs, and Mollick/Wharton Prompting Science Reports.
+Generate optimized, evidence-based prompts from rough human instructions. Built on current Anthropic/OpenAI guidance, agent-prompt patterns, prompt injection defenses, and empirical prompt research.
 
 ## Arguments
 
@@ -22,7 +22,7 @@ Two input channels:
 | Flag | Default | Purpose |
 | :-- | :-- | :-- |
 | (positional) | - | Description of the prompt to generate |
-| `--for <model>` | claude | Target: claude, gpt, generic |
+| `--for <model>` | claude | Target: claude, gpt, codex, generic |
 | `--research light\ | deep` | off | Do research before generating (see below) |
 | `--verbose` | off | Show reasoning behind prompt decisions |
 | `--no-copy` | off | Output to chat only, skip clipboard |
@@ -62,7 +62,7 @@ If `$ARGUMENTS` is empty, skip to Phase 1 step 6 (ask for description).
 
 1. Read conversation history above the invocation for any requirements, constraints, or context the user directed at promptgen (e.g. "the agent will have Read and Bash tools", "keep it under 300 tokens", "the target is a RAG pipeline").
 2. Parse `$ARGUMENTS` for flags and the positional prompt description. The positional text describes the prompt to generate — it is not directed at promptgen.
-3. Extract `--for` value (default: claude). Accepted values: claude, gpt, generic.
+3. Extract `--for` value (default: claude). Accepted values: claude, gpt, codex, generic.
 4. Extract `--research` value (default: none). Accepted values: light, deep.
 5. Check for `--verbose`, `--no-copy`, `--examples`, `--raw` flags.
 6. If no positional description provided, use AskUserQuestion to get what the prompt should do.
@@ -82,30 +82,41 @@ Scope the investigation to what the target agent will need — don't read unrela
 ### Phase 2: Task analysis (spawned agent)
 
 Read [references/prompt-principles.md](references/prompt-principles.md) for task-category-specific prompting principles (passed to the analysis agent below).
+Read [references/prompt-mechanics.md](references/prompt-mechanics.md) before generation to build the prompt brief and choose the right specificity level.
 
-Spawn a `general-purpose` analysis agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute path to the prompt-principles reference above.
+Spawn a `general-purpose` analysis agent via Task. Pass it the `<prompt-description>` content from Phase 0/1 and the absolute paths to the prompt-principles and prompt-mechanics references above.
 
 Agent instructions:
 
 1. Read the prompt-principles.md reference file at the provided path.
-2. Determine the task category from the prompt description:
+2. Read the prompt-mechanics.md reference file at the provided path.
+3. Determine the task category from the prompt description:
    - docs - documentation generation
    - investigation - research, analysis, debugging
    - refactoring - code restructuring
    - code-gen - writing new code
+   - agentic-coding - autonomous coding agent prompt, repo workflow, multi-step implementation
+   - tool-description - tool or function description for an agent harness
+   - eval-grader - evaluation prompt or grader
+   - prompt-improvement - improving an existing prompt from failures
    - planning - architecture, design, roadmaps
    - security - security review, vulnerability analysis
    - testing - test creation, QA
    - debugging - bug identification, root cause analysis
    - general - anything else
-3. Detect whether this is a system prompt or task prompt:
+4. Detect whether this is a system prompt, task prompt, reusable template, tool description, or eval grader:
    - System prompt: defines an agent's persistent identity, constraints, and behavior
    - Task prompt: one-shot instructions for a specific task
-4. Identify what tools or capabilities the target agent needs based on the description.
-5. Note any special considerations from prompt-principles.md that apply to this task category.
-6. If the task category is code-gen, refactoring, debugging, testing, or investigation involving code, also read [references/code-for-agents.md](references/code-for-agents.md) for RAG-based code agents or chunking-specific prompts. Otherwise skip it.
+   - Reusable template: stable instructions plus variables
+   - Tool description: name, when to use, inputs, outputs, side effects, errors
+   - Eval grader: pass/fail criteria, inputs, allowed evidence, output schema
+5. Build the prompt brief from prompt-mechanics.md: target, desired result, success criteria, failure modes, context boundary, side effects, tool policy, verification, and stop rule.
+6. Choose the specificity dial from prompt-mechanics.md: simple generation, extraction, research, coding task, long-horizon agent, or high-risk action.
+7. Identify what tools or capabilities the target agent needs based on the description.
+8. Note any special considerations from prompt-principles.md that apply to this task category.
+9. If the task category is agentic-coding, code-gen, refactoring, debugging, testing, or investigation involving code, also read [references/code-for-agents.md](references/code-for-agents.md) for coding-agent and code-comprehension prompt rules. Otherwise skip it.
 
-The agent returns ONLY a structured result with: task category, prompt type (system/task), tools needed, special considerations. Nothing else.
+The agent returns ONLY a structured result with: task category, prompt type, prompt brief, specificity dial, tools needed, special considerations. Nothing else.
 
 Store these classification results for use in Phase 4.
 
@@ -140,74 +151,24 @@ If `--verbose`, display the returned security assessment in the chat.
 ### Phase 4: Prompt generation
 
 Read [references/prompt-structure.md](references/prompt-structure.md) in full.
+Read [references/prompt-mechanics.md](references/prompt-mechanics.md) again if the analysis result is incomplete or the prompt brief has gaps.
 
-This phase requires ultrathink. Reason through competing constraints (template structure, security hardening, token budget, model-specific rules, anti-patterns) before composing the prompt.
+Compose the prompt from the prompt brief:
 
-Build the prompt using the appropriate template variant:
-- `claude`: XML tags for data boundaries, Markdown for sections
-- `gpt`: Markdown headers, final reminders section for recency effect
-- `generic`: Markdown-only, no model-specific optimizations
-
-Generation rules:
-
-1. Identity section: exactly 2 lines. Name + scope. No adjective stacking.
-2. Constraints before instructions. Stated positively where possible.
-3. Instructions are specific and actionable. No generic quality statements like "be thorough" or "be accurate."
-4. Token budget: task prompts under 500 tokens, system prompts under 1500 tokens.
-5. Include security patterns from Phase 3 only when the threat model warrants them.
-6. Add few-shot examples section only if `--examples` flag is set. Examples must perfectly match desired behavior.
-7. For Claude target: soften tool-use language, no anti-laziness prompts.
-8. For GPT target: add final reminders section repeating 1-2 critical constraints.
-9. For generic target: no model-specific optimizations.
-10. If the task involves adding or upgrading any dependency, library, package, GitHub Action, Docker image, Helm chart, or other versioned artifact: include an explicit instruction requiring the agent to look up the latest stable version before using it.
-    The instruction must cover the relevant ecosystems (npm, pip, go get, cargo, GitHub Actions, Helm, Docker, etc.) and must not let the agent assume or guess a version.
-
-Opinionated formatting preferences (skip when `--raw` is set):
-
-When the task involves markdown output (docs, reports, changelogs, READMEs, or any task where the generated prompt will produce markdown files), include these as literal instructions in the generated prompt's output section:
-
-- Do not hard-wrap or break long lines. Keep each sentence or logical unit on a single line regardless of length. Let the editor or renderer handle wrapping.
-- No trailing whitespace on lines.
-
-When the task involves code changes (code-gen, refactoring, debugging, investigation with code edits, or any agentic workflow that writes or modifies files), include these as literal instructions in the generated prompt's instructions section:
-
-- Commit after each logical unit of work completes. Small, frequent commits make progress easier to track and mistakes easier to revert.
-- Use descriptive, consistent names. Misleading names hurt agent comprehension more than terse ones.
-- Write correct comments or none. An incorrect comment causes more damage than silence.
-- Remove dead code, unreachable branches, and commented-out blocks.
-- Add type annotations where the language supports them.
-- Keep functions short enough to fit within a single context window chunk (roughly under 100 lines).
-- Put the most important logic near the top of files. Agents front-load attention; content in the final quarter of a file is routinely missed.
-
-These preferences reflect the prompt author's workflow. Read [references/code-for-agents.md](references/code-for-agents.md) for the empirical research behind these rules. The `--raw` flag produces a clean prompt without them.
-
-Writing style rules (applied to the generated prompt text):
-- No sycophantic patterns, chatbot artifacts, or promotional language
-- Sentence case headings, straight quotes
-- Varied sentence rhythm - mix short and long
-- State things plainly
-- AI vocabulary and filler phrase rules from anti-patterns items 10-11 - apply them during generation, not just during self-check
+1. Select the `claude`, `gpt`, `codex`, or `generic` template from [references/prompt-structure.md](references/prompt-structure.md).
+2. Apply the specificity dial and quality gate from [references/prompt-mechanics.md](references/prompt-mechanics.md).
+3. Put the outcome contract before procedural instructions.
+4. Add security patterns from Phase 3 only when warranted.
+5. Add examples only when `--examples` is set and examples improve format, edge-case, or policy clarity.
+6. Apply code-agent rules from [references/code-for-agents.md](references/code-for-agents.md) when the prompt touches code.
+7. Apply `--raw` by skipping opinionated author preferences while preserving safety and task-specific constraints.
+8. Keep task prompts under 500 tokens and system prompts under 1500 tokens by cutting lowest-value process text first.
 
 ### Phase 5: Self-check
 
-Read [references/anti-patterns.md](references/anti-patterns.md) in full to verify the generated prompt against all 12 anti-pattern checks.
+Read [references/anti-patterns.md](references/anti-patterns.md) in full to verify the generated prompt against all anti-pattern checks.
 
-Verify the generated prompt against all 12 anti-pattern checks:
-
-1. No adjective stacking in identity section
-2. No generic quality instructions
-3. No tipping or incentives
-4. No anti-laziness directives
-5. No aggressive emphasis on routine instructions
-6. No contradictory instructions
-7. No negative-only framing (rewrite as positive)
-8. No emotional manipulation
-9. No motivational language
-10. No AI vocabulary
-11. No filler phrases
-12. No excessive emphasis (CAPS/bold on more than 2-3 items)
-
-If any check fails, revise the prompt and re-check. Continue until all 12 pass.
+If any anti-pattern check fails, revise the prompt and re-check. Continue until all checks pass.
 
 Verify token budget: task prompts under 500, system prompts under 1500. If over budget, cut the lowest-priority content.
 

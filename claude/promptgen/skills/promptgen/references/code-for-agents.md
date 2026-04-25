@@ -12,6 +12,7 @@ Condensed from 21 empirical studies (2022-2025). Full research with all citation
 - [File length and position effects](#file-length-and-position-effects)
 - [Whitespace and formatting consistency](#whitespace-and-formatting-consistency)
 - [Code chunking for RAG](#code-chunking-for-rag)
+- [Coding-agent prompt rules](#coding-agent-prompt-rules)
 
 ## Naming
 
@@ -95,3 +96,26 @@ For NL-to-code retrieval: dense embeddings outperform BM25 by 14 NDCG points at 
 Function/method is the minimum effective retrieval unit - GraphCodeAgent, STALL+, and LocAgent converge on this independently.
 
 **Rule for generated prompts:** For RAG-based code agents, instruct AST/function-boundary chunking. For repo-level agents, treat function as the minimum navigation unit.
+
+## Coding-agent prompt rules
+
+Current coding-agent guidance has shifted from "show a plan first" toward outcome, autonomy, and verification contracts.
+
+For generated coding-agent prompts, include:
+
+1. Scope: files, modules, behavior, and surfaces the agent may change.
+2. Context gathering: inspect relevant code before claims or edits; use fast search first.
+3. Reuse rule: prefer existing helpers, patterns, and tests before adding abstractions.
+4. Edit safety: preserve unrelated dirty work and avoid destructive commands unless explicitly authorized.
+5. Side-effect policy: define whether commits, pushes, network calls, package installs, or external system writes are allowed.
+6. Verification: name the narrowest useful test/lint/build command when known, plus manual checks when tests are absent.
+7. Completion: final response must state changed files, validation run, and residual risk.
+
+Avoid:
+
+- Mandatory upfront plans for every coding task
+- Routine progress preambles in prompts for non-interactive rollouts
+- Hard-coded tool call order when the agent can choose based on evidence
+- "Make tests pass" wording without requiring a general solution
+
+Use step-by-step instructions only when order is part of correctness, for example migrations, deployment, destructive operations, or multi-system state changes.

@@ -33,6 +33,7 @@ Codex skills:
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
+| **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 | **review-skill**       | Audit Codex skills for routing, metadata, shell safety, and approval flow        | `codex/review-skill/`        |
 
 ## Installation
@@ -156,9 +157,9 @@ Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ 
 
 ### promptgen
 
-Turn rough instructions into optimized, evidence-based AI prompts. Built on 35+ academic papers, Anthropic/OpenAI vendor docs, and Mollick/Wharton Prompting Science Reports. Copies to clipboard.
+Turn rough instructions into optimized, evidence-based AI prompts with outcome contracts, model fit, safety boundaries, and verification rules. Copies to clipboard.
 
-**Usage**: `/promptgen <instructions> [--for claude|gpt|generic] [--verbose] [--no-copy] [--with-examples]`
+**Usage**: `/promptgen <instructions> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]`
 
 [Full documentation ->](./claude/promptgen/README.md)
 

@@ -6,15 +6,18 @@ Condensed from 35+ academic papers, Anthropic/OpenAI vendor docs, and Mollick/Wh
 
 - [Preamble rules](#preamble-rules)
 - [Structure order](#structure-order)
+- [Outcome-first design](#outcome-first-design)
 - [Information positioning](#information-positioning)
 - [Formatting](#formatting)
 - [Conciseness](#conciseness)
 - [Model-generation awareness](#model-generation-awareness)
+- [Tool and agent mechanics](#tool-and-agent-mechanics)
 - [Few-shot rules](#few-shot-rules)
 - [Positive framing](#positive-framing)
 - [Chain-of-thought guidance](#chain-of-thought-guidance)
 - [Emphasis and tone](#emphasis-and-tone)
 - [Contradictions](#contradictions)
+- [Templates, variables, and evals](#templates-variables-and-evals)
 - [Automated optimization](#automated-optimization)
 
 ## Preamble rules
@@ -27,16 +30,33 @@ Condensed from 35+ academic papers, Anthropic/OpenAI vendor docs, and Mollick/Wh
 
 ## Structure order
 
-Both vendors converge on this hierarchy:
+For modern agent prompts, use this hierarchy:
 
 1. Identity (1-2 sentences, factual)
-2. Constraints (non-negotiable rules, stated positively)
-3. Instructions (specific, actionable - not "be thorough" but what to do)
-4. Output specification (format, structure)
-5. Examples (if needed - see few-shot rules below)
-6. Critical reminders at the end (exploits recency effect)
+2. Outcome contract (desired result, success criteria, evidence, allowed side effects, stop rule)
+3. Constraints (non-negotiable rules, stated positively)
+4. Instructions (specific, actionable - not "be thorough" but what to do)
+5. Output specification (format, structure)
+6. Examples (if needed - see few-shot rules below)
+7. Critical reminders at the end only when they carry real priority
 
-OpenAI explicitly recommends placing instructions at both beginning AND end. Anthropic: "Put longform data at the top, queries at the end" - up to 30% improvement.
+Anthropic: put longform data at the top and the query at the end for long-context work. OpenAI GPT-5.5 guidance favors outcome-first prompts: expected result, constraints, output shape, and verification before detailed process.
+
+## Outcome-first design
+
+Start by defining what a successful answer or agent run looks like.
+
+High-quality prompts answer these questions:
+
+1. What artifact or behavior should exist at the end?
+2. What evidence proves it is acceptable?
+3. What sources, files, or inputs may the model use?
+4. What side effects are allowed?
+5. When should the model ask, abstain, or report blocked instead of guessing?
+
+Modern reasoning models often perform worse when every intermediate step is prescribed. Add step order only when order affects safety, correctness, or side effects.
+
+For simple tasks, the outcome contract can be one line. For long-running agents, it should include acceptance criteria, verification commands, side-effect gates, and final-report shape.
 
 ## Information positioning
 
@@ -90,11 +110,34 @@ GPT-4.1+:
 - Instructions closer to end of prompt followed more closely
 
 GPT-5+:
-- Requires less scaffolding; shorter instructions perform better
+- Outcome-first prompts outperform inherited process-heavy prompt stacks
+- Tune reasoning effort and verbosity in configuration when available instead of adding prompt prose
 - Contradictory instructions impair reasoning more than prior models
-- Metaprompting works well - ask GPT-5 to improve its own prompts
+- Metaprompting works well - ask GPT-5 to improve prompts from concrete failures
+
+Codex:
+- Coding-agent prompts need autonomy, codebase exploration, edit safety, and verification contracts
+- Avoid mandatory upfront plans, routine preambles, and hard-coded tool order unless the harness requires them
+- Include rules for when to continue with assumptions versus when to ask because risk is high
 
 Cross-generation finding (2025): sculpted prompts that helped GPT-4o became detrimental on GPT-5. Optimal strategies must co-evolve with model capabilities.
+
+## Tool and agent mechanics
+
+Tool quality depends more on tool definitions than on a long system prompt.
+
+For each tool, the best prompt-adjacent information is:
+
+1. What the tool does
+2. When to use it
+3. When not to use it
+4. Parameter meanings and caveats
+5. Output meaning, missing fields, and common errors
+6. Side effects and retry safety
+
+For agent prompts, keep cross-tool policy in the prompt: approval gates, destructive-action rules, evidence standards, and final-report expectations.
+
+Avoid brittle choreography such as "always call A, then B, then C" unless the product contract requires that order. Prefer decision rules and done criteria.
 
 ## Few-shot rules
 
@@ -114,7 +157,7 @@ State constraints positively where possible. Reserve negative framing for actual
 
 ## Chain-of-thought guidance
 
-1. For reasoning models (o-series, Claude extended thinking): don't prompt for CoT. Reasoning happens internally. Explicit CoT instructions are counterproductive.
+1. For reasoning models (o-series, GPT-5 reasoning models, Claude adaptive thinking): don't ask for private chain-of-thought. Reasoning happens internally. Ask for concise rationale or evidence in the final answer when needed.
 2. For non-reasoning models: CoT helps modestly (Gemini Flash 2.0 +13.5%, Sonnet 3.5 +11.7%). But 35-600% longer response times.
 3. Zero-shot CoT ("Let's think step by step") matches few-shot CoT on strong modern models.
 4. Don't force structured output during reasoning. Let models reason in free text first, then convert to structured format in a second pass. JSON-mode dropped Claude-3-Haiku from 86.51% to 23.44% on GSM8K.
@@ -136,6 +179,21 @@ Contradictory instructions cause silent, unpredictable failures. Models silently
 System/user prompt separation fails to provide reliable instruction hierarchy ("Control Illusion" 2025).
 
 Audit prompts for contradictions. The model won't tell you they exist.
+
+## Templates, variables, and evals
+
+Use prompt templates and variables for prompts that will be reused. Keep stable instructions separate from dynamic user data so the prompt is easier to test, diff, cache, and version.
+
+Wrap variables in clear boundaries, especially when variable content is untrusted or long.
+
+For production prompts, pair changes with evals or at least representative failure examples. Strong prompt improvement starts from observed failures:
+
+1. Collect examples where the prompt failed or produced weak output.
+2. Name the failure mode.
+3. Add the smallest rule, example, or output contract that blocks that failure.
+4. Re-run examples or graders before accepting the change.
+
+Use API structured outputs or tool schemas when strict output validation matters. Do not spend hundreds of prompt tokens describing a schema the API can enforce.
 
 ## Automated optimization
 

@@ -28,9 +28,21 @@ Verify the generated prompt contains none of these. Each item has evidence for w
 
 12. **Excessive emphasis** - CAPS and bold on more than 2-3 items. Reserve for actual safety-critical rules. Overuse dilutes the signal and causes the model to overtrigger on emphasized items.
 
+13. **Brittle tool choreography** - "always call tool A, then B, then C" when decision rules would work. Current agent guidance favors clear tool descriptions, side-effect policy, and done criteria over hard-coded call order unless order is safety-critical.
+
+14. **Mandatory preambles and upfront plans by default** - requiring visible plans, progress notes, or preambles for every task can interrupt coding-agent rollouts and waste tokens. Add visible planning only when the user or product experience needs it.
+
+15. **Hard-coded current dates in reusable prompts** - reusable prompts with fixed dates go stale. Include date context only when the runtime does not provide it or the task is explicitly time-sensitive.
+
+16. **Private chain-of-thought requests** - "show all reasoning" or "include hidden thoughts." Ask for concise rationale, evidence, or verification instead.
+
+17. **Schema prose that should be enforced by tooling** - long natural-language JSON schema descriptions when the target API supports structured outputs, strict tools, or validators. Use runtime validation when available.
+
+18. **No escape hatch** - prompts that force an answer when evidence is absent. Define when to say "not found", "insufficient evidence", "blocked", or ask for missing input.
+
 ## Self-check process
 
-After generating a prompt, scan it against all 12 items above. If any are present:
+After generating a prompt, scan it against all items above. If any are present:
 
 1. Identify the specific violation
 2. Rewrite to eliminate it

@@ -1,12 +1,12 @@
 # promptgen
 
-Turn rough instructions into optimized, evidence-based AI prompts. Built on research from 35+ academic papers, Anthropic/OpenAI vendor docs, and Mollick/Wharton Prompting Science Reports.
+Turn rough instructions into optimized, evidence-based AI prompts. Built on current Anthropic/OpenAI guidance, agent-prompt mechanics, prompt injection defenses, and empirical prompt research.
 
 ## What it does
 
-You describe what you want a prompt to do in plain language. The skill generates a well-structured prompt following evidence-based principles - proper structure order, concise identity sections, positive framing, appropriate security patterns, and no common anti-patterns. Output goes to clipboard by default.
+You describe what you want a prompt to do in plain language. The skill generates a well-structured prompt with an outcome contract, success criteria, evidence rules, side-effect boundaries, fitting specificity, and no common anti-patterns. Output goes to clipboard by default.
 
-Supports three target formats: Claude (XML tags), GPT (final reminders), and generic (Markdown-only).
+Supports four target formats: Claude (XML tags), GPT (outcome-first Markdown), Codex (coding-agent contract), and generic (Markdown-only).
 
 ## Installation
 
@@ -26,13 +26,13 @@ claude --plugin-dir /path/to/sai/claude/promptgen
 ## Usage
 
 ```
-/promptgen <instructions> [--for claude|gpt|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]
+/promptgen <instructions> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]
 ```
 
 | Flag                     | Default | Purpose                                          |
 |:-------------------------|:--------|:-------------------------------------------------|
 | (positional)             | -       | Rough instructions for what the prompt should do |
-| `--for <model>`          | claude  | Target: claude, gpt, generic                     |
+| `--for <model>`          | claude  | Target: claude, gpt, codex, generic              |
 | `--research light\|deep` | off     | Investigate codebase before generating           |
 | `--verbose`              | off     | Show reasoning behind prompt decisions           |
 | `--no-copy`              | off     | Output to chat only, skip clipboard              |
@@ -47,6 +47,9 @@ claude --plugin-dir /path/to/sai/claude/promptgen
 
 # GPT-targeted prompt
 /promptgen refactor the database layer to use connection pooling --for gpt
+
+# Codex-targeted coding-agent prompt
+/promptgen fix flaky checkout tests and verify the failure mode --for codex
 
 # Light research - checks config files first, then generates
 /promptgen --research light refactor the database layer to use connection pooling
@@ -75,16 +78,16 @@ The skill runs up to 7 phases:
 2. **Research** (optional) - `--research light` checks config files and directory structure; `--research deep` reads relevant source files and traces call paths
 3. **Task analysis** - categorizes the task, detects system vs task prompt, reads evidence-based principles
 4. **Security assessment** - checks if the use case involves untrusted input, applies defensive patterns only when warranted
-5. **Prompt generation** - builds the prompt using the target template (Claude/GPT/generic), applies formatting preferences
-6. **Self-check** - verifies against 12 anti-pattern checks, revises if any fail
+5. **Prompt generation** - builds the prompt using the target template (Claude/GPT/Codex/generic), applies formatting preferences
+6. **Self-check** - verifies against anti-pattern checks, revises if any fail
 7. **Output** - displays in fenced code block, copies to clipboard
 
 ## Research basis
 
 The reference materials are condensed from:
 - 35+ academic papers (Mollick/Wharton Reports, EMNLP, NeurIPS, ICLR, TACL publications)
-- Anthropic prompt engineering docs (Claude 4.6 best practices, context engineering)
-- OpenAI prompting guides (GPT-4.1 through GPT-5.2)
+- Anthropic prompt engineering docs (Claude 4.7/4.6 best practices, XML tags, prompt templates, tool definitions)
+- OpenAI prompting guides (GPT-5.5, GPT-5 reasoning models, Codex prompting, prompt optimizer, agent safety)
 - Prompt injection defense research (OWASP, NIST, MITRE ATLAS)
 - SPRIG genetic prompt optimization results
 - Chroma context rot research

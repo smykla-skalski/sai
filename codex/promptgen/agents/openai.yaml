@@ -1,4 +1,7 @@
 interface:
   display_name: "Promptgen"
-  short_description: "Turn rough asks into prompts"
-  default_prompt: "Use $promptgen to turn this rough instruction into a clearer, stronger prompt tailored to the target model and task."
+  short_description: "Turn rough asks into strong prompts"
+  default_prompt: "Use $promptgen to turn this rough instruction into a stronger prompt with a clear outcome contract, model fit, and verification rules."
+
+policy:
+  allow_implicit_invocation: true
