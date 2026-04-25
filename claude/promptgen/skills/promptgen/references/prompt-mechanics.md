@@ -60,6 +60,7 @@ Choose the least process that protects the task. Extra machinery lowers signal o
 | Long-horizon agent | Done-when checklist, recovery rules, compaction/handoff expectations, side-effect gates, parallelization policy |
 | High-risk action | Permission gate, preflight parameters, post-action verification, abort rules |
 | Multi-step pipeline | Step order only when order affects safety, correctness, or side effects - otherwise decision rules |
+| Eval grader | Per-dimension definitions with explicit low / mid / high anchors, input contract that forbids outside knowledge, strict JSON schema, edge-case rules (empty / identical / refused candidates) |
 
 Avoid turning every prompt into a universal agent prompt. Add process only when it prevents a known failure mode.
 
@@ -179,5 +180,16 @@ Before returning the generated prompt, verify:
 6. The prompt does not request private reasoning or chain-of-thought disclosure from a reasoning model.
 7. No process step exists only because it sounds careful.
 8. No two instructions contradict each other (audit explicitly - models silently drop conflicts).
-9. Token budget: task prompts under 500, system prompts under 1500. If over, cut the lowest-priority content.
+9. Token budget by prompt type and target. Cut lowest-priority content first - generic examples, redundant reminders, process steps with no observable outcome.
+
+| Prompt type | Soft cap | Notes |
+| :-- | :-- | :-- |
+| Simple task prompt | ~500 | Generation, extraction, classification, summarization |
+| Coding-agent task prompt | ~1200 | Codex / agentic coding tasks need investigation, tool, and verification sections |
+| Eval grader template | ~1200 | Three to five scored dimensions with calibration anchors plus JSON schema and edge cases |
+| System prompt | ~1500 | Identity, scope, tool policy, side-effect gates, stop rule |
+| Long-horizon agent prompt | ~2000 | Done-when checklist, recovery, compaction, parallelization policy |
+
+Treat caps as soft guides, not hard limits. Going over by 10-20% is acceptable when each section earns its tokens. Going under by a wide margin usually means a missing done-when, anchor, or scope rule.
+
 10. Identity and constraints sit in the first ~200 tokens; verification and stop rules sit at the end.

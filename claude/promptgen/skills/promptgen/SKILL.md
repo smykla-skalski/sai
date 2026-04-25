@@ -86,6 +86,8 @@ Read [references/prompt-mechanics.md](references/prompt-mechanics.md) before gen
 
 Spawn a `general-purpose` analysis agent via Task. Pass it the `<prompt-description>` content from Phase 0 / 1 and the absolute paths to the prompt-principles and prompt-mechanics references above.
 
+If the Task tool is unavailable in this context (deferred-tool harness, nested-agent depth limit, missing permission), perform the analysis inline against the same reference files. The spawned-agent path protects the parent context window when the analysis is large; the inline path is simpler when the context budget is not at risk. Either is correct - do not skip the analysis.
+
 Agent instructions:
 
 1. Read the prompt-principles.md reference file at the provided path.
@@ -111,7 +113,7 @@ Agent instructions:
    - Task prompt: one-shot instructions for a specific task.
    - Reusable template: stable instructions plus variables.
    - Tool description: name, when to use, inputs, outputs, side effects, errors.
-   - Eval grader: pass / fail criteria, allowed evidence, output schema.
+   - Eval grader: pass / fail criteria or per-dimension scores with explicit low / mid / high (or 0 / 0.5 / 1) calibration anchors per dimension, allowed evidence (forbid outside knowledge), output schema, edge-case handling for empty / identical / refused candidates.
    - Subagent briefing: one-shot brief that includes file paths, prior decisions, output shape; subagent context starts empty.
 5. Build the prompt brief from prompt-mechanics.md: target, prompt type, desired result, done-when criteria, failure modes, context boundary, side effects, tool policy, verification, stop rule, scope discipline.
 6. Choose the specificity dial from prompt-mechanics.md: simple generation, structured extraction, research, coding task, long-horizon agent, high-risk action, or multi-step pipeline.
@@ -131,6 +133,8 @@ If `--verbose`, display the returned classification in the chat.
 Read [references/security-patterns.md](references/security-patterns.md) for defensive patterns against prompt injection, the lethal trifecta, MCP risks, and RAG poisoning (passed to the security agent below).
 
 Spawn a `general-purpose` security agent via Task. Pass it the `<prompt-description>` content from Phase 0 / 1 and the absolute path to the security-patterns reference above.
+
+If the Task tool is unavailable, perform the security assessment inline against the same reference file. Do not skip the assessment - prompt-only defense is the most common skill failure mode for high-risk requests.
 
 Agent instructions:
 
@@ -173,7 +177,8 @@ Compose the prompt from the prompt brief:
 7. Add examples only when `--examples` is set or examples make format / edge cases clearer than prose. 3-5 diverse examples max. Examples must perfectly match desired behavior.
 8. Apply code-agent rules from [references/code-for-agents.md](references/code-for-agents.md) when the prompt touches code.
 9. Apply `--raw` by skipping opinionated author preferences while preserving safety and task-specific constraints.
-10. Keep task prompts under 500 tokens and system prompts under 1500 tokens by cutting lowest-value process text first. Identity and the highest-priority constraint sit in the first ~200 tokens; verification and stop rules sit at the end.
+10. Apply the target/type-aware token budget from prompt-mechanics.md ("Prompt quality gate"). Cut lowest-value process text first. Identity and the highest-priority constraint sit in the first ~200 tokens; verification and stop rules sit at the end.
+11. If the prompt is an eval grader, verify the rubric defines explicit calibration anchors (low / mid / high or 0 / 0.5 / 1) for each scoring dimension, an input contract that forbids outside knowledge, and edge-case handling for empty / identical / refused candidates. Without anchors, scores are not reproducible across graders.
 
 ### Phase 5: Self-check
 
@@ -183,7 +188,9 @@ If any anti-pattern check fails, revise the prompt and re-check. Continue until 
 
 Audit explicitly for contradictions - models silently drop conflicting instructions instead of flagging them. Two instructions that pull in different directions usually means one of them should go.
 
-Verify token budget: task prompts under 500, system prompts under 1500. If over budget, cut the lowest-priority content.
+Verify token budget against the target/type table in prompt-mechanics.md "Prompt quality gate". If over budget, cut the lowest-priority content first (process text, redundant reminders, generic examples).
+
+If the prompt is an eval grader, verify each scoring dimension has explicit low / mid / high anchors and the rubric forbids outside knowledge. A grader without anchors is not reproducible across runs.
 
 Verify the prompt does not request visible chain-of-thought from a reasoning model. Reasoning models cannot reliably control their CoT; asking for it is counterproductive.
 

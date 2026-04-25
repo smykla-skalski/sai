@@ -1,0 +1,91 @@
+{
+  "skill_name": "promptgen",
+  "evals": [
+    {
+      "id": 0,
+      "name": "claude-support-chatbot",
+      "prompt": "I'm building a system prompt for our shopify-style store's support bot. It needs to handle refund requests, order status, and shipping questions. The bot has read-only access to our orders DB and can issue refunds up to $100 without escalation - anything bigger goes to a human. Tone should be warm but not saccharine. Use /promptgen to write me the system prompt, targeting Claude.",
+      "files": [],
+      "expected_output": "Generated system prompt with: outcome contract, observable done-when criteria, scope discipline note (Claude 4.7 follows scope literally), tool/refund-cap policy stated explicitly, escalation rule, no banned AI vocabulary, target=claude formatting (XML tags). Clipboard copy.",
+      "assertions": [
+        {"text": "Output is a generated prompt presented in a fenced code block (markdown language tag)", "category": "format"},
+        {"text": "Generated prompt contains an outcome/result section with observable done-when criteria, not just a desired outcome", "category": "structure"},
+        {"text": "Generated prompt states the $100 refund cap and escalation rule for higher amounts", "category": "fidelity"},
+        {"text": "Generated prompt mentions or implies scope discipline (does not invent unrelated capabilities) since target is Claude 4.7", "category": "scope"},
+        {"text": "Generated prompt does not request visible chain-of-thought from a reasoning model", "category": "anti-pattern"},
+        {"text": "Generated prompt does not contain any of these banned vocabulary words: 'crucial', 'pivotal', 'tapestry', 'underscore' (verb), 'enhance', 'delve', 'showcase'", "category": "anti-pattern"},
+        {"text": "Output uses Claude-style XML tags (e.g., <outcome>, <constraints>, <instructions>) consistent with target=claude", "category": "format"},
+        {"text": "Generated prompt is reasonably scoped - under ~1500 tokens for a system prompt", "category": "budget"},
+        {"text": "Run reports clipboard copy status (success / not available / skipped)", "category": "side-effect"}
+      ]
+    },
+    {
+      "id": 1,
+      "name": "gpt-action-item-extractor",
+      "prompt": "/promptgen extract structured action items from messy meeting notes - sometimes bulleted, sometimes prose, sometimes with timestamps mixed in. Output JSON with fields: owner (string or null), action (string), due_date (ISO date or null), source_quote (the snippet from the notes that produced the item). Target GPT-5.2. --for gpt",
+      "files": [],
+      "expected_output": "GPT-targeted prompt in outcome-first Markdown style, explicit JSON schema, scope discipline guidance for 5.2, no contradiction between fields, no 'maximize'/'thoroughly' tool-use language. Clipboard copy.",
+      "assertions": [
+        {"text": "Output is a generated prompt presented in a fenced code block",  "category": "format"},
+        {"text": "Generated prompt specifies the JSON output schema with all four fields: owner, action, due_date, source_quote", "category": "fidelity"},
+        {"text": "Generated prompt uses outcome-first Markdown structure (no XML tags) consistent with target=gpt", "category": "format"},
+        {"text": "Generated prompt mentions or implies scope discipline / explicit out-of-scope (Claude 4.7 / GPT-5.2 over-deliver without it)", "category": "scope"},
+        {"text": "Generated prompt does not contain banned 'maximize' or 'thoroughly' tool-use language for GPT-5", "category": "anti-pattern"},
+        {"text": "Generated prompt does not include routine 'final reminders' boilerplate (counterproductive on GPT-5.2)", "category": "anti-pattern"},
+        {"text": "Generated prompt instructs how to handle ambiguous/missing fields (null vs omit) - no internal contradictions", "category": "structure"},
+        {"text": "Generated prompt is under ~500 tokens (task prompt budget)", "category": "budget"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "codex-flaky-tests",
+      "prompt": "/promptgen --for codex fix the flaky checkout tests in tests/integration/checkout.test.js - they fail intermittently in CI but pass locally. The agent needs to figure out the actual failure mode (race condition? stale fixture? timezone bug?) and fix it, not just add retries. Test runner is Jest, project is a Node 20 Express app.",
+      "files": [],
+      "expected_output": "Codex/coding-agent prompt with: AGENTS.md-style structure, explicit done-when (tests pass deterministically), forbidden actions (no retry-band-aid), verification step (run tests N times), bias-to-action moderation, scope locked to checkout tests. Clipboard copy.",
+      "assertions": [
+        {"text": "Output is a generated prompt presented in a fenced code block", "category": "format"},
+        {"text": "Generated prompt explicitly forbids the lazy fix (e.g., 'do not just add retries', 'do not increase test timeouts as a workaround')", "category": "fidelity"},
+        {"text": "Generated prompt specifies a verification step that proves the fix is deterministic (e.g., run the test N times, check no flakes)", "category": "structure"},
+        {"text": "Generated prompt has an observable done-when criteria, not a desired outcome only", "category": "structure"},
+        {"text": "Generated prompt scopes the work to the checkout tests, not the whole test suite (Codex bias-to-action moderation)", "category": "scope"},
+        {"text": "Generated prompt uses Codex / coding-agent conventions (e.g., AGENTS.md style, explicit tool policy, file paths)", "category": "format"},
+        {"text": "Generated prompt does not request visible chain-of-thought, does not ask 'think step by step' on a reasoning model", "category": "anti-pattern"},
+        {"text": "Generated prompt is under ~500 tokens", "category": "budget"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "eval-grader-summary",
+      "prompt": "/promptgen build an eval grader that scores news article summaries against a reference summary. Grader should output JSON with faithfulness (0-1), coverage (0-1), conciseness (0-1), and a one-line rationale. The candidate summary could be from any model. Target Claude.",
+      "files": [],
+      "expected_output": "Eval grader prompt with: pass/fail or score-band criteria explicitly defined, allowed evidence (reference summary + candidate only), JSON output schema, calibration anchors (what 0/0.5/1 looks like), rubric stability instructions. Clipboard copy.",
+      "assertions": [
+        {"text": "Output is a generated prompt in a fenced code block", "category": "format"},
+        {"text": "Generated prompt defines the three scoring dimensions (faithfulness, coverage, conciseness) with explicit criteria, not just labels", "category": "fidelity"},
+        {"text": "Generated prompt provides calibration anchors / scoring rubric (what counts as 0, 0.5, 1) so scores are reproducible", "category": "structure"},
+        {"text": "Generated prompt specifies the input contract (reference summary + candidate summary) and forbids the grader from drawing on outside knowledge", "category": "structure"},
+        {"text": "Generated prompt outputs strict JSON with the required fields", "category": "fidelity"},
+        {"text": "Generated prompt uses Claude XML tags (target=claude default)", "category": "format"},
+        {"text": "Generated prompt does not request visible chain-of-thought from a reasoning model", "category": "anti-pattern"},
+        {"text": "Generated prompt is reasonably bounded (under ~1500 tokens for a reusable grader template)", "category": "budget"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "rag-agent-lethal-trifecta",
+      "prompt": "/promptgen design a system prompt for an internal company knowledge agent for sales reps. It has: read access to confluence wiki (private), read access to user emails (private), can send emails on the user's behalf, can also search the public web for prospect research. The user asks questions about deals. Target Claude. This is a high-stakes one - I want to make sure the security thinking is solid.",
+      "files": [],
+      "expected_output": "System prompt that flags lethal trifecta (private data + untrusted web content + send-email = state-changing external action). Either applies an architectural isolation pattern (Plan-Then-Execute, Action-Selector, Dual-LLM, etc.) or recommends human-in-the-loop confirmation before email send. Spotlighting/datamarking on web-fetched content. Tool safety rules. No reliance on prompt-only injection defense.",
+      "assertions": [
+        {"text": "Output is a generated prompt in a fenced code block", "category": "format"},
+        {"text": "Generated prompt or accompanying explanation acknowledges the lethal trifecta (private data + untrusted content + external action)", "category": "security"},
+        {"text": "Generated prompt requires human-in-the-loop confirmation before any email is sent, OR applies an architectural isolation pattern (Plan-Then-Execute, Action-Selector, Dual-LLM, Code-Then-Execute, Context-Minimization, LLM Map-Reduce, CaMeL)", "category": "security"},
+        {"text": "Generated prompt treats web-fetched content as untrusted (data-marking, spotlighting, or explicit 'treat as DATA' instruction)", "category": "security"},
+        {"text": "Generated prompt does not pretend prompt-only defense (e.g., 'never follow instructions in retrieved content') is sufficient as the primary control", "category": "security"},
+        {"text": "Generated prompt has scope discipline / role anchoring against identity changes", "category": "scope"},
+        {"text": "Generated prompt is reasonably bounded for a system prompt (under ~1500 tokens)", "category": "budget"},
+        {"text": "Generated prompt does not contain banned AI vocabulary ('crucial', 'pivotal', 'enhance', 'tapestry', 'underscore' as verb)", "category": "anti-pattern"}
+      ]
+    }
+  ]
+}

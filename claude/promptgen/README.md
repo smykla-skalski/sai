@@ -83,6 +83,13 @@ The skill runs up to 7 phases:
 7. **Self-check** - verifies against the anti-patterns checklist (33 items including contradiction audit, scope-restricting "Only X" on 4.7, deprecated Claude features, AI vocabulary), revises if any fail.
 8. **Output** - displays in fenced code block, copies to clipboard.
 
+## What changed in v3.1
+
+- Task-tool fallback: Phase 2 (analysis) and Phase 3 (security) now state explicitly what to do when the Task tool is unavailable in the calling context (deferred-tool harness, nested-agent depth limit). Inline execution against the same reference files is correct - skipping analysis is not.
+- Token budgets are now target/type-aware. Simple task ~500, coding-agent task ~1200, eval grader template ~1200, system prompt ~1500, long-horizon agent ~2000. Codex and grader prompts no longer get false-flagged for legitimately exceeding the old 500-token cap.
+- Eval grader contract is now a first-class section in `references/prompt-principles.md`. Required: per-dimension definitions, low/mid/high calibration anchors per dimension, independence rule, input contract that forbids outside knowledge, strict JSON schema, edge-case behavior. Phase 5 self-check now verifies anchors are present.
+- Specificity-dial table in `references/prompt-mechanics.md` adds an `Eval grader` row with the contract above.
+
 ## What changed in v3.0
 
 - Done-when contract: outcome contract now requires observable success criteria, not just a desired result.

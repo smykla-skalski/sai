@@ -1,6 +1,9 @@
 # Runtime state and output files (per-plugin)
 */findings/
 
+# Skill-creator eval workspaces (per-plugin, ephemeral run outputs)
+claude/*-workspace/
+
 # IDE files
 .idea/
 *.iml

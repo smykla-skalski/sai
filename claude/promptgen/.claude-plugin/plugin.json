@@ -1,7 +1,7 @@
 {
   "name": "promptgen",
   "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents, coding agents, tools, eval graders, and subagent briefings. Built on Anthropic / OpenAI guidance through April 2026 and the 2025-2026 academic literature. Clipboard output for macOS and Linux.",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },

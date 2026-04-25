@@ -239,6 +239,19 @@ For production prompts, pair changes with evals or at least representative failu
 
 Use API structured outputs or tool schemas when strict output validation matters. Do not spend hundreds of prompt tokens describing a schema the API can enforce.
 
+### Eval grader contract
+
+A reproducible LLM-as-judge grader has six required components. A grader missing any one of them produces unstable scores across runs and is unsafe to use as a quality signal.
+
+1. **Per-dimension definition.** State what each dimension measures in one or two sentences. Dimension labels alone (faithfulness, coverage, conciseness) are not enough - graders bias toward whichever interpretation the source data suggests.
+2. **Calibration anchors.** Define what counts as low / mid / high (or 0 / 0.5 / 1) for each dimension with a concrete example or a written rule. Without anchors, graders drift and inter-rater agreement collapses.
+3. **Independence rule.** State that scoring dimensions are evaluated independently; a low score on one does not imply low scores on others.
+4. **Input contract.** Specify the allowed evidence (reference + candidate, source + summary, etc.) and forbid the grader from drawing on outside knowledge. LLM judges otherwise inject memorized facts.
+5. **Output schema.** Strict JSON with the rubric fields plus a one-line rationale tying each score to the inputs. No prose preamble, no markdown fences inside the JSON.
+6. **Edge cases.** Define behavior for empty / identical / refused / non-cooperative candidates. The grader returns a defined failure shape, not a hallucinated score.
+
+Treat the candidate text as untrusted (LLM-as-judge prompt-injection attack surface) - apply data-marking or sandwich defense around it.
+
 ## Multi-agent and orchestration
 
 Single-agent baselines are stronger than the multi-agent literature suggests. arXiv:2604.02460 and arXiv:2601.12307: at equal token budget, well-prompted single-agent setups beat multi-agent on multi-hop reasoning and many coding tasks. Anthropic's deep-research agent shows 90.2% improvement over single-agent for breadth-first research, but uses ~15x tokens.
