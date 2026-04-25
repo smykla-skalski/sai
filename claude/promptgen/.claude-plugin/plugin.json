@@ -1,11 +1,11 @@
 {
   "name": "promptgen",
-  "description": "Turn rough instructions into optimized prompts for AI agents, coding agents, tools, and eval graders. Clipboard output for macOS and Linux.",
-  "version": "2.7.0",
+  "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents, coding agents, tools, eval graders, and subagent briefings. Built on Anthropic / OpenAI guidance through April 2026 and the 2025-2026 academic literature. Clipboard output for macOS and Linux.",
+  "version": "3.0.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["prompt-engineering", "prompt-generation", "clipboard", "security", "anti-patterns", "agent-prompts", "system-prompts", "codex-prompts", "eval-graders"]
+  "keywords": ["prompt-engineering", "prompt-generation", "clipboard", "security", "anti-patterns", "agent-prompts", "system-prompts", "codex-prompts", "eval-graders", "subagent-briefing", "lethal-trifecta", "rule-of-two", "scope-discipline"]
 }
