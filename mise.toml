@@ -1,9 +1,0 @@
-[tasks.test]
-description = "Run all tests, or specific tests: mise run test <module.Class.method>"
-run = """
-if [ $# -gt 0 ]; then
-  python3 -m unittest "$@" -v
-else
-  python3 -m unittest discover -s tests -p 'test_*.py' -v
-fi
-"""

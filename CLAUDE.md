@@ -10,18 +10,15 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - Test specific skill: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
 - No build step (pure markdown + scripts)
 
-## Running tests and linters
+## Validation
 
-**NEVER run tests directly** (`python3 -m unittest`, `python3 -m pytest`, or any direct invocation). **ALWAYS use mise tasks**:
-
-- `mise run test` — all tests
-- `mise run test <module.Class.method>` — specific test(s)
-
-If a needed filter is missing, add a new mise task first, then use it.
+There is currently no repo-level test or lint task. Do not add placeholder or dummy
+mise tasks. Validate changes with the relevant client-level smoke command, schema
+check, or plugin install/run flow for the files you touched.
 
 ## Pre-commit checklist
 
-- Run the relevant existing mise task before committing script changes (`mise run test` when tests exist)
+- Run the relevant client-level smoke command, schema check, or plugin install/run flow before committing functional changes
 - Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
 - Test modified plugins with `claude --plugin-dir claude/{plugin-name}/`
 - Update root README.md if adding/removing plugins
