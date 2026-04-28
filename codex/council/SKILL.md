@@ -42,7 +42,7 @@ Persona files live in [agents/](agents/). Read [references/personas.md](referenc
 
 1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is bare `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
 2. Select personas from the matching roster: `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
-3. For each selected persona, call `spawn_agent` with `agent_type: default` and a unique task name. Put the full assignment in the initial `spawn_agent` message; do not send a setup-only spawn and rely on `followup_task` for the real work. The message must be self-contained and tell the subagent to:
+3. For each selected persona, call `spawn_agent` with a unique task name and omit `agent_type`, `model`, and `reasoning_effort` so Codex inherits the current session defaults. Put the full assignment in the initial `spawn_agent` message; do not send a setup-only spawn and rely on `followup_task` for the real work. The message must be self-contained and tell the subagent to:
    - read `codex/council/agents/<persona>.md` when working in the SAI repo, or `agents/<persona>.md` when working from an installed skill copy
    - read any referenced dossier only if needed
    - perform the review immediately
