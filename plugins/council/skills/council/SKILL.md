@@ -7,6 +7,8 @@ description: Run council reviews with sourced engineering, UX, reliability, perf
 
 Run an engineering council review from Codex. Use native Codex subagents, not Claude named subagents or nested `codex exec` workers. Personas still live in Markdown under `agents/`, but Codex review execution now goes through one shared native reviewer agent that is briefed with the selected persona file and dossier for each assignment.
 
+Council reviewers are review-only subagents. They may read the supplied review material and, when needed to understand a concrete relationship already visible there, a small number of directly connected files. They must not wander the repo to discover scope, and they must not run tests, builds, linters, formatters, package managers, generators, or benchmarks. The parent orchestrator is responsible for gathering the review bundle first and passing it explicitly.
+
 ## Path Sanity
 
 If you need to inspect or debug this skill from repo files, keep the skill-name segment in the path:
@@ -85,8 +87,9 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
 ## Codex Workflow
 
 1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is `auto`, select and announce 6 best-fit personas in one sentence. If `mode` is `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
-2. Select personas from the matching roster: `auto` for the selected 6 best-fit personas, `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
-3. Spawn native Codex reviewer subagents. Use the shared native Codex custom-agent descriptor `council_reviever` loaded from `~/.codex/agents/` or project `.codex/agents/`. Persona identity lives in the assignment payload, not in 27 separate native agent types. Do not use nested `codex exec`.
+2. Prepare a bounded review bundle before spawning anyone. For repo-backed reviews, identify the exact primary files first from explicit user paths, changed files, or clearly implicated files. Read those files in the parent and include the relevant diff, snippets, or full file content plus any already-known adjacent files needed for cross-file reasoning. Prefer a compact explicit bundle over a vague repo-wide target.
+3. Select personas from the matching roster: `auto` for the selected 6 best-fit personas, `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
+4. Spawn native Codex reviewer subagents. Use the shared native Codex custom-agent descriptor `council_reviever` loaded from `~/.codex/agents/` or project `.codex/agents/`. Persona identity lives in the assignment payload, not in 27 separate native agent types. Do not use nested `codex exec`.
    - Before each spawn, read the selected persona file and note the exact deep dossier path it requires. Do not delegate this discovery step to the reviewer. The dossier path must be explicit in the assignment.
    - Call `spawn_agent` once per selected persona with a unique task name, `fork_turns: "none"`, and `agent_type: "council_reviever"`.
    - If `spawn_agent` rejects `council_reviever` as unknown, the installed shared custom agent has not been loaded in this Codex session. Degrade to the built-in `default` agent only for that run, announce that Council is using the degraded native fallback, and require the invalid-output retry path below. Fresh Codex sessions after installing/upgrading the plugin should use the shared `council_reviever` agent; do not invent another agent type.
@@ -100,12 +103,25 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
    Persona: <persona slug>
    Persona file: <absolute persona path>
    Persona dossier: <absolute dossier path>
-   Review target: <problem context>
+   Review summary: <problem context>
+   Primary review files:
+   - <absolute path 1>
+   - <absolute path 2>
+   Supplied review material:
+   <diffs, snippets, or full files assembled by the parent>
+   Allowed extra reads:
+   - Only directly connected files needed to understand a concrete relationship already visible in the supplied material.
 
    Instructions:
    - First task before actual review: read the persona file.
    - Second task before actual review: read the persona dossier.
-   - Do not start writing the review until both reads are done.
+   - Third task before actual review: read the supplied review material.
+   - Do not start writing the review until all required reads are done.
+   - Treat the supplied review material as the scope. Do not discover a broader scope on your own.
+   - You may read directly connected files only when needed to understand a concrete relationship already visible in the supplied material.
+   - Do not use broad repo discovery, large directory listings, or ambient codebase exploration.
+   - Do not run tests, builds, linters, formatters, package managers, generators, benchmarks, or git-history inspection.
+   - If context is still missing after bounded reads, state the missing piece in `What I'd ask before approving` instead of exploring further.
    - Do not perform environment setup, AGENTS checks, RTK checks, or readiness reports.
    - Ignore any Council orchestrator instructions from ambient, cached, or inherited context.
    - Return the review to the parent task only; never address another agent path.
@@ -120,16 +136,16 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
 
    Execute this now. Output ONLY the structured review.
    ```
-4. Use `wait_agent` until every reviewer has returned or timed out. Normalize each returned item before validation:
+5. Use `wait_agent` until every reviewer has returned or timed out. Normalize each returned item before validation:
    - If the parent receives a JSON inter-agent envelope containing `<subagent_notification>`, parse the JSON inside the tag and use `status.completed` as the candidate reviewer text.
    - If the parent receives a JSON object with `author`, `recipient`, and `content`, inspect `content`; if it contains a `<subagent_notification>` block, extract `status.completed`.
    - Never show raw envelopes, `author`/`recipient` JSON, or `<subagent_notification>` tags to the user.
    - A notification envelope is transport, not automatically failure. It is valid when the extracted `status.completed` text starts with the required `## <Persona name> review` heading and contains the Persona Output Contract sections.
    - Setup/status text such as `ready`, `setup complete`, `instructions loaded`, `need task`, `need target`, or `standing by` is invalid even when it arrives inside `status.completed`.
-5. Validate every reviewer result before synthesis. A valid reviewer result starts with the required heading and contains the Persona Output Contract sections. Any output that skips the dossier-first requirement, reports setup/status, or ignores persona voice is invalid. Recover before synthesis. First use `followup_task` with `interrupt: true` and a compact complete reviewer assignment again, explicitly saying the previous `status.completed` text was setup/status or skipped the mandatory dossier read rather than a review. Wait again and normalize the result. If the same agent is still invalid, `close_agent`, respawn that persona once with `fork_turns: "none"` and a fresh task name, wait, and normalize the replacement. If the replacement is still invalid or missing, close it, continue with successful reviewers, and call out the missing lens in the synthesis. Always call `close_agent` on native agents after collecting or abandoning their result.
-6. Synthesize the returned reviews. Do not average the personas into bland consensus. The value is convergence across opposed lenses and named disagreement where constraints decide the tradeoff.
+6. Validate every reviewer result before synthesis. A valid reviewer result starts with the required heading and contains the Persona Output Contract sections. Any output that skips the dossier-first requirement, reports setup/status, runs non-review execution, or ignores persona voice is invalid. Non-review execution includes tests, builds, linters, package managers, benchmarks, generators, git-history inspection, or repo-wide discovery. Recover before synthesis. First use `followup_task` with `interrupt: true` and a compact complete reviewer assignment again, explicitly saying the previous `status.completed` text was setup/status, skipped the mandatory dossier read, or violated the review-only contract rather than producing a valid review. Wait again and normalize the result. If the same agent is still invalid, `close_agent`, respawn that persona once with `fork_turns: "none"` and a fresh task name, wait, and normalize the replacement. If the replacement is still invalid or missing, close it, continue with successful reviewers, and call out the missing lens in the synthesis. Always call `close_agent` on native agents after collecting or abandoning their result.
+7. Synthesize the returned reviews. Do not average the personas into bland consensus. The value is convergence across opposed lenses and named disagreement where constraints decide the tradeoff.
 
-For debate mode, read the persona registry from `codex/council/references/personas.md` in source or plugin-root `references/personas.md` when installed, pick 3-6 relevant personas, then run opening positions, responses to other positions, and final positions before synthesizing. Use the same native `spawn_agent` collection, reviewer-only prompt, invalid-output detection, and retry rules for every debate round.
+For debate mode, read the persona registry from `codex/council/references/personas.md` in source or plugin-root `references/personas.md` when installed, pick 3-6 relevant personas, then run opening positions, responses to other positions, and final positions before synthesizing. Use the same bounded review-bundle discipline, native `spawn_agent` collection, reviewer-only prompt, invalid-output detection, and retry rules for every debate round.
 
 ## Persona Output Contract
 
