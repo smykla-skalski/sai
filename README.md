@@ -31,7 +31,7 @@ Codex skills:
 
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
-| **council**            | Run engineering persona council reviews and synthesize concrete next moves       | `codex/council/`             |
+| **council**            | Run native Codex subagent council reviews via plugin-root persona agents and synthesize concrete next moves | `codex/council/`             |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 
@@ -103,7 +103,9 @@ Daily AI news digest covering technical advances, business news, and engineering
 
 Run a council review through 27 sourced engineering and UX persona agents - antirez, tef, Casey Muratori, Fred Hebert, Donella Meadows, Cedric Chin, Alexis King, John Hughes, Eric Evans, Mark Seemann with Scott Wlaschin, Hillel Wayne, Kief Morris with Yevgeniy Brikman, Gary Bernhardt with Beck and Fowler, Brendan Gregg, Simon Willison, Charity Majors, Chris Eidhof with Florian Kugler, Mike Ash, Brent Simmons, Don Norman, Bruce Tognazzini, Steve Krug, Jakob Nielsen, Léonie Watson, Val Head, John Siracusa, and Edward Tufte. Each persona is built from the writer's primary public corpus and argues from their actual positions. The orchestrator synthesizes one integrated review across opposed lenses.
 
-**Usage**: `/council [core|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
+**Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
+
+Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit personas. Codex Council uses native `spawn_agent` reviewers through persona-specific custom agents such as `council_antirez_simplicity_reviewer`.
 
 [Full documentation ->](./claude/council/README.md)
 
