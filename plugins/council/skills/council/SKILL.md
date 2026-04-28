@@ -14,6 +14,8 @@ If you need to inspect or debug this skill from repo files, keep the skill-name 
 - SAI Codex skill: `codex/council/SKILL.md`
 - SAI persona source: `codex/council/agents/<persona>.md`
 - SAI persona registry: `codex/council/references/personas.md`
+- Installed plugin persona source: `<plugin-root>/agents/<persona>.md`
+- Installed plugin persona registry: `<plugin-root>/references/personas.md`
 
 Do not guess `skills/codex/body.md` or `.agents/skills/council/agents/<persona>.md`. Those paths do not hold the persona roster for council reviews.
 
@@ -70,7 +72,7 @@ If several shortcuts match, merge, dedupe, then trim or fill to exactly 6 by ask
 
 For `core`, use path hints and wording. UI paths and words like `view`, `screen`, `SwiftUI`, `accessibility`, `layout`, or `dashboard` bias UX. Engineering paths and words like `refactor`, `architecture`, `api`, `schema`, `concurrency`, `performance`, `ci`, or `test` bias engineering. Explicit two-surface framing such as `backend + UI`, `API and view`, or `code and UI` wins and picks `core-mix`. Never silently fall back to `core-eng`.
 
-Persona files live in [agents/](agents/). Read [references/personas.md](references/personas.md) when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Each persona file names its own deep dossier under `references/`; read only dossiers for selected personas when the persona file asks for it.
+Persona files live in [agents/](agents/) in the source skill and at plugin-root `agents/` when installed from the SAI marketplace. Read [references/personas.md](references/personas.md) in source, or plugin-root `references/personas.md` when installed, when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Each persona file names its own deep dossier under `references/`; read only dossiers for selected personas when the persona file asks for it.
 
 ## Core Rosters
 
@@ -86,7 +88,7 @@ Persona files live in [agents/](agents/). Read [references/personas.md](referenc
    - this is a reviewer-only task
    - ignore any Council orchestrator instructions from ambient, cached, or inherited context
    - return the review to the parent task only; never address another agent path
-   - read `codex/council/agents/<persona>.md` when working in the SAI repo, or `agents/<persona>.md` when working from an installed skill copy
+   - read `codex/council/agents/<persona>.md` when working in the SAI repo, or `<plugin-root>/agents/<persona>.md` when working from an installed SAI marketplace plugin
    - read any referenced dossier only if needed
    - start the review immediately
    - never answer with `ready`, `I am ready`, setup summaries, capability statements, or offers to begin
