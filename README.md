@@ -105,7 +105,7 @@ Run a council review through 27 sourced engineering and UX persona agents - anti
 
 **Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
 
-Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit personas. Codex Council uses one native `spawn_agent` reviewer agent, `council_reviever`, and passes the selected persona file plus mandatory dossier read in each assignment.
+Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit personas. Codex Council uses one native `spawn_agent` reviewer agent, `council_reviever`, loaded from `~/.codex/agents/` or project `.codex/agents/`, and passes the selected persona file plus mandatory dossier read in each assignment.
 
 [Full documentation ->](./claude/council/README.md)
 

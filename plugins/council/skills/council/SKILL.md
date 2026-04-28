@@ -14,7 +14,8 @@ If you need to inspect or debug this skill from repo files, keep the skill-name 
 - SAI Codex skill: `codex/council/SKILL.md`
 - SAI persona source: `codex/council/agents/<persona>.md`
 - SAI persona registry: `codex/council/references/personas.md`
-- Installed shared reviewer agent: `<plugin-root>/agents/council_reviever.toml`
+- Repo shared reviewer agent source: `codex/agents/council_reviever.toml`
+- Runtime shared reviewer agent: `~/.codex/agents/council_reviever.toml` or `.codex/agents/council_reviever.toml`
 - Installed plugin persona source: `<plugin-root>/agents/<persona>.md`
 - Installed plugin persona registry: `<plugin-root>/references/personas.md`
 
@@ -73,7 +74,7 @@ If several shortcuts match, merge, dedupe, then trim or fill to exactly 6 by ask
 
 For `core`, use path hints and wording. UI paths and words like `view`, `screen`, `SwiftUI`, `accessibility`, `layout`, or `dashboard` bias UX. Engineering paths and words like `refactor`, `architecture`, `api`, `schema`, `concurrency`, `performance`, `ci`, or `test` bias engineering. Explicit two-surface framing such as `backend + UI`, `API and view`, or `code and UI` wins and picks `core-mix`. Never silently fall back to `core-eng`.
 
-Persona files live in `codex/council/agents/` in the source skill and at plugin-root `agents/` when installed from the SAI marketplace. Codex review execution uses exactly one native custom-agent descriptor: `council_reviever` from `agents/council_reviever.toml`. Read `codex/council/references/personas.md` in source, or plugin-root `references/personas.md` when installed, when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Before spawning the shared reviewer for a selected persona, read that persona file and extract its deep dossier path so you can pass both paths in the assignment. The dossier read is mandatory before the actual review starts.
+Persona files live in `codex/council/agents/` in the source skill and at plugin-root `agents/` when installed from the SAI marketplace. Codex review execution uses exactly one native custom-agent descriptor: `council_reviever`. Codex only registers custom agents from `~/.codex/agents/` or project `.codex/agents/`, so repo-local Council development should keep `~/.codex/agents` symlinked to the repo-root `codex/agents` directory. Read `codex/council/references/personas.md` in source, or plugin-root `references/personas.md` when installed, when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Before spawning the shared reviewer for a selected persona, read that persona file and extract its deep dossier path so you can pass both paths in the assignment. The dossier read is mandatory before the actual review starts.
 
 ## Core Rosters
 
@@ -85,7 +86,7 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
 
 1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is `auto`, select and announce 6 best-fit personas in one sentence. If `mode` is `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
 2. Select personas from the matching roster: `auto` for the selected 6 best-fit personas, `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
-3. Spawn native Codex reviewer subagents. Use the shared native Codex custom-agent descriptor from `<plugin-root>/agents/council_reviever.toml`. Persona identity lives in the assignment payload, not in 27 separate native agent types. Do not use nested `codex exec`.
+3. Spawn native Codex reviewer subagents. Use the shared native Codex custom-agent descriptor `council_reviever` loaded from `~/.codex/agents/` or project `.codex/agents/`. Persona identity lives in the assignment payload, not in 27 separate native agent types. Do not use nested `codex exec`.
    - Before each spawn, read the selected persona file and note the exact deep dossier path it requires. Do not delegate this discovery step to the reviewer. The dossier path must be explicit in the assignment.
    - Call `spawn_agent` once per selected persona with a unique task name, `fork_turns: "none"`, and `agent_type: "council_reviever"`.
    - If `spawn_agent` rejects `council_reviever` as unknown, the installed shared custom agent has not been loaded in this Codex session. Degrade to the built-in `default` agent only for that run, announce that Council is using the degraded native fallback, and require the invalid-output retry path below. Fresh Codex sessions after installing/upgrading the plugin should use the shared `council_reviever` agent; do not invent another agent type.
