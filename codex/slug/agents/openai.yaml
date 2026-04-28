@@ -1,4 +1,0 @@
-interface:
-  display_name: "Session Slug"
-  short_description: "Generate a concise session slug"
-  default_prompt: "Use $slug to derive a short branch-style slug for the work in this session and return the proposed rename command."

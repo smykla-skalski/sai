@@ -149,18 +149,6 @@
       "category": "Developer Tools"
     },
     {
-      "name": "slug",
-      "source": {
-        "source": "local",
-        "path": "./plugins/slug"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "staff-code-review",
       "source": {
         "source": "local",

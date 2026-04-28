@@ -151,17 +151,6 @@
       "tags": ["skill", "review", "best-practices"]
     },
     {
-      "name": "slug",
-      "source": "./claude/slug",
-      "description": "Generate a semantic slug for the current session and copy the /rename command to clipboard",
-      "author": {
-        "name": "Smykla Skalski Labs"
-      },
-      "license": "MIT",
-      "category": "productivity",
-      "tags": ["session", "rename", "slug", "clipboard", "workflow"]
-    },
-    {
       "name": "staff-code-review",
       "source": "./claude/staff-code-review",
       "description": "Staff-engineer-level code review evaluating architectural alignment, failure modes, observability, security, and cross-team impact.",
