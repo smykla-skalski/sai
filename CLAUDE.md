@@ -12,19 +12,16 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 
 ## Running tests and linters
 
-**NEVER run tests or linters directly** (`python3 -m unittest`, `python3 -m pytest`, `ruff`, `mypy`, or any direct invocation). **ALWAYS use mise tasks**:
+**NEVER run tests directly** (`python3 -m unittest`, `python3 -m pytest`, or any direct invocation). **ALWAYS use mise tasks**:
 
-- `mise run check` — all tests + all linters (run before every commit)
 - `mise run test` — all tests
 - `mise run test <module.Class.method>` — specific test(s)
-- `mise run lint` — all linters (ruff + mypy)
-- `mise run lint:mypy` — mypy type checks
 
 If a needed filter is missing, add a new mise task first, then use it.
 
 ## Pre-commit checklist
 
-- **`mise run check` must be green** before committing any script changes (tests + ruff + mypy)
+- Run the relevant existing mise task before committing script changes (`mise run test` when tests exist)
 - Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
 - Test modified plugins with `claude --plugin-dir claude/{plugin-name}/`
 - Update root README.md if adding/removing plugins

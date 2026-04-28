@@ -1,7 +1,3 @@
-[tasks.check]
-description = "Run all tests"
-depends = ["test"]
-
 [tasks.test]
 description = "Run all tests, or specific tests: mise run test <module.Class.method>"
 run = """
