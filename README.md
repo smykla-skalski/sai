@@ -52,7 +52,7 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/council
 /plugin install sai/service-mesh-debug
 
-# (codex marketplace also provides /plugin install sai-codex/council for Codex sessions)
+# (Codex marketplace also provides /plugin install sai/council for Codex sessions)
 /plugin install sai/gh-review-comments
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
