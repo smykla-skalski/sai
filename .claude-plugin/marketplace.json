@@ -140,17 +140,6 @@
       "tags": ["claude-md", "review", "best-practices"]
     },
     {
-      "name": "review-skill",
-      "source": "./claude/review-skill",
-      "description": "Review and fix Claude Code skill definitions using tiered binary checklist",
-      "author": {
-        "name": "Smykla Skalski Labs"
-      },
-      "license": "MIT",
-      "category": "productivity",
-      "tags": ["skill", "review", "best-practices"]
-    },
-    {
       "name": "staff-code-review",
       "source": "./claude/staff-code-review",
       "description": "Staff-engineer-level code review evaluating architectural alignment, failure modes, observability, security, and cross-team impact.",

@@ -17,11 +17,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - `mise run check` — all tests + all linters (run before every commit)
 - `mise run test` — all tests
 - `mise run test <module.Class.method>` — specific test(s)
-- `mise run test:review-skill-scripts` — checker behavior tests
-- `mise run test:best-practices` — best-practices tests only
-- `mise run test:review-skill-fixtures` — fixture regression tests
 - `mise run lint` — all linters (ruff + mypy)
-- `mise run lint:ruff` — ruff check on review-skill scripts
 - `mise run lint:mypy` — mypy type checks
 
 If a needed filter is missing, add a new mise task first, then use it.
@@ -52,7 +48,7 @@ This applies to all linters: ruff, mypy, shellcheck, and any future linters. Fix
 - `claude/{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition (**required** path for Claude Code discovery)
 - `claude/{plugin-name}/skills/{skill-name}/references/` — supporting docs; `claude/{plugin-name}/skills/{skill-name}/scripts/` — automation scripts
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
-- Plugins: `ai-daily-digest`, `council`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `plan-critic`, `promptgen`, `review-claude-md`, `review-skill`, `service-mesh-debug`, `staff-code-review`, `staff-resume`, `test-writer`
+- Plugins: `ai-daily-digest`, `council`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `plan-critic`, `promptgen`, `review-claude-md`, `service-mesh-debug`, `staff-code-review`, `staff-resume`, `test-writer`
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins
@@ -78,7 +74,7 @@ See [.claude/rules/script-authoring-conventions.md](.claude/rules/script-authori
 
 - Python script format and structure conventions
 - NDJSON output contract and check/result patterns
-- Code quality guardrails used by review-skill scripts
+- Code quality guardrails for scripts
 
 ## File safety
 

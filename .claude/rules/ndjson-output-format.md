@@ -1,6 +1,6 @@
-# NDJSON output format for review-skill
+# NDJSON output format
 
-All review-skill check scripts and the orchestrator (validate.py) emit NDJSON. Every line has `kind` as the first key.
+All check scripts and orchestrators emit NDJSON. Every line has `kind` as the first key.
 
 ## Record types
 

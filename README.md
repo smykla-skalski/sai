@@ -23,7 +23,6 @@ Repository layout:
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
-| **review-skill**        | Review and fix Claude Code skill definitions using tiered binary checklist              | `claude/review-skill/`        |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `claude/test-writer/`         |
@@ -35,7 +34,6 @@ Codex skills:
 | **council**            | Run engineering persona council reviews and synthesize concrete next moves       | `codex/council/`             |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
-| **review-skill**       | Audit Codex skills for routing, metadata, shell safety, and approval flow        | `codex/review-skill/`        |
 
 ## Installation
 
@@ -61,7 +59,6 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/kubecon-cfp
 /plugin install sai/promptgen
 /plugin install sai/review-claude-md
-/plugin install sai/review-skill
 /plugin install sai/staff-code-review
 /plugin install sai/staff-resume
 /plugin install sai/test-writer
@@ -87,7 +84,6 @@ claude --plugin-dir /path/to/sai/claude/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/review-claude-md
-claude --plugin-dir /path/to/sai/claude/review-skill
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
 claude --plugin-dir /path/to/sai/claude/test-writer
@@ -182,14 +178,6 @@ Audit and fix CLAUDE.md files using tiered binary checklist based on Anthropic b
 **Usage**: `/review-claude-md [path/to/CLAUDE.md]`
 
 [Full documentation ->](./claude/review-claude-md/README.md)
-
-### review-skill
-
-Review and fix Claude Code skill definitions (SKILL.md) using tiered binary checklist based on Agent Skills specification.
-
-**Usage**: `/review-skill [path/to/SKILL.md]`
-
-[Full documentation ->](./claude/review-skill/README.md)
 
 ### staff-code-review
 

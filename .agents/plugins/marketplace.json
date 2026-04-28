@@ -125,18 +125,6 @@
       "category": "Developer Tools"
     },
     {
-      "name": "review-skill",
-      "source": {
-        "source": "local",
-        "path": "./plugins/review-skill"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Developer Tools"
-    },
-    {
       "name": "service-mesh-debug",
       "source": {
         "source": "local",

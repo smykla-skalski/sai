@@ -1,11 +1,6 @@
-# Script authoring conventions from review-skill
+# Script authoring conventions
 
-This file captures conventions observed in `claude/review-skill/skills/review-skill/scripts/` and turns them into defaults for future script work in this repo.
-
-Primary source files:
-- `claude/review-skill/skills/review-skill/scripts/_skill_check_common.py`
-- `claude/review-skill/skills/review-skill/scripts/validate.py`
-- `claude/review-skill/skills/review-skill/scripts/check-*.py`
+This file captures conventions used across scripts in this repo and establishes defaults for future script work.
 
 ## Core defaults
 
