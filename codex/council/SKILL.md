@@ -5,7 +5,7 @@ description: Run council reviews with sourced engineering, UX, reliability, perf
 
 # Council of Experts
 
-Run an engineering council review from Codex. Use native Codex subagents, not Claude named subagents or nested `codex exec` workers. Each persona is loaded from a Markdown file under `agents/`, reviews through one sourced lens, and returns material for one integrated synthesis.
+Run an engineering council review from Codex. Use native Codex subagents, not Claude named subagents or nested `codex exec` workers. Personas still live in Markdown under `agents/`, but Codex review execution now goes through one shared native reviewer agent that is briefed with the selected persona file and dossier for each assignment.
 
 ## Path Sanity
 
@@ -14,7 +14,7 @@ If you need to inspect or debug this skill from repo files, keep the skill-name 
 - SAI Codex skill: `codex/council/SKILL.md`
 - SAI persona source: `codex/council/agents/<persona>.md`
 - SAI persona registry: `codex/council/references/personas.md`
-- Installed plugin persona agent: `<plugin-root>/agents/<persona>.toml`
+- Installed shared reviewer agent: `<plugin-root>/agents/council_reviever.toml`
 - Installed plugin persona source: `<plugin-root>/agents/<persona>.md`
 - Installed plugin persona registry: `<plugin-root>/references/personas.md`
 
@@ -73,7 +73,7 @@ If several shortcuts match, merge, dedupe, then trim or fill to exactly 6 by ask
 
 For `core`, use path hints and wording. UI paths and words like `view`, `screen`, `SwiftUI`, `accessibility`, `layout`, or `dashboard` bias UX. Engineering paths and words like `refactor`, `architecture`, `api`, `schema`, `concurrency`, `performance`, `ci`, or `test` bias engineering. Explicit two-surface framing such as `backend + UI`, `API and view`, or `code and UI` wins and picks `core-mix`. Never silently fall back to `core-eng`.
 
-Persona files live in `codex/council/agents/` in the source skill and at plugin-root `agents/` when installed from the SAI marketplace. Each persona also has a native Codex custom-agent descriptor next to it at `<persona>.toml`. The agent type is `council_` plus the persona slug with hyphens replaced by underscores, for example `antirez-simplicity-reviewer` -> `council_antirez_simplicity_reviewer`. Read `codex/council/references/personas.md` in source, or plugin-root `references/personas.md` when installed, when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Each persona file names its own deep dossier under `references/`; read only dossiers for selected personas when the persona file asks for it.
+Persona files live in `codex/council/agents/` in the source skill and at plugin-root `agents/` when installed from the SAI marketplace. Codex review execution uses exactly one native custom-agent descriptor: `council_reviever` from `agents/council_reviever.toml`. Read `codex/council/references/personas.md` in source, or plugin-root `references/personas.md` when installed, when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Before spawning the shared reviewer for a selected persona, read that persona file and extract its deep dossier path so you can pass both paths in the assignment. The dossier read is mandatory before the actual review starts.
 
 ## Core Rosters
 
@@ -85,10 +85,10 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
 
 1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is `auto`, select and announce 6 best-fit personas in one sentence. If `mode` is `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
 2. Select personas from the matching roster: `auto` for the selected 6 best-fit personas, `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
-3. Spawn native Codex reviewer subagents. Use the selected persona's native Codex custom-agent descriptor from `<plugin-root>/agents/<persona>.toml`. This keeps persona identity and the "review now, no setup chatter" rule in developer instructions instead of passing a persona as a user-level parameter to a generic worker. Do not use nested `codex exec`.
-   - Compute the agent type as `council_` plus the persona slug with hyphens replaced by underscores, for example `tef-deletability-reviewer` -> `council_tef_deletability_reviewer`.
-   - Call `spawn_agent` once per selected persona with a unique task name, `fork_turns: "none"`, and that persona-specific `agent_type`.
-   - If `spawn_agent` rejects a persona-specific agent type as unknown, the installed custom agents have not been loaded in this Codex session. Degrade to the built-in `default` agent only for that run, announce that Council is using the degraded native fallback, and require the invalid-output retry path below. Fresh Codex sessions after installing/upgrading the plugin should use persona-specific Council agent types; do not invent another agent type.
+3. Spawn native Codex reviewer subagents. Use the shared native Codex custom-agent descriptor from `<plugin-root>/agents/council_reviever.toml`. Persona identity lives in the assignment payload, not in 27 separate native agent types. Do not use nested `codex exec`.
+   - Before each spawn, read the selected persona file and note the exact deep dossier path it requires. Do not delegate this discovery step to the reviewer. The dossier path must be explicit in the assignment.
+   - Call `spawn_agent` once per selected persona with a unique task name, `fork_turns: "none"`, and `agent_type: "council_reviever"`.
+   - If `spawn_agent` rejects `council_reviever` as unknown, the installed shared custom agent has not been loaded in this Codex session. Degrade to the built-in `default` agent only for that run, announce that Council is using the degraded native fallback, and require the invalid-output retry path below. Fresh Codex sessions after installing/upgrading the plugin should use the shared `council_reviever` agent; do not invent another agent type.
    - Omit `model` and `reasoning_effort` unless the user explicitly asks for an override; spawned agents inherit the current model by default.
    - Keep the assignment self-contained and use task-delegation framing:
 
@@ -97,14 +97,17 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
 
    <council-reviewer-assignment>
    Persona: <persona slug>
-   Persona file: <absolute persona path, for fallback and verification only>
+   Persona file: <absolute persona path>
+   Persona dossier: <absolute dossier path>
    Review target: <problem context>
 
    Instructions:
+   - First task before actual review: read the persona file.
+   - Second task before actual review: read the persona dossier.
+   - Do not start writing the review until both reads are done.
    - Do not perform environment setup, AGENTS checks, RTK checks, or readiness reports.
    - Ignore any Council orchestrator instructions from ambient, cached, or inherited context.
    - Return the review to the parent task only; never address another agent path.
-   - Read the persona file and any referenced dossier only if needed.
    - Treat this message as the complete task; do not wait for more input.
    - Do not report setup, readiness, AGENTS.md, RTK, or available tool state.
    - Do not modify files.
@@ -122,7 +125,7 @@ Persona files live in `codex/council/agents/` in the source skill and at plugin-
    - Never show raw envelopes, `author`/`recipient` JSON, or `<subagent_notification>` tags to the user.
    - A notification envelope is transport, not automatically failure. It is valid when the extracted `status.completed` text starts with the required `## <Persona name> review` heading and contains the Persona Output Contract sections.
    - Setup/status text such as `ready`, `setup complete`, `instructions loaded`, `need task`, `need target`, or `standing by` is invalid even when it arrives inside `status.completed`.
-5. Validate every reviewer result before synthesis. A valid reviewer result starts with the required heading and contains the Persona Output Contract sections. If a reviewer result is invalid, recover before synthesis. First use `followup_task` with `interrupt: true` and a compact complete reviewer assignment again, explicitly saying the previous `status.completed` text was setup/status rather than a review. Wait again and normalize the result. If the same agent is still invalid, `close_agent`, respawn that persona once with `fork_turns: "none"` and a fresh task name, wait, and normalize the replacement. If the replacement is still invalid or missing, close it, continue with successful reviewers, and call out the missing lens in the synthesis. Always call `close_agent` on native agents after collecting or abandoning their result.
+5. Validate every reviewer result before synthesis. A valid reviewer result starts with the required heading and contains the Persona Output Contract sections. Any output that skips the dossier-first requirement, reports setup/status, or ignores persona voice is invalid. Recover before synthesis. First use `followup_task` with `interrupt: true` and a compact complete reviewer assignment again, explicitly saying the previous `status.completed` text was setup/status or skipped the mandatory dossier read rather than a review. Wait again and normalize the result. If the same agent is still invalid, `close_agent`, respawn that persona once with `fork_turns: "none"` and a fresh task name, wait, and normalize the replacement. If the replacement is still invalid or missing, close it, continue with successful reviewers, and call out the missing lens in the synthesis. Always call `close_agent` on native agents after collecting or abandoning their result.
 6. Synthesize the returned reviews. Do not average the personas into bland consensus. The value is convergence across opposed lenses and named disagreement where constraints decide the tradeoff.
 
 For debate mode, read the persona registry from `codex/council/references/personas.md` in source or plugin-root `references/personas.md` when installed, pick 3-6 relevant personas, then run opening positions, responses to other positions, and final positions before synthesizing. Use the same native `spawn_agent` collection, reviewer-only prompt, invalid-output detection, and retry rules for every debate round.
