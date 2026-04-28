@@ -1,0 +1,33 @@
+{
+  "skill_name": "council",
+  "evals": [
+    {
+      "id": 0,
+      "name": "real-refactor-plan",
+      "prompt": "Use the council skill in `core` mode to review the swarm e2e findings ledger at `_artifacts/active.md`. Translate the user-style invocation `/council core @_artifacts/active.md` into the workflow described in SKILL.md: read the file, brief all 6 core personas (antirez, tef, muratori, hebert, meadows, chin), then synthesize using the Convergence / Disagreement / Per-persona top-3 / What to do next / What we did not address shape. Write the full council review to `outputs/review.md`.",
+      "expected_output": "outputs/review.md - council review in the synthesis shape, persona voices distinguishable, concrete file/line/finding references from the active.md table, no generic AI-review hedging.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "debate-storage-tradeoff",
+      "prompt": "Use the council skill in `debate` mode for the prompt: `Should we move session storage from in-memory cache to SQLite-backed persistence to support horizontal scaling? See @src/session/storage/state_store.rs and @src/session/service/lifecycle.rs`. Translate `/council debate <text>` into the workflow described in SKILL.md: read the two referenced files, select 3-6 personas best suited to the tradeoff (e.g. hebert/tef/muratori/meadows/king/wayne), brief them, run three rounds where each round each persona reads the others' positions and responds, then synthesize the debate. Write the full debate transcript and synthesis to `outputs/review.md`.",
+      "expected_output": "outputs/review.md - 3-round debate with persona voices arguing concrete tradeoffs from the actual source files, synthesis names the axis of disagreement and what would break each tie.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "free-form-feature-flags",
+      "prompt": "Use the council skill (default `core` mode) for the bare prompt: `Are we using too many feature flags?`. Translate `/council Are we using too many feature flags?` into the workflow described in SKILL.md: brief all 6 core personas with the question (no file context attached), then synthesize. Write the full review to `outputs/review.md`. The point of this short prompt is to test that the synthesis stays sharp without padding when there is no concrete code attached.",
+      "expected_output": "outputs/review.md - 6 persona voices each take a distinct angle on feature-flag overuse, synthesis stays compact (no generic dictum padding), explicit `What we did not address` section names the gap (no project context).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "all-mode-llm-rollout",
+      "prompt": "Use the council skill in `all` mode (27 personas) to review the LLM rollout design at `claude/council/skills/council/evals/eval-3-design.md`. Translate `/council all @<path>` into the workflow described in SKILL.md: read the design, brief all 27 personas (6 core + 10 extended-domain + 11 extended UX/platform), then synthesize using the wider-context shape. Write the full council review to `outputs/review.md`. The design touches type schema, perf at scale, ops/oncall, AI quality / prompt injection, and IaC / pipeline - so all extended-domain lenses (king, hughes, evans, fp-structure, wayne, iac-craft, test-architect, gregg, ai-quality, cicd) should have something concrete to say beyond the core 6. Extended UX/platform lenses (eidhof, ash, simmons, norman, tognazzini, krug, nielsen, watson, head, siracusa, tufte) participate when the design surface includes UI / accessibility / motion / dashboard density.",
+      "expected_output": "outputs/review.md - all 27 personas return useful content, extended-domain personas (king/wayne/iac-craft/ai-quality/etc.) cite the specific design section in their lens, extended UX/platform personas weigh in where the surface bears on their lens (or honestly defer when it does not), synthesis names cross-lens convergences and disagreements, no persona produces filler output that could have come from the core 6.",
+      "files": []
+    }
+  ]
+}

@@ -19,6 +19,17 @@
       "tags": ["ai-news", "digest", "automation"]
     },
     {
+      "name": "council",
+      "source": "./claude/council",
+      "description": "Council of 27 sourced engineering and UX persona agents that review code, design docs, architecture, refactors, UI surfaces, dashboards, and strategy through opinionated lenses, then synthesize convergence, disagreement, and concrete next moves.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["review", "personas", "code-review", "council", "design-review", "architecture", "ux-review", "debate"]
+    },
+    {
       "name": "service-mesh-debug",
       "source": "./claude/service-mesh-debug",
       "description": "Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul). 11 root causes, Envoy debug scripts, minimal fixes.",

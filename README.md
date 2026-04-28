@@ -13,6 +13,7 @@ Repository layout:
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
+| **council**             | Run a council review through 27 sourced engineering and UX persona agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.) and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
@@ -51,6 +52,8 @@ Add the SAI marketplace, then install individual plugins:
 /plugin install sai/ai-daily-digest
 /plugin install sai/council
 /plugin install sai/service-mesh-debug
+
+# (codex marketplace also provides /plugin install sai-codex/council for Codex sessions)
 /plugin install sai/gh-review-comments
 /plugin install sai/git-clean-gone
 /plugin install sai/git-stage-hunk
@@ -76,6 +79,7 @@ Clone the repository and point directly to plugin directories:
 git clone git@github.com:smykla-skalski/sai.git
 
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
+claude --plugin-dir /path/to/sai/claude/council
 claude --plugin-dir /path/to/sai/claude/service-mesh-debug
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
@@ -100,6 +104,14 @@ Daily AI news digest covering technical advances, business news, and engineering
 **Usage**: `/ai-daily-digest [--focus technical|business|engineering|leadership] [--notion-page-id ID] [--no-notion]`
 
 [Full documentation ->](./claude/ai-daily-digest/README.md)
+
+### council
+
+Run a council review through 27 sourced engineering and UX persona agents - antirez, tef, Casey Muratori, Fred Hebert, Donella Meadows, Cedric Chin, Alexis King, John Hughes, Eric Evans, Mark Seemann with Scott Wlaschin, Hillel Wayne, Kief Morris with Yevgeniy Brikman, Gary Bernhardt with Beck and Fowler, Brendan Gregg, Simon Willison, Charity Majors, Chris Eidhof with Florian Kugler, Mike Ash, Brent Simmons, Don Norman, Bruce Tognazzini, Steve Krug, Jakob Nielsen, Léonie Watson, Val Head, John Siracusa, and Edward Tufte. Each persona is built from the writer's primary public corpus and argues from their actual positions. The orchestrator synthesizes one integrated review across opposed lenses.
+
+**Usage**: `/council [core|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
+
+[Full documentation ->](./claude/council/README.md)
 
 ### service-mesh-debug
 
