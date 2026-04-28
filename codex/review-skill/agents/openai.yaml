@@ -1,7 +1,0 @@
-interface:
-  display_name: "Skill Review"
-  short_description: "Audit Codex skills before publishing"
-  default_prompt: "Use $review-skill to audit this Codex skill, explain the verdict, and fix approved issues."
-
-policy:
-  allow_implicit_invocation: false
