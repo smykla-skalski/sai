@@ -32,6 +32,7 @@ Codex skills:
 
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
+| **council**            | Run engineering persona council reviews and synthesize concrete next moves       | `codex/council/`             |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 | **review-skill**       | Audit Codex skills for routing, metadata, shell safety, and approval flow        | `codex/review-skill/`        |
@@ -48,6 +49,7 @@ Add the SAI marketplace, then install individual plugins:
 
 # Install individual plugins
 /plugin install sai/ai-daily-digest
+/plugin install sai/council
 /plugin install sai/service-mesh-debug
 /plugin install sai/gh-review-comments
 /plugin install sai/git-clean-gone
