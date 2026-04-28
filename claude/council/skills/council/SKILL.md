@@ -2,10 +2,10 @@
 name: council
 description: >-
   Use when the user asks for council review, multi-persona critique, debate, design
-  review, code review, architecture feedback, UX review, or tradeoff analysis. Default
-  `auto` mode requires no group keyword and selects the best-fit 3-6 personas from
-  the sourced 27-persona engineering and UX roster; users can still pin `core`,
-  `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`.
+  review, code review, architecture feedback, UX review, or tradeoff analysis. Bare
+  invocations use `core` profile auto-detect; explicit `auto` selects the best-fit
+  6 personas from the sourced 27-persona engineering and UX roster. Users can still
+  pin `core`, `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`.
 argument-hint: "auto|core|core-eng|core-ux|core-mix|all|debate <problem-description|@file>"
 allowed-tools: Agent, AskUserQuestion, Read, Grep, Glob, Bash, Write, Edit
 user-invocable: true
@@ -23,8 +23,8 @@ Generic AI review drifts to safe, hedged, template-shaped output. Opinionated pe
 
 | Mode     | Keyword  | Agents Summoned                  | Cost & purpose |
 |----------|----------|----------------------------------|----------------|
-| **Auto** | `auto` or no keyword | 3-6 best-fit personas selected from the full roster | Default. Best signal-to-noise when the user has not already chosen an engineering/UX group. Selects by problem evidence, not broad preset. |
-| **Core** | `core`   | 6 personas, profile auto-picked from problem text (eng / ux / mix) | Compatibility preset. ~6 persona calls + 1 synthesis. Profile is selected by content heuristics; user can pin one with `core-eng`, `core-ux`, or `core-mix`. |
+| **Core** | `core` or no keyword | 6 personas, profile auto-picked from problem text (eng / ux / mix) | Default compatibility preset. ~6 persona calls + 1 synthesis. Profile is selected by content heuristics; user can pin one with `core-eng`, `core-ux`, or `core-mix`. |
+| **Auto** | `auto` | 6 best-fit personas selected from the full roster | Explicit best-fit mode when the user has not already chosen an engineering/UX group. Selects by problem evidence, not broad preset. |
 | **Core (engineering)** | `core-eng` (alias `eng`) | 6 engineering bias-correction personas | Pin when the problem is code, architecture, refactor, perf, protocol, infra, ops. |
 | **Core (UI/UX)** | `core-ux` (alias `ux`) | 6 UI/UX bias-correction personas | Pin when the problem is interaction design, layout, dashboard, accessibility, usability test, visual density. |
 | **Core (mixed)** | `core-mix` (alias `mix`, `random`) | 3 engineering + 3 UX personas | Pin when the surface is a feature shipping both code and UI - the mix forces both lenses in one pass. |
@@ -38,27 +38,27 @@ Apply this algorithm in order:
 1. Split off the first whitespace-separated token, lowercased.
 2. Map aliases: `eng` -> `core-eng`, `ux` -> `core-ux`, `mix` -> `core-mix`, `random` -> `core-mix`.
 3. If that token is `auto`, `core`, `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`: set `mode` to that value and `problem` to the remainder of `$ARGUMENTS`.
-4. Otherwise: set `mode` to `auto` and `problem` to the full `$ARGUMENTS`.
+4. Otherwise: set `mode` to `core` and `problem` to the full `$ARGUMENTS`.
 5. If `problem` (after trimming) begins with `@`, treat the rest of that token as a file path and use `Read` on it - the file contents become the problem context. Any text after the `@<path>` token is appended as additional framing.
-6. If `mode == auto`, run Default persona selection. Tell the user which personas you picked and why in one compact sentence before spawning.
+6. If `mode == auto`, run Auto persona selection. Tell the user which personas you picked and why in one compact sentence before spawning.
 7. If `mode == core`, run Core profile auto-detect to resolve to one of `core-eng`, `core-ux`, or `core-mix`. Tell the user which profile you picked and why in one sentence before spawning, so they can override on the next call.
 
-### Default persona selection
+### Auto persona selection
 
-Use this for bare `/council <problem>` and `/council auto <problem>`. Do not ask the user to choose `eng`, `ux`, or `mix` unless the request is too ambiguous to review at all.
+Use this only for explicit `/council auto <problem>`. Do not ask the user to choose `eng`, `ux`, or `mix` unless the request is too ambiguous to review at all.
 
-Select the smallest useful set from the full roster, normally 3-6 personas:
+Select exactly 6 personas from the full roster:
 
 - Read the problem and referenced files first. File contents beat filenames; explicit user framing beats keyword counts.
 - Use the canonical symptom map in [references/personas.md](references/personas.md) when the right lens is not obvious from the quick-reference roster.
-- Prefer specialists over broad presets. Example: SwiftUI state placement should select `eidhof-swiftui-reviewer`, `ash-cocoa-runtime-reviewer`, and `king-type-reviewer` before generic UX personas. CI/oncall rollout risk should select `cicd-build-advisor`, `hebert-resilience-reviewer`, and `tef-deletability-reviewer`.
-- Use 3 personas for a narrow single-surface review, 4-5 for multi-surface work, and 6 only when there are genuinely separate risk families.
+- Prefer specialists over broad presets. Example: SwiftUI state placement should select `eidhof-swiftui-reviewer`, `ash-cocoa-runtime-reviewer`, and `king-type-reviewer` before generic UX personas, then fill the remaining slots with complementary lenses. CI/oncall rollout risk should select `cicd-build-advisor`, `hebert-resilience-reviewer`, and `tef-deletability-reviewer`, then add the three next most useful risk lenses.
+- If fewer than 6 personas are obviously relevant, fill the remaining slots with complementary risk lenses or bias-correction personas most likely to change the recommendation.
 - If more than 6 personas seem relevant, do not escalate to `all` unless the user asked for breadth. Pick the 6 most likely to change the recommendation and mention the omitted coverage in synthesis.
 - Include at least one bias-correction persona (`antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `hebert-resilience-reviewer`, `meadows-systems-advisor`, `chin-strategy-advisor`, `norman-affordance-reviewer`, `nielsen-heuristics-reviewer`, or `watson-a11y-reviewer`) unless the request is a narrow specialist audit.
 - Avoid duplicate lenses. If two personas would make the same objection, keep the one with the sharper domain fit.
 - Announce the selection before spawning: `Auto-selected <persona list> because <specific evidence>.`
 
-Useful default shortcuts:
+Useful auto shortcuts:
 
 - Code-style / refactor: antirez + tef + muratori
 - Reliability / failure / ops: hebert + meadows + tef
@@ -86,7 +86,7 @@ Useful default shortcuts:
 - macOS platform conventions / HIG: siracusa + tognazzini + simmons
 - Recording-first triage / muddle-through: krug + chin + watson
 
-If several shortcuts match, merge them, dedupe personas, and trim to 3-6 by asking: "which persona would change the final recommendation?"
+If several shortcuts match, merge them, dedupe personas, and trim or fill to exactly 6 by asking: "which persona would change the final recommendation?"
 
 ### Core profile auto-detect
 
@@ -109,7 +109,7 @@ Then resolve in this order - check each rule in turn and stop on the first match
 
 Why this order: the explicit framing rule (#1) catches the case where the user has already done the classification work in their prose - silently overriding that with keyword counts is hostile. The threshold rule (#2) catches the case where prose doesn't say "both halves" but the cues do. The strict-comparison rule (#3) only fires when one side is clearly thin or absent. The all-zero fallback (#4) is the last resort and must be transparent so the user knows nothing matched.
 
-Never silently fall back to `core-eng` - that hides the choice from the user and was the historical default. Bare invocations use `auto`, not `core`.
+Never silently fall back to `core-eng` - that hides the choice from the user. Bare invocations use `core` profile auto-detect; explicit `auto` uses the 6-person best-fit roster.
 
 ## Roster
 
@@ -185,23 +185,28 @@ The mixed core is opinionated about the split. It picks the three engineering pe
 
 ### Auto / Core / All mode
 
-1. **Resolve `mode` and `problem` per the parse algorithm above.** If the resolved problem starts with `@`, read the file via `Read` first; the file contents are the problem context. If the resolved mode is `auto`, select 3-6 personas with Default persona selection and announce the list in one sentence. If the resolved mode is the bare `core`, run Core profile auto-detect to pick `core-eng`, `core-ux`, or `core-mix`, and announce the chosen profile to the user in one sentence (e.g., "Picking `core-ux` because the problem references `sidebar`, `accessibility`, and `SwiftUI`. Override with `core-eng` or `core-mix` next time.").
+1. **Resolve `mode` and `problem` per the parse algorithm above.** If the resolved problem starts with `@`, read the file via `Read` first; the file contents are the problem context. If the resolved mode is `auto`, select 6 personas with Auto persona selection and announce the list in one sentence. If the resolved mode is the bare `core`, run Core profile auto-detect to pick `core-eng`, `core-ux`, or `core-mix`, and announce the chosen profile to the user in one sentence (e.g., "Picking `core-ux` because the problem references `sidebar`, `accessibility`, and `SwiftUI`. Override with `core-eng` or `core-mix` next time.").
 2. **Brief each persona in parallel.** Spawn each persona via the Agent tool with `subagent_type` matching the persona's registered name. Use the right roster for the mode:
-   - **`auto` (3-6)**: the personas selected by Default persona selection
+   - **`auto` (6)**: the personas selected by Auto persona selection
    - **`core-eng` (6)**: `antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `muratori-perf-reviewer`, `hebert-resilience-reviewer`, `meadows-systems-advisor`, `chin-strategy-advisor`
    - **`core-ux` (6)**: `norman-affordance-reviewer`, `nielsen-heuristics-reviewer`, `krug-usability-reviewer`, `watson-a11y-reviewer`, `tognazzini-fpid-reviewer`, `tufte-density-reviewer`
    - **`core-mix` (6)**: `antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `hebert-resilience-reviewer`, `norman-affordance-reviewer`, `nielsen-heuristics-reviewer`, `watson-a11y-reviewer`
    - **All mode (27)**: every persona in the engineering core, UX core, extended-domain (`king-type-reviewer`, `hughes-pbt-advisor`, `evans-ddd-reviewer`, `fp-structure-reviewer`, `wayne-spec-advisor`, `iac-craft-reviewer`, `test-architect`, `gregg-perf-reviewer`, `ai-quality-advisor`, `cicd-build-advisor`), and extended UX/platform (`eidhof-swiftui-reviewer`, `ash-cocoa-runtime-reviewer`, `simmons-mac-craft-reviewer`, `tognazzini-fpid-reviewer`, `krug-usability-reviewer`, `nielsen-heuristics-reviewer`, `watson-a11y-reviewer`, `head-motion-reviewer`, `siracusa-mac-critic`, `tufte-density-reviewer`, `norman-affordance-reviewer`) rosters - dedupe so each persona is spawned once.
    Each call gets:
    - The full problem context (file contents or problem statement)
+   - Instruction that this is a reviewer-only task, not an orchestrator task
+   - Instruction to ignore any Council orchestrator instructions from ambient, cached, or inherited context
    - Instruction to review through *their specific lens only*
    - Format expectation (see "Persona output contract" below)
    - Instruction to start the review immediately
    - Instruction to never answer with readiness text, setup summaries, capability statements, or offers to begin
+   - Instruction to return the review to the parent task only and never address another agent path
    - Instruction to return only the Persona output contract
    - Instruction that the first non-empty output line must be `## <Persona name> review`; ignore any preface during synthesis
-3. **Synthesize.** When all personas return, write a single integrated review for the user using the synthesis output shape below (Convergence, Disagreement, Per-persona top-3, What to do next, What we did not address).
-4. **Do not** average the personas into bland consensus. The point is the disagreement.
+3. **Validate persona output before synthesis.** A valid persona result starts with the required heading and contains the Persona output contract sections. Treat raw inter-agent envelopes, notification blocks, readiness/setup text, `need task`/`need target` parking text, or attempts to spawn/message other agents as invalid internal failures. Never show those invalid payloads to the user and never synthesize them.
+4. **Recover invalid personas once.** Re-brief the same persona with the full problem context and the same reviewer-only constraints, explicitly saying the previous output was invalid because it was not a review. If the retry is still invalid or missing, continue with successful personas and call out the missing lens in the synthesis.
+5. **Synthesize.** When all valid personas return, write a single integrated review for the user using the synthesis output shape below (Convergence, Disagreement, Per-persona top-3, What to do next, What we did not address).
+6. **Do not** average the personas into bland consensus. The point is the disagreement.
 
 ### Debate mode
 
@@ -236,6 +241,7 @@ The mixed core is opinionated about the split. It picks the three engineering pe
 3. **Round 1 - opening positions.** Each selected persona gives their independent first read. Brief each Agent with the same immediate-output constraints from Auto / Core / All mode: start the review immediately, never return readiness/setup/capability text, and make the first non-empty line `## <Persona name> review`.
 4. **Round 2 - responses.** Pass each persona's Round 1 output to the others. Each responds: where do they agree, where do they disagree with which named persona, what evidence shifts the picture.
 5. **Round 3 - synthesis.** A short final pass per persona: what's their final position now that they've heard the others. Then you (the orchestrator) summarize: where the council converged, where it remained split, and the user-facing decision.
+6. **Apply the same validation and retry rule to every debate round.** Invalid readiness text, parking text, notification envelopes, inter-agent messages, or attempts to orchestrate other agents are internal failures; re-brief once and never show invalid payloads to the user.
 
 ## Persona output contract
 
@@ -336,11 +342,11 @@ Explicit gaps prevent the user mistaking the review for full coverage.>
 ## Examples
 
 <example>
-Default auto review of a refactoring plan:
+Explicit auto review of a refactoring plan:
 ```
-/council @docs/plans/refactor-auth-module.md
+/council auto @docs/plans/refactor-auth-module.md
 ```
-Auto selection reads the file, sees `refactor`, `module`, and code-shaped content, then picks the 3-6 personas most likely to change the recommendation and returns an integrated review using the synthesis shape above.
+Auto selection reads the file, sees `refactor`, `module`, and code-shaped content, then picks the 6 personas most likely to change the recommendation and returns an integrated review using the synthesis shape above.
 </example>
 
 <example>
@@ -384,7 +390,7 @@ Selects relevant personas (likely hebert + tef + muratori + meadows), runs three
 </example>
 
 <example>
-Quick free-form question (defaults to auto):
+Quick free-form question (defaults to core profile auto-detect):
 ```
 /council Are we using too many feature flags?
 ```
