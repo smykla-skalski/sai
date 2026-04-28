@@ -21,14 +21,54 @@ Do not guess `skills/codex/body.md` or `.agents/skills/council/agents/<persona>.
 
 If the request starts with `@<path>`, read that file first and treat it as the problem context.
 
-- `core`: default; auto-pick `core-eng`, `core-ux`, or `core-mix` and announce why.
+- `auto`: default when no mode keyword is provided; select the best 3-6 personas from all 27.
+- `core`: compatibility preset; auto-pick `core-eng`, `core-ux`, or `core-mix` and announce why.
 - `core-eng` / `eng`: code, architecture, refactor, perf, protocols, infra, ops.
 - `core-ux` / `ux`: interaction design, layout, dashboard, accessibility, usability.
 - `core-mix` / `mix` / `random`: features that ship code and UI together.
 - `all`: all 27 personas; reserve for substantial multi-domain reviews.
 - `debate`: 3-6 selected personas for hard tradeoff calls.
 
-For bare `core`, use path hints and wording. UI paths and words like `view`, `screen`, `SwiftUI`, `accessibility`, `layout`, or `dashboard` bias UX. Engineering paths and words like `refactor`, `architecture`, `api`, `schema`, `concurrency`, `performance`, `ci`, or `test` bias engineering. Explicit two-surface framing such as `backend + UI`, `API and view`, or `code and UI` wins and picks `core-mix`. Never silently fall back to `core-eng`.
+Parsing:
+
+1. Split off the first whitespace-separated token, lowercased.
+2. Map aliases: `eng` -> `core-eng`, `ux` -> `core-ux`, `mix` -> `core-mix`, `random` -> `core-mix`.
+3. If the token is `auto`, `core`, `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`, use it as `mode` and treat the remainder as the problem.
+4. Otherwise, set `mode` to `auto` and treat the full request as the problem.
+
+For `auto`, read referenced files first, then select the smallest useful persona set. Prefer specialist fit over broad group labels. Use 3 personas for narrow issues, 4-5 for multi-surface designs, and 6 only when there are genuinely separate risk families. Include one bias-correction persona (`antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `hebert-resilience-reviewer`, `meadows-systems-advisor`, or `chin-strategy-advisor`) unless the request is a narrow specialist audit where that would add noise.
+
+Use [references/personas.md](references/personas.md) as the selection map. Shortcuts:
+
+- Code-style / refactor: antirez + tef + muratori
+- Reliability / failure / ops: hebert + meadows + tef
+- Strategy / learning / process: chin + meadows + hebert
+- Performance / hot path: muratori + tef + antirez
+- Architecture / system design: hebert + meadows + tef + muratori
+- Type system / parsing / invalid states: king + tef + antirez
+- Test strategy / coverage: test-architect + hughes + chin
+- Property-based / generative testing: hughes + king + test-architect
+- Domain modeling / bounded contexts: evans + fp-structure + meadows
+- Functional architecture / pure-impure boundary: fp-structure + king + test-architect
+- Formal spec / concurrency / state machines: wayne + hebert + meadows
+- Infrastructure / deployment / IaC: iac-craft + hebert + cicd-build
+- Fleet or Linux systems performance: gregg + muratori + hebert
+- AI / LLM features / prompt injection / evals: ai-quality + chin + hebert
+- CI/CD / deploy frequency / oncall: cicd-build + hebert + tef
+- SwiftUI / view identity / state placement: eidhof + ash + king
+- Cocoa runtime / ARC / GCD / NSRunLoop: ash + muratori + gregg
+- Mac app craft / lifecycle / platform feel: simmons + siracusa + tognazzini
+- Interaction / affordance / discoverability: norman + tognazzini + krug
+- Heuristic evaluation / severity scoring: nielsen + krug + norman
+- Accessibility / screen-reader / WCAG: watson + norman + nielsen
+- Motion / animation / vestibular safety: head + muratori + simmons
+- Dashboard density / chartjunk / data-ink: tufte + antirez + tef
+- macOS conventions / HIG: siracusa + tognazzini + simmons
+- Recording-first triage / muddle-through: krug + chin + watson
+
+If several shortcuts match, merge, dedupe, then trim to 3-6 by asking which persona would change the final recommendation. Drop personas that would only add validation or generic agreement. Announce the selected personas and reason in one sentence.
+
+For explicit `core`, use path hints and wording. UI paths and words like `view`, `screen`, `SwiftUI`, `accessibility`, `layout`, or `dashboard` bias UX. Engineering paths and words like `refactor`, `architecture`, `api`, `schema`, `concurrency`, `performance`, `ci`, or `test` bias engineering. Explicit two-surface framing such as `backend + UI`, `API and view`, or `code and UI` wins and picks `core-mix`. Never silently fall back to `core-eng`.
 
 Persona files live in [agents/](agents/). Read [references/personas.md](references/personas.md) when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Each persona file names its own deep dossier under `references/`; read only dossiers for selected personas when the persona file asks for it.
 
@@ -40,18 +80,19 @@ Persona files live in [agents/](agents/). Read [references/personas.md](referenc
 
 ## Codex Workflow
 
-1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is bare `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
-2. Select personas from the matching roster: `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
+1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is `auto`, select and announce 3-6 best-fit personas in one sentence. If `mode` is `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
+2. Select personas from the matching roster: `auto` for the selected 3-6 best-fit personas, `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
 3. For each selected persona, call `spawn_agent` with a unique task name and omit `agent_type`, `model`, and `reasoning_effort` so Codex inherits the current session defaults. Put the full assignment in the initial `spawn_agent` message; do not send a setup-only spawn and rely on `followup_task` for the real work. The message must be self-contained and tell the subagent to:
    - read `codex/council/agents/<persona>.md` when working in the SAI repo, or `agents/<persona>.md` when working from an installed skill copy
    - read any referenced dossier only if needed
-   - perform the review immediately
-   - not answer with `ready`
+   - start the review immediately
+   - never answer with `ready`, `I am ready`, setup summaries, capability statements, or offers to begin
    - not wait for more input
    - not modify files
    - not spawn agents
    - review the supplied context through that persona's lens only
    - return only the Persona Output Contract below
+   The first non-empty output line from each reviewer must be `## <Persona name> review`. Treat any preface before that heading as invalid and ignore it in synthesis.
 4. Use `wait_agent` until every reviewer has returned. If one reviewer fails, continue with the successful reviewers and call out the missing lens in the synthesis.
 5. Synthesize the returned reviews. Do not average the personas into bland consensus. The value is convergence across opposed lenses and named disagreement where constraints decide the tradeoff.
 

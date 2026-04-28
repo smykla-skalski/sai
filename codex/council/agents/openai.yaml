@@ -1,4 +1,4 @@
 interface:
   display_name: "Council"
   short_description: "Run engineering persona council reviews"
-  default_prompt: "Use $council core to review this code, plan, or UI through multiple engineering persona lenses."
+  default_prompt: "Use $council to review this code, plan, or UI with the best-fit engineering persona lenses."
