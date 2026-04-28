@@ -12,7 +12,8 @@ claude --plugin-dir ~/Projects/github.com/smykla-skalski/sai/claude/council/
 
 | Mode | Trigger | Personas |
 |------|---------|----------|
-| `core` | Default; auto-picks `core-eng`, `core-ux`, or `core-mix` from problem text | 6 |
+| `auto` | Default; no group keyword; picks the best-fit personas from all 27 | 3-6 |
+| `core` | Compatibility preset; auto-picks `core-eng`, `core-ux`, or `core-mix` from problem text | 6 |
 | `core-eng` (alias `eng`) | Code, architecture, refactor, perf, protocol, infra, ops | 6 engineering |
 | `core-ux` (alias `ux`) | Interaction, layout, dashboard, a11y, usability | 6 UX |
 | `core-mix` (alias `mix`, `random`) | Features that ship code and UI together | 3 eng + 3 UX |
@@ -22,15 +23,16 @@ claude --plugin-dir ~/Projects/github.com/smykla-skalski/sai/claude/council/
 ## Usage
 
 ```
-/council                                            # Free-form question; defaults to core
-/council core @docs/plans/refactor-auth.md          # Auto-pick profile from file content
+/council                                            # Free-form question; defaults to auto
+/council @docs/plans/refactor-auth.md               # Auto-pick best personas from file content
+/council core @docs/plans/refactor-auth.md          # Use legacy 6-person core profile selection
 /council core-ux @apps/desktop-app/Sources/Sidebar.swift  # Pin UX lenses
 /council mix @docs/plans/sessions-redesign.md       # Code + UI feature
 /council all @docs/plans/llm-feature-rollout.md     # Full 27-persona coverage
 /council debate Should we move sessions to Redis?   # Multi-round debate
 ```
 
-`@<path>` reads the file as problem context. Bare arguments treat the whole string as the problem and default to `core` mode.
+`@<path>` reads the file as problem context. Bare arguments treat the whole string as the problem and default to `auto` mode.
 
 ## Output
 
