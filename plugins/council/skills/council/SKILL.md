@@ -32,7 +32,7 @@ If the request starts with `@<path>`, read that file first. Parse first token as
 - Capacity prep before any `spawn_agent`: `needed_slots = deduped slug count`; free capacity is proven only by a successful `list_agents` result.
 - If `list_agents` exists, call it first and close only stale council-owned reviewers: terminal/prior reviewers, acknowledgement-only leftovers, old retry/debate agents, and previous council reviewers not needed now. Never close unrelated workers, explorers, or user-owned agents.
 - Cleanup is incomplete while stale council-owned reviewers remain open. Start no council wave until they are closed or accounted for as unavailable.
-- Spawn all reviewers at once only when `list_agents` proves at least `needed_slots` free slots after cleanup. Otherwise use waves of at most 3 reviewers; harvest+close each wave before spawning the next.
+- Spawn all reviewers at once only when `list_agents` proves at least `needed_slots` free slots after cleanup. If `list_agents` is unavailable or capacity is unproven, use one reviewer per wave. If capacity is known but limited, use waves that fit, max 3.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
 - Keep reviewers open for retries, debate rounds, or directly related follow-up work. Close every spawned reviewer after final result capture.
@@ -58,7 +58,7 @@ Rules:
 
 **Result Handling**
 
-- Per wave, use `wait_agent` only to let work finish; then immediately `close_agent` every live reviewer in that wave and harvest `previous_status.completed`. Avoid repeated waits that leave completed notifications in the mailbox.
+- Per wave, use `wait_agent` only to let that wave finish; then `close_agent` the wave and harvest `previous_status.completed`. Do not close a multi-reviewer wave merely because one reviewer finished.
 - Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, envelopes, `status` objects, or tool payloads.
 - Never answer with a single reviewer payload or mailbox item. If a draft starts with `{`, `{"author":`, `<subagent_notification>`, `## <one reviewer>`, or raw completed text, keep harvesting/closing and synthesize instead.
 - Valid output has a reviewer-specific heading, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
