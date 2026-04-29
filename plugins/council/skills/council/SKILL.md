@@ -42,8 +42,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 <council-review-assignment>
 Review summary: <problem context>
 Primary review files:
-- <absolute path 1>
-- <absolute path 2>
+- <absolute path 1, or `inline material only` when no file path was supplied>
 Supplied review material:
 <diffs, snippets, or full files assembled by the parent>
 Allowed extra reads:
@@ -52,6 +51,7 @@ Allowed extra reads:
 Rules:
 - This message is the complete review task. Follow your native agent definition, including any dossier read, as part of this same turn; then immediately return the review.
 - Treat the supplied review material as the full scope.
+- If primary review files says `inline material only`, review the supplied material anyway; that is the target, not missing context.
 - Do not use broad repo discovery, tests/builds/linters, git history, file edits, or subagents.
 - Do not report setup, AGENTS.md, RTK, tools, or readiness.
 - Do not answer with "ready", "dossier loaded", "instructions loaded", "need task", or any acknowledgement-only response.
