@@ -35,7 +35,8 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 - Inline prompts are the whole target; do not inspect repo trees, plugin/skill files, READMEs, Claude variants, current implementation, `MEMORY.md`, prior outputs, or broad context.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
 - Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
-- Hard gate before spawning: immediately after the final slug list, call `list_agents`; do not call `spawn_agent` until it returns. Close stale council reviewers first: terminal/prior reviewers, acknowledgement-only leftovers, and old debate/retry agents not needed now. Never close unrelated workers, explorers, or user-owned agents.
+- Slot prep: if `list_agents` is available, immediately after the final slug list call it before any `spawn_agent`; close stale council reviewers first: terminal/prior reviewers, acknowledgement-only leftovers, and old debate/retry agents not needed now. Never close unrelated workers, explorers, or user-owned agents.
+- If `list_agents` is unavailable, do not fake cleanup; run bounded waves and close each wave before the next.
 - If slot pressure remains, run waves: spawn what fits, harvest+close, then continue. Never leave old council reviewers open while starting a new council.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
@@ -68,8 +69,8 @@ Rules:
 
 - Wait with `wait_agent`; finished content may arrive as `<subagent_notification>`.
 - Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, notification envelopes, `status` objects, or tool payloads.
-- Valid output has a reviewer-specific heading, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
-- Reject setup/status replies, acknowledgement-only replies, "repo rules noted", "no task supplied", generic `Findings:` code-review output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
+- Valid output has a reviewer-specific heading naming that reviewer, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
+- Reject setup/status replies, acknowledgement-only replies, "repo rules noted", "no task supplied", generic `## Review` or `Findings:` output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
 - Recover once with `followup_task(interrupt: true)` on the same agent. Repeat the full assignment and begin: "This is the concrete review task. Review the supplied material through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task." No short reminders.
 - If the retry is still invalid, close and respawn once with `fork_turns: "none"` using the same strengthened full assignment. If the replacement fails, continue with successful reviewers and name the missing result.
 - Drain mailbox until every reviewer is accepted or terminal. If a reviewer appears done but no text was captured, `close_agent` and harvest `previous_status.completed` before declaring it missing.
