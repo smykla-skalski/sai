@@ -1,6 +1,6 @@
 ---
 name: council
-description: Run current-request-only Codex reviewer-agent councils for code, architecture, design, UX, reliability, performance, AI, strategy, or tradeoff review. Use when asked for council review, multi-reviewer critique, debate, or design/code/architecture/UX feedback. Never read MEMORY.md unless requested.
+description: Run scoped Codex council reviews for code/design/architecture/UX, reliability/performance/AI/strategy, or tradeoffs. Use when asked for council review, multi-reviewer critique, debate, design/code/UX feedback. Inline prompts mean no repo inspection; never read MEMORY.md unless requested.
 ---
 
 # Council of Experts
@@ -27,7 +27,8 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 **Parent Work**
 
-- Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
+- Resolve mode, then read files only from explicit `@path`, exact path, diff, or snippet input.
+- Inline prompts mean user text only; do not inspect repo trees, plugin/skill files, READMEs, Claude variants, or current implementation.
 - Do not read `MEMORY.md`, prior outputs, or broad repo context. If loaded accidentally, ignore it completely; do not cite, mention, assign, or synthesize from it.
 - If no explicit file/path/diff/snippet is available, run the council on the user's inline prompt; do not ask for a file just to satisfy the template.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
