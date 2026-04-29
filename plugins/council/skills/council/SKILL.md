@@ -9,21 +9,17 @@ description: >-
 
 # Council of Experts
 
-Use native Codex reviewer agents from this installed skill. Do not use repo-local council skill files, Claude assets, Claude named subagents, or nested `codex exec`.
+Use installed native Codex reviewer agents only. Do not use repo-local council skill files, Claude assets, Claude named subagents, nested `codex exec`, `MEMORY.md`, prior sessions, or git history unless requested.
 
-Native agent definitions carry identity, dossier links, and formats. Parent only selects slugs, supplies bounded material, validates text, and synthesizes. Never pass identity text/source paths; never read `MEMORY.md`, prior sessions/outputs, or git history unless requested.
-
-Agent registry and rosters: `references/agents.md`.
+Registry and rosters: `references/agents.md`. Agent definitions carry identity and format; the parent only selects slugs, supplies bounded material, validates text, and synthesizes.
 
 ## Mode Selection
 
-If the request starts with `@<path>`, read that file first as problem context.
-
-Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`; aliases: `eng`, `ux`, `mix`, `random`. Default to `core`.
+If the request starts with `@<path>`, read that file first. Parse first token as mode: `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, `debate`; aliases: `eng`, `ux`, `mix`, `random`. Default `core`.
 
 - `core`: pick `core-eng`, `core-ux`, or `core-mix` from path and wording, then announce why.
 - `auto`: read the registry, select exactly 6 best-fit reviewers, and include at least one bias-correction reviewer unless the request is narrow.
-- fixed core modes: read only the first 12 registry lines for Mode Rosters; avoid complex `rg`; never print full tables.
+- fixed core modes: read only registry lines 1-12 for Mode Rosters; do not search or print full tables.
 - `all`: use every registry slug.
 - `debate`: pick 3-6 reviewers for hard tradeoff calls.
 
@@ -31,13 +27,12 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 **Parent Work**
 
-- Resolve mode, then read only explicit `@path`, exact path, diff, or snippet input.
-- Inline prompts are the whole target; do not inspect repo trees, plugin/skill files, READMEs, Claude variants, current implementation, `MEMORY.md`, prior outputs, or broad context.
-- Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
-- Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
-- Slot prep: if `list_agents` is available, immediately after the final slug list call it before any `spawn_agent`; close stale council reviewers first: terminal/prior reviewers, acknowledgement-only leftovers, and old debate/retry agents not needed now. Never close unrelated workers, explorers, or user-owned agents.
-- If `list_agents` is unavailable, do not fake cleanup; run bounded waves and close each wave before the next.
-- If slot pressure remains, run waves: spawn what fits, harvest+close, then continue. Never leave old council reviewers open while starting a new council.
+- Resolve mode, then read only explicit `@path`, exact path, diff, or snippet input. Inline text is the whole target; no repo trees, READMEs, plugin files, Claude variants, current implementation, broad context, or prior outputs.
+- Select reviewer slugs from the registry. Merge/dedupe; drop reviewers that only add generic agreement. Do not pre-read agent definitions or dossiers.
+- Capacity prep before any `spawn_agent`: `needed_slots = deduped slug count`; choose all-at-once when capacity exists, otherwise bounded waves.
+- If `list_agents` exists, call it first and close only stale council-owned reviewers: terminal/prior reviewers, acknowledgement-only leftovers, old retry/debate agents, and previous council reviewers not needed now. Never close unrelated workers, explorers, or user-owned agents.
+- Cleanup is incomplete while stale council-owned reviewers remain open. Start no council wave until they are closed or accounted for as unavailable.
+- If capacity is still below `needed_slots`, spawn a wave that fits, harvest+close it, then continue. If `list_agents` is unavailable, assume no cleanup proof and use bounded waves from the start.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
 - Keep reviewers open for retries, debate rounds, or directly related follow-up work. Close every spawned reviewer after final result capture.
@@ -45,40 +40,36 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 **Reviewer Assignment**
 
 ```text
-This is the concrete review task. Review the supplied material through your native lens and return only your required reviewer output now.
+Concrete review task. Review through your native lens and return only your required reviewer output now.
 
 <council-review-assignment>
 Review summary: <problem context>
-Primary review files:
-- <absolute path 1, or `inline material only` when no file path was supplied>
+Files: <absolute paths, or `inline material only`>
 Supplied review material:
 <diffs, snippets, or full files assembled by the parent>
-Allowed extra reads:
-- Only directly connected files needed to understand a concrete relationship already visible in the supplied material.
 
 Rules:
-- Complete this task now. Load native dossier if required, then review; do not report setup, AGENTS.md, RTK, tools, or readiness.
-- Supplied material is full scope; `inline material only` is a valid target.
-- No broad repo discovery, tests/builds/linters, git history, file edits, or subagents.
-- Extra reads only for directly connected files; if still missing context, state the gap instead of exploring.
-- Return required reviewer format; first non-empty line is the reviewer heading. No generic `Findings:`, quotes, JSON/XML/status wrapper, or ack-only reply.
+- Supplied material is full scope; inline-only is valid.
+- Extra reads only for directly connected files already implied by the material; state remaining gaps instead of exploring.
+- No broad discovery, tests/builds/linters, git history, file edits, subagents, setup reports, AGENTS.md/RTK/tool summaries, readiness, or ack-only replies.
+- First non-empty line is the reviewer heading. No generic `Findings:`, quotes, JSON/XML/status wrappers, or transport metadata.
 </council-review-assignment>
 ```
 
 **Result Handling**
 
 - Wait with `wait_agent`; finished content may arrive as `<subagent_notification>`.
-- Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, notification envelopes, `status` objects, or tool payloads.
-- Valid output has a reviewer-specific heading naming that reviewer, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
+- Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, envelopes, `status` objects, or tool payloads.
+- Valid output has a reviewer-specific heading, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
 - Reject setup/status replies, acknowledgement-only replies, "repo rules noted", "no task supplied", generic `## Review` or `Findings:` output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
-- Recover once with `followup_task(interrupt: true)` on the same agent. Repeat the full assignment and begin: "This is the concrete review task. Review the supplied material through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task." No short reminders.
-- If the retry is still invalid, close and respawn once with `fork_turns: "none"` using the same strengthened full assignment. If the replacement fails, continue with successful reviewers and name the missing result.
+- Recover once with `followup_task(interrupt: true)` on the same agent. Repeat the full assignment and begin: "Concrete review task. Review through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task." No short reminders.
+- If retry is invalid, close and respawn once with `fork_turns: "none"` using the same strengthened assignment. If replacement fails, continue and name the missing result.
 - Drain mailbox until every reviewer is accepted or terminal. If a reviewer appears done but no text was captured, `close_agent` and harvest `previous_status.completed` before declaring it missing.
-- Before final synthesis, call `close_agent` once for every spawned reviewer; process shutdown is not cleanup. Ignore session-recording warnings during close only if harvested review text is valid.
-- Before final synthesis, check that every selected reviewer is accounted for as `accepted`, `missing`, or `failed`; the final answer must contain no raw notification tags, transport fields, or acknowledgement-only text.
+- Before synthesis, call `close_agent` once for every spawned reviewer; process shutdown is not cleanup. Ignore session-recording warnings during close only if harvested text is valid.
+- Before synthesis, account for every selected reviewer as `accepted`, `missing`, or `failed`; final answer must contain no raw notification tags, transport fields, or acknowledgement-only text.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
-For debate mode, keep the same reviewer agents open across opening positions, responses, and final positions. Use `followup_task` for later rounds, require the same result validation each round, and close agents only after synthesis.
+Debate mode: keep the same reviewers open across rounds, use `followup_task`, validate every round, close after synthesis.
 
 ## Synthesis Shape
 
@@ -96,6 +87,4 @@ For debate mode, keep the same reviewer agents open across opening positions, re
 <1-3 bullets naming gaps the council does not cover for this problem.>
 ```
 
-## Privacy / Scope
-
-Agent dossiers are private aids. Do not republish them wholesale.
+Private dossiers are aids only; do not republish them wholesale.
