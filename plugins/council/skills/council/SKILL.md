@@ -1,18 +1,15 @@
 ---
 name: council
-description: Run native Codex reviewer-agent councils for code, design, architecture, UX, reliability, performance, AI, strategy, or tradeoff review. Use when the user asks for council review, multi-reviewer critique, debate, design review, code review, architecture feedback, UX review, or tradeoff analysis.
+description: Run current-request-only Codex reviewer-agent councils for code, architecture, design, UX, reliability, performance, AI, strategy, or tradeoff review. Use when asked for council review, multi-reviewer critique, debate, or design/code/architecture/UX feedback. No memory unless requested.
 ---
 
 # Council of Experts
 
 Use native Codex reviewer agents. Do not use Claude named subagents or nested `codex exec`.
 
-Reviewer identity, dossier links, and review format are baked into native reviewer-agent definitions. The parent only selects agent slugs, supplies bounded review material, enforces review-only scope, validates transport/results, and synthesizes results. Never pass identity text or source paths in reviewer assignments.
+Reviewer identity, dossier links, and review format are baked into native reviewer-agent definitions. The parent selects slugs, supplies bounded material, validates completed text, and synthesizes. Never pass identity text or source paths. Current-task only: no memory, prior sessions, prior outputs, or git history unless the user asks.
 
-## Paths
-
-- Agent registry and rosters: `references/agents.md`
-- Native reviewer agents: loaded by Codex at runtime from configured agent locations.
+Agent registry and rosters: `references/agents.md`.
 
 ## Mode Selection
 
@@ -22,7 +19,8 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 - `core`: pick `core-eng`, `core-ux`, or `core-mix` from path and wording, then announce why.
 - `auto`: read the registry, select exactly 6 best-fit reviewers, and include at least one bias-correction reviewer unless the request is narrow.
-- fixed core modes and `all`: use the registry rosters.
+- fixed core modes: use only the Mode Rosters block; do not read the full registry tables.
+- `all`: use every registry slug.
 - `debate`: pick 3-6 reviewers for hard tradeoff calls.
 
 ## Codex Workflow
@@ -30,6 +28,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 **Parent Work**
 
 - Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
+- Do not read memory, prior outputs, or broad repo context. If already loaded accidentally, exclude it from assignments and synthesis unless the user supplied it.
 - If no explicit file/path/diff/snippet is available, run the council on the user's inline prompt; do not ask for a file just to satisfy the template.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
 - Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
@@ -64,13 +63,13 @@ Rules:
 
 **Result Handling**
 
-- Wait with `wait_agent`, then inspect mailbox notifications. The wait call may only report mailbox activity; the finished content can arrive separately as `<subagent_notification>`.
-- Parse reviewer text only from `status.completed` in a notification or from `close_agent.previous_status.completed`. Treat every other field as transport metadata. Never echo raw transport JSON, XML-like tags, notification envelopes, `status` objects, or tool payloads.
+- Wait with `wait_agent`, then inspect mailbox notifications. Finished content may arrive separately as `<subagent_notification>`.
+- Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; every other field is transport metadata. Never echo raw JSON, XML-like tags, notification envelopes, `status` objects, or tool payloads.
 - Valid output must contain a reviewer-specific Markdown heading, the agent's required sections, and a real review body. Runtime `completed` status is the finish signal; do not require a textual completion marker that would conflict with agent-specific exact formats. Runtime `failed`, `cancelled`, `timed_out`, or empty output is not a review.
 - Reject setup/status replies, acknowledgement-only replies, generic `Findings:` code-review output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
 - Recover once with `followup_task(interrupt: true)` on the same open agent. The follow-up must repeat the full assignment, including supplied material, and must say: "This is the review task; do not acknowledge readiness or ask for another task. Return only your required reviewer output now, and do not use generic Findings output." Do not send a short reminder without the review material.
 - If the retry is still invalid, close and respawn once with `fork_turns: "none"` using the same strengthened full assignment. If the replacement fails, continue with successful reviewers and name the missing result.
-- Drain mailbox updates until every spawned reviewer has accepted output or terminal failure. If a reviewer appears done but no text was captured, call `close_agent` and harvest `previous_status.completed` before declaring it missing.
+- Drain mailbox updates until every reviewer has accepted output or terminal failure. If a reviewer appears done but no text was captured, call `close_agent` and harvest `previous_status.completed` before declaring it missing.
 - Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup. Do not finish while any spawned reviewer remains open. Ignore Codex session-recording warnings during close if the harvested review text is valid.
 - Before final synthesis, check that every selected reviewer is accounted for as `accepted`, `missing`, or `failed`; the final answer must contain no raw notification tags, transport fields, or acknowledgement-only text.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
