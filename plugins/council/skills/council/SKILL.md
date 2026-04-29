@@ -1,13 +1,13 @@
 ---
 name: council
-description: Run current-request-only Codex reviewer-agent councils for code, architecture, design, UX, reliability, performance, AI, strategy, or tradeoff review. Use when asked for council review, multi-reviewer critique, debate, or design/code/architecture/UX feedback. No memory unless requested.
+description: Run current-request-only Codex reviewer-agent councils for code, architecture, design, UX, reliability, performance, AI, strategy, or tradeoff review. Use when asked for council review, multi-reviewer critique, debate, or design/code/architecture/UX feedback. Never read MEMORY.md unless requested.
 ---
 
 # Council of Experts
 
 Use native Codex reviewer agents. Do not use Claude named subagents or nested `codex exec`.
 
-Reviewer identity, dossier links, and review format are baked into native reviewer-agent definitions. The parent selects slugs, supplies bounded material, validates completed text, and synthesizes. Never pass identity text or source paths. Current-task only: no memory, prior sessions, prior outputs, or git history unless the user asks.
+Reviewer identity, dossier links, and review format are baked into native reviewer-agent definitions. The parent selects slugs, supplies bounded material, validates completed text, and synthesizes. Never pass identity text or source paths. Current-task only: no `MEMORY.md`, prior sessions, prior outputs, or git history unless the user asks.
 
 Agent registry and rosters: `references/agents.md`.
 
@@ -19,7 +19,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 - `core`: pick `core-eng`, `core-ux`, or `core-mix` from path and wording, then announce why.
 - `auto`: read the registry, select exactly 6 best-fit reviewers, and include at least one bias-correction reviewer unless the request is narrow.
-- fixed core modes: use only the Mode Rosters block; do not read the full registry tables.
+- fixed core modes: read only Mode Rosters, using `rg` or the first 12 lines; never print full registry tables.
 - `all`: use every registry slug.
 - `debate`: pick 3-6 reviewers for hard tradeoff calls.
 
@@ -28,7 +28,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 **Parent Work**
 
 - Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
-- Do not read memory, prior outputs, or broad repo context. If already loaded accidentally, exclude it from assignments and synthesis unless the user supplied it.
+- Do not read `MEMORY.md`, prior outputs, or broad repo context. If loaded accidentally, ignore it completely; do not cite, mention, assign, or synthesize from it.
 - If no explicit file/path/diff/snippet is available, run the council on the user's inline prompt; do not ask for a file just to satisfy the template.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
 - Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
@@ -70,7 +70,7 @@ Rules:
 - Recover once with `followup_task(interrupt: true)` on the same open agent. The follow-up must repeat the full assignment, including supplied material, and must say: "This is the review task; do not acknowledge readiness or ask for another task. Return only your required reviewer output now, and do not use generic Findings output." Do not send a short reminder without the review material.
 - If the retry is still invalid, close and respawn once with `fork_turns: "none"` using the same strengthened full assignment. If the replacement fails, continue with successful reviewers and name the missing result.
 - Drain mailbox updates until every reviewer has accepted output or terminal failure. If a reviewer appears done but no text was captured, call `close_agent` and harvest `previous_status.completed` before declaring it missing.
-- Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup. Do not finish while any spawned reviewer remains open. Ignore Codex session-recording warnings during close if the harvested review text is valid.
+- Before final synthesis, call `close_agent` once for every spawned reviewer; process shutdown is not cleanup. Ignore session-recording warnings during close only if harvested review text is valid.
 - Before final synthesis, check that every selected reviewer is accounted for as `accepted`, `missing`, or `failed`; the final answer must contain no raw notification tags, transport fields, or acknowledgement-only text.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
@@ -94,4 +94,4 @@ For debate mode, keep the same reviewer agents open across opening positions, re
 
 ## Privacy / Scope
 
-Agent dossiers are private aids. Do not republish them wholesale. For external use, strip named-reviewer framing and restate arguments in your own voice.
+Agent dossiers are private aids. Do not republish them wholesale.
