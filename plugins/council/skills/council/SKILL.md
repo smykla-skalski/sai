@@ -11,7 +11,7 @@ Reviewer identity, dossier links, and review format live in `codex/agents/<agent
 
 ## Paths
 
-- Registry and rosters: `codex/council/references/personas.md`
+- Agent registry and rosters: `references/agents.md`
 - Agent descriptors: loaded at runtime from `~/.codex/agents/` or project `.codex/agents/`
 
 ## Mode Selection

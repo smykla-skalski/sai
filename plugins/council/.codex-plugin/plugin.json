@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Run council reviews with best-fit sourced engineering reviewer agents",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -18,7 +18,7 @@
     "code-review",
     "reviewer-agents"
   ],
-  "skills": "../../codex/council",
+  "skills": "./skills",
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run engineering reviewer-agent councils",

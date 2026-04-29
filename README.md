@@ -13,7 +13,7 @@ Repository layout:
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
-| **council**             | Run a council review through 27 sourced engineering and UX persona agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.) and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
+| **council**             | Run a council review through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.) and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
@@ -31,7 +31,7 @@ Codex skills:
 
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
-| **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `codex/council/`             |
+| **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 
@@ -101,13 +101,13 @@ Daily AI news digest covering technical advances, business news, and engineering
 
 ### council
 
-Run a council review through 27 sourced engineering and UX persona agents - antirez, tef, Casey Muratori, Fred Hebert, Donella Meadows, Cedric Chin, Alexis King, John Hughes, Eric Evans, Mark Seemann with Scott Wlaschin, Hillel Wayne, Kief Morris with Yevgeniy Brikman, Gary Bernhardt with Beck and Fowler, Brendan Gregg, Simon Willison, Charity Majors, Chris Eidhof with Florian Kugler, Mike Ash, Brent Simmons, Don Norman, Bruce Tognazzini, Steve Krug, Jakob Nielsen, Léonie Watson, Val Head, John Siracusa, and Edward Tufte. Each persona is built from the writer's primary public corpus and argues from their actual positions. The orchestrator synthesizes one integrated review across opposed lenses.
+Run a council review through 27 sourced engineering and UX reviewer agents - antirez, tef, Casey Muratori, Fred Hebert, Donella Meadows, Cedric Chin, Alexis King, John Hughes, Eric Evans, Mark Seemann with Scott Wlaschin, Hillel Wayne, Kief Morris with Yevgeniy Brikman, Gary Bernhardt with Beck and Fowler, Brendan Gregg, Simon Willison, Charity Majors, Chris Eidhof with Florian Kugler, Mike Ash, Brent Simmons, Don Norman, Bruce Tognazzini, Steve Krug, Jakob Nielsen, Léonie Watson, Val Head, John Siracusa, and Edward Tufte. Each reviewer is built from the writer's primary public corpus and argues from their actual positions. The orchestrator synthesizes one integrated review across opposed lenses.
 
 **Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
 
 Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit reviewers. Codex Council spawns native reviewer agents directly from `~/.codex/agents/` or project `.codex/agents/`, passes a bounded review bundle, validates each finished report, strips transport markers, and synthesizes disagreement. Reviewers may read directly connected files when needed, but must not wander the repo or run tests/builds.
 
-[Claude documentation ->](./claude/council/README.md) · [Codex skill ->](./codex/council/SKILL.md)
+[Claude documentation ->](./claude/council/README.md) · [Codex skill ->](./plugins/council/skills/council/SKILL.md)
 
 ### service-mesh-debug
 

@@ -1,6 +1,6 @@
-# Council Persona Registry
+# Council Agent Registry
 
-Twenty-seven persona agents. Six core (bias-correction default), ten extended-domain (type/test/DDD/spec/IaC/perf/AI/CICD lenses), and eleven extended UX/platform (SwiftUI/Cocoa/macOS-craft/UX/a11y/motion/critic/density). Use this registry only to choose the right native agent slugs for a Council review.
+Twenty-seven reviewer agents. Six core (bias-correction default), ten extended-domain (type/test/DDD/spec/IaC/perf/AI/CICD lenses), and eleven extended UX/platform (SwiftUI/Cocoa/macOS-craft/UX/a11y/motion/critic/density). Use this registry only to choose the right native agent slugs for a Council review.
 
 ## Mode Rosters
 
@@ -50,9 +50,9 @@ Twenty-seven persona agents. Six core (bias-correction default), ten extended-do
 | `siracusa-mac-critic` | John Siracusa - hypercritical.co, Ars Technica Mac OS X reviews 1999-2014, ATP podcast | Mac platform critique, AppKit/Cocoa appreciation, filesystem rants, backwards compatibility as craft, "this is not how a Mac app does X", annoyance-driven development |
 | `tufte-density-reviewer` | Edward Tufte - edwardtufte.com, *Visual Display of Quantitative Information* (1983), *Envisioning Information* (1990), *Visual Explanations* (1997), *Beautiful Evidence* (2006) | Data-ink ratio, chartjunk, sparklines (his coinage), small multiples, "above all else show the data", lie factor, integration of text and image |
 
-## What each persona is good at catching
+## What each agent is good at catching
 
-| Symptom | Personas to summon |
+| Symptom | Agents to summon |
 |---------|--------------------|
 | Over-engineering / premature abstraction | antirez, tef, muratori |
 | Wrong abstraction, hard-to-delete code | tef, antirez |
@@ -85,6 +85,6 @@ Twenty-seven persona agents. Six core (bias-correction default), ten extended-do
 | macOS HIG violation / non-Mac convention / breaks AppKit expectation | siracusa, tognazzini, simmons |
 | Recording-first triage / muddler-test gap / user-perspective issue invisible to detector | krug, chin, watson |
 
-## What no persona in this council is good at catching
+## What no agent in this council is good at catching
 
-Twenty-seven personas leave residual gaps. Out of scope today: relational-database internals (query planning, index design, lock escalation), ML model training and data engineering, security threat modeling and red-team work, hardware / electrical-engineering / firmware constraints, embedded real-time scheduling. If your problem lives squarely in one of those, route to direct review rather than `/council`.
+Twenty-seven agents leave residual gaps. Out of scope today: relational-database internals (query planning, index design, lock escalation), ML model training and data engineering, security threat modeling and red-team work, hardware / electrical-engineering / firmware constraints, embedded real-time scheduling. If your problem lives squarely in one of those, route to direct review rather than `/council`.
