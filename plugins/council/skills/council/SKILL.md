@@ -32,7 +32,7 @@ If the request starts with `@<path>`, read that file first. Parse first token as
 - Capacity prep before any `spawn_agent`: `needed_slots = deduped slug count`; choose all-at-once when capacity exists, otherwise bounded waves.
 - If `list_agents` exists, call it first and close only stale council-owned reviewers: terminal/prior reviewers, acknowledgement-only leftovers, old retry/debate agents, and previous council reviewers not needed now. Never close unrelated workers, explorers, or user-owned agents.
 - Cleanup is incomplete while stale council-owned reviewers remain open. Start no council wave until they are closed or accounted for as unavailable.
-- If capacity is still below `needed_slots`, spawn a wave that fits, harvest+close it, then continue. If `list_agents` is unavailable, assume no cleanup proof and use bounded waves from the start.
+- If capacity is still below `needed_slots`, spawn a wave that fits, harvest+close it, then continue. If `list_agents` is unavailable, assume no cleanup proof and use waves of at most 3 reviewers.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
 - Keep reviewers open for retries, debate rounds, or directly related follow-up work. Close every spawned reviewer after final result capture.
@@ -60,13 +60,14 @@ Rules:
 
 - Wait with `wait_agent`; finished content may arrive as `<subagent_notification>`.
 - Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, envelopes, `status` objects, or tool payloads.
+- Never answer with a single reviewer payload or mailbox item. If a draft starts with `{`, `{"author":`, `<subagent_notification>`, `## <one reviewer>`, or raw completed text, keep harvesting/closing and synthesize instead.
 - Valid output has a reviewer-specific heading, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
 - Reject setup/status replies, acknowledgement-only replies, "repo rules noted", "no task supplied", generic `## Review` or `Findings:` output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
 - Recover once with `followup_task(interrupt: true)` on the same agent. Repeat the full assignment and begin: "Concrete review task. Review through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task." No short reminders.
 - If retry is invalid, close and respawn once with `fork_turns: "none"` using the same strengthened assignment. If replacement fails, continue and name the missing result.
 - Drain mailbox until every reviewer is accepted or terminal. If a reviewer appears done but no text was captured, `close_agent` and harvest `previous_status.completed` before declaring it missing.
 - Before synthesis, call `close_agent` once for every spawned reviewer; process shutdown is not cleanup. Ignore session-recording warnings during close only if harvested text is valid.
-- Before synthesis, account for every selected reviewer as `accepted`, `missing`, or `failed`; final answer must contain no raw notification tags, transport fields, or acknowledgement-only text.
+- Before synthesis, account for every selected reviewer as `accepted`, `missing`, or `failed`; final answer must start with `# Council review:` and contain no raw notification tags, transport fields, or acknowledgement-only text.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
 Debate mode: keep the same reviewers open across rounds, use `followup_task`, validate every round, close after synthesis.
