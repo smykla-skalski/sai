@@ -23,7 +23,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 - `core`: pick `core-eng`, `core-ux`, or `core-mix` from path and wording, then announce why.
 - `auto`: read the registry, select exactly 6 best-fit reviewers, and include at least one bias-correction reviewer unless the request is narrow.
-- fixed core modes: read only Mode Rosters, using `rg` or the first 12 lines; never print full registry tables.
+- fixed core modes: read only the first 12 registry lines for Mode Rosters; avoid complex `rg`; never print full tables.
 - `all`: use every registry slug.
 - `debate`: pick 3-6 reviewers for hard tradeoff calls.
 
