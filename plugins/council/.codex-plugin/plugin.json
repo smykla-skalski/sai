@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "1.3.14",
-  "description": "Run council reviews with best-fit sourced engineering persona lenses",
+  "version": "2.0.0",
+  "description": "Run council reviews with best-fit sourced engineering reviewer agents",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -16,13 +16,13 @@
     "agentic-workflows",
     "council",
     "code-review",
-    "personas"
+    "reviewer-agents"
   ],
-  "skills": "./skills",
+  "skills": "../../codex/council",
   "interface": {
     "displayName": "Council",
-    "shortDescription": "Run engineering persona council reviews",
-    "longDescription": "Council from the SAI Codex collection. Runs focused or broad reviews through sourced engineering, UX, reliability, performance, and strategy lenses, then synthesizes convergence, disagreement, and concrete next moves.",
+    "shortDescription": "Run engineering reviewer-agent councils",
+    "longDescription": "Council from the SAI Codex collection. Runs focused or broad reviews through native reviewer agents with sourced engineering, UX, reliability, performance, and strategy lenses, then synthesizes convergence, disagreement, and concrete next moves.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -32,7 +32,7 @@
     "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
     "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $council to review this code or plan with best-fit personas.",
+      "Use $council to review this code or plan with best-fit reviewers.",
       "Use $council all for a broad engineering and UX review.",
       "Use $council debate to compare hard tradeoffs."
     ],

@@ -1,205 +1,88 @@
 ---
 name: council
-description: Run council reviews with sourced engineering, UX, reliability, performance, AI, and strategy persona lenses. Use when the user asks for council review, multi-persona critique, debate, design review, code review, architecture feedback, UX review, or tradeoff analysis.
+description: Run native Codex reviewer-agent councils for code, design, architecture, UX, reliability, performance, AI, strategy, or tradeoff review. Use when the user asks for council review, multi-reviewer critique, debate, design review, code review, architecture feedback, UX review, or tradeoff analysis.
 ---
 
 # Council of Experts
 
-Run an engineering council review from Codex. Use native Codex subagents, not Claude named subagents or nested `codex exec` workers. Personas still live in Markdown under `agents/`, but Codex review execution now goes through one shared native reviewer agent that is briefed with the selected persona file and dossier for each assignment.
+Use native Codex reviewer agents. Do not use Claude named subagents or nested `codex exec`.
 
-Council reviewers are review-only subagents. They may read the supplied review material and, when needed to understand a concrete relationship already visible there, a small number of directly connected files. They must not wander the repo to discover scope, and they must not run tests, builds, linters, formatters, package managers, generators, or benchmarks. The parent orchestrator is responsible for gathering the review bundle first and passing it explicitly.
+Reviewer identity, dossier links, and output format live in `codex/agents/<agent-slug>.toml`. The parent only selects agent slugs, supplies bounded review material, enforces review-only scope, and synthesizes results. Never pass identity text or source paths in reviewer assignments.
 
-## Path Sanity
+## Paths
 
-If you need to inspect or debug this skill from repo files, keep the skill-name segment in the path:
-
-- SAI Codex skill: `codex/council/SKILL.md`
-- SAI persona source: `codex/council/agents/<persona>.md`
-- SAI persona registry: `codex/council/references/personas.md`
-- Repo shared reviewer agent source: `codex/agents/council_reviever.toml`
-- Runtime shared reviewer agent: `~/.codex/agents/council_reviever.toml` or `.codex/agents/council_reviever.toml`
-- Installed plugin persona source: `<plugin-root>/agents/<persona>.md`
-- Installed plugin persona registry: `<plugin-root>/references/personas.md`
-
-Do not guess `skills/codex/body.md` or `.agents/skills/council/agents/<persona>.md`. Those paths do not hold the persona roster for council reviews.
+- Registry and rosters: `codex/council/references/personas.md`
+- Agent descriptors: `codex/agents/<agent-slug>.toml` in source, loaded at runtime from `~/.codex/agents/` or `.codex/agents/`
 
 ## Mode Selection
 
-If the request starts with `@<path>`, read that file first and treat it as the problem context.
+If the request starts with `@<path>`, read that file first as problem context.
 
-- `core`: default when no mode keyword is provided; auto-pick `core-eng`, `core-ux`, or `core-mix` and announce why.
-- `auto`: explicit best-fit mode; select the best 6 personas from all 27.
-- `core-eng` / `eng`: code, architecture, refactor, perf, protocols, infra, ops.
-- `core-ux` / `ux`: interaction design, layout, dashboard, accessibility, usability.
-- `core-mix` / `mix` / `random`: features that ship code and UI together.
-- `all`: all 27 personas; reserve for substantial multi-domain reviews.
-- `debate`: 3-6 selected personas for hard tradeoff calls.
+Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`; aliases: `eng`, `ux`, `mix`, `random`. Default to `core`.
 
-Parsing:
-
-1. Split off the first whitespace-separated token, lowercased.
-2. Map aliases: `eng` -> `core-eng`, `ux` -> `core-ux`, `mix` -> `core-mix`, `random` -> `core-mix`.
-3. If the token is `auto`, `core`, `core-eng`, `core-ux`, `core-mix`, `all`, or `debate`, use it as `mode` and treat the remainder as the problem.
-4. Otherwise, set `mode` to `core` and treat the full request as the problem.
-
-For `auto`, read referenced files first, then select exactly 6 personas. Prefer specialist fit over broad group labels. Start with the most relevant specialist lenses, then fill remaining slots with complementary risk lenses or bias-correction personas most likely to change the recommendation. Include at least one bias-correction persona (`antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `hebert-resilience-reviewer`, `meadows-systems-advisor`, or `chin-strategy-advisor`) unless the request is a narrow specialist audit where that would add noise.
-
-Use the persona registry (`codex/council/references/personas.md` in source, plugin-root `references/personas.md` when installed) as the selection map. Shortcuts:
-
-- Code-style / refactor: antirez + tef + muratori
-- Reliability / failure / ops: hebert + meadows + tef
-- Strategy / learning / process: chin + meadows + hebert
-- Performance / hot path: muratori + tef + antirez
-- Architecture / system design: hebert + meadows + tef + muratori
-- Type system / parsing / invalid states: king + tef + antirez
-- Test strategy / coverage: test-architect + hughes + chin
-- Property-based / generative testing: hughes + king + test-architect
-- Domain modeling / bounded contexts: evans + fp-structure + meadows
-- Functional architecture / pure-impure boundary: fp-structure + king + test-architect
-- Formal spec / concurrency / state machines: wayne + hebert + meadows
-- Infrastructure / deployment / IaC: iac-craft + hebert + cicd-build
-- Fleet or Linux systems performance: gregg + muratori + hebert
-- AI / LLM features / prompt injection / evals: ai-quality + chin + hebert
-- CI/CD / deploy frequency / oncall: cicd-build + hebert + tef
-- SwiftUI / view identity / state placement: eidhof + ash + king
-- Cocoa runtime / ARC / GCD / NSRunLoop: ash + muratori + gregg
-- Mac app craft / lifecycle / platform feel: simmons + siracusa + tognazzini
-- Interaction / affordance / discoverability: norman + tognazzini + krug
-- Heuristic evaluation / severity scoring: nielsen + krug + norman
-- Accessibility / screen-reader / WCAG: watson + norman + nielsen
-- Motion / animation / vestibular safety: head + muratori + simmons
-- Dashboard density / chartjunk / data-ink: tufte + antirez + tef
-- macOS conventions / HIG: siracusa + tognazzini + simmons
-- Recording-first triage / muddle-through: krug + chin + watson
-
-If several shortcuts match, merge, dedupe, then trim or fill to exactly 6 by asking which persona would change the final recommendation. Drop personas that would only add validation or generic agreement. Announce the selected personas and reason in one sentence.
-
-For `core`, use path hints and wording. UI paths and words like `view`, `screen`, `SwiftUI`, `accessibility`, `layout`, or `dashboard` bias UX. Engineering paths and words like `refactor`, `architecture`, `api`, `schema`, `concurrency`, `performance`, `ci`, or `test` bias engineering. Explicit two-surface framing such as `backend + UI`, `API and view`, or `code and UI` wins and picks `core-mix`. Never silently fall back to `core-eng`.
-
-Persona files live in `codex/council/agents/` in the source skill and at plugin-root `agents/` when installed from the SAI marketplace. Codex review execution uses exactly one native custom-agent descriptor: `council_reviever`. Codex only registers custom agents from `~/.codex/agents/` or project `.codex/agents/`, so repo-local Council development should keep `~/.codex/agents` symlinked to the repo-root `codex/agents` directory. Read `codex/council/references/personas.md` in source, or plugin-root `references/personas.md` when installed, when selecting non-default or debate lenses, or when diagnosing which persona should catch a symptom. Before spawning the shared reviewer for a selected persona, read that persona file and extract its deep dossier path so you can pass both paths in the assignment. The dossier read is mandatory before the actual review starts.
-
-## Core Rosters
-
-- `core-eng`: `antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `muratori-perf-reviewer`, `hebert-resilience-reviewer`, `meadows-systems-advisor`, `chin-strategy-advisor`.
-- `core-ux`: `norman-affordance-reviewer`, `nielsen-heuristics-reviewer`, `krug-usability-reviewer`, `watson-a11y-reviewer`, `tognazzini-fpid-reviewer`, `tufte-density-reviewer`.
-- `core-mix`: `antirez-simplicity-reviewer`, `tef-deletability-reviewer`, `hebert-resilience-reviewer`, `norman-affordance-reviewer`, `nielsen-heuristics-reviewer`, `watson-a11y-reviewer`.
+- `core`: pick `core-eng`, `core-ux`, or `core-mix` from path and wording, then announce why.
+- `auto`: read the registry, select exactly 6 best-fit reviewers, and include at least one bias-correction reviewer unless the request is narrow.
+- fixed core modes and `all`: use the registry rosters.
+- `debate`: pick 3-6 reviewers for hard tradeoff calls.
 
 ## Codex Workflow
 
-1. Resolve `mode` and problem context. For file-backed requests, read the file before spawning reviewers. If `mode` is `auto`, select and announce 6 best-fit personas in one sentence. If `mode` is `core`, run auto-detect and announce the chosen profile (`core-eng`, `core-ux`, or `core-mix`) in one sentence so the user can override on the next call.
-2. Prepare a bounded review bundle before spawning anyone. For repo-backed reviews, identify the exact primary files first from explicit user paths, changed files, or clearly implicated files. Read those files in the parent and include the relevant diff, snippets, or full file content plus any already-known adjacent files needed for cross-file reasoning. Prefer a compact explicit bundle over a vague repo-wide target.
-3. Select personas from the matching roster: `auto` for the selected 6 best-fit personas, `core-eng` for the engineering 6, `core-ux` for the UX 6, `core-mix` for the 3+3 split, `all` for every persona deduped, and 3-6 focused personas for debate.
-4. Spawn native Codex reviewer subagents. Use the shared native Codex custom-agent descriptor `council_reviever` loaded from `~/.codex/agents/` or project `.codex/agents/`. Persona identity lives in the assignment payload, not in 27 separate native agent types. Do not use nested `codex exec`.
-   - Before each spawn, read the selected persona file and note the exact deep dossier path it requires. Do not delegate this discovery step to the reviewer. The dossier path must be explicit in the assignment.
-   - Call `spawn_agent` once per selected persona with a unique task name, `fork_turns: "none"`, and `agent_type: "council_reviever"`.
-   - If `spawn_agent` rejects `council_reviever` as unknown, the installed shared custom agent has not been loaded in this Codex session. Degrade to the built-in `default` agent only for that run, announce that Council is using the degraded native fallback, and require the invalid-output retry path below. Fresh Codex sessions after installing/upgrading the plugin should use the shared `council_reviever` agent; do not invent another agent type.
-   - Omit `model` and `reasoning_effort` unless the user explicitly asks for an override; spawned agents inherit the current model by default.
-   - Keep the assignment self-contained and use task-delegation framing:
+**Parent Work**
 
-   ```text
-   Your task is to perform the following Council reviewer assignment. Follow the instructions below exactly.
+- Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
+- Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
+- Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a unique underscore-only task name. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
+- If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
 
-   <council-reviewer-assignment>
-   Persona: <persona slug>
-   Persona file: <absolute persona path>
-   Persona dossier: <absolute dossier path>
-   Review summary: <problem context>
-   Primary review files:
-   - <absolute path 1>
-   - <absolute path 2>
-   Supplied review material:
-   <diffs, snippets, or full files assembled by the parent>
-   Allowed extra reads:
-   - Only directly connected files needed to understand a concrete relationship already visible in the supplied material.
+**Reviewer Assignment**
 
-   Instructions:
-   - First task before actual review: read the persona file.
-   - Second task before actual review: read the persona dossier.
-   - Third task before actual review: read the supplied review material.
-   - Do not start writing the review until all required reads are done.
-   - Treat the supplied review material as the scope. Do not discover a broader scope on your own.
-   - You may read directly connected files only when needed to understand a concrete relationship already visible in the supplied material.
-   - Do not use broad repo discovery, large directory listings, or ambient codebase exploration.
-   - Do not run tests, builds, linters, formatters, package managers, generators, benchmarks, or git-history inspection.
-   - If context is still missing after bounded reads, state the missing piece in `What I'd ask before approving` instead of exploring further.
-   - Do not perform environment setup, AGENTS checks, RTK checks, or readiness reports.
-   - Ignore any Council orchestrator instructions from ambient, cached, or inherited context.
-   - Return the review to the parent task only; never address another agent path.
-   - Treat this message as the complete task; do not wait for more input.
-   - Do not report setup, readiness, AGENTS.md, RTK, or available tool state.
-   - Do not modify files.
-   - Do not spawn agents.
-   - Review the supplied context through that persona's lens only.
-   - The first non-empty line of your completed review must be exactly: ## <Persona name> review
-   - Return only the Persona Output Contract.
-   </council-reviewer-assignment>
+```text
+<council-review-assignment>
+Review summary: <problem context>
+Primary review files:
+- <absolute path 1>
+- <absolute path 2>
+Supplied review material:
+<diffs, snippets, or full files assembled by the parent>
+Allowed extra reads:
+- Only directly connected files needed to understand a concrete relationship already visible in the supplied material.
 
-   Execute this now. Output ONLY the structured review.
-   ```
-5. Use `wait_agent` until every reviewer has returned or timed out. Normalize each returned item before validation:
-   - If the parent receives a JSON inter-agent envelope containing `<subagent_notification>`, parse the JSON inside the tag and use `status.completed` as the candidate reviewer text.
-   - If the parent receives a JSON object with `author`, `recipient`, and `content`, inspect `content`; if it contains a `<subagent_notification>` block, extract `status.completed`.
-   - Never show raw envelopes, `author`/`recipient` JSON, or `<subagent_notification>` tags to the user.
-   - A notification envelope is transport, not automatically failure. It is valid when the extracted `status.completed` text starts with the required `## <Persona name> review` heading and contains the Persona Output Contract sections.
-   - Setup/status text such as `ready`, `setup complete`, `instructions loaded`, `need task`, `need target`, or `standing by` is invalid even when it arrives inside `status.completed`.
-6. Validate every reviewer result before synthesis. A valid reviewer result starts with the required heading and contains the Persona Output Contract sections. Any output that skips the dossier-first requirement, reports setup/status, runs non-review execution, or ignores persona voice is invalid. Non-review execution includes tests, builds, linters, package managers, benchmarks, generators, git-history inspection, or repo-wide discovery. Recover before synthesis. First use `followup_task` with `interrupt: true` and a compact complete reviewer assignment again, explicitly saying the previous `status.completed` text was setup/status, skipped the mandatory dossier read, or violated the review-only contract rather than producing a valid review. Wait again and normalize the result. If the same agent is still invalid, `close_agent`, respawn that persona once with `fork_turns: "none"` and a fresh task name, wait, and normalize the replacement. If the replacement is still invalid or missing, close it, continue with successful reviewers, and call out the missing lens in the synthesis. Always call `close_agent` on native agents after collecting or abandoning their result.
-7. Synthesize the returned reviews. Do not average the personas into bland consensus. The value is convergence across opposed lenses and named disagreement where constraints decide the tradeoff.
-
-For debate mode, read the persona registry from `codex/council/references/personas.md` in source or plugin-root `references/personas.md` when installed, pick 3-6 relevant personas, then run opening positions, responses to other positions, and final positions before synthesizing. Use the same bounded review-bundle discipline, native `spawn_agent` collection, reviewer-only prompt, invalid-output detection, and retry rules for every debate round.
-
-## Persona Output Contract
-
-Ask each reviewer to return:
-
-```markdown
-## <Persona name> review
-
-### What I see
-<2-4 sentences naming what the proposal/code is, in their voice>
-
-### What concerns me
-<3-6 bullets grounded in that persona's philosophy and the concrete context>
-
-### What I'd ask before approving
-<3-5 questions from their canonical question list>
-
-### Concrete next move
-<1 sentence: the single change they would push for>
-
-### Where I'd be wrong
-<1-2 sentences: their honest blind spot>
+Rules:
+- Read your dossier first, then the supplied review material.
+- Treat the supplied review material as the full scope.
+- Do not use broad repo discovery, tests/builds/linters, git history, file edits, or subagents.
+- Do not report setup, AGENTS.md, RTK, tools, or readiness.
+- If context is still missing after bounded reads, state the missing piece instead of exploring further.
+- Return only your required review format.
+</council-review-assignment>
 ```
 
-The "Where I'd be wrong" section is required. Without it the personas drift toward dogma.
+**Result Handling**
+
+- Wait for all reviewers with `wait_agent`, then `close_agent` every spawned reviewer.
+- Extract `status.completed` from `<subagent_notification>` transport envelopes when present. Never show raw transport JSON or tags to the user.
+- Reject setup/status replies, missing review shape, skipped dossier reads, non-review execution, repo-wide discovery, or ignored scope.
+- Recover once with `followup_task(interrupt: true)` and the same compact assignment. If still invalid, close and respawn once with `fork_turns: "none"`. If the replacement fails, continue with successful reviewers and name the missing result.
+- Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
+
+For debate mode, run opening positions, responses, and final positions before synthesis.
 
 ## Synthesis Shape
 
-Return one integrated review:
-
 ```markdown
 # Council review: <topic>
-
 ## Convergence (high-confidence signals)
-
-<2-5 bullets. Format: `- [finding] - [persona1, persona2, persona3]`.>
-
+<2-5 bullets. Format: `- [finding] - [reviewer1, reviewer2, reviewer3]`.>
 ## Disagreement (real tradeoffs the user must decide)
-
-<2-4 bullets. Format: `- [axis] - [persona A] argues X / [persona B] argues Y. Decision is yours because <constraint>.`>
-
-## Per-persona top-3
-
-<For each persona that returned, three concrete bullets in that persona's voice.>
-
+<2-4 bullets. Format: `- [axis] - [reviewer A] argues X / [reviewer B] argues Y. Decision is yours because <constraint>.`>
+## Per-reviewer top-3
+<For each reviewer that returned, three concrete bullets.>
 ## What to do next
-
-<3-7 numbered concrete actions, smallest first, tied back to personas.>
-
+<3-7 numbered concrete actions, smallest first, tied back to reviewers.>
 ## What we did not address
-
 <1-3 bullets naming gaps the council does not cover for this problem.>
 ```
 
 ## Privacy / Scope
 
-Persona dossiers in `references/` are private review aids derived from public writing. Do not republish dossiers wholesale. If a council review leaves the team, strip persona framing and restate the arguments in your own voice.
+Agent dossiers in `codex/agents/references/` are private aids. Do not republish them wholesale. For external use, strip named-reviewer framing and restate arguments in your own voice.

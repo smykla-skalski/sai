@@ -31,7 +31,7 @@ Codex skills:
 
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
-| **council**            | Run native Codex subagent council reviews via plugin-root persona agents and synthesize concrete next moves | `codex/council/`             |
+| **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `codex/council/`             |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 
@@ -105,7 +105,7 @@ Run a council review through 27 sourced engineering and UX persona agents - anti
 
 **Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
 
-Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit personas. Codex Council uses one native `spawn_agent` reviewer agent, `council_reviever`, loaded from `~/.codex/agents/` or project `.codex/agents/`, and passes the selected persona file, mandatory dossier read, and an explicit bounded review bundle in each assignment. Reviewers may read directly connected files when needed, but must not wander the repo or run tests/builds.
+Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit reviewers. Codex Council spawns the selected native reviewer agents directly from `~/.codex/agents/` or project `.codex/agents/`, requires each reviewer to read its dossier first, passes an explicit bounded review bundle, and then synthesizes their disagreement. Reviewers may read directly connected files when needed, but must not wander the repo or run tests/builds.
 
 [Full documentation ->](./claude/council/README.md)
 
