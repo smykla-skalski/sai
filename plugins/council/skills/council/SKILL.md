@@ -31,7 +31,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 - Inline prompts are the whole target; do not inspect repo trees, plugin/skill files, READMEs, Claude variants, current implementation, `MEMORY.md`, prior outputs, or broad context.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
 - Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
-- Before first spawn, call `list_agents` and prepare one slot per selected reviewer. Close stale council reviewers first: terminal/prior reviewers, acknowledgement-only leftovers, and old debate/retry agents not needed now. Never close unrelated workers, explorers, or user-owned agents.
+- Hard gate before spawning: immediately after the final slug list, call `list_agents`; do not call `spawn_agent` until it returns. Close stale council reviewers first: terminal/prior reviewers, acknowledgement-only leftovers, and old debate/retry agents not needed now. Never close unrelated workers, explorers, or user-owned agents.
 - If slot pressure remains, run waves: spawn what fits, harvest+close, then continue. Never leave old council reviewers open while starting a new council.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
