@@ -1,0 +1,24 @@
+{
+  "name": "council",
+  "description": "Run council reviews through bundled Copilot custom reviewer agents and synthesize convergence, disagreement, and concrete next moves.",
+  "version": "2.0.22",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "copilot",
+    "custom-agents",
+    "council",
+    "code-review",
+    "design-review",
+    "architecture",
+    "ux-review",
+    "debate"
+  ],
+  "category": "Developer Tools",
+  "agents": "agents/",
+  "skills": "copilot-skills/"
+}

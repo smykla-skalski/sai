@@ -8,7 +8,8 @@ This monorepo contains independent plugins, each providing specialized capabilit
 
 Repository layout:
 - `claude/` contains all Claude Code plugins.
-- `codex/` contains Codex/Codex Desktop skills.
+- `codex/` contains Codex/Codex Desktop skills and shared native agent definitions.
+- `plugins/` contains installable plugin packages and marketplace entrypoints for Copilot CLI and Codex-compatible plugin flows.
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
@@ -87,6 +88,8 @@ claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
 claude --plugin-dir /path/to/sai/claude/test-writer
+
+copilot plugin install /path/to/sai/plugins/council
 ```
 
 ## Plugins
@@ -106,6 +109,8 @@ Run a council review through 27 sourced engineering and UX reviewer agents - ant
 **Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
 
 Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit reviewers. Codex Council spawns native reviewer agents directly from `~/.codex/agents/` or project `.codex/agents/`, passes a bounded review bundle, validates each finished report, strips transport markers, and synthesizes disagreement. Reviewers may read directly connected files when needed, but must not wander the repo or run tests/builds.
+
+Copilot CLI usage should normally start with `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`, which keeps you in your current working session and delegates the review to the bundled `council:council` custom agent. For dedicated council-only entrypoints, use `/agent council:council` or `copilot --agent council:council --prompt "core-mix @docs/plans/sessions-window-redesign.md"`. The Copilot plugin bundles `plugins/council/copilot-skills/council/SKILL.md` as the slash-command wrapper, `plugins/council/agents/council.agent.md` as the orchestrator, and 27 reviewer `.agent.md` profiles, so the reviewer personas are native custom-agent definitions rather than being rebuilt inside the parent prompt. Those reviewer profiles also appear as namespaced custom agents such as `council:antirez-simplicity-reviewer`; that visibility is intentional so the council orchestrator can invoke them, but the normal user entrypoint remains `/council`.
 
 [Claude documentation ->](./claude/council/README.md) · [Codex skill ->](./plugins/council/skills/council/SKILL.md)
 
