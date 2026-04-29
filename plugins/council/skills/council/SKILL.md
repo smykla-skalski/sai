@@ -7,12 +7,12 @@ description: Run native Codex reviewer-agent councils for code, design, architec
 
 Use native Codex reviewer agents. Do not use Claude named subagents or nested `codex exec`.
 
-Reviewer identity, dossier links, and review format live in `codex/agents/<agent-slug>.toml`. The parent only selects agent slugs, supplies bounded review material, enforces review-only scope, validates transport/results, and synthesizes results. Never pass identity text or source paths in reviewer assignments.
+Reviewer identity, dossier links, and review format are baked into native reviewer-agent definitions. The parent only selects agent slugs, supplies bounded review material, enforces review-only scope, validates transport/results, and synthesizes results. Never pass identity text or source paths in reviewer assignments.
 
 ## Paths
 
 - Agent registry and rosters: `references/agents.md`
-- Agent descriptors: loaded at runtime from `~/.codex/agents/` or project `.codex/agents/`
+- Native reviewer agents: loaded by Codex at runtime from configured agent locations.
 
 ## Mode Selection
 
@@ -31,6 +31,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 - Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
+- Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
 - Keep reviewers open for retries, debate rounds, or directly related follow-up work. Close every spawned reviewer after final result capture.
@@ -49,13 +50,13 @@ Allowed extra reads:
 - Only directly connected files needed to understand a concrete relationship already visible in the supplied material.
 
 Rules:
-- Read your dossier first, then the supplied review material.
+- This message is the complete review task. Follow your native agent definition, including any dossier read, as part of this same turn; then immediately return the review.
 - Treat the supplied review material as the full scope.
 - Do not use broad repo discovery, tests/builds/linters, git history, file edits, or subagents.
 - Do not report setup, AGENTS.md, RTK, tools, or readiness.
+- Do not answer with "ready", "dossier loaded", "instructions loaded", "need task", or any acknowledgement-only response.
 - If context is still missing after bounded reads, state the missing piece instead of exploring further.
 - Return your agent descriptor's required review format, not generic `Findings:` output.
-- End with exactly one completion marker line: `COUNCIL_REVIEW_DONE: <agent-slug>`.
 </council-review-assignment>
 ```
 
@@ -63,13 +64,15 @@ Rules:
 
 - Wait with `wait_agent`. The wait call may only report mailbox activity; the finished content can arrive separately as `<subagent_notification>`.
 - Parse reviewer text only from `status.completed` in a notification or from `close_agent.previous_status.completed`. Never echo raw transport JSON, XML-like tags, or notification envelopes.
-- Valid output must contain the expected agent-specific heading, a real review body, and final line `COUNCIL_REVIEW_DONE: <agent-slug>`. Strip the marker before synthesis.
-- Reject setup/status replies, generic `Findings:` code-review output, missing marker, missing expected heading, skipped dossier reads, non-review execution, repo-wide discovery, or ignored scope.
-- Recover once with `followup_task(interrupt: true)` on the same open agent. The follow-up must say: "Return only your required reviewer output, include the completion marker, and do not use generic Findings output." If still invalid, close and respawn once with `fork_turns: "none"`. If the replacement fails, continue with successful reviewers and name the missing result.
-- Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup.
+- Valid output must contain a reviewer-specific Markdown heading, the agent's required sections, and a real review body. Runtime `completed` status is the finish signal; do not require a textual completion marker that would conflict with agent-specific exact formats.
+- Reject setup/status replies, acknowledgement-only replies, generic `Findings:` code-review output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
+- Recover once with `followup_task(interrupt: true)` on the same open agent. The follow-up must repeat the full assignment, including supplied material, and must say: "This is the review task; do not acknowledge readiness or ask for another task. Return only your required reviewer output now, and do not use generic Findings output." Do not send a short reminder without the review material.
+- If the retry is still invalid, close and respawn once with `fork_turns: "none"` using the same strengthened full assignment. If the replacement fails, continue with successful reviewers and name the missing result.
+- Drain mailbox updates until every spawned reviewer has accepted output or terminal failure. A raw `<subagent_notification>` as the final answer means result handling failed; extract the completed text or close the agent and parse `previous_status.completed`.
+- Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup. Do not finish while any spawned reviewer remains open.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
-For debate mode, keep the same reviewer agents open across opening positions, responses, and final positions. Use `followup_task` for later rounds, require the same completion marker each round, and close agents only after synthesis.
+For debate mode, keep the same reviewer agents open across opening positions, responses, and final positions. Use `followup_task` for later rounds, require the same result validation each round, and close agents only after synthesis.
 
 ## Synthesis Shape
 
@@ -89,4 +92,4 @@ For debate mode, keep the same reviewer agents open across opening positions, re
 
 ## Privacy / Scope
 
-Agent dossiers in `codex/agents/references/` are private aids. Do not republish them wholesale. For external use, strip named-reviewer framing and restate arguments in your own voice.
+Agent dossiers are private aids. Do not republish them wholesale. For external use, strip named-reviewer framing and restate arguments in your own voice.
