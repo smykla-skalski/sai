@@ -105,9 +105,9 @@ Run a council review through 27 sourced engineering and UX persona agents - anti
 
 **Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
 
-Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit reviewers. Codex Council spawns the selected native reviewer agents directly from `~/.codex/agents/` or project `.codex/agents/`, requires each reviewer to read its dossier first, passes an explicit bounded review bundle, and then synthesizes their disagreement. Reviewers may read directly connected files when needed, but must not wander the repo or run tests/builds.
+Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; `auto` is explicit and selects exactly 6 best-fit reviewers. Codex Council spawns native reviewer agents directly from `~/.codex/agents/` or project `.codex/agents/`, passes a bounded review bundle, validates each finished report, strips transport markers, and synthesizes disagreement. Reviewers may read directly connected files when needed, but must not wander the repo or run tests/builds.
 
-[Full documentation ->](./claude/council/README.md)
+[Claude documentation ->](./claude/council/README.md) · [Codex skill ->](./codex/council/SKILL.md)
 
 ### service-mesh-debug
 

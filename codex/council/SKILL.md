@@ -7,12 +7,12 @@ description: Run native Codex reviewer-agent councils for code, design, architec
 
 Use native Codex reviewer agents. Do not use Claude named subagents or nested `codex exec`.
 
-Reviewer identity, dossier links, and output format live in `codex/agents/<agent-slug>.toml`. The parent only selects agent slugs, supplies bounded review material, enforces review-only scope, and synthesizes results. Never pass identity text or source paths in reviewer assignments.
+Reviewer identity, dossier links, and review format live in `codex/agents/<agent-slug>.toml`. The parent only selects agent slugs, supplies bounded review material, enforces review-only scope, validates transport/results, and synthesizes results. Never pass identity text or source paths in reviewer assignments.
 
 ## Paths
 
 - Registry and rosters: `codex/council/references/personas.md`
-- Agent descriptors: `codex/agents/<agent-slug>.toml` in source, loaded at runtime from `~/.codex/agents/` or `.codex/agents/`
+- Agent descriptors: loaded at runtime from `~/.codex/agents/` or project `.codex/agents/`
 
 ## Mode Selection
 
@@ -31,8 +31,9 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 
 - Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
-- Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a unique underscore-only task name. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
+- Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
+- Keep reviewers open for retries, debate rounds, or directly related follow-up work. Close every spawned reviewer after final result capture.
 
 **Reviewer Assignment**
 
@@ -53,19 +54,22 @@ Rules:
 - Do not use broad repo discovery, tests/builds/linters, git history, file edits, or subagents.
 - Do not report setup, AGENTS.md, RTK, tools, or readiness.
 - If context is still missing after bounded reads, state the missing piece instead of exploring further.
-- Return only your required review format.
+- Return your agent descriptor's required review format, not generic `Findings:` output.
+- End with exactly one completion marker line: `COUNCIL_REVIEW_DONE: <agent-slug>`.
 </council-review-assignment>
 ```
 
 **Result Handling**
 
-- Wait for all reviewers with `wait_agent`, then `close_agent` every spawned reviewer.
-- Extract `status.completed` from `<subagent_notification>` transport envelopes when present. Never show raw transport JSON or tags to the user.
-- Reject setup/status replies, missing review shape, skipped dossier reads, non-review execution, repo-wide discovery, or ignored scope.
-- Recover once with `followup_task(interrupt: true)` and the same compact assignment. If still invalid, close and respawn once with `fork_turns: "none"`. If the replacement fails, continue with successful reviewers and name the missing result.
+- Wait with `wait_agent`. The wait call may only report mailbox activity; the finished content can arrive separately as `<subagent_notification>`.
+- Parse reviewer text only from `status.completed` in a notification or from `close_agent.previous_status.completed`. Never echo raw transport JSON, XML-like tags, or notification envelopes.
+- Valid output must contain the expected agent-specific heading, a real review body, and final line `COUNCIL_REVIEW_DONE: <agent-slug>`. Strip the marker before synthesis.
+- Reject setup/status replies, generic `Findings:` code-review output, missing marker, missing expected heading, skipped dossier reads, non-review execution, repo-wide discovery, or ignored scope.
+- Recover once with `followup_task(interrupt: true)` on the same open agent. The follow-up must say: "Return only your required reviewer output, include the completion marker, and do not use generic Findings output." If still invalid, close and respawn once with `fork_turns: "none"`. If the replacement fails, continue with successful reviewers and name the missing result.
+- Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
-For debate mode, run opening positions, responses, and final positions before synthesis.
+For debate mode, keep the same reviewer agents open across opening positions, responses, and final positions. Use `followup_task` for later rounds, require the same completion marker each round, and close agents only after synthesis.
 
 ## Synthesis Shape
 
