@@ -1,11 +1,11 @@
 ---
 name: council
-description: Run scoped Codex council reviews for code/design/architecture/UX, reliability/performance/AI/strategy, or tradeoffs. Use when asked for council review, multi-reviewer critique, debate, design/code/UX feedback. Inline prompts mean no repo inspection; never read MEMORY.md unless requested.
+description: Run installed Codex reviewer-agent councils. Use when asked for council review, multi-reviewer critique, debate, or design/code/UX feedback. Inline text is target unless @path/diff supplied: do not search repos, local SKILL.md, Claude assets, MEMORY.md, prior runs, or current implementation.
 ---
 
 # Council of Experts
 
-Use native Codex reviewer agents. Do not use Claude named subagents or nested `codex exec`.
+Use native Codex reviewer agents from this installed skill. Do not use repo-local council skill files, Claude assets, Claude named subagents, or nested `codex exec`.
 
 Native agent definitions carry identity, dossier links, and formats. Parent only selects slugs, supplies bounded material, validates text, and synthesizes. Never pass identity text/source paths; never read `MEMORY.md`, prior sessions/outputs, or git history unless requested.
 
