@@ -1,6 +1,10 @@
 ---
 name: council
-description: Run installed Codex reviewer-agent councils. Use when asked for council review, multi-reviewer critique, debate, or design/code/UX feedback. Inline text is target unless @path/diff supplied: do not search repos, local SKILL.md, Claude assets, MEMORY.md, prior runs, or current implementation.
+description: >-
+  Run installed Codex reviewer-agent councils. Use when asked for council review,
+  multi-reviewer critique, debate, or design/code/UX feedback. Inline text is
+  target unless @path/diff supplied: do not search repos, local SKILL.md, Claude
+  assets, MEMORY.md, prior runs, or current implementation.
 ---
 
 # Council of Experts
