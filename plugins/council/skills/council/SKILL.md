@@ -58,13 +58,13 @@ Rules:
 
 **Result Handling**
 
-- Wait with `wait_agent`; finished content may arrive as `<subagent_notification>`.
+- Per wave, use `wait_agent` only to let work finish; then immediately `close_agent` every live reviewer in that wave and harvest `previous_status.completed`. Avoid repeated waits that leave completed notifications in the mailbox.
 - Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, envelopes, `status` objects, or tool payloads.
 - Never answer with a single reviewer payload or mailbox item. If a draft starts with `{`, `{"author":`, `<subagent_notification>`, `## <one reviewer>`, or raw completed text, keep harvesting/closing and synthesize instead.
 - Valid output has a reviewer-specific heading, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
 - Reject setup/status replies, acknowledgement-only replies, "repo rules noted", "no task supplied", generic `## Review` or `Findings:` output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
-- Recover once with `followup_task(interrupt: true)` on the same agent. Repeat the full assignment and begin: "Concrete review task. Review through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task." No short reminders.
-- If retry is invalid, close and respawn once with `fork_turns: "none"` using the same strengthened assignment. If replacement fails, continue and name the missing result.
+- For ack/status/no-task replies, close immediately and respawn once with `fork_turns: "none"`. For malformed near-reviews, recover once with `followup_task(interrupt: true)` or runtime `send_input`; repeat the full assignment and begin: "Concrete review task. Review through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task."
+- If the replacement/retry is invalid, continue and name the missing result.
 - Drain mailbox until every reviewer is accepted or terminal. If a reviewer appears done but no text was captured, `close_agent` and harvest `previous_status.completed` before declaring it missing.
 - Before synthesis, call `close_agent` once for every spawned reviewer; process shutdown is not cleanup. Ignore session-recording warnings during close only if harvested text is valid.
 - Before synthesis, account for every selected reviewer as `accepted`, `missing`, or `failed`; final answer must start with `# Council review:` and contain no raw notification tags, transport fields, or acknowledgement-only text.
