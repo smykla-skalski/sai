@@ -30,6 +30,7 @@ Parse the first token as mode when it is `core`, `auto`, `core-eng`, `core-ux`, 
 **Parent Work**
 
 - Resolve mode, read explicit files, and build a bounded bundle from exact paths, diffs, snippets, and directly relevant adjacent context.
+- If no explicit file/path/diff/snippet is available, run the council on the user's inline prompt; do not ask for a file just to satisfy the template.
 - Select reviewer agent slugs from the registry. Merge/dedupe matches; drop reviewers that only add generic agreement.
 - Do not pre-read native agent definitions or dossiers. Reviewers load their own identity and canon.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
@@ -57,19 +58,21 @@ Rules:
 - Do not answer with "ready", "dossier loaded", "instructions loaded", "need task", or any acknowledgement-only response.
 - If context is still missing after bounded reads, state the missing piece instead of exploring further.
 - Return your agent descriptor's required review format, not generic `Findings:` output.
+- Your first non-empty line must be your reviewer heading. Do not wrap the review in quotes, JSON, XML, or a status envelope.
 </council-review-assignment>
 ```
 
 **Result Handling**
 
-- Wait with `wait_agent`. The wait call may only report mailbox activity; the finished content can arrive separately as `<subagent_notification>`.
-- Parse reviewer text only from `status.completed` in a notification or from `close_agent.previous_status.completed`. Never echo raw transport JSON, XML-like tags, or notification envelopes.
-- Valid output must contain a reviewer-specific Markdown heading, the agent's required sections, and a real review body. Runtime `completed` status is the finish signal; do not require a textual completion marker that would conflict with agent-specific exact formats.
+- Wait with `wait_agent`, then inspect mailbox notifications. The wait call may only report mailbox activity; the finished content can arrive separately as `<subagent_notification>`.
+- Parse reviewer text only from `status.completed` in a notification or from `close_agent.previous_status.completed`. Treat every other field as transport metadata. Never echo raw transport JSON, XML-like tags, notification envelopes, `status` objects, or tool payloads.
+- Valid output must contain a reviewer-specific Markdown heading, the agent's required sections, and a real review body. Runtime `completed` status is the finish signal; do not require a textual completion marker that would conflict with agent-specific exact formats. Runtime `failed`, `cancelled`, `timed_out`, or empty output is not a review.
 - Reject setup/status replies, acknowledgement-only replies, generic `Findings:` code-review output, missing reviewer heading, non-review execution, repo-wide discovery, or ignored scope.
 - Recover once with `followup_task(interrupt: true)` on the same open agent. The follow-up must repeat the full assignment, including supplied material, and must say: "This is the review task; do not acknowledge readiness or ask for another task. Return only your required reviewer output now, and do not use generic Findings output." Do not send a short reminder without the review material.
 - If the retry is still invalid, close and respawn once with `fork_turns: "none"` using the same strengthened full assignment. If the replacement fails, continue with successful reviewers and name the missing result.
-- Drain mailbox updates until every spawned reviewer has accepted output or terminal failure. A raw `<subagent_notification>` as the final answer means result handling failed; extract the completed text or close the agent and parse `previous_status.completed`.
-- Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup. Do not finish while any spawned reviewer remains open.
+- Drain mailbox updates until every spawned reviewer has accepted output or terminal failure. If a reviewer appears done but no text was captured, call `close_agent` and harvest `previous_status.completed` before declaring it missing.
+- Always close all spawned reviewers after their final accepted output or terminal failure; `wait_agent` is not cleanup. Do not finish while any spawned reviewer remains open. Ignore Codex session-recording warnings during close if the harvested review text is valid.
+- Before final synthesis, check that every selected reviewer is accounted for as `accepted`, `missing`, or `failed`; the final answer must contain no raw notification tags, transport fields, or acknowledgement-only text.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
 For debate mode, keep the same reviewer agents open across opening positions, responses, and final positions. Use `followup_task` for later rounds, require the same result validation each round, and close agents only after synthesis.
