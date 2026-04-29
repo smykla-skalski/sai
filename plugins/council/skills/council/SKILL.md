@@ -19,7 +19,7 @@ If the request starts with `@<path>`, read that file first. Parse first token as
 
 - `core`: pick `core-eng`, `core-ux`, or `core-mix` from path and wording, then announce why.
 - `auto`: read the registry, select exactly 6 best-fit reviewers, and include at least one bias-correction reviewer unless the request is narrow.
-- fixed core modes: read only registry lines 1-12 for Mode Rosters; do not search or print full tables.
+- fixed core modes: read exactly registry lines 1-12 for Mode Rosters; do not read beyond line 12.
 - `all`: use every registry slug.
 - `debate`: pick 3-6 reviewers for hard tradeoff calls.
 
@@ -29,10 +29,10 @@ If the request starts with `@<path>`, read that file first. Parse first token as
 
 - Resolve mode, then read only explicit `@path`, exact path, diff, or snippet input. Inline text is the whole target; no repo trees, READMEs, plugin files, Claude variants, current implementation, broad context, or prior outputs.
 - Select reviewer slugs from the registry. Merge/dedupe; drop reviewers that only add generic agreement. Do not pre-read agent definitions or dossiers.
-- Capacity prep before any `spawn_agent`: `needed_slots = deduped slug count`; choose all-at-once when capacity exists, otherwise bounded waves.
+- Capacity prep before any `spawn_agent`: `needed_slots = deduped slug count`; free capacity is proven only by a successful `list_agents` result.
 - If `list_agents` exists, call it first and close only stale council-owned reviewers: terminal/prior reviewers, acknowledgement-only leftovers, old retry/debate agents, and previous council reviewers not needed now. Never close unrelated workers, explorers, or user-owned agents.
 - Cleanup is incomplete while stale council-owned reviewers remain open. Start no council wave until they are closed or accounted for as unavailable.
-- If capacity is still below `needed_slots`, spawn a wave that fits, harvest+close it, then continue. If `list_agents` is unavailable, assume no cleanup proof and use waves of at most 3 reviewers.
+- Spawn all reviewers at once only when `list_agents` proves at least `needed_slots` free slots after cleanup. Otherwise use waves of at most 3 reviewers; harvest+close each wave before spawning the next.
 - Spawn each reviewer with `spawn_agent(agent_type: "<agent-slug>", fork_turns: "none")` and a task name using only lowercase letters, digits, and underscores. Do not pass `model` or `reasoning_effort` unless the user asks for an override.
 - If a slug is unknown, skip it, continue with successful reviewers, and name the missing reviewer in the synthesis. Do not rebuild identity instructions in the assignment.
 - Keep reviewers open for retries, debate rounds, or directly related follow-up work. Close every spawned reviewer after final result capture.
