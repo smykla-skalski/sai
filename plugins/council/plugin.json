@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "description": "Run council reviews only when explicitly requested, through bundled Copilot custom reviewer agents. Broad runs above 6 reviewers require explicit AskUserQuestion approval and are never auto-approved.",
-  "version": "2.0.30",
+  "description": "Run council reviews only when explicitly requested. Normal Copilot /council runs moderate bundled reviewer agents directly, silently supervises reviewers until synthesis, and requires explicit AskUserQuestion approval for runs above 6 reviewers.",
+  "version": "2.0.35",
   "author": {
     "name": "Smykla Skalski Labs"
   },
