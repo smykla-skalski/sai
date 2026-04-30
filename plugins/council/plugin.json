@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "description": "Run council reviews only when explicitly requested, through bundled Copilot custom reviewer agents, and synthesize convergence, disagreement, and concrete next moves.",
-  "version": "2.0.28",
+  "description": "Run council reviews only when explicitly requested, through bundled Copilot custom reviewer agents. Broad runs above 6 reviewers require explicit AskUserQuestion approval and are never auto-approved.",
+  "version": "2.0.30",
   "author": {
     "name": "Smykla Skalski Labs"
   },

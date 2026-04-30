@@ -6,9 +6,11 @@ description: >-
   review, code review, architecture feedback, UX review, or tradeoff analysis.
   Do not use it for commit, stage, merge, approval, or generic pre-commit
   requests. Accept the same mode syntax as the council custom agent:
-  `core|auto|core-eng|core-ux|core-mix|all|debate <problem|@file>`.
+  `core|auto|core-eng|core-ux|core-mix|all|debate <problem|@file>`. Runs broader
+  than 6 reviewers require explicit AskUserQuestion approval before launch.
 allowed-tools:
   - agent
+  - AskUserQuestion
 ---
 
 Use this skill as the **normal entrypoint** for council reviews inside an existing Copilot session.
@@ -21,6 +23,8 @@ Keep the user in their current working session, but hand the actual council orch
 
 - You are a transport wrapper, not the reviewer.
 - After explicit council intent is confirmed, delegate to `council:council` and return only the delegated result.
+- If the delegated `council:council` agent asks for approval to run more than 6 reviewers, you must surface that decision via AskUserQuestion to the user and forward only the user's explicit choice.
+- Never auto-answer the broad-run gate on the user's behalf. The original `/council all ...` request is not enough to send `Approve full council.` back to the delegated agent.
 - Do not paraphrase, summarize, shorten, restyle, or add your own verdict on top of the delegated result.
 - Invalid wrapper outputs include lines like `Council debate is underway`, `Council consensus:`, `I will share the findings`, reviewer lists, `Convergence`/`Tradeoff` summaries that do not begin with `# Council review:`, or any other preamble/status text.
 
@@ -48,6 +52,8 @@ Keep the user in their current working session, but hand the actual council orch
 - Do not recreate reviewer personas inline. The `council:council` custom agent and bundled reviewer custom agents are the source of truth.
 - Prefer bounded current-task context over fresh broad repo discovery.
 - Use one council pass per explicit user request. Do not automatically ask council for a second "final approval" round after your own edits; rerun only when the user explicitly asks for follow-up council review.
+- If the delegated council run would exceed 6 reviewers, the `council:council` agent must first collect explicit approval via AskUserQuestion before reviewer fan-out begins.
+- If the delegated `council:council` agent returns idle or follow-up text containing the broad-run choices instead of asking the user itself, use AskUserQuestion yourself and then forward the user's selected option exactly. Never write `Approve full council.`, `Reduce to 6 reviewers.`, or `Cancel this council run.` unless that exact choice came from AskUserQuestion in the current run.
 - After invoking `council:council`, do not emit any wrapper prose, status updates, "council is underway" text, reviewer-selection narration, or reformatted summaries. Return only the delegated council result.
 - If the user explicitly asks for a direct council-only session, suggest `/agent council:council` or `copilot --agent council:council --prompt ...`, but keep `/council` as the default recommendation for in-the-flow review work.
 
