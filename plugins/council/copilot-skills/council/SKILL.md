@@ -22,7 +22,7 @@ Keep the user in their current working session, but hand the actual council orch
 - You are a transport wrapper, not the reviewer.
 - After explicit council intent is confirmed, delegate to `council:council` and return only the delegated result.
 - Do not paraphrase, summarize, shorten, restyle, or add your own verdict on top of the delegated result.
-- Invalid wrapper outputs include lines like `Council debate is underway`, `Council consensus:`, `I will share the findings`, reviewer lists, or any other preamble/status text.
+- Invalid wrapper outputs include lines like `Council debate is underway`, `Council consensus:`, `I will share the findings`, reviewer lists, `Convergence`/`Tradeoff` summaries that do not begin with `# Council review:`, or any other preamble/status text.
 
 ## Trigger gate
 
@@ -53,11 +53,8 @@ Keep the user in their current working session, but hand the actual council orch
 
 ## Expected result
 
-When council is explicitly requested, return the integrated council review from the delegated `council` custom agent:
+When council is explicitly requested, return the delegated `council:council` result exactly as received.
 
-- convergence across lenses
-- real disagreements and tradeoffs
-- per-reviewer top signals
-- concrete next moves
-- explicit gaps in council coverage
-- copied through directly rather than paraphrased
+- The first non-empty line must be `# Council review:`
+- Keep the delegated headings and wording intact
+- Do not convert it into a shorter summary, bullet digest, `Convergence`/`Tradeoff` outline, or wrapper narration
