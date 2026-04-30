@@ -1,7 +1,7 @@
 {
   "name": "council",
   "description": "Run council reviews through bundled Copilot custom reviewer agents and synthesize convergence, disagreement, and concrete next moves.",
-  "version": "2.0.23",
+  "version": "2.0.24",
   "author": {
     "name": "Smykla Skalski Labs"
   },

@@ -58,7 +58,12 @@ Rules:
 
 **Result Handling**
 
-- Per wave, use `wait_agent` only to let that wave finish; then `close_agent` the wave and harvest `previous_status.completed`. Do not close a multi-reviewer wave merely because one reviewer finished.
+- Per wave, run a health roundcheck loop before any closure:
+  1. `wait_agent(timeout_ms: 30000)` to receive mailbox updates.
+  2. Re-check each in-wave reviewer via `list_agents` / mailbox state.
+  3. Continue polling until every reviewer is `completed`, `failed`, `cancelled`, or `timed_out`.
+  4. Never close reviewers only because a poll interval ended.
+- Reviewer wave timeout budget is `20m` wall-clock from first spawn in that wave. If budget is exceeded, mark remaining reviewers `missing` and continue synthesis with completed reviewers.
 - Parse reviewer text only from `status.completed` or `close_agent.previous_status.completed`; all else is transport metadata. Never echo raw JSON, tags, envelopes, `status` objects, or tool payloads.
 - Never answer with a single reviewer payload or mailbox item. If a draft starts with `{`, `{"author":`, `<subagent_notification>`, `## <one reviewer>`, or raw completed text, keep harvesting/closing and synthesize instead.
 - Valid output has a reviewer-specific heading, required sections, and real review body. Runtime `completed` is enough; `failed`, `cancelled`, `timed_out`, or empty output is not a review.
@@ -66,7 +71,8 @@ Rules:
 - For ack/status/no-task replies, close immediately and respawn once with `fork_turns: "none"`. For malformed near-reviews, recover once with `followup_task(interrupt: true)` or runtime `send_input`; repeat the full assignment and begin: "Concrete review task. Review through your native lens and return only your required reviewer output now. Do not acknowledge readiness or ask for another task."
 - If the replacement/retry is invalid, continue and name the missing result.
 - Drain mailbox until every reviewer is accepted or terminal. If a reviewer appears done but no text was captured, `close_agent` and harvest `previous_status.completed` before declaring it missing.
-- Before synthesis, call `close_agent` once for every spawned reviewer; process shutdown is not cleanup. Ignore session-recording warnings during close only if harvested text is valid.
+- Close reviewers only after they are terminal or explicitly invalid for retry handling. Do not perform blanket pre-synthesis closure of live reviewers.
+- Before synthesis, ensure each selected reviewer has one final accounting state: `accepted`, `missing`, or `failed`.
 - Before synthesis, account for every selected reviewer as `accepted`, `missing`, or `failed`; final answer must start with `# Council review:` and contain no raw notification tags, transport fields, or acknowledgement-only text.
 - Synthesize convergence, real disagreement, and concrete next moves. Do not average reviewer output into bland consensus.
 
