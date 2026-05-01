@@ -198,6 +198,17 @@ def command_smoke(args: argparse.Namespace) -> None:
         fail(f"target repo is not a directory: {target_repo}")
 
     evidence = resolve_evidence_dir(args.evidence_dir)
+    for name in [
+        "normal.jsonl",
+        "normal-final.txt",
+        "prefixed.jsonl",
+        "prefixed-final.txt",
+        "broad.jsonl",
+        "broad-final.txt",
+        "followup.jsonl",
+        "followup-final.txt",
+    ]:
+        (evidence / name).unlink(missing_ok=True)
     env_model = os.environ.get("COUNCIL_SMOKE_MODEL", "gpt-5.4-mini")
 
     base = [
