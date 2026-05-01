@@ -126,7 +126,8 @@ The live smoke must exercise:
 Required evidence:
 
 - native `list_agents` capacity preflight happened before any reviewer spawn when the tool was available
-- the orchestrator closed stale Council reviewers before spawning and reduced wave size to one when child capacity was unknown or constrained
+- the orchestrator closed stale Council reviewers before spawning and attempted the full 6-or-fewer roster from clean/root-only state
+- any `spawn_agent` failure with no `receiver_thread_ids` was treated as pending capacity work with no slot to clean, then retried after launched reviewers closed
 - native reviewer `spawn_agent` calls happened
 - `wait_agent` and `followup_task` supervision happened when needed
 - all selected reviewers were accepted, failed, or explicitly reported missing
@@ -141,6 +142,8 @@ Required evidence:
 - liveness chatter used `Council progress:`
 - runtime child nicknames did not leak as reviewer identities
 - raw reviewer blocks, `<subagent_notification>` text, JSON envelopes, and child payloads stayed internal
+- visible progress lines that claim checking, verifying, retrying, closing, or waiting were immediately followed by the matching native tool call
+- any `close_agent` result with status `running` was resolved by actual wait/follow-up/close/list evidence before synthesis or a next wave
 - final output used every mandatory Council heading as integrated synthesis
 
 ## Phase 8: Patch, Bump, And Repeat On Failure

@@ -318,7 +318,7 @@ def running_agents_from_close(item: dict) -> list[str]:
 
 
 def has_close_recovery(events: list[dict], start_index: int) -> bool:
-    recovery_tools = {"wait", "wait_agent", "send_input", "followup_task", "close_agent"}
+    recovery_tools = {"wait", "wait_agent", "send_input", "followup_task", "close_agent", "list_agents"}
     for event in events[start_index + 1 :]:
         item = event.get("item", {})
         item_type = item.get("type")
@@ -327,6 +327,44 @@ def has_close_recovery(events: list[dict], start_index: int) -> bool:
         if item_type == "agent_message" and (item.get("text") or "").startswith("# Council review:"):
             return False
     return False
+
+
+def ensure_progress_claims_have_tools(events: list[dict], name: str) -> None:
+    claim_tools = {
+        "checking": {"list_agents", "wait", "wait_agent"},
+        "verifying": {"list_agents", "wait", "wait_agent"},
+        "retrying": {"close_agent", "followup_task", "send_input", "wait", "wait_agent", "list_agents"},
+        "closing": {"close_agent"},
+        "waiting": {"wait", "wait_agent"},
+    }
+    violations: list[str] = []
+    for index, event in enumerate(events):
+        item = event.get("item", {})
+        if item.get("type") != "agent_message":
+            continue
+        text = item.get("text") or ""
+        if not text.startswith("Council progress:"):
+            continue
+        lowered = text.lower()
+        required: set[str] = set()
+        for word, tools in claim_tools.items():
+            if word in lowered:
+                required |= tools
+        if not required:
+            continue
+        next_tool = None
+        for later in events[index + 1 :]:
+            later_item = later.get("item", {})
+            later_type = later_item.get("type")
+            if later_type == "collab_tool_call":
+                next_tool = later_item.get("tool")
+                break
+            if later_type == "agent_message" or later_type == "command_execution":
+                break
+        if next_tool not in required:
+            violations.append(text[:120])
+    if violations:
+        fail(f"{name} progress claimed a tool action without matching next tool call: {violations[:5]}")
 
 
 def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
@@ -426,6 +464,7 @@ def command_evidence(args: argparse.Namespace) -> None:
         fail("shorthand reviewer material leaked into evidence stream")
     for name, file_events in events_by_file.items():
         ensure_capacity_safe_spawns(file_events, name)
+        ensure_progress_claims_have_tools(file_events, name)
 
     bad_prompts: list[str] = []
     bad_status: list[str] = []
