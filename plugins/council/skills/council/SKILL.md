@@ -1,19 +1,13 @@
 ---
 name: council
 description: >-
-  Use only for $council/review/debate. FIRST ACTION: load this SKILL. If any
-  skill-use announcement is unavoidable, it must start exactly `Council progress:`.
-  No bare prefaces, no `cd`, no `pwd`, no chained shell commands, no
-  web/search/browser, including empty-query web_search, or other tool before SKILL load. Inline text is complete; no
-  MEMORY, prior sessions, repo/local-file search, git history, Claude assets,
-  web, or shell-based agent probing unless user gave @path, exact files, diff, or
-  direct read/search. all/broad>6 without same-turn approval: output only
-  `Council not run: broad council approval not granted.` Else read SKILL first
-  silently. Coordinator must proactively inspect native agent state and clean all
-  visible stale Council children before any spawn. If state is clean/root-only, attempt the full selected roster when it
-  is 6 or fewer; no-receiver thread-limit failures stay pending for retry. Use
-  high reasoning, complete material per reviewer, visible progress only as
-  `Council progress:`, never solo or raw child output.
+  Use only for $council/review/debate. FIRST ACTION: load this SKILL. Any
+  visible startup/status line must start exactly `Council progress:`. No bare
+  prefaces, memory, repo search, web/search/browser, `cd`, `pwd`, or chained
+  shell commands unless user gave exact files/diff/direct read. Broad >6 without
+  approval outputs exact denial. Coordinator must proactively inspect native
+  agents and close stale Council children before spawn. Attempt full <=6 roster;
+  retry no-receiver capacity misses. Never solo or leak raw child output.
 ---
 
 # Council

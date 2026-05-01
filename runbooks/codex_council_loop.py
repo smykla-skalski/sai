@@ -141,6 +141,8 @@ def command_static(args: argparse.Namespace) -> None:
     missing = [needle for needle in SKILL_NEEDLES if needle not in skill]
     if missing:
         fail(f"skill missing required text: {missing}")
+    if description_length(skill) > 1024:
+        fail(f"skill frontmatter description exceeds 1024 chars: {description_length(skill)}")
 
     subprocess.run(["git", "diff", "--check"], cwd=root, check=True)
     print(f"static council surface ok: version={version} agents={len(agents)}")
@@ -170,8 +172,18 @@ def command_installed(args: argparse.Namespace) -> None:
     missing = [needle for needle in SKILL_NEEDLES if needle not in skill]
     if missing:
         fail(f"installed skill missing required text: {missing}")
+    if description_length(skill) > 1024:
+        fail(f"installed skill frontmatter description exceeds 1024 chars: {description_length(skill)}")
 
     print(f"installed cache ok: {cache}")
+
+
+def description_length(skill_text: str) -> int:
+    if "description: >-" not in skill_text:
+        return 0
+    after = skill_text.split("description: >-", 1)[1]
+    before_end = after.split("---", 1)[0]
+    return len(" ".join(line.strip() for line in before_end.splitlines() if line.strip()))
 
 
 def resolve_evidence_dir(value: str | None) -> Path:
