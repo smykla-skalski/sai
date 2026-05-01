@@ -3,7 +3,8 @@ name: council
 description: >-
   Use when user asks $council/review/debate. Inline means no MEMORY/prior/repo
   lookup before SKILL. If all/broad>6 lacks approval: no tools/commentary; output
-  only `Council not run: broad council approval not granted.` Else spawn reviewers.
+  only `Council not run: broad council approval not granted.` Else read SKILL,
+  spawn reviewers, never solo.
 ---
 
 # Council
