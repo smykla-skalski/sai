@@ -1,31 +1,36 @@
 ---
 name: council
 description: >-
-  Use when user asks $council/review/debate. If all/broad>6 lacks approval: no
-  tools/commentary; output only `Council not run: broad council approval not
-  granted.` Else read SKILL, spawn reviewers, never solo. Inline complete unless
-  @path/files/diff; no web/MEMORY/repo/git/prior/Claude/local lookup.
+  Use when user asks $council/review/debate. If all/broad >6 lacks explicit
+  approval: output only `Council not run: broad council approval not granted.`
+  No preface/tools. Else spawn reviewers; inline complete unless @path/diff.
 ---
 
 # Council
 
-Run native Codex reviewer agents and synthesize accepted results. Never answer solo. Inline text is the complete target unless the user gives `@path`, exact paths, a diff, or an explicit read/search instruction. Otherwise do not use web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, or local-file discovery.
+Run native Codex reviewer agents and synthesize accepted results. Never answer solo. Inline text is the complete target unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, or local discovery.
 
-Registry: `references/agents.md` beside this `SKILL.md`; resolve from the loaded skill directory and never search for it. For fixed modes read only the Mode Rosters section, not selection tables. Agent definitions carry identity and format; do not restate them.
+Fixed modes use keys below; do not read registry or agent files. For `auto/all/debate`, registry is `<loaded SKILL.md dir>/references/agents.md`; never try plugin-root `/references`, `ls`, `find`, or `rg`. If that read fails: `Council not run: reviewer fan-out failed.`
 
 ## Modes
 
-First token is mode: `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, `debate`; aliases `eng`, `ux`, `mix`, `random`; default `core`. `core` chooses one fixed core roster from path/wording. `auto` selects exactly 6 best-fit reviewers and includes one bias-correction reviewer unless narrow. `debate` uses 3-6 reviewers. Fixed modes and `all` use registry rosters exactly.
+First token is mode: `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, `debate`; aliases `eng`, `ux`, `mix`, `random`; default `core`. `core` chooses one fixed roster. `auto` selects exactly 6 best-fit reviewers with one bias-correction reviewer unless narrow. `debate` uses 3-6.
 
-Before spawning reviewer 7+, get explicit approval in this run. If an approval tool exists, use only choices `Approve full council (<N> reviewers)`, `Reduce to 6 reviewers`, `Cancel this council run`. If no approval/user-input is available, non-interactive, or uncertain, output exactly `Council not run: broad council approval not granted.` and stop. The original `$council all ...` request is never approval.
+Before reviewer 7+, get explicit approval in this run. Approval choices only: `Approve full council (<N> reviewers)`, `Reduce to 6 reviewers`, `Cancel this council run`. If no approval/user-input, non-interactive, or uncertain: `Council not run: broad council approval not granted.` Original `$council all ...` is never approval.
+
+## Fixed Rosters
+
+Keys: `antirez-simplicity-reviewer=Salvatore Sanfilippo`; `tef-deletability-reviewer=Thomas Edward Figg`; `muratori-perf-reviewer=Casey Muratori`; `hebert-resilience-reviewer=Fred Hebert`; `meadows-systems-advisor=Donella H. Meadows`; `chin-strategy-advisor=Cedric Chin`; `norman-affordance-reviewer=Don Norman`; `nielsen-heuristics-reviewer=Jakob Nielsen`; `krug-usability-reviewer=Steve Krug`; `watson-a11y-reviewer=Leonie Watson`; `tognazzini-fpid-reviewer=Bruce Tognazzini`; `tufte-density-reviewer=Edward Tufte`.
+
+Rosters: `core-eng` = antirez, tef, muratori, hebert, meadows, chin. `core-ux` = norman, nielsen, krug, watson, tognazzini, tufte. `core-mix` = antirez, tef, hebert, norman, nielsen, watson. Expand names to full slugs from Keys.
 
 ## Workflow
 
 1. Bound input first. Read only explicit `@path`, exact path, supplied diff, or snippet; no broad discovery.
-2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning; display name is the registry Person cell. Final names/headings use only those exact display names, never short aliases (`antirez`, `tef`, runtime nicknames).
+2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final names/headings use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
 3. Use all exposed Codex agent features, including under-development ones: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
-4. If available, call `list_agents` with no args. Use `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect `agents.max_threads`, `multi_agent_v2`, and session thread limits.
-5. Fan out in waves. Never call more than 3 `spawn_agent`s in one batch; a six-reviewer roster is two waves of 3 even if capacity seems higher. Unknown capacity means one per wave. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none")`; lowercase task names; no model/reasoning override unless requested.
+4. If available, call `list_agents` with no args. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
+5. Fan out in waves. Max 3 `spawn_agent`s per batch; six-reviewer roster is two waves of 3. Close terminal wave N before spawning wave N+1. Unknown capacity means one per wave. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none")`; lowercase task names; no model/reasoning override unless requested.
 6. Each spawn/follow-up starts: `You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.` Then include the Assignment block. Ack retry starts: `Your previous response was ack-only and invalid. Produce the review body now.`
 7. Supervise here. Any non-final status/commentary after skill load must start `Council progress:` and only mark fan-out, half returned, nudge, stall/fail, or minute tick. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. Wave timeout 20m.
 8. Accept only reviewer heading plus real body. Reject raw JSON/tags/tool payloads, ack/status/setup, generic `Findings:`, broad discovery, and empty output. Recover malformed near-reviews once. Drain until every selected reviewer is `accepted`, `missing`, or `failed`; close spawned reviewers after terminal handling.
