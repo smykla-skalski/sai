@@ -1,14 +1,15 @@
 ---
 name: council
 description: >-
-  Use when user asks $council/review/debate. First check: if all/broad or >6
-  lacks same-prompt approval, output exactly `Council not run: broad council
-  approval not granted.` and stop; no preface/tools. Else spawn reviewers.
+  Use when user asks $council/review/debate. If all/broad>6 lacks approval: no
+  tools/commentary; output only `Council not run: broad council approval not
+  granted.` Else read SKILL, spawn reviewers, never solo. Inline complete unless
+  @path/files/diff; no web/MEMORY/repo/git/prior/Claude/local lookup.
 ---
 
 # Council
 
-Run native Codex reviewer agents and synthesize accepted results. Never answer solo. Inline text is the complete target unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, or local discovery.
+Run native Codex reviewer agents and synthesize accepted results. Never answer solo. Inline text is complete unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, or local discovery.
 
 Fixed modes use keys below; do not read registry or agent files. For `auto/all/debate`, registry is `<loaded SKILL.md dir>/references/agents.md`; never try plugin-root `/references`, `ls`, `find`, or `rg`. If that read fails: `Council not run: reviewer fan-out failed.`
 
@@ -28,11 +29,11 @@ Rosters: `core-eng` = antirez, tef, muratori, hebert, meadows, chin. `core-ux` =
 
 1. Bound input first. Read only explicit `@path`, exact path, supplied diff, or snippet; no broad discovery.
 2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final headings and every citation in Convergence/Disagreement use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
-3. Use all exposed Codex agent features, including under-development ones: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
+3. Use all exposed current/under-development agent features: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
 4. If available, call `list_agents` with no args. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
 5. Fan out in waves. Max 3 `spawn_agent`s per batch; six-reviewer roster is two waves of 3. Close terminal wave N before spawning wave N+1. Unknown capacity means one per wave. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none")`; lowercase task names; no model/reasoning override unless requested.
 6. Each spawn/follow-up starts: `You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.` Then include the Assignment block. Ack retry starts: `Your previous response was ack-only and invalid. Produce the review body now.`
-7. Supervise here. Any non-final status/commentary after skill load must start `Council progress:`; no explanatory prefaces. Status may only mark fan-out, half returned, nudge, stall/fail, or minute tick. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. Wave timeout 20m.
+7. Supervise here. Non-final status after skill load starts `Council progress:`; no prefaces. Status only marks fan-out, half returned, nudge, stall/fail, or minute tick. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. Wave timeout 20m.
 8. Accept only reviewer heading plus real body. Reject raw JSON/tags/tool payloads, ack/status/setup, generic `Findings:`, broad discovery, and empty output. Recover malformed near-reviews once. Drain until every selected reviewer is `accepted`, `missing`, or `failed`; close spawned reviewers after terminal handling.
 9. If no reviewer launched or all fail, output exactly `Council not run: reviewer fan-out failed.` Otherwise synthesize one integrated result in your voice. Never return one reviewer payload, raw `## <reviewer> review`, runtime nickname, unregistered name, or approval-shaped wording (`APPROVED`, `NOT APPROVED`, `approved`). Say whether material blockers remain.
 
@@ -50,7 +51,7 @@ Rules: supplied material is full scope; inline-only is valid. Extra reads only f
 </council-review-assignment>
 ```
 
-Debate/follow-up challenges: keep same reviewers open when possible, use `followup_task`, validate every round, close after synthesis, answer one integrated addendum. If asked only for approval wording/final blessing without explicit council reassessment, output exactly `Council not run: no explicit council request.` For blocker/sign-off follow-ups, answer `material blockers remain` or `no material blockers remain`.
+Debate/follow-up challenges: keep same reviewers when possible, use `followup_task`, validate every round, close after synthesis, answer one integrated addendum. If asked only for approval wording/final blessing without explicit council reassessment: `Council not run: no explicit council request.` For blocker/sign-off follow-ups, answer `material blockers remain` or `no material blockers remain`.
 
 ## Output
 
@@ -73,4 +74,4 @@ Use these headings exactly. Include `What changed in this follow-up` only for us
 <1-3 explicit gaps.>
 ```
 
-Private dossiers are aids only; never republish them wholesale.
+Private dossiers are aids only.
