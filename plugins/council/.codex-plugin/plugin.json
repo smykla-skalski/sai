@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "2.0.22",
-  "description": "Run council reviews with best-fit sourced engineering reviewer agents",
+  "version": "2.0.44",
+  "description": "Run Codex council reviews with native reviewer agents, bounded orchestration, broad-run approval gates, and supervised synthesis.",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -21,8 +21,8 @@
   "skills": "./skills",
   "interface": {
     "displayName": "Council",
-    "shortDescription": "Run engineering reviewer-agent councils",
-    "longDescription": "Council from the SAI Codex collection. Runs focused or broad reviews through native reviewer agents with sourced engineering, UX, reliability, performance, and strategy lenses, then synthesizes convergence, disagreement, and concrete next moves.",
+    "shortDescription": "Run supervised Codex reviewer-agent councils",
+    "longDescription": "Council from the SAI Codex collection. Runs focused or broad reviews through native reviewer agents with sourced engineering, UX, reliability, performance, and strategy lenses, supervises reviewer progress, blocks unapproved broad runs, then synthesizes convergence, disagreement, and concrete next moves without leaking raw reviewer payloads.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -33,7 +33,7 @@
     "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
     "defaultPrompt": [
       "Use $council to review this code or plan with best-fit reviewers.",
-      "Use $council all for a broad engineering and UX review.",
+      "Use $council all for a broad engineering and UX review after explicit approval.",
       "Use $council debate to compare hard tradeoffs."
     ],
     "brandColor": "#7C3AED"
