@@ -1,10 +1,10 @@
 ---
 name: council
 description: >-
-  Use when $council/review/debate requested. Inline: no preface, MEMORY, prior,
-  or repo before SKILL. all/broad>6 no approval: no tools/commentary; output
-  `Council not run: broad council approval not granted.` Else read SKILL, spawn
-  reviewers, status `Council progress:`, never solo.
+  Use when $council/review/debate requested. all/broad>6 without same-turn approval:
+  do not read SKILL or comment; output only `Council not run: broad council approval
+  not granted.` Else read SKILL first, no preface/MEMORY/prior/repo, spawn reviewers,
+  status `Council progress:`, never solo.
 ---
 
 # Council
