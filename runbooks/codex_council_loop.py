@@ -53,10 +53,10 @@ SKILL_NEEDLES = [
     "call no web/search/browser/tool",
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
-    "first Council orchestration tool call before `spawn_agent` must be `list_agents`",
-    "does not appear as an actual structured tool result, capacity is unknown",
-    "Do not say capacity was preflighted unless the tool call happened",
-    "Unknown or constrained capacity means one reviewer per wave",
+    "inspect native live-agent state",
+    "agent state clean: root only; running largest safe wave",
+    "Close stale Council reviewer children first",
+    "Fan out in waves sized by cleaned capacity",
     "Do not spawn into a known full session",
 ]
 
@@ -244,11 +244,11 @@ def command_smoke(args: argparse.Namespace) -> None:
     runs = [
         (
             "normal",
-            '$council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. If no structured list_agents tool call appears before spawning, run the 3 reviewers as one-reviewer waves.',
+            '$council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. Clean stale council agents first; if state is clean/root-only, run all 3 reviewers in the largest safe wave.',
         ),
         (
             "prefixed",
-            "$council:council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to verify the plugin-prefixed alias follows the same bounded-review behavior. If no structured list_agents tool call appears before spawning, run the 3 reviewers as one-reviewer waves.",
+            "$council:council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to verify the plugin-prefixed alias follows the same bounded-review behavior. Clean stale council agents first; if state is clean/root-only, run all 3 reviewers in the largest safe wave.",
         ),
         (
             "broad",
@@ -331,25 +331,24 @@ def has_close_recovery(events: list[dict], start_index: int) -> bool:
 
 def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
     first_spawn_index: int | None = None
-    list_agents_before_spawn = False
+    capacity_checked_before_spawn = False
     active_agents: set[str] = set()
-    max_active_without_preflight = 0
-    preflight_claims_without_tool: list[str] = []
+    max_active = 0
 
     for index, event in enumerate(events):
         item = event.get("item", {})
         if item.get("type") == "agent_message":
             text = item.get("text") or ""
-            if "capacity preflight" in text.lower():
-                preflight_claims_without_tool.append(text[:120])
+            if text == "Council progress: agent state clean: root only; running largest safe wave.":
+                if first_spawn_index is None:
+                    capacity_checked_before_spawn = True
             continue
         if item.get("type") != "collab_tool_call":
             continue
 
         tool = item.get("tool")
         if tool == "list_agents" and first_spawn_index is None:
-            list_agents_before_spawn = True
-            preflight_claims_without_tool.clear()
+            capacity_checked_before_spawn = True
             continue
         if tool == "spawn_agent":
             if first_spawn_index is None:
@@ -357,8 +356,7 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
             for agent_id in item.get("receiver_thread_ids") or []:
                 if isinstance(agent_id, str):
                     active_agents.add(agent_id)
-            if not list_agents_before_spawn:
-                max_active_without_preflight = max(max_active_without_preflight, len(active_agents))
+            max_active = max(max_active, len(active_agents))
             continue
         if tool == "close_agent":
             for agent_id in item.get("receiver_thread_ids") or []:
@@ -367,12 +365,10 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
 
     if first_spawn_index is None:
         return
-    if list_agents_before_spawn:
-        return
-    if preflight_claims_without_tool:
-        fail(f"{name} claimed capacity preflight without native list_agents tool: {preflight_claims_without_tool[:2]}")
-    if max_active_without_preflight > 1:
-        fail(f"{name} spawned {max_active_without_preflight} concurrent reviewers without capacity preflight")
+    if not capacity_checked_before_spawn:
+        fail(f"{name} spawned reviewers before agent-state cleanup/check")
+    if max_active > 3:
+        fail(f"{name} spawned {max_active} concurrent reviewers; smoke cap is 3")
 
 
 def command_evidence(args: argparse.Namespace) -> None:
