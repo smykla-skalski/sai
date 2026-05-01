@@ -1,9 +1,9 @@
 ---
 name: council
 description: >-
-  Use when user asks $council/review/debate. If all/broad >6 lacks explicit
-  approval: output only `Council not run: broad council approval not granted.`
-  No preface/tools. Else spawn reviewers; inline complete unless @path/diff.
+  Use when user asks $council/review/debate. First check: if all/broad or >6
+  lacks same-prompt approval, output exactly `Council not run: broad council
+  approval not granted.` and stop; no preface/tools. Else spawn reviewers.
 ---
 
 # Council
@@ -27,12 +27,12 @@ Rosters: `core-eng` = antirez, tef, muratori, hebert, meadows, chin. `core-ux` =
 ## Workflow
 
 1. Bound input first. Read only explicit `@path`, exact path, supplied diff, or snippet; no broad discovery.
-2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final names/headings use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
+2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final headings and every citation in Convergence/Disagreement use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
 3. Use all exposed Codex agent features, including under-development ones: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
 4. If available, call `list_agents` with no args. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
 5. Fan out in waves. Max 3 `spawn_agent`s per batch; six-reviewer roster is two waves of 3. Close terminal wave N before spawning wave N+1. Unknown capacity means one per wave. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none")`; lowercase task names; no model/reasoning override unless requested.
 6. Each spawn/follow-up starts: `You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.` Then include the Assignment block. Ack retry starts: `Your previous response was ack-only and invalid. Produce the review body now.`
-7. Supervise here. Any non-final status/commentary after skill load must start `Council progress:` and only mark fan-out, half returned, nudge, stall/fail, or minute tick. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. Wave timeout 20m.
+7. Supervise here. Any non-final status/commentary after skill load must start `Council progress:`; no explanatory prefaces. Status may only mark fan-out, half returned, nudge, stall/fail, or minute tick. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. Wave timeout 20m.
 8. Accept only reviewer heading plus real body. Reject raw JSON/tags/tool payloads, ack/status/setup, generic `Findings:`, broad discovery, and empty output. Recover malformed near-reviews once. Drain until every selected reviewer is `accepted`, `missing`, or `failed`; close spawned reviewers after terminal handling.
 9. If no reviewer launched or all fail, output exactly `Council not run: reviewer fan-out failed.` Otherwise synthesize one integrated result in your voice. Never return one reviewer payload, raw `## <reviewer> review`, runtime nickname, unregistered name, or approval-shaped wording (`APPROVED`, `NOT APPROVED`, `approved`). Say whether material blockers remain.
 

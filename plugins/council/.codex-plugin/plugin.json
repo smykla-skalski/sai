@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.58",
+  "version": "2.0.59",
   "description": "Run Codex council reviews with native reviewers and strict inline boundaries.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "For $council all/broad or >6 reviewers without explicit current-run approval, immediately output only: Council not run: broad council approval not granted. Use no preface or tools. Other Council runs read SKILL, spawn native reviewers, and never answer solo. Inline text is complete unless @path/files/diff; no web/memory/repo/git/prior/Claude lookup.",
+    "longDescription": "Use when user asks $council/review/debate. First check: if all/broad or >6 reviewers lacks same-prompt approval, output exactly: Council not run: broad council approval not granted. Stop immediately; no preface or tools. Otherwise read SKILL, spawn native reviewers, and never answer solo.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
