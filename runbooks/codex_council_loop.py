@@ -50,7 +50,7 @@ SKILL_NEEDLES = [
     "Never use shell/command execution for live-agent state",
     "After any `running` close result",
     "Never copy, quote, summarize-by-pasting, or echo",
-    "Never guess alternate SKILL.md cache paths",
+    "A direct read is allowed only when the path",
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
