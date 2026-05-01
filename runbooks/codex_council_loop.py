@@ -166,11 +166,16 @@ def resolve_evidence_dir(value: str | None) -> Path:
     return evidence
 
 
-def run_to_file(command: list[str], output: Path, cwd: Path) -> None:
+def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | None = None) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     print("+ " + shlex.join(command))
     with output.open("wb") as stdout:
-        subprocess.run(command, cwd=cwd, stdout=stdout, check=True)
+        run_kwargs = {"cwd": cwd, "stdout": stdout, "check": True}
+        if input_text is None:
+            run_kwargs["stdin"] = subprocess.DEVNULL
+        else:
+            run_kwargs["input"] = input_text.encode()
+        subprocess.run(command, **run_kwargs)
 
 
 def session_id_from_jsonl(path: Path) -> str:
@@ -226,10 +231,11 @@ def command_smoke(args: argparse.Namespace) -> None:
                 *base,
                 "--output-last-message",
                 str(evidence / f"{name}-final.txt"),
-                prompt,
+                "-",
             ],
             evidence / f"{name}.jsonl",
             root,
+            input_text=prompt,
         )
 
     check_broad(evidence / "broad-final.txt")
@@ -250,10 +256,11 @@ def command_smoke(args: argparse.Namespace) -> None:
             "--output-last-message",
             str(evidence / "followup-final.txt"),
             normal_session_id,
-            followup_prompt,
+            "-",
         ],
         evidence / "followup.jsonl",
         root,
+        input_text=followup_prompt,
     )
     print(f"smoke evidence: {evidence}")
 

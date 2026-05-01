@@ -12,7 +12,7 @@ Run all commands from the `sai` repo root.
 ## Phase 0: Set Variables
 
 ```sh
-VERSION=$(python3 runbooks/codex_council_loop.py version)
+VERSION=$(./runbooks/codex_council_loop.py version)
 : "${TARGET_REPO:?set absolute path to the real target repo}"
 EVIDENCE_DIR=tmp/council-validation/$VERSION
 ```
@@ -23,7 +23,7 @@ depends on repo context.
 ## Phase 1: Baseline And Drift Check
 
 ```sh
-python3 runbooks/codex_council_loop.py baseline
+./runbooks/codex_council_loop.py baseline
 sed -n '1,180p' README.md CLAUDE.md CONTRIBUTING.md
 ```
 
@@ -61,7 +61,7 @@ Council not run: broad council approval not granted.
 ## Phase 3: Static Validation Before Commit
 
 ```sh
-python3 runbooks/codex_council_loop.py static
+./runbooks/codex_council_loop.py static
 ```
 
 Functional Codex skill/plugin changes must bump the Codex plugin version in
@@ -90,7 +90,7 @@ registration can leave the versioned cache stale and cannot be upgraded with
 ## Phase 6: Installed-Cache And Feature Proof
 
 ```sh
-python3 runbooks/codex_council_loop.py installed "$VERSION"
+./runbooks/codex_council_loop.py installed "$VERSION"
 codex --version
 codex features list
 ```
@@ -105,8 +105,8 @@ when the live loop proves negative impact, and record the evidence.
 ## Phase 7: Live Working-Proof Smoke
 
 ```sh
-python3 runbooks/codex_council_loop.py smoke "$TARGET_REPO" "$EVIDENCE_DIR"
-python3 runbooks/codex_council_loop.py evidence "$EVIDENCE_DIR"
+./runbooks/codex_council_loop.py smoke "$TARGET_REPO" "$EVIDENCE_DIR"
+./runbooks/codex_council_loop.py evidence "$EVIDENCE_DIR"
 ```
 
 The smoke command writes `normal`, `prefixed`, `broad`, and `followup` JSONL/final
