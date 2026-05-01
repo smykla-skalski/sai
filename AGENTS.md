@@ -57,6 +57,8 @@ Set the version and target repository first:
 ```sh
 VERSION=<bumped-version>
 TARGET_REPO=/absolute/path/to/real/target/repo
+EVIDENCE_DIR=tmp/council-validation/$VERSION
+mkdir -p "$EVIDENCE_DIR"
 ```
 
 Baseline and drift check from the `sai` repo:
@@ -96,11 +98,11 @@ Live smoke from the real target repository. Keep the under-development agent
 features enabled when they are available:
 
 ```sh
-codex exec --json --output-last-message /tmp/sai-council-normal-final.txt --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council core-mix Council validation smoke. Inline material only: review the rule "always run all selected reviewers with complete bounded material" and report only material blockers.'
-codex exec --json --output-last-message /tmp/sai-council-prefixed-final.txt --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council:council core-mix Council validation smoke. Inline material only: verify the plugin-prefixed alias follows the same bounded-review behavior.'
-codex exec --json --output-last-message /tmp/sai-council-broad-final.txt --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council all Council validation smoke. Inline material only: this broad run has no same-turn approval and must stop.'
-python3 -c 'import pathlib; p=pathlib.Path("/tmp/sai-council-broad-final.txt"); assert p.read_text().strip()=="Council not run: broad council approval not granted.", p.read_text(); print("broad stop ok")'
-codex exec resume --last --include-non-interactive --json --output-last-message /tmp/sai-council-followup-final.txt '$council follow-up challenge: using the prior council smoke result, verify the same accepted reviewer roster is preserved or explicitly reported missing.'
+codex exec --json --output-last-message "$EVIDENCE_DIR/normal-final.txt" --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council core-mix Council validation smoke. Inline material only: review the rule "always run all selected reviewers with complete bounded material" and report only material blockers.' > "$EVIDENCE_DIR/normal.jsonl"
+codex exec --json --output-last-message "$EVIDENCE_DIR/prefixed-final.txt" --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council:council core-mix Council validation smoke. Inline material only: verify the plugin-prefixed alias follows the same bounded-review behavior.' > "$EVIDENCE_DIR/prefixed.jsonl"
+codex exec --json --output-last-message "$EVIDENCE_DIR/broad-final.txt" --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council all Council validation smoke. Inline material only: this broad run has no same-turn approval and must stop.' > "$EVIDENCE_DIR/broad.jsonl"
+python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); assert p.read_text().strip()=="Council not run: broad council approval not granted.", p.read_text(); print("broad stop ok")' "$EVIDENCE_DIR/broad-final.txt"
+codex exec resume --last --include-non-interactive --json --output-last-message "$EVIDENCE_DIR/followup-final.txt" '$council follow-up challenge: using the prior council smoke result, verify the same accepted reviewer roster is preserved or explicitly reported missing.' > "$EVIDENCE_DIR/followup.jsonl"
 ```
 
 For each live run, keep the JSON event stream or session JSONL as evidence and
@@ -111,6 +113,14 @@ reviewer prompt carried complete bounded material, no reviewer prompt used
 `same as other reviewers`, no reviewer read memory/prior sessions/repo discovery,
 raw child payloads stayed internal, final output used the fixed Council headings,
 and runtime child nicknames did not appear as reviewer identities.
+
+Minimum evidence commands:
+
+```sh
+rg -n 'spawn_agent|wait_agent|followup_task|Council progress:|multi_agent_v2|enable_fanout|child_agents_md|runtime_metrics' "$EVIDENCE_DIR"
+rg -n 'Council not run: broad council approval not granted.' "$EVIDENCE_DIR/broad-final.txt"
+rg -n '# Council review:|## Convergence \(high-confidence signals\)|## Disagreement \(real tradeoffs the user must decide\)|## Per-reviewer top-3|## What to do next|## What we did not address' "$EVIDENCE_DIR"/*.txt
+```
 
 Only after the installed-cache proof and live working-proof pass may you run
 plugin-eval or token-pressure iterations. Those later commits must preserve the
