@@ -1,8 +1,9 @@
 ---
 name: council
 description: >-
-  Use only for $council/review/debate. FIRST ACTION: load this SKILL silently.
-  No pre-skill message at all, no `cd`, no `pwd`, no chained shell commands, no
+  Use only for $council/review/debate. FIRST ACTION: load this SKILL. If any
+  skill-use announcement is unavoidable, it must start exactly `Council progress:`.
+  No bare prefaces, no `cd`, no `pwd`, no chained shell commands, no
   web/search/browser, including empty-query web_search, or other tool before SKILL load. Inline text is complete; no
   MEMORY, prior sessions, repo/local-file search, git history, Claude assets,
   web, or shell-based agent probing unless user gave @path, exact files, diff, or
@@ -17,7 +18,7 @@ description: >-
 
 # Council
 
-Run native Codex reviewer agents and synthesize accepted results. Never answer solo. The first action is loading this SKILL silently; before that, emit no message at all and call no web/search/browser/tool except the direct SKILL read if needed. Empty-query `web_search` is still forbidden. Never emit prefaces such as `Using council`, `Reading council skill`, `Loading council rules`, `Council skill loaded`, `Council setup`, `Council fan-out starting`, or `Spawning reviewers`. Never run `cd ... && ...`, `pwd && ...`, `cd`, `pwd`, `ls`, `find`, `rg`, or shell command chaining to load this skill. Every visible non-final status line after SKILL load starts exactly `Council progress:`. Inline text is complete unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, local discovery, `cd`, `pwd`, or shell command chaining. Treat reviewer agents as high-effort review agents: never intentionally run them at `medium` or `low` reasoning.
+Run native Codex reviewer agents and synthesize accepted results. Never answer solo. The first action is loading this SKILL; if a visible skill-use announcement is unavoidable, the first visible line must start exactly `Council progress:`. Empty-query `web_search` is still forbidden. Never emit bare prefaces such as `Using council`, `Reading council skill`, `Loading Council rules`, `Council skill loaded`, `Council setup`, `Council fan-out starting`, or `Spawning reviewers`. Never run `cd ... && ...`, `pwd && ...`, `cd`, `pwd`, `ls`, `find`, `rg`, or shell command chaining to load this skill. Every visible non-final status line after SKILL load starts exactly `Council progress:`. Inline text is complete unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, local discovery, `cd`, `pwd`, or shell command chaining. Treat reviewer agents as high-effort review agents: never intentionally run them at `medium` or `low` reasoning.
 
 Fixed modes use keys below; do not read registry or agent files. For `auto/all/debate`, registry is `<loaded SKILL.md dir>/references/agents.md`; never try plugin-root `/references`, `ls`, `find`, or `rg`. If that read fails: `Council not run: reviewer fan-out failed.`
 
