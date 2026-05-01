@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "2.0.49",
-  "description": "Run Codex council reviews with native agents, strict inline-or-explicit-file boundaries, broad-run gates, and synthesis.",
+  "version": "2.0.50",
+  "description": "Run Codex council reviews with strict inline-or-explicit-file boundaries and exact broad-run denial.",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Runs focused or broad Codex reviewer-agent councils. Inline text is the complete target unless the user supplies an @path, exact files, or a diff; Council must not search memory, repos, git history, prior sessions, Claude assets, or local files. It supervises reviewers, blocks unapproved broad runs, and returns one synthesized result.",
+    "longDescription": "Runs focused or broad Codex reviewer-agent councils. Inline text is complete unless @path, exact files, or diff is supplied; no memory, repo, git, prior-session, Claude, or local lookup. Broad >6 without approval outputs exactly: Council not run: broad council approval not granted. Successful runs return one synthesis.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [

@@ -1,10 +1,10 @@
 ---
 name: council
 description: >-
-  Use when the user explicitly asks for $council, council review, critique, or
-  debate. Inline text is complete unless @path, exact files, or a diff is
-  supplied; do not search MEMORY.md, repos, git, prior sessions, Claude assets,
-  or local files. Broad >6 needs current-run approval.
+  Use when user asks $council, council review, critique, or debate. Inline text
+  is complete unless @path/files/diff. No MEMORY.md/repo/git/prior/Claude/local
+  lookup. Broad >6 no approval: output exactly `Council not run: broad council
+  approval not granted.`
 ---
 
 # Council of Experts
