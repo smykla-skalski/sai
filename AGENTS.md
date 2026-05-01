@@ -51,11 +51,12 @@ optimization before the runbook's working-proof phase passes.
 
 - Council is opt-in review work, not a generic commit, pre-commit, or approval gate.
 - Codex Council uses native `spawn_agent` reviewer agents. Use all relevant current agent features, including enabled under-development agents-v2/fan-out features; do not run nested `codex exec`.
+- Council emits no preface. Every visible non-final status line starts exactly `Council progress:`.
 - Broad runs above 6 reviewers require explicit current-run approval. If approval is unavailable, stop with exactly `Council not run: broad council approval not granted.`
 - Reviewer fan-out is not completion. The orchestrator must keep supervising until every selected reviewer is accepted, failed, or missing.
 - Fixed-roster modes (`core`, `core-eng`, `core-ux`, `core-mix`) always run all 6 selected reviewers. Output-focus wording such as `blockers only` must not shrink the roster or skip the second wave.
 - Wave boundaries are hard barriers. Close every terminal reviewer from the current wave and observe the close results before spawning any next-wave reviewer, so the run does not hit thread limits.
-- Every selected reviewer must receive the complete bounded material in its own spawn or follow-up prompt. The prompt starts with `You are <display name> (<slug>) for Council...`, then the assignment block; do not put reviewer headings or metadata before that. Do not rely on child agents sharing context, and never send `same as other reviewers`, `same as assignment`, or `see prior wave`.
+- Every selected reviewer must receive the complete bounded material in its own spawn or follow-up prompt. The prompt starts with `You are <display name> (<slug>) for Council...`, then one blank line, then the assignment block; do not put reviewer headings or metadata before that. Do not rely on child agents sharing context, and never send `same as other reviewers`, `same as assignment`, or `see prior wave`.
 - Final synthesis must include every mandatory Council heading, including `## Disagreement (real tradeoffs the user must decide)` even when the section says no material disagreement surfaced.
 - Follow-up challenge and blocker-check rounds keep the same accepted reviewer roster where possible. If agents are already closed, respawn the same slugs with the original material plus the follow-up diff/challenge; never silently reduce or swap the roster.
 - At least once per minute, classify every live reviewer as `healthy`, `drifting`, `stalled`, `blocked`, or `done`; nudge non-healthy reviewers in that same pass. After one nudge plus one more wait timeout, close or mark the reviewer missing/failed instead of spinning indefinitely.

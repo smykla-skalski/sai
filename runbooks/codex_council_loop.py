@@ -44,6 +44,7 @@ SKILL_NEEDLES = [
     "Council not run: broad council approval not granted.",
     "Every spawn or follow-up prompt must start exactly",
     "<subagent_notification>",
+    "Do not emit prefaces",
 ]
 
 
@@ -334,8 +335,16 @@ def command_evidence(args: argparse.Namespace) -> None:
         fail("shorthand reviewer material leaked into evidence stream")
 
     bad_prompts: list[str] = []
+    bad_status: list[str] = []
     for event in events:
         item = event.get("item", {})
+        if item.get("type") == "agent_message":
+            text = item.get("text") or ""
+            if text.startswith("# Council review:") or text.startswith("Council not run:"):
+                continue
+            if not text.startswith("Council progress:"):
+                bad_status.append(text[:120])
+            continue
         if item.get("type") != "collab_tool_call":
             continue
         tool = item.get("tool")
@@ -345,12 +354,17 @@ def command_evidence(args: argparse.Namespace) -> None:
         if not prompt.startswith("You are "):
             bad_prompts.append(f"{tool} prompt does not start with 'You are ': {prompt[:80]!r}")
             continue
+        if "setup.\n\n<council-review-assignment>" not in prompt[:240]:
+            bad_prompts.append(f"{tool} prompt missing blank-line assignment boundary: {prompt[:120]!r}")
+            continue
         if "<council-review-assignment>" in prompt:
             before_assignment = prompt.split("<council-review-assignment>", 1)[0]
             if "\n## " in before_assignment:
                 bad_prompts.append(
                     f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
                 )
+    if bad_status:
+        fail(f"non-Council progress status lines: {bad_status[:5]}")
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
 

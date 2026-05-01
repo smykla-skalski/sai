@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.74",
+  "version": "2.0.75",
   "description": "Run Codex council reviews only on supplied inline text or explicit files; no memory, repo, git, Claude asset, local discovery, or raw child output.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Strict $council/review/debate. Inline text is complete unless the user gives @path, exact files, a diff, or direct read/search. No memory, prior sessions, repo/local-file discovery, git history, Claude assets, web, raw child output, or raw subagent notifications. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first, then spawn every selected high-effort native reviewer with exact prompt templates and complete bounded material.",
+    "longDescription": "Strict $council/review/debate. Inline text is complete unless the user gives @path, exact files, a diff, or direct read/search. No memory, prior sessions, repo/local-file discovery, git history, Claude assets, web, raw child output, raw subagent notifications, or preface. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first silently; every visible progress line starts `Council progress:`; then spawn every selected high-effort native reviewer with exact prompt templates and complete bounded material.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -34,7 +34,7 @@
     "defaultPrompt": [
       "Use $council for bounded high-effort reviewer-agent reviews; inline text is full scope.",
       "$council all needs explicit >6 reviewer approval.",
-      "$council never truncates fixed rosters, skips mandatory headings, queues next-wave spawns before closes, sends malformed prompts, sends shorthand material, or leaks raw child payloads."
+      "$council never prefaces, truncates fixed rosters, skips mandatory headings, queues next-wave spawns before closes, sends malformed prompts, sends shorthand material, or leaks raw child payloads."
     ],
     "brandColor": "#7C3AED"
   }
