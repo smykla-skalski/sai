@@ -44,9 +44,9 @@ SKILL_NEEDLES = [
     "Council not run: broad council approval not granted.",
     "Every spawn or follow-up prompt must start exactly",
     "<subagent_notification>",
-    "Do not emit prefaces",
+    "Never emit prefaces",
     "Never use shell/command execution for live-agent state",
-    "If skill-use announcement is required",
+    "No pre-skill message at all",
     "After any `running` close result",
     "Never copy, quote, summarize-by-pasting, or echo",
     "FIRST ACTION: load this SKILL",
@@ -268,8 +268,11 @@ def command_smoke(args: argparse.Namespace) -> None:
             root,
             input_text=prompt,
         )
+        if name == "broad":
+            check_broad(evidence / "broad-final.txt")
+        else:
+            check_review_run(evidence, name)
 
-    check_broad(evidence / "broad-final.txt")
     normal_session_id = session_id_from_jsonl(evidence / "normal.jsonl")
     followup_prompt = (
         "$council follow-up challenge: using the prior council smoke result, "
@@ -293,6 +296,7 @@ def command_smoke(args: argparse.Namespace) -> None:
         root,
         input_text=followup_prompt,
     )
+    check_review_run(evidence, "followup")
     print(f"smoke evidence: {evidence}")
 
 
@@ -409,6 +413,109 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
         fail(f"{name} spawned {max_active} concurrent reviewers; subagent limit is 6")
 
 
+def load_jsonl(path: Path) -> list[dict]:
+    events: list[dict] = []
+    for line in path.read_text().splitlines():
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            fail(f"{path.name} contains invalid JSONL line: {line[:120]}")
+    return events
+
+
+def check_review_run(evidence: Path, name: str) -> None:
+    final_path = evidence / f"{name}-final.txt"
+    jsonl_path = evidence / f"{name}.jsonl"
+    if not final_path.exists() or not jsonl_path.exists():
+        fail(f"{name} evidence missing")
+
+    final_text = final_path.read_text()
+    missing_headings = [heading for heading in MANDATORY_HEADINGS if heading not in final_text]
+    if missing_headings:
+        fail(f"{final_path.name} missing headings: {missing_headings}")
+
+    events = load_jsonl(jsonl_path)
+    jsonl_text = jsonl_path.read_text()
+    visible_text = "\n".join(
+        item.get("text") or ""
+        for event in events
+        for item in [event.get("item", {})]
+        if item.get("type") == "agent_message"
+    )
+    forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
+    leaked = [needle for needle in forbidden_raw if needle in visible_text]
+    if leaked:
+        fail(f"raw child transport leaked into visible messages: {leaked}")
+    alias_headings = ["## antirez review", "## tef review", "## hebert review", "## nielsen review"]
+    bad_heading = [heading for heading in alias_headings if heading in jsonl_text]
+    if bad_heading:
+        fail(f"reviewer alias heading accepted or leaked: {bad_heading}")
+    if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
+        fail("shorthand reviewer material leaked into evidence stream")
+    ensure_capacity_safe_spawns(events, jsonl_path.name)
+    ensure_progress_claims_have_tools(events, jsonl_path.name)
+
+    bad_prompts: list[str] = []
+    bad_status: list[str] = []
+    bad_commands: list[str] = []
+    forbidden_tools: list[str] = []
+    running_close_without_tool: list[str] = []
+    for index, event in enumerate(events):
+        item = event.get("item", {})
+        if item.get("type") == "agent_message":
+            text = item.get("text") or ""
+            if text.startswith("# Council review:") or text.startswith("Council not run:"):
+                continue
+            if not text.startswith("Council progress:"):
+                bad_status.append(text[:120])
+            continue
+        if item.get("type") == "command_execution":
+            command = item.get("command") or ""
+            forbidden_command_bits = ["ls_agents", "list_agents", " pgrep", " ps ", " find ", " rg ", "pwd &&"]
+            if any(bit in command for bit in forbidden_command_bits):
+                bad_commands.append(command[:160])
+            continue
+        if item.get("type") in {"web_search", "browser"}:
+            forbidden_tools.append(item.get("type"))
+            continue
+        if item.get("type") != "collab_tool_call":
+            continue
+        tool = item.get("tool")
+        if tool == "close_agent" and item.get("status") == "completed":
+            running_agents = running_agents_from_close(item)
+            if running_agents and not has_close_recovery(events, index):
+                running_close_without_tool.extend(running_agents)
+        if tool not in {"spawn_agent", "send_input", "followup_task"}:
+            continue
+        prompt = item.get("prompt") or ""
+        if not prompt.startswith("You are "):
+            bad_prompts.append(f"{tool} prompt does not start with 'You are ': {prompt[:80]!r}")
+            continue
+        if "setup.\n\n<council-review-assignment>" not in prompt[:240]:
+            bad_prompts.append(f"{tool} prompt missing blank-line assignment boundary: {prompt[:120]!r}")
+            continue
+        if "<council-review-assignment>" in prompt:
+            before_assignment = prompt.split("<council-review-assignment>", 1)[0]
+            if "\n## " in before_assignment:
+                bad_prompts.append(
+                    f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
+                )
+    if bad_status:
+        fail(f"non-Council progress status lines: {bad_status[:5]}")
+    if bad_commands:
+        fail(f"shell-based agent probing/orchestration commands: {bad_commands[:5]}")
+    if forbidden_tools:
+        fail(f"forbidden search/browser tools used: {forbidden_tools[:5]}")
+    if bad_prompts:
+        fail("; ".join(bad_prompts[:5]))
+    if running_close_without_tool:
+        fail(f"running close result without recovery tool call: {running_close_without_tool[:5]}")
+    if jsonl_text.count("spawn_agent") == 0:
+        fail("evidence does not mention spawn_agent")
+    if jsonl_text.count("wait_agent") + jsonl_text.count('"tool":"wait"') == 0:
+        fail("evidence does not mention wait_agent")
+
+
 def command_evidence(args: argparse.Namespace) -> None:
     evidence = resolve_evidence_dir(args.evidence_dir)
     required_files = [
@@ -440,14 +547,8 @@ def command_evidence(args: argparse.Namespace) -> None:
     for name in jsonl_names:
         text = (evidence / name).read_text()
         jsonl_chunks.append(text)
-        file_events: list[dict] = []
-        for line in text.splitlines():
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError:
-                fail(f"{name} contains invalid JSONL line: {line[:120]}")
-            file_events.append(event)
-            events.append(event)
+        file_events = load_jsonl(evidence / name)
+        events.extend(file_events)
         events_by_file[name] = file_events
     jsonl_text = "\n".join(jsonl_chunks)
     visible_text = "\n".join(
@@ -460,6 +561,10 @@ def command_evidence(args: argparse.Namespace) -> None:
     leaked = [needle for needle in forbidden_raw if needle in visible_text]
     if leaked:
         fail(f"raw child transport leaked into visible messages: {leaked}")
+    alias_headings = ["## antirez review", "## tef review", "## hebert review", "## nielsen review"]
+    bad_heading = [heading for heading in alias_headings if heading in jsonl_text]
+    if bad_heading:
+        fail(f"reviewer alias heading accepted or leaked: {bad_heading}")
     if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
         fail("shorthand reviewer material leaked into evidence stream")
     for name, file_events in events_by_file.items():

@@ -110,10 +110,14 @@ when the live loop proves negative impact, and record the evidence.
 ```
 
 The smoke command writes `normal`, `prefixed`, `broad`, and `followup` JSONL/final
-files under `$EVIDENCE_DIR`. It uses the regular fixed reviewer flow
-(`core-mix`, 6 reviewers). After stale-agent cleanup and a clean/root-only state,
-the normal path is a single 6-reviewer wave, then the helper resumes the normal smoke session by exact session id
-for the follow-up challenge; do not replace that with `--last`.
+files under `$EVIDENCE_DIR`. It is fail-fast: each phase is validated immediately
+after it runs, and the helper stops at the first evidence failure before spending
+tokens on later phases. It uses the regular fixed reviewer flow (`core-mix`, 6
+reviewers). After stale-agent cleanup and a clean/root-only state, the normal path
+attempts the 6-reviewer wave first, then retries no-receiver capacity misses in a
+later wave if the runtime enforces a smaller effective child limit. The helper
+resumes the normal smoke session by exact session id for the follow-up challenge;
+do not replace that with `--last`.
 
 The live smoke must exercise:
 
