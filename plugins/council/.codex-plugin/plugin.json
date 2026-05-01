@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "2.0.94",
-  "description": "Strict $council only: first visible line, if any, must be Council progress; coordinator proactively cleans stale Council agents before any spawn.",
+  "version": "2.0.95",
+  "description": "Strict $council reviewer-agent orchestration: bounded input, no discovery without exact input, full roster attempts, running-close recovery, and raw-output isolation.",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Strict $council/review/debate. Absolute first action: load the installed Council SKILL. If any visible skill-use announcement, setup plan, or status line is unavoidable, the entire first visible line must start exactly `Council progress:`; otherwise emit no pre-skill text. Never write bare lines like `Using council`, `Loading Council rules`, `Load Council rules first`, or `Checking live agents`. No `pwd`, `cd`, `ls`, `find`, `rg`, command chaining, web_search, browser, search, memory, repo discovery, git history, Claude assets, or shell-based agent probing before or during orchestration unless the user supplied exact files/diffs or direct read/search. Empty-query web_search is forbidden. If the SKILL must be read by shell, run only the direct SKILL read command, not `cd ... && ...`, `pwd && ...`, or any chained command. Inline text is complete unless user gives @path, exact files, a diff, or direct read/search. all/broad >6 without approval outputs exact denial with no tools/commentary. After SKILL load, every visible progress line starts `Council progress:`. The coordinator must proactively inspect native live-agent state before any reviewer spawn, close every visible stale Council child, wait for close results, re-check state, and only then choose wave size. If state is clean/root-only, attempt the full selected roster when it is 6 or fewer. Spawn failures with no receiver thread are pending-capacity retries, not launched reviewers and not final missing reviewers. Raw child notifications are private input only and must never be echoed. Do not emit JSON, `<subagent_notification>`, `/root/...`, or child payload text as user-visible content. Progress lines that claim checking/verifying/retrying/closing/waiting must be followed by the matching native tool call. `close_agent` status `running` is non-terminal: no final synthesis, next-wave spawn, or missing/failed marking is allowed until an actual wait/follow-up/close/list tool call resolves or observes that reviewer.",
+    "longDescription": "Strict $council/review/debate. Absolute first action: load the installed Council SKILL. One initial setup line is acceptable, but after that every visible non-final status line starts `Council progress:`. No `pwd`, `cd`, `ls`, `find`, `rg`, command chaining, web_search, browser, search, memory, repo discovery, git history, Claude assets, or shell-based agent probing before or during orchestration unless the user supplied exact files/diffs or direct read/search. Empty-query web_search is forbidden. If the SKILL must be read by shell, run only the direct SKILL read command, not `cd ... && ...`, `pwd && ...`, or any chained command. Inline text is complete unless user gives @path, exact files, a diff, or direct read/search. all/broad >6 without approval outputs exact denial with no tools/commentary. The coordinator must proactively inspect native live-agent state before any reviewer spawn, close every visible stale Council child, wait for close results, re-check state, and only then choose wave size. If state is clean/root-only, attempt the full selected roster when it is 6 or fewer. Spawn failures with no receiver thread are pending-capacity retries, not launched reviewers and not final missing reviewers. Raw child notifications are private input only and must never be echoed. Do not emit JSON, `<subagent_notification>`, `/root/...`, or child payload text as user-visible content. Progress lines that claim checking/verifying/retrying/closing/waiting must be followed by the matching native tool call. `close_agent` status `running` is non-terminal: no final synthesis, next-wave spawn, or missing/failed marking is allowed until an actual wait/follow-up/close/list tool call resolves or observes that reviewer.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -32,8 +32,7 @@
     "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
     "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
     "defaultPrompt": [
-      "For $council, first load the local SKILL. If any setup plan or skill-use announcement is unavoidable, the first visible line must start exactly `Council progress:`.",
-      "Never write bare prefaces like `Using council`, `Loading Council rules`, `Load Council rules first`, or `Checking live agents`.",
+      "For $council, first load the local SKILL. One initial setup line is acceptable; after that, visible non-final status lines must start `Council progress:`.",
       "When reading the SKILL, do not run cd, pwd, ls, find, rg, or chained shell commands; use only the direct installed SKILL read.",
       "Never call web_search/browser/search for Council.",
       "Before spawning, inspect native live-agent state, close stale Council children, and re-check state.",

@@ -2,21 +2,18 @@
 name: council
 description: >-
   Use when the user invokes $council, $council:council, Council review, or
-  Council debate. FIRST ACTION: load this SKILL. Any visible setup/status/plan
-  line must start `Council progress:`; unprefixed `Load Council rules first` is
-  invalid. No final output after `close_agent` status `running`; recover with
-  wait/follow-up/close/list first. Strict native Council: bounded input, no
-  discovery without exact/direct input, broad >6 denial, high-effort reviewers.
+  Council debate. FIRST ACTION: load this SKILL. Inline text is complete unless
+  exact/direct input is supplied; no memory/repo/git/local/Claude/web discovery.
+  Broad >6 without approval outputs exact denial. No final output after
+  `close_agent` status `running`; recover with wait/follow-up/close/list first.
 ---
 
 # Council
 
-Never answer solo. If a skill-use announcement is unavoidable, first visible
-line starts exactly `Council progress:`. Never emit bare prefaces like `Using
-council`, `Loading Council rules`, `Load Council rules first`, or `Spawning
-reviewers`. Do not emit unprefixed setup plans; say them as `Council progress:`
-or stay silent.
-Empty-query `web_search` is still forbidden.
+Never answer solo. An initial setup line is acceptable. After the initial setup,
+visible non-final status lines start with `Council progress:`. After that
+initial setup, Never emit bare prefaces like `Using council`, `Loading Council
+rules`, or `Spawning reviewers`. Empty-query `web_search` is still forbidden.
 
 ## Scope
 

@@ -47,7 +47,6 @@ SKILL_NEEDLES = [
     "<subagent_notification>",
     "Never emit bare prefaces",
     "Never use shell/command execution for live-agent state",
-    "skill-use announcement is unavoidable",
     "After any `running` close result",
     "Never copy, quote, summarize-by-pasting, or echo",
     "FIRST ACTION: load this SKILL",
@@ -228,7 +227,24 @@ def prompt_texts(events: list[dict]) -> list[str]:
     return prompts
 
 
-def first_streaming_violation(event: dict) -> str | None:
+def is_allowed_initial_setup(events: list[dict], current_index: int, text: str) -> bool:
+    if not text or text.startswith("Council progress:"):
+        return False
+    if text.startswith("# Council review:") or text.startswith("Council not run:"):
+        return False
+    if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
+        return False
+    for prior in events[:current_index]:
+        item_type = prior.get("item", {}).get("type")
+        if item_type in {"agent_message", "command_execution", "collab_tool_call", "web_search", "browser"}:
+            prior_text = prior.get("item", {}).get("text") or ""
+            if item_type == "agent_message" and is_runtime_child_transport(prior_text):
+                continue
+            return False
+    return True
+
+
+def first_streaming_violation(event: dict, allow_initial_setup: bool = False) -> str | None:
     item = event.get("item", {})
     item_type = item.get("type")
     if item_type == "agent_message":
@@ -239,6 +255,8 @@ def first_streaming_violation(event: dict) -> str | None:
             return None
         if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
             return "raw child transport leaked into visible message"
+        if allow_initial_setup:
+            return None
         if not text.startswith("Council progress:"):
             return f"non-Council progress status line: {text[:120]}"
         return None
@@ -262,6 +280,7 @@ def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | N
         process.stdin.write(input_text.encode())
         process.stdin.close()
     assert process.stdout is not None
+    allow_initial_setup = True
     with output.open("wb") as stdout:
         for line in process.stdout:
             stdout.write(line)
@@ -270,7 +289,8 @@ def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | N
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            violation = first_streaming_violation(event)
+            item_type = event.get("item", {}).get("type")
+            violation = first_streaming_violation(event, allow_initial_setup=allow_initial_setup)
             if violation:
                 process.terminate()
                 try:
@@ -279,6 +299,10 @@ def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | N
                     process.kill()
                     process.wait()
                 fail(violation)
+            if item_type in {"agent_message", "command_execution", "collab_tool_call", "web_search", "browser"}:
+                text = event.get("item", {}).get("text") or ""
+                if not (item_type == "agent_message" and is_runtime_child_transport(text)):
+                    allow_initial_setup = False
     return_code = process.wait()
     if return_code:
         raise subprocess.CalledProcessError(return_code, command)
@@ -578,7 +602,7 @@ def check_review_run(evidence: Path, name: str) -> None:
                 continue
             if text.startswith("# Council review:") or text.startswith("Council not run:"):
                 continue
-            if not text.startswith("Council progress:"):
+            if not text.startswith("Council progress:") and not is_allowed_initial_setup(events, index, text):
                 bad_status.append(text[:120])
             continue
         if item.get("type") == "command_execution":
@@ -697,7 +721,7 @@ def command_evidence(args: argparse.Namespace) -> None:
                 continue
             if text.startswith("# Council review:") or text.startswith("Council not run:"):
                 continue
-            if not text.startswith("Council progress:"):
+            if not text.startswith("Council progress:") and not is_allowed_initial_setup(events, index, text):
                 bad_status.append(text[:120])
             continue
         if item.get("type") == "command_execution":
