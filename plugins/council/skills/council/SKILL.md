@@ -1,10 +1,10 @@
 ---
 name: council
 description: >-
-  Use when user asks $council/review/debate. Must read SKILL and spawn native
-  reviewers; never answer solo. Inline text is complete unless @path/files/diff.
-  No MEMORY.md/repo/git/prior/Claude/local lookup. Broad>6 no approval: output
-  only `Council not run: broad council approval not granted.`
+  Use when user asks $council/review/debate. Broad>6 no approval: output only
+  `Council not run: broad council approval not granted.` Other runs must read
+  SKILL, spawn native reviewers, never answer solo. Inline text is complete
+  unless @path/files/diff. No MEMORY.md/repo/git/prior/Claude/local lookup.
 ---
 
 # Council of Experts
