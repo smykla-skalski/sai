@@ -7,7 +7,8 @@ description: >-
   `/.codex/plugins/cache/sai/council/` and end `/skills/council/SKILL.md`.
   Direct read must not include `cd`, `pwd`, `&&`, `;`, `ls`, `find`, or `rg`.
   Never use repo-local paths. If unavailable, stop exactly
-  `Council not run: skill unavailable.` Non-final lines start `Council progress:`.
+  `Council not run: skill unavailable.` At most one pre-tool message, exact
+  `Council progress:` line only. Non-final lines start `Council progress:`.
 ---
 
 # Council
@@ -22,10 +23,10 @@ file unavailable`, never mention alternate paths, and never continue from
 `loaded session context`. If the loaded body and direct installed read are
 unavailable, stop exactly: `Council not run: skill unavailable.`
 
-Do not emit setup narrative. Every visible non-final line starts
-`Council progress:`. The first progress line, if needed, is exactly:
+At most one pre-tool message is allowed. If emitted, it is exactly:
 `Council progress: load rules, inspect live agents, clear stale council work,
-then run largest safe reviewer wave if root-only.` Never emit bare prefaces like
+then run largest safe reviewer wave if root-only.` A second pre-tool message is
+forbidden. Every later visible non-final line starts `Council progress:`. Never emit bare prefaces like
 `Using council`, `Loading Council rules`, `Pulling the council skill`, or
 `Spawning reviewers`. The first tool after the optional direct SKILL read must be
 native agent-state cleanup, not filesystem skill discovery. Never
