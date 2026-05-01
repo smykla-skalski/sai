@@ -5,7 +5,8 @@ description: >-
   Council debate. The loaded SKILL body is authority; never read or guess
   SKILL.md cache paths. If the body is unavailable, stop exactly
   `Council not run: skill unavailable.` Never fallback to loaded session context.
-  Broad >6 without approval outputs exact denial. Recover running closes first.
+  No setup narrative; visible non-final lines start `Council progress:`. Broad
+  >6 without approval outputs exact denial. Recover running closes first.
 ---
 
 # Council
@@ -16,13 +17,14 @@ paths. Never say `skill file unavailable`, never mention cache paths, and never
 continue from `loaded session context`. If this loaded body is unavailable
 enough to run, stop exactly: `Council not run: skill unavailable.`
 
-If an initial setup line is emitted, it is exactly:
+Do not emit setup narrative. Every visible non-final line starts
+`Council progress:`. The first progress line, if needed, is exactly:
 `Council progress: load rules, inspect live agents, clear stale council work,
-then run largest safe reviewer wave if root-only.` After that, visible non-final
-status lines start with `Council progress:`. Never emit bare prefaces like
-`Using council`, `Loading Council rules`, or `Spawning reviewers`. The first tool
-after setup must be native agent-state cleanup, not filesystem skill discovery.
-Never web_search/browser/search. Empty-query `web_search` is still forbidden.
+then run largest safe reviewer wave if root-only.` Never emit bare prefaces like
+`Using council`, `Loading Council rules`, `Pulling the council skill`, or
+`Spawning reviewers`. The first tool after setup must be native agent-state
+cleanup, not filesystem skill discovery. Never web_search/browser/search.
+Empty-query `web_search` is still forbidden.
 
 ## Scope
 
