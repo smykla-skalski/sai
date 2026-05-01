@@ -1,11 +1,12 @@
 ---
 name: council
 description: >-
-  Use when $council/review/debate requested. all/broad>6 without same-turn approval:
-  do not read SKILL or comment; output only `Council not run: broad council approval
-  not granted.` Else read SKILL first, no preface/MEMORY/prior/repo, spawn reviewers,
-  high reasoning, complete material per reviewer, status `Council progress:`,
-  never solo or raw child output.
+  Use only for $council/review/debate. Inline text is complete; no MEMORY,
+  prior sessions, repo/local-file search, git history, Claude assets, or web
+  unless user gave @path, exact files, diff, or direct read/search. all/broad>6
+  without same-turn approval: output only `Council not run: broad council approval
+  not granted.` Else read SKILL first, use high reasoning, complete material per
+  reviewer, status `Council progress:`, never solo or raw child output.
 ---
 
 # Council

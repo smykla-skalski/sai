@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "2.0.69",
-  "description": "Run Codex council reviews with high-effort native reviewers, complete bounded material, and strict inline boundaries.",
+  "version": "2.0.70",
+  "description": "Run Codex council reviews only on supplied inline text or explicit files; no memory, repo, git, Claude asset, local discovery, or raw child output.",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Strict $council/review/debate. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first, then spawn high-effort native reviewers with complete bounded material; no memory/prior-run/repo discovery or raw child output.",
+    "longDescription": "Strict $council/review/debate. Inline text is complete unless the user gives @path, exact files, a diff, or direct read/search. No memory, prior sessions, repo/local-file discovery, git history, Claude assets, web, or raw child output. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first, then spawn high-effort native reviewers with complete bounded material.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
