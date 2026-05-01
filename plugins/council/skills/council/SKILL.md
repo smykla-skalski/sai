@@ -8,8 +8,11 @@ description: >-
   web, or shell-based agent probing unless user gave @path, exact files, diff, or
   direct read/search. all/broad>6 without same-turn approval: output only
   `Council not run: broad council approval not granted.` Else read SKILL first
-  silently, use high reasoning, complete material per reviewer, visible progress
-  only as `Council progress:`, never solo or raw child output.
+  silently. Before spawn, use actual native list_agents. If no actual
+  list_agents tool call appears, spawn exactly one reviewer per wave. Do not
+  claim capacity preflight without that tool call. Use high reasoning, complete
+  material per reviewer, visible progress only as `Council progress:`, never
+  solo or raw child output.
 ---
 
 # Council

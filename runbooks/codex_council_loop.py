@@ -244,11 +244,11 @@ def command_smoke(args: argparse.Namespace) -> None:
     runs = [
         (
             "normal",
-            '$council debate Council validation smoke. Inline material only: use exactly 3 reviewers to review the rule "always run all selected reviewers with complete bounded material" and report only material blockers.',
+            '$council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. If no structured list_agents tool call appears before spawning, run the 3 reviewers as one-reviewer waves.',
         ),
         (
             "prefixed",
-            "$council:council debate Council validation smoke. Inline material only: use exactly 3 reviewers to verify the plugin-prefixed alias follows the same bounded-review behavior.",
+            "$council:council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to verify the plugin-prefixed alias follows the same bounded-review behavior. If no structured list_agents tool call appears before spawning, run the 3 reviewers as one-reviewer waves.",
         ),
         (
             "broad",
