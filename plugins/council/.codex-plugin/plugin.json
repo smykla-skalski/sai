@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "2.0.68",
-  "description": "Run Codex council reviews with native reviewers and strict inline boundaries.",
+  "version": "2.0.69",
+  "description": "Run Codex council reviews with high-effort native reviewers, complete bounded material, and strict inline boundaries.",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Strict $council/review/debate. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first, then spawn native reviewers.",
+    "longDescription": "Strict $council/review/debate. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first, then spawn high-effort native reviewers with complete bounded material; no memory/prior-run/repo discovery or raw child output.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -32,9 +32,9 @@
     "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
     "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $council for bounded reviewer-agent reviews; inline text is full scope.",
+      "Use $council for bounded high-effort reviewer-agent reviews; inline text is full scope.",
       "$council all needs explicit >6 reviewer approval.",
-      "$council debate compares hard tradeoffs."
+      "$council never sends shorthand material or leaks raw child payloads."
     ],
     "brandColor": "#7C3AED"
   }

@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "description": "Run council reviews only when explicitly requested. Copilot /council keeps moderation in-session, handles follow-up challenges without raw reviewer leaks, and requires explicit AskUserQuestion approval for runs above 6 reviewers.",
-  "version": "2.0.55",
+  "description": "Run council reviews only when explicitly requested. Council keeps moderation in-session, sends complete bounded material to high-effort reviewers, handles follow-up challenges without raw reviewer leaks, and requires explicit approval for runs above 6 reviewers.",
+  "version": "2.0.69",
   "author": {
     "name": "Smykla Skalski Labs"
   },

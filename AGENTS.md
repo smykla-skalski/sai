@@ -24,7 +24,7 @@ Use this loop for functional Codex changes under `plugins/council/`, `codex/agen
 5. For functional Codex skill/plugin changes, bump the Codex plugin version in `plugins/council/.codex-plugin/plugin.json` in the same commit. Keep package versions intentionally aligned unless there is a documented reason not to.
 6. Commit the implementation first with `git commit -sS` before starting the live improvement loop.
 7. Release through the real marketplace path: push the signed commit, keep the `sai` marketplace configured as a Git marketplace, run `codex plugin marketplace upgrade sai`, then verify `~/.codex/plugins/cache/sai/council/<version>/` contains the bumped version and the changed skill text. Do not switch `sai` to a local marketplace path for validation; local-path registration can leave the versioned cache stale and cannot be upgraded with `codex plugin marketplace upgrade`.
-8. Check the local Codex feature surface before live validation: `codex --version` and `codex features list`. Enabled under-development features are in scope, not optional. When `multi_agent_v2`, `enable_fanout`, `child_agents_md`, or `runtime_metrics` are enabled, install and test the skill with those paths active instead of only the legacy single-agent path. Demote a feature only when the improvement loop proves a negative impact, and record the evidence.
+8. Check the local Codex feature surface before live validation: `codex --version` and `codex features list`. Enabled under-development features are in scope, not optional. When `multi_agent_v2`, `enable_fanout`, `child_agents_md`, or `runtime_metrics` are enabled, install and test the skill with those paths active instead of only the legacy single-agent path. Reviewer agents must run at high reasoning effort wherever the agent surface supports it; do not leave Council reviewer definitions at `medium` unless the live improvement loop proves high has a negative impact and the evidence is recorded. Demote a feature only when the improvement loop proves a negative impact, and record the evidence.
 9. Use the cheapest practical model for repeated validation and smoke loops. Escalate only when the cheap model cannot diagnose or reproduce a real failure.
 10. Run Codex validations from the real target repository/cwd when behavior depends on repo context, not from `sai`.
 11. Exercise the actual Council paths:
@@ -33,9 +33,18 @@ Use this loop for functional Codex changes under `plugins/council/`, `codex/agen
    - broad `$council all ...` stop/approval behavior
    - follow-up challenge via actual Codex resume/thread continuation, not a fresh fake session
    - stalled reviewer recovery, reviewer nudging, and raw reviewer output rejection
-12. Inspect Codex session artifacts and installed plugin files to prove what happened: agents-v2/fan-out path was used when available, subagents spawned, parent stayed alive after fan-out, `wait_agent`/`followup_task` supervision happened without invalid `list_agents` filesystem prefixes, liveness chatter used `Council progress:`, runtime child nicknames did not leak as reviewer identities, raw reviewer blocks stayed internal, and final output used the fixed Council headings as integrated synthesis.
+12. Inspect Codex session artifacts and installed plugin files to prove what happened: agents-v2/fan-out path was used when available, subagents spawned, every reviewer received the full bounded material rather than shorthand such as `same as other reviewers`, reviewer agents did not read memory, prior sessions, persona dossiers, git history, broad repo context, or local discovery surfaces outside exact assignment paths, parent stayed alive after fan-out, `wait_agent`/`followup_task` supervision happened without invalid `list_agents` filesystem prefixes, liveness chatter used `Council progress:`, runtime child nicknames did not leak as reviewer identities, raw reviewer blocks stayed internal, and final output used the fixed Council headings as integrated synthesis.
 13. Treat Codex hooks as lifecycle guardrails only. Do not rely on hooks for council orchestration or pre-tool enforcement.
 14. If validation exposes a prompt or packaging bug, patch it, bump again, commit again with `git commit -sS`, reinstall that bumped version, and rerun the relevant live checks.
+15. Improvement-loop order is correctness first, score second. First find a working Council behavior even if the skill is verbose, token-expensive, or scores worse in plugin-eval. Only after live validation proves the behavior works should you run score/token-pressure passes that make the skill less verbose.
+
+### Formal process rule: working before scoring
+
+The first improvement-loop phase is to find a working solution. Do not optimize for
+plugin-eval score, brevity, token footprint, or elegance until real installed-plugin
+validation proves the Council behavior works. After that proof exists, later
+iterations may improve score by reducing verbosity while preserving the validated
+behavior.
 
 ## Codex council behavior contract
 
@@ -43,6 +52,8 @@ Use this loop for functional Codex changes under `plugins/council/`, `codex/agen
 - Codex Council uses native `spawn_agent` reviewer agents. Use all relevant current agent features, including enabled under-development agents-v2/fan-out features; do not run nested `codex exec`.
 - Broad runs above 6 reviewers require explicit current-run approval. If approval is unavailable, stop with exactly `Council not run: broad council approval not granted.`
 - Reviewer fan-out is not completion. The orchestrator must keep supervising until every selected reviewer is accepted, failed, or missing.
+- Every selected reviewer must receive the complete bounded material in its own spawn or follow-up prompt. Do not rely on child agents sharing context, and never send `same as other reviewers`, `same as assignment`, or `see prior wave`.
+- Follow-up challenge and blocker-check rounds keep the same accepted reviewer roster where possible. If agents are already closed, respawn the same slugs with the original material plus the follow-up diff/challenge; never silently reduce or swap the roster.
 - At least once per minute, classify every live reviewer as `healthy`, `drifting`, `stalled`, `blocked`, or `done`; nudge non-healthy reviewers in that same pass.
 - Sparse `Council progress:` updates are allowed when they prove the run is alive. Do not leak reviewer drafts, transport payloads, or raw `## <reviewer> review` blocks.
 
