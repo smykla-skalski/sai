@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.44",
+  "version": "2.0.47",
   "description": "Run Codex council reviews with native reviewer agents, bounded orchestration, broad-run approval gates, and supervised synthesis.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -18,7 +18,7 @@
     "code-review",
     "reviewer-agents"
   ],
-  "skills": "./skills",
+  "skills": "./codex-skills",
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run supervised Codex reviewer-agent councils",
