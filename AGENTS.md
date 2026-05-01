@@ -38,94 +38,14 @@ Use this loop for functional Codex changes under `plugins/council/`, `codex/agen
 14. If validation exposes a prompt or packaging bug, patch it, bump again, commit again with `git commit -sS`, reinstall that bumped version, and rerun the relevant live checks.
 15. Improvement-loop order is correctness first, score second. First find a working Council behavior even if the skill is verbose, token-expensive, or scores worse in plugin-eval. Only after live validation proves the behavior works should you run score/token-pressure passes that make the skill less verbose.
 
-### Formal process rule: working before scoring
+### Canonical Codex council runbook
 
-The first improvement-loop phase is to find a working solution. Do not optimize for
-plugin-eval score, brevity, token footprint, or elegance until real installed-plugin
-validation proves the Council behavior works. After that proof exists, later
-iterations may improve score by reducing verbosity while preserving the validated
-behavior.
-
-### Canonical Codex council release commands
-
-Use these commands for every Codex Council improvement loop. Do not rediscover
-equivalent CLI syntax, do not validate through a local marketplace path, and do not
-run score/verbosity optimization before the working-proof phase passes.
-
-Set the version and target repository first:
-
-```sh
-VERSION=<bumped-version>
-TARGET_REPO=/absolute/path/to/real/target/repo
-EVIDENCE_DIR=tmp/council-validation/$VERSION
-mkdir -p "$EVIDENCE_DIR"
-```
-
-Baseline and drift check from the `sai` repo:
-
-```sh
-git status -sb
-sed -n '1,180p' README.md
-sed -n '1,180p' CLAUDE.md
-sed -n '1,180p' CONTRIBUTING.md
-python3 -c 'import json,pathlib; p=pathlib.Path("."); paths=[p/"plugins/council/plugin.json",p/"plugins/council/.codex-plugin/plugin.json"]; [print(x, json.loads(x.read_text()).get("version")) for x in paths]; c=pathlib.Path.home()/".codex/plugins/cache/sai/council"; print("cache", sorted(d.name for d in c.glob("*") if d.is_dir()))'
-```
-
-Static validation before commit:
-
-```sh
-python3 -c 'import json,pathlib,tomllib; p=pathlib.Path("."); versions=[json.loads((p/"plugins/council/plugin.json").read_text())["version"],json.loads((p/"plugins/council/.codex-plugin/plugin.json").read_text())["version"]]; assert len(set(versions))==1, versions; agents=sorted((p/"codex/agents").glob("*.toml")); assert agents; bad=[a.name for a in agents if tomllib.loads(a.read_text()).get("model_reasoning_effort")!="high"]; assert not bad,bad; packaged=sorted((p/"plugins/council/agents").glob("*.agent.md")); assert len(packaged)==len(agents),(len(packaged),len(agents)); bad=[a.name for a in packaged if "model_reasoning_effort: high" not in a.read_text() or "tools: Read" not in a.read_text()]; assert not bad,bad; skill=(p/"plugins/council/skills/council/SKILL.md").read_text(); missing=[s for s in ["reasoning_effort: \"high\"","same as other reviewers","Council progress:","Council not run: broad council approval not granted."] if s not in skill]; assert not missing,missing; print("static council surface ok", versions[0], len(agents))'
-git diff --check
-```
-
-Commit, push, release, and install the real marketplace version:
-
-```sh
-git commit -sS -m "fix(council): <short behavior summary>"
-git push
-codex plugin marketplace upgrade sai
-```
-
-Installed-cache proof:
-
-```sh
-python3 -c 'import json,pathlib,sys; version=sys.argv[1]; root=pathlib.Path.home()/".codex/plugins/cache/sai/council"/version; manifest=json.loads((root/".codex-plugin/plugin.json").read_text()); assert manifest["version"]==version, manifest.get("version"); agents=sorted((root/"agents").glob("*.agent.md")); assert len(agents)==27,len(agents); bad=[p.name for p in agents if "model_reasoning_effort: high" not in p.read_text() or "tools: Read" not in p.read_text()]; assert not bad,bad; skill=(root/"skills/council/SKILL.md").read_text(); missing=[s for s in ["reasoning_effort: \"high\"","same as other reviewers","Council progress:","Council not run: broad council approval not granted."] if s not in skill]; assert not missing,missing; print("installed cache ok", root)' "$VERSION"
-codex --version
-codex features list
-```
-
-Live smoke from the real target repository. Keep the under-development agent
-features enabled when they are available:
-
-```sh
-codex exec --json --output-last-message "$EVIDENCE_DIR/normal-final.txt" --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council core-mix Council validation smoke. Inline material only: review the rule "always run all selected reviewers with complete bounded material" and report only material blockers.' > "$EVIDENCE_DIR/normal.jsonl"
-codex exec --json --output-last-message "$EVIDENCE_DIR/prefixed-final.txt" --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council:council core-mix Council validation smoke. Inline material only: verify the plugin-prefixed alias follows the same bounded-review behavior.' > "$EVIDENCE_DIR/prefixed.jsonl"
-codex exec --json --output-last-message "$EVIDENCE_DIR/broad-final.txt" --cd "$TARGET_REPO" --model gpt-5.4-mini --enable multi_agent_v2 --enable enable_fanout --enable child_agents_md --enable runtime_metrics '$council all Council validation smoke. Inline material only: this broad run has no same-turn approval and must stop.' > "$EVIDENCE_DIR/broad.jsonl"
-python3 -c 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); assert p.read_text().strip()=="Council not run: broad council approval not granted.", p.read_text(); print("broad stop ok")' "$EVIDENCE_DIR/broad-final.txt"
-codex exec resume --last --include-non-interactive --json --output-last-message "$EVIDENCE_DIR/followup-final.txt" '$council follow-up challenge: using the prior council smoke result, verify the same accepted reviewer roster is preserved or explicitly reported missing.' > "$EVIDENCE_DIR/followup.jsonl"
-```
-
-For each live run, keep the JSON event stream or session JSONL as evidence and
-inspect it before deciding the loop passed. Required proof: native reviewer
-`spawn_agent` calls happened, `wait_agent`/`followup_task` supervision happened
-when needed, fixed six-reviewer rosters did not stop after the first wave, every
-reviewer prompt carried complete bounded material, no reviewer prompt used
-`same as other reviewers`, no reviewer read memory/prior sessions/repo discovery,
-raw child payloads stayed internal, final output used the fixed Council headings,
-and runtime child nicknames did not appear as reviewer identities.
-
-Minimum evidence commands:
-
-```sh
-rg -n 'spawn_agent|wait_agent|followup_task|Council progress:|multi_agent_v2|enable_fanout|child_agents_md|runtime_metrics' "$EVIDENCE_DIR"
-rg -n 'Council not run: broad council approval not granted.' "$EVIDENCE_DIR/broad-final.txt"
-rg -n '# Council review:|## Convergence \(high-confidence signals\)|## Disagreement \(real tradeoffs the user must decide\)|## Per-reviewer top-3|## What to do next|## What we did not address' "$EVIDENCE_DIR"/*.txt
-```
-
-Only after the installed-cache proof and live working-proof pass may you run
-plugin-eval or token-pressure iterations. Those later commits must preserve the
-same live smoke behavior and rerun the release, install, cache, and live checks
-above.
+For every Codex Council improvement loop, open and follow
+`runbooks/codex-council-improvement-loop.md`. That runbook is the canonical
+process for release, installed-cache proof, live smoke checks, evidence capture,
+and the formal working-before-scoring rule. Do not rediscover equivalent CLI
+syntax, validate through a local marketplace path, or run score/verbosity
+optimization before the runbook's working-proof phase passes.
 
 ## Codex council behavior contract
 
@@ -134,6 +54,7 @@ above.
 - Broad runs above 6 reviewers require explicit current-run approval. If approval is unavailable, stop with exactly `Council not run: broad council approval not granted.`
 - Reviewer fan-out is not completion. The orchestrator must keep supervising until every selected reviewer is accepted, failed, or missing.
 - Fixed-roster modes (`core`, `core-eng`, `core-ux`, `core-mix`) always run all 6 selected reviewers. Output-focus wording such as `blockers only` must not shrink the roster or skip the second wave.
+- Wave boundaries are hard barriers. Close every terminal reviewer from the current wave and observe the close results before spawning any next-wave reviewer, so the run does not hit thread limits.
 - Every selected reviewer must receive the complete bounded material in its own spawn or follow-up prompt. Do not rely on child agents sharing context, and never send `same as other reviewers`, `same as assignment`, or `see prior wave`.
 - Final synthesis must include every mandatory Council heading, including `## Disagreement (real tradeoffs the user must decide)` even when the section says no material disagreement surfaced.
 - Follow-up challenge and blocker-check rounds keep the same accepted reviewer roster where possible. If agents are already closed, respawn the same slugs with the original material plus the follow-up diff/challenge; never silently reduce or swap the roster.

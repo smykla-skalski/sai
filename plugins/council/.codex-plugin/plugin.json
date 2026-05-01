@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.72",
+  "version": "2.0.73",
   "description": "Run Codex council reviews only on supplied inline text or explicit files; no memory, repo, git, Claude asset, local discovery, or raw child output.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -34,7 +34,7 @@
     "defaultPrompt": [
       "Use $council for bounded high-effort reviewer-agent reviews; inline text is full scope.",
       "$council all needs explicit >6 reviewer approval.",
-      "$council never truncates fixed rosters, skips mandatory headings, sends shorthand material, or leaks raw child payloads."
+      "$council never truncates fixed rosters, skips mandatory headings, queues next-wave spawns before closes, sends shorthand material, or leaks raw child payloads."
     ],
     "brandColor": "#7C3AED"
   }
