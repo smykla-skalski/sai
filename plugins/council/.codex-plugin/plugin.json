@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.65",
+  "version": "2.0.66",
   "description": "Run Codex council reviews with native reviewers and strict inline boundaries.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Strict $council/review/debate. Inline forbids memory/prior/repo lookup before SKILL. all/broad >6 without approval outputs the denial exactly. Otherwise load SKILL and spawn native reviewers.",
+    "longDescription": "Strict $council/review/debate. Inline: no preface, memory, prior, or repo before SKILL. all/broad >6 without approval outputs exact denial. Otherwise load SKILL and spawn native reviewers.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
