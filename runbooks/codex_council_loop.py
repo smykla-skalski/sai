@@ -51,6 +51,7 @@ SKILL_NEEDLES = [
     "Never copy, quote, summarize-by-pasting, or echo",
     "FIRST ACTION: load this SKILL",
     "call no web/search/browser/tool",
+    "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "first Council orchestration tool call before `spawn_agent` must be `list_agents`",
     "Do not spawn into a known full session",
