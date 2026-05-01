@@ -2,10 +2,11 @@
 name: council
 description: >-
   Use when the user invokes $council, $council:council, Council review, or
-  Council debate. FIRST ACTION: load this SKILL. Inline text is complete unless
-  exact/direct input is supplied; no memory/repo/git/local/Claude/web discovery.
-  Broad >6 without approval outputs exact denial. No final output after
-  `close_agent` status `running`; recover with wait/follow-up/close/list first.
+  Council debate. FIRST ACTION: load this SKILL. One setup line is ok, but the
+  first tool is direct SKILL read or native agent cleanup; never
+  web_search/browser/search. Broad >6 without approval outputs exact denial. No
+  final output after `close_agent` status `running`; recover with
+  wait/follow-up/close/list first.
 ---
 
 # Council
@@ -13,7 +14,8 @@ description: >-
 Never answer solo. An initial setup line is acceptable. After the initial setup,
 visible non-final status lines start with `Council progress:`. After that
 initial setup, Never emit bare prefaces like `Using council`, `Loading Council
-rules`, or `Spawning reviewers`. Empty-query `web_search` is still forbidden.
+rules`, or `Spawning reviewers`. The first tool must be a direct installed SKILL
+read or native agent-state cleanup, never web_search/browser/search. Empty-query `web_search` is still forbidden.
 
 ## Scope
 
