@@ -54,6 +54,9 @@ SKILL_NEEDLES = [
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "first Council orchestration tool call before `spawn_agent` must be `list_agents`",
+    "does not appear as an actual structured tool result, capacity is unknown",
+    "Do not say capacity was preflighted unless the tool call happened",
+    "Unknown or constrained capacity means one reviewer per wave",
     "Do not spawn into a known full session",
 ]
 
@@ -326,21 +329,50 @@ def has_close_recovery(events: list[dict], start_index: int) -> bool:
     return False
 
 
-def ensure_list_agents_before_spawn(events: list[dict], name: str) -> None:
+def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
     first_spawn_index: int | None = None
+    list_agents_before_spawn = False
+    active_agents: set[str] = set()
+    max_active_without_preflight = 0
+    preflight_claims_without_tool: list[str] = []
+
     for index, event in enumerate(events):
         item = event.get("item", {})
-        if item.get("type") == "collab_tool_call" and item.get("tool") == "spawn_agent":
-            first_spawn_index = index
-            break
+        if item.get("type") == "agent_message":
+            text = item.get("text") or ""
+            if "capacity preflight" in text.lower():
+                preflight_claims_without_tool.append(text[:120])
+            continue
+        if item.get("type") != "collab_tool_call":
+            continue
+
+        tool = item.get("tool")
+        if tool == "list_agents" and first_spawn_index is None:
+            list_agents_before_spawn = True
+            preflight_claims_without_tool.clear()
+            continue
+        if tool == "spawn_agent":
+            if first_spawn_index is None:
+                first_spawn_index = index
+            for agent_id in item.get("receiver_thread_ids") or []:
+                if isinstance(agent_id, str):
+                    active_agents.add(agent_id)
+            if not list_agents_before_spawn:
+                max_active_without_preflight = max(max_active_without_preflight, len(active_agents))
+            continue
+        if tool == "close_agent":
+            for agent_id in item.get("receiver_thread_ids") or []:
+                if isinstance(agent_id, str):
+                    active_agents.discard(agent_id)
+
     if first_spawn_index is None:
         return
-
-    for event in events[:first_spawn_index]:
-        item = event.get("item", {})
-        if item.get("type") == "collab_tool_call" and item.get("tool") == "list_agents":
-            return
-    fail(f"{name} spawned reviewers before native list_agents capacity preflight")
+    if list_agents_before_spawn:
+        return
+    if preflight_claims_without_tool:
+        fail(f"{name} claimed capacity preflight without native list_agents tool: {preflight_claims_without_tool[:2]}")
+    if max_active_without_preflight > 1:
+        fail(f"{name} spawned {max_active_without_preflight} concurrent reviewers without capacity preflight")
 
 
 def command_evidence(args: argparse.Namespace) -> None:
@@ -391,7 +423,7 @@ def command_evidence(args: argparse.Namespace) -> None:
     if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
         fail("shorthand reviewer material leaked into evidence stream")
     for name, file_events in events_by_file.items():
-        ensure_list_agents_before_spawn(file_events, name)
+        ensure_capacity_safe_spawns(file_events, name)
 
     bad_prompts: list[str] = []
     bad_status: list[str] = []
