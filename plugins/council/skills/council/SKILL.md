@@ -5,8 +5,8 @@ description: >-
   Council debate. Use loaded SKILL body or one direct installed
   `skills/council/SKILL.md` read. Direct read path must contain
   `/.codex/plugins/cache/sai/council/` and end `/skills/council/SKILL.md`.
-  Direct read must not include `cd`, `pwd`, `&&`, `;`, `ls`, `find`, or `rg`.
-  Never use repo-local paths. If unavailable, stop exactly
+  `cd <cwd> && sed -n ... <path>` is valid. Do not use `pwd`, `ls`, `find`,
+  `rg`, `cat`, multiple `&&`, or `;`. Never use repo-local paths. If unavailable, stop exactly
   `Council not run: skill unavailable.` At most one pre-tool message, exact
   `Council progress:` line only. Non-final lines start `Council progress:`.
 ---
@@ -16,12 +16,13 @@ description: >-
 Never answer solo. Use this loaded SKILL.md body or one direct installed
 `skills/council/SKILL.md` read. A direct read is allowed only when the path
 contains `/.codex/plugins/cache/sai/council/` and ends
-`/skills/council/SKILL.md`. That direct read must not include `cd`, `pwd`, `&&`,
-`;`, `ls`, `find`, or `rg`. Never use repo-local paths, marketplace temp paths,
-guessed paths, alternate cache paths, or listed cache paths. Never say `skill
-file unavailable`, never mention alternate paths, and never continue from
-`loaded session context`. If the loaded body and direct installed read are
-unavailable, stop exactly: `Council not run: skill unavailable.`
+`/skills/council/SKILL.md`. `cd <cwd> && sed -n ... <path>` is valid, but do not
+use `pwd`, `ls`, `find`, `rg`, `cat`, multiple `&&`, or `;`. Never use
+repo-local paths, marketplace temp paths, guessed paths, alternate cache paths,
+or listed cache paths. Never say `skill file unavailable`, never mention
+alternate paths, and never continue from `loaded session context`. If the loaded
+body and direct installed read are unavailable, stop exactly:
+`Council not run: skill unavailable.`
 
 At most one pre-tool message is allowed. If emitted, it is exactly:
 `Council progress: load rules, inspect live agents, clear stale council work,

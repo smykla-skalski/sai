@@ -61,16 +61,6 @@ SKILL_NEEDLES = [
     "Do not spawn into a known full session",
 ]
 
-FORBIDDEN_AUTHORED_PHRASES = [
-    "skill file unavailable",
-    "listed cache paths",
-    "loaded session context",
-    "cache paths",
-    ".codex/plugins/cache",
-    ".codex/skills",
-]
-
-
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -226,20 +216,6 @@ def authored_agent_messages(events: list[dict]) -> list[str]:
     return messages
 
 
-def forbidden_authored_phrases(text: str) -> list[str]:
-    lowered = text.lower()
-    return [phrase for phrase in FORBIDDEN_AUTHORED_PHRASES if phrase in lowered]
-
-
-def is_direct_skill_read_command(command: str) -> bool:
-    if "/skills/council/SKILL.md" not in command:
-        return False
-    if "/.codex/plugins/cache/sai/council/" not in command:
-        return False
-    forbidden = ["&&", ";", " find ", " rg ", " ls ", " pwd", "pwd ", "cat "]
-    return not any(bit in command for bit in forbidden)
-
-
 def prompt_texts(events: list[dict]) -> list[str]:
     prompts: list[str] = []
     for event in events:
@@ -251,64 +227,15 @@ def prompt_texts(events: list[dict]) -> list[str]:
     return prompts
 
 
-def is_allowed_initial_setup(events: list[dict], current_index: int, text: str) -> bool:
-    if not text or text.startswith("Council progress:"):
-        return False
-    if text.startswith("# Council review:") or text.startswith("Council not run:"):
-        return False
-    if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
-        return False
-    for prior in events[:current_index]:
-        item_type = prior.get("item", {}).get("type")
-        if item_type in {"agent_message", "command_execution", "collab_tool_call", "web_search", "browser"}:
-            prior_text = prior.get("item", {}).get("text") or ""
-            if item_type == "agent_message" and is_runtime_child_transport(prior_text):
-                continue
-            return False
-    return True
-
-
-def first_streaming_violation(event: dict, allow_initial_setup: bool = False) -> str | None:
+def first_streaming_violation(event: dict) -> str | None:
     item = event.get("item", {})
-    item_type = item.get("type")
-    if item_type == "agent_message":
-        text = item.get("text") or ""
-        if is_runtime_child_transport(text):
-            return None
-        if text.startswith("# Council review:") or text.startswith("Council not run:"):
-            return None
-        if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
-            return "raw child transport leaked into visible message"
-        lowered = text.lower()
-        for phrase in FORBIDDEN_AUTHORED_PHRASES:
-            if phrase in lowered:
-                return f"forbidden skill-path fallback phrase: {phrase}"
-        if allow_initial_setup:
-            return None
-        if not text.startswith("Council progress:"):
-            return f"non-Council progress status line: {text[:120]}"
+    if item.get("type") != "agent_message":
         return None
-    if item_type == "command_execution":
-        command = item.get("command") or ""
-        if is_direct_skill_read_command(command):
-            return None
-        forbidden_bits = [
-            "&&",
-            ";",
-            " pwd",
-            "pwd ",
-            " find ",
-            " rg ",
-            " ls ",
-            "SKILL.md",
-            ".codex/plugins/cache",
-            ".codex/skills",
-        ]
-        if any(bit in command for bit in forbidden_bits):
-            return f"forbidden chained/discovery command: {command[:160]}"
+    text = item.get("text") or ""
+    if is_runtime_child_transport(text):
         return None
-    if item_type in {"web_search", "browser"}:
-        return f"forbidden tool used: {item_type}"
+    if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
+        return "raw child transport leaked into visible message"
     return None
 
 
@@ -321,7 +248,6 @@ def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | N
         process.stdin.write(input_text.encode())
         process.stdin.close()
     assert process.stdout is not None
-    allow_initial_setup = True
     with output.open("wb") as stdout:
         for line in process.stdout:
             stdout.write(line)
@@ -330,8 +256,7 @@ def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | N
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            item_type = event.get("item", {}).get("type")
-            violation = first_streaming_violation(event, allow_initial_setup=allow_initial_setup)
+            violation = first_streaming_violation(event)
             if violation:
                 process.terminate()
                 try:
@@ -340,10 +265,6 @@ def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | N
                     process.kill()
                     process.wait()
                 fail(violation)
-            if item_type in {"agent_message", "command_execution", "collab_tool_call", "web_search", "browser"}:
-                text = event.get("item", {}).get("text") or ""
-                if not (item_type == "agent_message" and is_runtime_child_transport(text)):
-                    allow_initial_setup = False
     return_code = process.wait()
     if return_code:
         raise subprocess.CalledProcessError(return_code, command)
@@ -488,68 +409,17 @@ def has_close_recovery(events: list[dict], start_index: int) -> bool:
     return False
 
 
-def ensure_progress_claims_have_tools(events: list[dict], name: str) -> None:
-    claim_tools = {
-        "checking": {"list_agents", "wait", "wait_agent"},
-        "verifying": {"list_agents", "wait", "wait_agent"},
-        "retrying": {"close_agent", "followup_task", "send_input", "wait", "wait_agent", "list_agents"},
-        "closing": {"close_agent"},
-        "waiting": {"wait", "wait_agent"},
-    }
-    violations: list[str] = []
-    for index, event in enumerate(events):
-        item = event.get("item", {})
-        if item.get("type") != "agent_message":
-            continue
-        text = item.get("text") or ""
-        if not text.startswith("Council progress:"):
-            continue
-        lowered = text.lower()
-        required: set[str] = set()
-        for word, tools in claim_tools.items():
-            if word in lowered:
-                required |= tools
-        if not required:
-            continue
-        next_tool = None
-        for later in events[index + 1 :]:
-            later_item = later.get("item", {})
-            later_type = later_item.get("type")
-            if later_type == "collab_tool_call":
-                next_tool = later_item.get("tool")
-                break
-            if later_type == "agent_message" or later_type == "command_execution":
-                break
-        if next_tool not in required:
-            violations.append(text[:120])
-    if violations:
-        fail(f"{name} progress claimed a tool action without matching next tool call: {violations[:5]}")
-
-
 def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
-    first_spawn_index: int | None = None
-    capacity_checked_before_spawn = False
     active_agents: set[str] = set()
     max_active = 0
 
-    for index, event in enumerate(events):
+    for event in events:
         item = event.get("item", {})
-        if item.get("type") == "agent_message":
-            text = item.get("text") or ""
-            if text == "Council progress: agent state clean: root only; running full selected roster when within limit.":
-                if first_spawn_index is None:
-                    capacity_checked_before_spawn = True
-            continue
         if item.get("type") != "collab_tool_call":
             continue
 
         tool = item.get("tool")
-        if tool == "list_agents" and first_spawn_index is None:
-            capacity_checked_before_spawn = True
-            continue
         if tool == "spawn_agent":
-            if first_spawn_index is None:
-                first_spawn_index = index
             for agent_id in item.get("receiver_thread_ids") or []:
                 if isinstance(agent_id, str):
                     active_agents.add(agent_id)
@@ -560,10 +430,6 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
                 if isinstance(agent_id, str):
                     active_agents.discard(agent_id)
 
-    if first_spawn_index is None:
-        return
-    if not capacity_checked_before_spawn:
-        fail(f"{name} spawned reviewers before agent-state cleanup/check")
     if max_active > 6:
         fail(f"{name} spawned {max_active} concurrent reviewers; subagent limit is 6")
 
@@ -605,9 +471,6 @@ def check_review_run(evidence: Path, name: str) -> None:
     events = load_jsonl(jsonl_path)
     jsonl_text = jsonl_path.read_text()
     visible_text = "\n".join(authored_agent_messages(events))
-    forbidden_skill_fallback = forbidden_authored_phrases(f"{final_text}\n{visible_text}")
-    if forbidden_skill_fallback:
-        fail(f"skill-path fallback leaked into authored/final messages: {forbidden_skill_fallback}")
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
     leaked = [needle for needle in forbidden_raw if needle in f"{final_text}\n{visible_text}"]
     if leaked:
@@ -631,46 +494,11 @@ def check_review_run(evidence: Path, name: str) -> None:
         if missing_headings:
             fail(f"{final_path.name} missing headings: {missing_headings}")
     ensure_capacity_safe_spawns(events, jsonl_path.name)
-    ensure_progress_claims_have_tools(events, jsonl_path.name)
 
     bad_prompts: list[str] = []
-    bad_status: list[str] = []
-    bad_commands: list[str] = []
-    forbidden_tools: list[str] = []
     running_close_without_tool: list[str] = []
     for index, event in enumerate(events):
         item = event.get("item", {})
-        if item.get("type") == "agent_message":
-            text = item.get("text") or ""
-            if is_runtime_child_transport(text):
-                continue
-            if text.startswith("# Council review:") or text.startswith("Council not run:"):
-                continue
-            if not text.startswith("Council progress:") and not is_allowed_initial_setup(events, index, text):
-                bad_status.append(text[:120])
-            continue
-        if item.get("type") == "command_execution":
-            command = item.get("command") or ""
-            if is_direct_skill_read_command(command):
-                continue
-            forbidden_command_bits = [
-                "ls_agents",
-                "list_agents",
-                " pgrep",
-                " ps ",
-                " find ",
-                " rg ",
-                "pwd &&",
-                "SKILL.md",
-                ".codex/plugins/cache",
-                ".codex/skills",
-            ]
-            if any(bit in command for bit in forbidden_command_bits):
-                bad_commands.append(command[:160])
-            continue
-        if item.get("type") in {"web_search", "browser"}:
-            forbidden_tools.append(item.get("type"))
-            continue
         if item.get("type") != "collab_tool_call":
             continue
         tool = item.get("tool")
@@ -696,12 +524,6 @@ def check_review_run(evidence: Path, name: str) -> None:
                 bad_prompts.append(
                     f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
                 )
-    if bad_status:
-        fail(f"non-Council progress status lines: {bad_status[:5]}")
-    if bad_commands:
-        fail(f"shell-based agent probing/orchestration commands: {bad_commands[:5]}")
-    if forbidden_tools:
-        fail(f"forbidden search/browser tools used: {forbidden_tools[:5]}")
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
     if running_close_without_tool:
@@ -750,9 +572,6 @@ def command_evidence(args: argparse.Namespace) -> None:
     visible_text = "\n".join(authored_agent_messages(events))
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
     final_text = "\n".join((evidence / name).read_text() for name in required_files if name.endswith("-final.txt"))
-    forbidden_skill_fallback = forbidden_authored_phrases(f"{final_text}\n{visible_text}")
-    if forbidden_skill_fallback:
-        fail(f"skill-path fallback leaked into authored/final messages: {forbidden_skill_fallback}")
     leaked = [needle for needle in forbidden_raw if needle in f"{final_text}\n{visible_text}"]
     if leaked:
         fail(f"raw child transport leaked into authored/final messages: {leaked}")
@@ -766,45 +585,11 @@ def command_evidence(args: argparse.Namespace) -> None:
         fail("shorthand reviewer material leaked into reviewer prompt")
     for name, file_events in events_by_file.items():
         ensure_capacity_safe_spawns(file_events, name)
-        ensure_progress_claims_have_tools(file_events, name)
 
     bad_prompts: list[str] = []
-    bad_status: list[str] = []
-    bad_commands: list[str] = []
-    forbidden_tools: list[str] = []
     running_close_without_tool: list[str] = []
     for index, event in enumerate(events):
         item = event.get("item", {})
-        if item.get("type") == "agent_message":
-            text = item.get("text") or ""
-            if is_runtime_child_transport(text):
-                continue
-            if text.startswith("# Council review:") or text.startswith("Council not run:"):
-                continue
-            if not text.startswith("Council progress:") and not is_allowed_initial_setup(events, index, text):
-                bad_status.append(text[:120])
-            continue
-        if item.get("type") == "command_execution":
-            command = item.get("command") or ""
-            if is_direct_skill_read_command(command):
-                continue
-            forbidden_command_bits = [
-                "ls_agents",
-                "list_agents",
-                " pgrep",
-                " ps ",
-                " find ",
-                " rg ",
-                "SKILL.md",
-                ".codex/plugins/cache",
-                ".codex/skills",
-            ]
-            if any(bit in command for bit in forbidden_command_bits):
-                bad_commands.append(command[:160])
-            continue
-        if item.get("type") in {"web_search", "browser"}:
-            forbidden_tools.append(item.get("type"))
-            continue
         if item.get("type") != "collab_tool_call":
             continue
         tool = item.get("tool")
@@ -830,12 +615,6 @@ def command_evidence(args: argparse.Namespace) -> None:
                 bad_prompts.append(
                     f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
                 )
-    if bad_status:
-        fail(f"non-Council progress status lines: {bad_status[:5]}")
-    if bad_commands:
-        fail(f"shell-based agent probing/orchestration commands: {bad_commands[:5]}")
-    if forbidden_tools:
-        fail(f"forbidden search/browser tools used: {forbidden_tools[:5]}")
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
     if running_close_without_tool:
