@@ -366,10 +366,15 @@ def command_evidence(args: argparse.Namespace) -> None:
     bad_commands: list[str] = []
     forbidden_tools: list[str] = []
     running_close_without_tool: list[str] = []
+    first_agent_message_seen = False
     for index, event in enumerate(events):
         item = event.get("item", {})
         if item.get("type") == "agent_message":
             text = item.get("text") or ""
+            if not first_agent_message_seen:
+                first_agent_message_seen = True
+                if text.startswith("Loading council"):
+                    continue
             if text.startswith("# Council review:") or text.startswith("Council not run:"):
                 continue
             if not text.startswith("Council progress:"):
