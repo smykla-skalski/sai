@@ -54,6 +54,6 @@ Debate/follow-up challenges: keep same reviewers when possible, use `followup_ta
 
 ## Output
 
-Use only these top-level headings: `# Council review: <topic>`, optional `## What changed in this follow-up`, `## Convergence (high-confidence signals)`, `## Disagreement (real tradeoffs the user must decide)`, `## Per-reviewer top-3`, `## What to do next`, `## What we did not address`. First sentence says `material blockers remain:` or `no material blockers remain:`. Include `What changed` only for user-requested reruns/blocker checks/challenges; internal waves/retries/stalls are not follow-ups. Convergence bullets end with exact display names. Per-reviewer uses `### <exact display name>` plus 3 bullets. Next actions are numbered.
+Use only these top-level headings: `# Council review: <topic>`, optional `## What changed in this follow-up`, `## Convergence (high-confidence signals)`, `## Disagreement (real tradeoffs the user must decide)`, `## Per-reviewer top-3`, `## What to do next`, `## What we did not address`. All headings except `What changed` are mandatory. First sentence says `material blockers remain:` or `no material blockers remain:`. Include `What changed` only for user-requested reruns/blocker checks/challenges; internal waves/retries/stalls are not follow-ups. Convergence bullets end with exact display names. Per-reviewer uses `### <exact display name>` plus 3 bullets. Next actions are numbered.
 
 Private dossiers are aids only.
