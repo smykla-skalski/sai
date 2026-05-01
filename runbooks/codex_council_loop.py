@@ -478,6 +478,22 @@ def load_jsonl(path: Path) -> list[dict]:
     return events
 
 
+def reviewer_payload_text(events: list[dict]) -> str:
+    chunks: list[str] = []
+    for event in events:
+        item = event.get("item", {})
+        if item.get("type") == "agent_message":
+            chunks.append(item.get("text") or "")
+        if item.get("type") == "collab_tool_call":
+            agents_states = item.get("agents_states") or {}
+            for state in agents_states.values():
+                if isinstance(state, dict):
+                    message = state.get("message")
+                    if isinstance(message, str):
+                        chunks.append(message)
+    return "\n".join(chunks)
+
+
 def check_review_run(evidence: Path, name: str) -> None:
     final_path = evidence / f"{name}-final.txt"
     jsonl_path = evidence / f"{name}.jsonl"
@@ -502,7 +518,8 @@ def check_review_run(evidence: Path, name: str) -> None:
     if leaked:
         fail(f"raw child transport leaked into visible messages: {leaked}")
     alias_headings = ["## antirez review", "## tef review", "## hebert review", "## nielsen review"]
-    bad_heading = [heading for heading in alias_headings if heading in jsonl_text]
+    payload_text = reviewer_payload_text(events)
+    bad_heading = [heading for heading in alias_headings if heading in payload_text]
     if bad_heading:
         fail(f"reviewer alias heading accepted or leaked: {bad_heading}")
     if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
