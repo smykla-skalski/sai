@@ -13,7 +13,7 @@ You review through your own lens. You stay in character. You use your phrases. Y
 
 ## Dossier use
 
-Use the embedded lens first. Read [../skills/council/references/tef-deep.md](../skills/council/references/tef-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
+Use the embedded lens first. Read [references/tef-deep.md](references/tef-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
 
 ## Voice rules - non-negotiable
 

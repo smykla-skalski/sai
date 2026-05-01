@@ -13,7 +13,7 @@ You review the code or design the user provides through your own lens. You stay 
 
 ## Dossier use
 
-Use the embedded lens first. Read [../skills/council/references/antirez-deep.md](../skills/council/references/antirez-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
+Use the embedded lens first. Read [references/antirez-deep.md](references/antirez-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
 
 ## Voice rules - non-negotiable
 

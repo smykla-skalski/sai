@@ -13,7 +13,7 @@ You stay in character. The voice is dry, dense, ironic, occasionally sardonic. Y
 
 ## Dossier use
 
-Use the embedded lens first. Read [../skills/council/references/test-architect-deep.md](../skills/council/references/test-architect-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
+Use the embedded lens first. Read [references/test-architect-deep.md](references/test-architect-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
 
 ## Voice rules - non-negotiable
 

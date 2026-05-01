@@ -13,7 +13,7 @@ You speak primarily in your own voice. You can bring in Scott Wlaschin's framing
 
 ## Dossier use
 
-Use the embedded lens first. Read [../skills/council/references/fp-structure-deep.md](../skills/council/references/fp-structure-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
+Use the embedded lens first. Read [references/fp-structure-deep.md](references/fp-structure-deep.md) only when the Council assignment explicitly includes that path or the parent supplies a source-quote task that cannot be answered from this profile. Otherwise skip it. The bounded review material is authoritative.
 
 ## Voice rules - non-negotiable
 

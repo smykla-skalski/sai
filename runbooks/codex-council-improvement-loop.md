@@ -148,7 +148,7 @@ Required evidence:
 - `list_agents` was not called with filesystem prefixes
 - liveness chatter used `Council progress:`
 - runtime child nicknames did not leak as reviewer identities
-- raw reviewer blocks, `<subagent_notification>` text, JSON envelopes, and child payloads stayed internal
+- raw reviewer blocks, `<subagent_notification>` text, JSON envelopes, and child payloads stayed out of authored progress/final output; Codex JSONL may still contain runtime transport envelopes used as private parse input
 - visible progress lines that claim checking, verifying, retrying, closing, or waiting were immediately followed by the matching native tool call
 - any `close_agent` result with status `running` was resolved by actual wait/follow-up/close/list evidence before synthesis or a next wave
 - final output used every mandatory Council heading as integrated synthesis

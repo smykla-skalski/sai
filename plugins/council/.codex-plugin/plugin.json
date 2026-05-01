@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.91",
+  "version": "2.0.92",
   "description": "Strict $council only: first visible line, if any, must be Council progress; coordinator proactively cleans stale Council agents before any spawn.",
   "author": {
     "name": "Smykla Skalski Labs",

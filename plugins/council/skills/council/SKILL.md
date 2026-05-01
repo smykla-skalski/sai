@@ -1,63 +1,146 @@
 ---
 name: council
 description: >-
-  Use only for $council/review/debate. FIRST ACTION: load this SKILL. Any
-  visible startup/status line must start exactly `Council progress:`. No bare
-  prefaces, memory, repo search, web/search/browser, `cd`, `pwd`, or chained
-  shell commands unless user gave exact files/diff/direct read. Broad >6 without
-  approval outputs exact denial. Coordinator must proactively inspect native
-  agents and close stale Council children before spawn. Attempt full <=6 roster;
-  retry no-receiver capacity misses. Never solo or leak raw child output.
+  Use when the user invokes $council, $council:council, Council review, or
+  Council debate. FIRST ACTION: load this SKILL. Strict native Council: bounded
+  input, no discovery without exact/direct input, broad >6 exact denial, clean
+  agents, high-effort reviewers, terminal supervision, no raw child leaks.
 ---
 
 # Council
 
-Run native Codex reviewer agents and synthesize accepted results. Never answer solo. The first action is loading this SKILL; if a visible skill-use announcement is unavoidable, the first visible line must start exactly `Council progress:`. Empty-query `web_search` is still forbidden. Never emit bare prefaces such as `Using council`, `Reading council skill`, `Loading Council rules`, `Council skill loaded`, `Council setup`, `Council fan-out starting`, or `Spawning reviewers`. Never run `cd ... && ...`, `pwd && ...`, `cd`, `pwd`, `ls`, `find`, `rg`, or shell command chaining to load this skill. Every visible non-final status line after SKILL load starts exactly `Council progress:`. Inline text is complete unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, local discovery, `cd`, `pwd`, or shell command chaining. Treat reviewer agents as high-effort review agents: never intentionally run them at `medium` or `low` reasoning.
+Never answer solo. If a skill-use announcement is unavoidable, first visible
+line starts exactly `Council progress:`. Never emit bare prefaces like `Using
+council`, `Loading Council rules`, `Spawning reviewers`.
+Empty-query `web_search` is still forbidden.
 
-Fixed modes use keys below; do not read registry or agent files. For `auto/all/debate`, registry is `<loaded SKILL.md dir>/references/agents.md`; never try plugin-root `/references`, `ls`, `find`, or `rg`. If that read fails: `Council not run: reviewer fan-out failed.`
+## Scope
+
+Inline material is complete unless exact `@path`, paths, diff, or direct
+read/search is supplied. Otherwise no memory, prior sessions, repo
+files/listings, git history, AGENTS/RTK docs, Claude assets, persona dossiers,
+web/search/browser, nested `codex exec`, `cd`, `pwd`, `ls`, `find`,
+`rg`, shell chaining, `ps`, `pgrep`, `harness`, or `rtk`.
 
 ## Modes
 
-First token is mode: `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, `debate`; aliases `eng`, `ux`, `mix`, `random`; default `core`. `core`, `core-eng`, `core-ux`, and `core-mix` always use all 6 fixed-roster reviewers. `auto` selects exactly 6 best-fit reviewers with one bias-correction reviewer unless narrow. `debate` uses 3-6. User wording like `blockers only`, `quick`, or `brief` changes output focus only; it never reduces a fixed roster.
+Modes: `core`, `auto`, `core-eng`, `core-ux`, `core-mix`, `all`, `debate`;
+aliases `eng`, `ux`, `mix`, `random`; default `core`. Fixed rosters use all 6.
+`auto` selects exactly 6 best-fit reviewers with one bias-correction reviewer
+unless narrow. `debate` uses 3-6. `quick`, `brief`, `blockers only` change focus
+only. Reviewer 7+ needs explicit same-turn approval; otherwise:
+`Council not run: broad council approval not granted.`
 
-Before reviewer 7+, get explicit approval in this run. Approval choices only: `Approve full council (<N> reviewers)`, `Reduce to 6 reviewers`, `Cancel this council run`. If no approval/user-input, non-interactive, or uncertain: `Council not run: broad council approval not granted.` Original `$council all ...` is never approval.
+## Rosters
 
-## Fixed Rosters
+Map: antirez=`antirez-simplicity-reviewer`/Salvatore Sanfilippo;
+tef=`tef-deletability-reviewer`/Thomas Edward Figg;
+muratori=`muratori-perf-reviewer`/Casey Muratori;
+hebert=`hebert-resilience-reviewer`/Fred Hebert;
+meadows=`meadows-systems-advisor`/Donella H. Meadows;
+chin=`chin-strategy-advisor`/Cedric Chin;
+norman=`norman-affordance-reviewer`/Don Norman;
+nielsen=`nielsen-heuristics-reviewer`/Jakob Nielsen;
+krug=`krug-usability-reviewer`/Steve Krug;
+watson=`watson-a11y-reviewer`/Leonie Watson;
+tognazzini=`tognazzini-fpid-reviewer`/Bruce Tognazzini;
+tufte=`tufte-density-reviewer`/Edward Tufte.
 
-Keys: `antirez-simplicity-reviewer=Salvatore Sanfilippo`; `tef-deletability-reviewer=Thomas Edward Figg`; `muratori-perf-reviewer=Casey Muratori`; `hebert-resilience-reviewer=Fred Hebert`; `meadows-systems-advisor=Donella H. Meadows`; `chin-strategy-advisor=Cedric Chin`; `norman-affordance-reviewer=Don Norman`; `nielsen-heuristics-reviewer=Jakob Nielsen`; `krug-usability-reviewer=Steve Krug`; `watson-a11y-reviewer=Leonie Watson`; `tognazzini-fpid-reviewer=Bruce Tognazzini`; `tufte-density-reviewer=Edward Tufte`.
+Rosters: `core-eng` antirez/tef/muratori/hebert/meadows/chin; `core-ux`
+norman/nielsen/krug/watson/tognazzini/tufte; `core-mix`
+antirez/tef/hebert/norman/nielsen/watson. Use exact display names. For
+`auto/all/debate`, read only `<loaded SKILL.md dir>/references/agents.md`; never
+use `ls`, `find`, or `rg`. If registry read fails:
+`Council not run: reviewer fan-out failed.`
 
-Rosters: `core-eng` = antirez, tef, muratori, hebert, meadows, chin. `core-ux` = norman, nielsen, krug, watson, tognazzini, tufte. `core-mix` = antirez, tef, hebert, norman, nielsen, watson. Expand names to full slugs from Keys.
+## Orchestration
 
-## Workflow
+1. Select slugs; build `<slug> -> <display name>` before spawning. Final
+   citations use exact display names, never aliases/runtime nicknames.
+2. Use enabled agent features: `multi_agent_v2`, `enable_fanout`,
+   `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`,
+   `wait_agent`, `followup_task`, `close_agent`. Demote only on live evidence.
+   Never invent tools.
+3. Prepare agent capacity before any spawn. The coordinator must proactively clean the thread tree:
+   inspect native live-agent state, close every visible stale Council reviewer child,
+   wait for close results, re-check. Prefer `list_agents` no args. Never use shell/command execution for live-agent state.
+   `path_prefix` only for known `/root/...` agent paths.
+4. If clean/root-only, emit exactly
+   `Council progress: agent state clean: root only; running full selected roster when within limit.`
+   Then attempt the full selected roster when <=6. If capacity is constrained,
+   emit one `Council progress:` reason and use the largest safe wave. Do not spawn into a known full session.
+   Respect session thread limits.
+5. Fan out in waves sized by cleaned capacity. Max 6 spawns per clean batch. A
+   no-`receiver_thread_ids` failure is `pending-capacity`, not launched/missing.
+   Supervise launched reviewers, close terminal children, wait for
+   close completion, then retry pending-capacity. No next wave until every prior
+   close completed and any `running` close result is resolved.
+6. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none",
+   reasoning_effort: "high")`. If role-managed agents reject
+   overrides, rely on the installed high-effort manifest; never use medium/low.
+7. Loop `wait_agent(timeout_ms: 60000)`. Every minute classify live reviewers as
+   `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or
+   `done`; nudge non-healthy once with `followup_task`. After one nudge plus one
+   timeout, close; mark `missing`/`failed` if no valid body exists.
+8. After any `running` close result, the next Council action must be an actual
+   `wait_agent`, `followup_task`, `close_agent`, or `list_agents` call naming or
+   observing that reviewer. Do not claim retry/verification/close without tool evidence.
+9. Drain until every selected slug is `accepted`, `missing`, or `failed`. If no
+   reviewer launched or all fail: `Council not run: reviewer fan-out failed.`
 
-1. Bound input first. Read only explicit `@path`, exact path, supplied diff, or snippet; no broad discovery.
-2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final headings and every citation in Convergence/Disagreement use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
-3. Use all exposed current/under-development agent features: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
-4. Prepare agent capacity before any spawn. The coordinator must proactively clean the thread tree at the beginning of every Council run: first inspect native live-agent state, close every visible stale Council reviewer child, wait for every close result, then re-check state. Prefer `list_agents` with no args when the tool is exposed; otherwise use the native agent-state signal the runtime provides. Never use shell/command execution for live-agent state. Do not run `rtk ls_agents`, `harness`, `ps`, `pgrep`, `cd`, `pwd`, `ls`, `find`, or `rg` for Council orchestration. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Ignore `/root`. If any stale Council child cannot be closed or remains running, keep resolving it with native wait/close/list before spawning reviewers. If state is clean/root-only, emit exactly `Council progress: agent state clean: root only; running full selected roster when within limit.` and attempt to spawn every selected reviewer when the selected roster is 6 or fewer. If live non-Council children remain or capacity is constrained before spawning, emit the reason and use the largest safe wave that fits the remaining six-subagent limit. Do not spawn into a known full session. Respect session thread limits.
-5. Fan out in waves sized by cleaned capacity. Max 6 `spawn_agent`s per batch when the tree is clean/root-only. A six-reviewer roster is attempted as one wave after clean/root-only state. If a `spawn_agent` fails with no `receiver_thread_ids`, that reviewer was not launched, has no slot to clean, and remains `pending-capacity`; do not mark it failed or missing. After any no-receiver thread-limit failure, keep supervising launched reviewers, close them when terminal, then retry every `pending-capacity` reviewer in the next wave using the full assignment. Wave order is strict: spawn wave N, wait until every launched wave-N reviewer is `accepted/missing/failed`, close every launched wave-N reviewer, observe the close results, then spawn pending-capacity or remaining slugs if any selected slug remains. Closing is a hard tool-call barrier: never queue or attempt a next-wave `spawn_agent` until all wave-N `close_agent` calls have completed and all `running` close results are resolved by actual tool evidence. Never synthesize before every selected reviewer is terminal. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none", reasoning_effort: "high")` when the schema accepts `reasoning_effort`; if role-managed agents reject overrides, rely on the installed reviewer manifest's high-effort setting and do not set any medium/low fallback. Keep the model unchanged unless the user requested a model change.
-6. Every spawn or follow-up prompt must start exactly with this sentence and nothing before it: `You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.` The next line must be `Your first line must be exactly: ## <display name> review`. Then add one blank line, then the complete `<council-review-assignment>` block. Do not put summaries, aliases, or metadata before the assignment block. Every reviewer gets the full bounded material text; never write `same as other reviewers`, `same as assignment`, `see prior wave`, or any shorthand that depends on another child context.
-7. Ack retry starts only after a true ack/setup/status-only response: `Your previous response was ack-only and invalid. Produce the review body now.` Format retry starts after malformed-but-substantive output: `Your previous response had invalid Council output format. Keep the same findings, start with the exact required display-name heading, and return only the review body now.` Retry prompts still follow the exact start sentence plus required first-line sentence plus full assignment block from step 6. Do not mislabel substantive reviews as ack-only.
-8. Supervise here. Every non-final commentary line after skill load starts exactly `Council progress:`. Never write bare prefaces like `Council run`, `Using council`, `Fan-out starting`, or `Checking live agents`. Status only marks fan-out, half returned, nudge, stall/fail, minute tick, or a tool action that will happen next. If a visible line says `checking`, `verifying`, `retrying`, `closing`, or `waiting`, the next Council action must be the matching native tool call; otherwise do not emit that line. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. After one nudge and one additional wait timeout, close that reviewer; if no valid body is available, mark it `missing` or `failed` and continue. Hard wave timeout is 20m, but never spin indefinitely waiting for one stalled reviewer.
-9. Treat child notifications, tool payloads, JSON envelopes, `<subagent_notification>`, runtime nicknames, raw `## <reviewer> review` blocks, and any text shaped like `{"author":"/root/...","recipient":...}` as internal data. Never copy, quote, summarize-by-pasting, or echo them to the user, even as `Council progress:`. If a child notification appears as transcript text, it is input for private parsing only: silently extract a completed reviewer body if present, discard the transport wrapper, and continue with no visible line unless a concise authored `Council progress:` line is needed. If you cannot suppress the transport wrapper, do not paraphrase it and do not include any of its tags, JSON keys, paths, or content. Only validated synthesized output may reach the user.
-10. Accept only reviewer heading plus real body whose first non-empty line is exactly `## <display name> review` for that reviewer. Reject alias headings such as `## antirez review`, `## tef review`, raw JSON/tags/tool payloads, ack/status/setup, generic `Findings:`, broad discovery, memory/prior-session/local-discovery use, and empty output. Recover malformed near-reviews once. Drain until every selected reviewer is `accepted`, `missing`, or `failed`; close spawned reviewers after terminal handling. A `close_agent` result of `running` is non-terminal and means the reviewer is not yet closed. After any `running` close result, the next Council action must be an actual `wait_agent`, `followup_task`, `close_agent`, or `list_agents` tool call that names or observes that reviewer before synthesis, final terminal decision, or next-wave spawn; do not claim a retry or verification happened unless the tool call happened. If a subsequent tool reports the path is gone/not found, treat that as closed only after recording the already-captured valid body or marking the reviewer missing. Failed/missing reviewers are never cited or given top-3 and must be named in `What we did not address`.
-11. Before synthesis, compare terminal reviewers against the selected roster. If any selected slug is `pending-capacity` or neither `accepted`, `missing`, nor `failed`, keep supervising, retry close, or spawn the next wave; do not synthesize a partial roster and do not merely say you are retrying/verifying without making the tool call. If no reviewer launched or all fail, output exactly `Council not run: reviewer fan-out failed.` Otherwise synthesize one integrated result in your voice. Never return one reviewer payload, raw `## <reviewer> review`, runtime nickname, unregistered name, transport JSON, or approval-shaped wording (`APPROVED`, `NOT APPROVED`, `approved`). Say whether material blockers remain. Before final output, self-check mandatory headings and add any missing mandatory section.
+## Reviewer Prompt
 
-## Assignment
+Every spawn or follow-up prompt must start exactly with:
 
 ```text
+You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.
+Your first line must be exactly: ## <display name> review
+
 <council-review-assignment>
 Mode: <mode>
 Review summary: <problem context>
 Files: <absolute paths, or `inline material only`>
 Supplied review material:
-<diffs, snippets, or full files assembled by the parent>
+<bounded diffs, snippets, files, or inline request text>
 
-Rules: supplied material is full scope; inline-only is valid. Extra reads only for directly connected exact files already named in this assignment; if the assignment does not name a file, do not read files. Do not read persona dossiers, references, memory, prior sessions, AGENTS.md, RTK docs, tool summaries, repo listings, git history, or nearby files. State gaps instead of exploring. No broad discovery, web/browser/search, tests/builds/linters, file edits, subagents, setup reports, readiness, or ack-only replies. First non-empty line is `## <display name> review` exactly, using the display name from the spawn line. No generic `Findings:`, JSON/XML/status wrappers, quotes, transport metadata, or approval-shaped wording.
+Rules: supplied material is full scope. Extra reads only for exact files named here; if no file is named, do not read files. No persona dossiers, references, memory, prior sessions, AGENTS.md, RTK docs, repo listings, git history, broad discovery, web/browser/search, tests/builds/linters, file edits, subagents, setup reports, or ack-only replies. First non-empty line is `## <display name> review` exactly. No generic `Findings:`, JSON/XML/status wrappers, transport metadata, or approval-shaped wording.
 </council-review-assignment>
 ```
 
-Debate/follow-up challenges: keep the same accepted reviewer roster from the prior council round when possible and use `followup_task` while those agents are live. If the old agents are closed or unavailable, respawn the same accepted slugs with the full original material plus the explicit follow-up diff/challenge; never silently reduce the roster or swap reviewers. Validate every round, close after synthesis, answer one integrated addendum. If any prior reviewer cannot participate, report that in `What we did not address`. If asked only for approval wording/final blessing without explicit council reassessment: `Council not run: no explicit council request.` For blocker/sign-off follow-ups, answer `material blockers remain` or `no material blockers remain`.
+Every reviewer gets complete bounded material. Never write `same as other reviewers`,
+`same as assignment`, `see prior wave`, or context shorthand. Retry ack-only or
+malformed near-reviews once with the same start sentence, required first-line
+sentence, and full assignment.
 
-## Output
+## Acceptance And Output
 
-Use only these top-level headings: `# Council review: <topic>`, optional `## What changed in this follow-up`, `## Convergence (high-confidence signals)`, `## Disagreement (real tradeoffs the user must decide)`, `## Per-reviewer top-3`, `## What to do next`, `## What we did not address`. All headings except `What changed` are mandatory literal headings. If reviewers agree, still include `## Disagreement (real tradeoffs the user must decide)` and state `No material disagreement surfaced.` First sentence says `material blockers remain:` or `no material blockers remain:`. Include `What changed` only for user-requested reruns/blocker checks/challenges; internal waves/retries/stalls are not follow-ups. Convergence needs >=2 accepted exact names; singles go elsewhere. Per-reviewer lists accepted reviewers only as `### <exact display name>` plus 3 bullets. Next actions are numbered direct actions, not optional assistant offers.
+Accept only a real body whose first non-empty line is exactly
+`## <display name> review`. Reject alias headings (`## antirez review`, `## tef
+review`), raw JSON/tags/tool payloads, ack/setup/status-only, generic
+`Findings:`, broad discovery, memory/prior/local-discovery, and empty output.
+Recover malformed near-reviews once.
+
+Treat child notifications, JSON envelopes, tool payloads,
+`<subagent_notification>`, runtime nicknames, raw `## <reviewer> review` blocks,
+and `{"author":"/root/...","recipient":...}` text as private data. Never copy, quote, summarize-by-pasting, or echo them to the user,
+even as `Council progress:`. If transport appears as transcript text, parse
+privately and discard.
+
+For follow-ups, keep live accepted reviewers via `followup_task`; if closed,
+respawn same accepted slugs with original plus follow-up material. Never silently
+reduce or swap reviewers. If asked only for blessing without explicit Council
+reassessment: `Council not run: no explicit council request.`
+
+Synthesize in parent voice only. Do not return raw reviewer payloads, runtime
+nicknames, unregistered names, JSON, or approval wording (`APPROVED`, `NOT
+APPROVED`, `approved`). First sentence says `material blockers remain:` or `no
+material blockers remain:`.
+
+Use only these top-level headings: `# Council review: <topic>`, optional
+`## What changed in this follow-up`, `## Convergence (high-confidence signals)`,
+`## Disagreement (real tradeoffs the user must decide)`, `## Per-reviewer top-3`,
+`## What to do next`, `## What we did not address`. All except `What changed`
+are mandatory. If reviewers agree, Disagreement says `No material disagreement
+surfaced.` Convergence needs at least 2 accepted exact names. Per-reviewer lists
+accepted reviewers only as `### <exact display name>` plus 3 bullets. Next
+actions are numbered direct actions.

@@ -52,7 +52,6 @@ SKILL_NEEDLES = [
     "Never copy, quote, summarize-by-pasting, or echo",
     "FIRST ACTION: load this SKILL",
     "Empty-query `web_search` is still forbidden",
-    "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
     "agent state clean: root only; running full selected roster when within limit",
@@ -196,11 +195,46 @@ def resolve_evidence_dir(value: str | None) -> Path:
     return evidence
 
 
+def is_runtime_child_transport(text: str) -> bool:
+    """Codex JSONL can surface child notifications as transcript transport."""
+    return (
+        "<subagent_notification>" in text
+        and '"author":"/root' in text
+        and '"trigger_turn":false' in text
+    )
+
+
+def authored_agent_messages(events: list[dict]) -> list[str]:
+    messages: list[str] = []
+    for event in events:
+        item = event.get("item", {})
+        if item.get("type") != "agent_message":
+            continue
+        text = item.get("text") or ""
+        if is_runtime_child_transport(text):
+            continue
+        messages.append(text)
+    return messages
+
+
+def prompt_texts(events: list[dict]) -> list[str]:
+    prompts: list[str] = []
+    for event in events:
+        item = event.get("item", {})
+        if item.get("type") == "collab_tool_call":
+            prompt = item.get("prompt")
+            if isinstance(prompt, str):
+                prompts.append(prompt)
+    return prompts
+
+
 def first_streaming_violation(event: dict) -> str | None:
     item = event.get("item", {})
     item_type = item.get("type")
     if item_type == "agent_message":
         text = item.get("text") or ""
+        if is_runtime_child_transport(text):
+            return None
         if text.startswith("# Council review:") or text.startswith("Council not run:"):
             return None
         if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
@@ -505,23 +539,19 @@ def check_review_run(evidence: Path, name: str) -> None:
 
     events = load_jsonl(jsonl_path)
     jsonl_text = jsonl_path.read_text()
-    visible_text = "\n".join(
-        item.get("text") or ""
-        for event in events
-        for item in [event.get("item", {})]
-        if item.get("type") == "agent_message"
-    )
+    visible_text = "\n".join(authored_agent_messages(events))
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
-    leaked = [needle for needle in forbidden_raw if needle in visible_text]
+    leaked = [needle for needle in forbidden_raw if needle in f"{final_text}\n{visible_text}"]
     if leaked:
-        fail(f"raw child transport leaked into visible messages: {leaked}")
+        fail(f"raw child transport leaked into authored/final messages: {leaked}")
     alias_headings = ["## antirez review", "## tef review", "## hebert review", "## nielsen review"]
     payload_text = reviewer_payload_text(events)
     bad_heading = [heading for heading in alias_headings if heading in payload_text]
     if bad_heading:
         fail(f"reviewer alias heading accepted or leaked: {bad_heading}")
-    if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
-        fail("shorthand reviewer material leaked into evidence stream")
+    prompt_text = "\n".join(prompt_texts(events))
+    if "same as other reviewers" in prompt_text or "same as assignment" in prompt_text:
+        fail("shorthand reviewer material leaked into reviewer prompt")
 
     exact_fanout_failure = final_text.strip() == "Council not run: reviewer fan-out failed."
     accepted_review_count = payload_text.count("## ")
@@ -544,6 +574,8 @@ def check_review_run(evidence: Path, name: str) -> None:
         item = event.get("item", {})
         if item.get("type") == "agent_message":
             text = item.get("text") or ""
+            if is_runtime_child_transport(text):
+                continue
             if text.startswith("# Council review:") or text.startswith("Council not run:"):
                 continue
             if not text.startswith("Council progress:"):
@@ -634,22 +666,20 @@ def command_evidence(args: argparse.Namespace) -> None:
         events.extend(file_events)
         events_by_file[name] = file_events
     jsonl_text = "\n".join(jsonl_chunks)
-    visible_text = "\n".join(
-        item.get("text") or ""
-        for event in events
-        for item in [event.get("item", {})]
-        if item.get("type") == "agent_message"
-    )
+    visible_text = "\n".join(authored_agent_messages(events))
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
-    leaked = [needle for needle in forbidden_raw if needle in visible_text]
+    final_text = "\n".join((evidence / name).read_text() for name in required_files if name.endswith("-final.txt"))
+    leaked = [needle for needle in forbidden_raw if needle in f"{final_text}\n{visible_text}"]
     if leaked:
-        fail(f"raw child transport leaked into visible messages: {leaked}")
+        fail(f"raw child transport leaked into authored/final messages: {leaked}")
     alias_headings = ["## antirez review", "## tef review", "## hebert review", "## nielsen review"]
-    bad_heading = [heading for heading in alias_headings if heading in jsonl_text]
+    payload_text = reviewer_payload_text(events)
+    bad_heading = [heading for heading in alias_headings if heading in f"{final_text}\n{payload_text}"]
     if bad_heading:
         fail(f"reviewer alias heading accepted or leaked: {bad_heading}")
-    if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
-        fail("shorthand reviewer material leaked into evidence stream")
+    prompt_text = "\n".join(prompt_texts(events))
+    if "same as other reviewers" in prompt_text or "same as assignment" in prompt_text:
+        fail("shorthand reviewer material leaked into reviewer prompt")
     for name, file_events in events_by_file.items():
         ensure_capacity_safe_spawns(file_events, name)
         ensure_progress_claims_have_tools(file_events, name)
@@ -659,13 +689,11 @@ def command_evidence(args: argparse.Namespace) -> None:
     bad_commands: list[str] = []
     forbidden_tools: list[str] = []
     running_close_without_tool: list[str] = []
-    first_agent_message_seen = False
     for index, event in enumerate(events):
         item = event.get("item", {})
         if item.get("type") == "agent_message":
             text = item.get("text") or ""
-            if not first_agent_message_seen:
-                first_agent_message_seen = True
+            if is_runtime_child_transport(text):
                 continue
             if text.startswith("# Council review:") or text.startswith("Council not run:"):
                 continue
@@ -694,8 +722,11 @@ def command_evidence(args: argparse.Namespace) -> None:
         if not prompt.startswith("You are "):
             bad_prompts.append(f"{tool} prompt does not start with 'You are ': {prompt[:80]!r}")
             continue
-        if "setup.\n\n<council-review-assignment>" not in prompt[:240]:
-            bad_prompts.append(f"{tool} prompt missing blank-line assignment boundary: {prompt[:120]!r}")
+        if "Your first line must be exactly: ## " not in prompt[:260]:
+            bad_prompts.append(f"{tool} prompt missing exact first-line heading requirement: {prompt[:160]!r}")
+            continue
+        if "\n\n<council-review-assignment>" not in prompt[:320]:
+            bad_prompts.append(f"{tool} prompt missing blank-line assignment boundary: {prompt[:160]!r}")
             continue
         if "<council-review-assignment>" in prompt:
             before_assignment = prompt.split("<council-review-assignment>", 1)[0]
