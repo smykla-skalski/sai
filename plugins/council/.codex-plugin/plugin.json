@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.64",
+  "version": "2.0.65",
   "description": "Run Codex council reviews with native reviewers and strict inline boundaries.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Use for $council/review/debate. Inline requests forbid memory/prior/repo lookup before SKILL. If all/broad >6 lacks approval, output only: Council not run: broad council approval not granted. Other runs spawn native reviewers on bounded inline/@path input.",
+    "longDescription": "Strict $council/review/debate. Inline forbids memory/prior/repo lookup before SKILL. all/broad >6 without approval outputs the denial exactly. Otherwise load SKILL and spawn native reviewers.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -32,9 +32,9 @@
     "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
     "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $council to review this code or plan with best-fit reviewers; inline text is the full target.",
-      "Use $council all for a broad engineering and UX review after explicit approval.",
-      "Use $council debate to compare hard tradeoffs."
+      "Use $council for bounded reviewer-agent reviews; inline text is full scope.",
+      "$council all needs explicit >6 reviewer approval.",
+      "$council debate compares hard tradeoffs."
     ],
     "brandColor": "#7C3AED"
   }
