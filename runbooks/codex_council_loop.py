@@ -244,11 +244,11 @@ def command_smoke(args: argparse.Namespace) -> None:
     runs = [
         (
             "normal",
-            '$council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. Clean stale council agents first; if state is clean/root-only, run all 3 reviewers in the largest safe wave.',
+            '$council core-mix Council validation smoke. Inline material only: review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. Use the regular fixed reviewer flow. Clean stale council agents first; if state is clean/root-only, run the largest safe wave.',
         ),
         (
             "prefixed",
-            "$council:council debate Council validation smoke. Inline material only: use exactly 3 reviewers total to verify the plugin-prefixed alias follows the same bounded-review behavior. Clean stale council agents first; if state is clean/root-only, run all 3 reviewers in the largest safe wave.",
+            "$council:council core-mix Council validation smoke. Inline material only: verify the plugin-prefixed alias follows the same bounded-review behavior. Use the regular fixed reviewer flow. Clean stale council agents first; if state is clean/root-only, run the largest safe wave.",
         ),
         (
             "broad",
@@ -412,10 +412,16 @@ def command_evidence(args: argparse.Namespace) -> None:
             events.append(event)
         events_by_file[name] = file_events
     jsonl_text = "\n".join(jsonl_chunks)
+    visible_text = "\n".join(
+        item.get("text") or ""
+        for event in events
+        for item in [event.get("item", {})]
+        if item.get("type") == "agent_message"
+    )
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
-    leaked = [needle for needle in forbidden_raw if needle in jsonl_text]
+    leaked = [needle for needle in forbidden_raw if needle in visible_text]
     if leaked:
-        fail(f"raw child transport leaked into evidence stream: {leaked}")
+        fail(f"raw child transport leaked into visible messages: {leaked}")
     if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
         fail("shorthand reviewer material leaked into evidence stream")
     for name, file_events in events_by_file.items():

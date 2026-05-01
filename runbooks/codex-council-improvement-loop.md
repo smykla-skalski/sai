@@ -110,14 +110,15 @@ when the live loop proves negative impact, and record the evidence.
 ```
 
 The smoke command writes `normal`, `prefixed`, `broad`, and `followup` JSONL/final
-files under `$EVIDENCE_DIR`. It uses `debate` with exactly 3 reviewers for
-iteration cost control, then resumes the normal smoke session by exact session id
+files under `$EVIDENCE_DIR`. It uses the regular fixed reviewer flow
+(`core-mix`, 6 reviewers) and keeps only the normal Council wave cap of up to 3
+concurrent reviewers, then resumes the normal smoke session by exact session id
 for the follow-up challenge; do not replace that with `--last`.
 
 The live smoke must exercise:
 
-- normal `$council debate ...` with exactly 3 reviewers
-- `$council:council debate ...` or equivalent plugin-prefixed alias with exactly 3 reviewers when available
+- normal `$council core-mix ...` with the regular fixed reviewer roster
+- `$council:council core-mix ...` or equivalent plugin-prefixed alias with the regular fixed reviewer roster when available
 - broad `$council all ...` stop/approval behavior
 - follow-up challenge through actual Codex resume/thread continuation, not a fresh fake session
 - stalled reviewer recovery, reviewer nudging, and raw reviewer output rejection when a change touches supervision
@@ -128,7 +129,7 @@ Required evidence:
 - the orchestrator closed stale Council reviewers before spawning and reduced wave size to one when child capacity was unknown or constrained
 - native reviewer `spawn_agent` calls happened
 - `wait_agent` and `followup_task` supervision happened when needed
-- all 3 selected reviewers were accepted, failed, or explicitly reported missing
+- all selected reviewers were accepted, failed, or explicitly reported missing
 - every visible non-final status line started with exact `Council progress:`
 - no shell command was used for live-agent probing or Council orchestration
 - every reviewer spawn/follow-up prompt started with the exact `You are ... for Council` sentence, one blank line, and then the assignment block
