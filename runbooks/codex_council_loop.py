@@ -55,7 +55,8 @@ SKILL_NEEDLES = [
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
     "agent state clean: root only; running full selected roster when within limit",
-    "Close stale Council reviewer children first",
+    "coordinator must proactively clean the thread tree",
+    "close every visible stale Council reviewer child",
     "Fan out in waves sized by cleaned capacity",
     "Do not spawn into a known full session",
 ]
@@ -182,16 +183,58 @@ def resolve_evidence_dir(value: str | None) -> Path:
     return evidence
 
 
+def first_streaming_violation(event: dict) -> str | None:
+    item = event.get("item", {})
+    item_type = item.get("type")
+    if item_type == "agent_message":
+        text = item.get("text") or ""
+        if text.startswith("# Council review:") or text.startswith("Council not run:"):
+            return None
+        if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
+            return "raw child transport leaked into visible message"
+        if not text.startswith("Council progress:"):
+            return f"non-Council progress status line: {text[:120]}"
+        return None
+    if item_type == "command_execution":
+        command = item.get("command") or ""
+        forbidden_bits = ["&&", ";", " pwd", "pwd ", " find ", " rg ", " ls "]
+        if any(bit in command for bit in forbidden_bits):
+            return f"forbidden chained/discovery command: {command[:160]}"
+        return None
+    if item_type in {"web_search", "browser"}:
+        return f"forbidden tool used: {item_type}"
+    return None
+
+
 def run_to_file(command: list[str], output: Path, cwd: Path, input_text: str | None = None) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     print("+ " + shlex.join(command))
+    stdin = subprocess.PIPE if input_text is not None else subprocess.DEVNULL
+    process = subprocess.Popen(command, cwd=cwd, stdin=stdin, stdout=subprocess.PIPE)
+    if input_text is not None and process.stdin is not None:
+        process.stdin.write(input_text.encode())
+        process.stdin.close()
+    assert process.stdout is not None
     with output.open("wb") as stdout:
-        run_kwargs = {"cwd": cwd, "stdout": stdout, "check": True}
-        if input_text is None:
-            run_kwargs["stdin"] = subprocess.DEVNULL
-        else:
-            run_kwargs["input"] = input_text.encode()
-        subprocess.run(command, **run_kwargs)
+        for line in process.stdout:
+            stdout.write(line)
+            stdout.flush()
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            violation = first_streaming_violation(event)
+            if violation:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+                fail(violation)
+    return_code = process.wait()
+    if return_code:
+        raise subprocess.CalledProcessError(return_code, command)
 
 
 def session_id_from_jsonl(path: Path) -> str:

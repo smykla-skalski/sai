@@ -112,7 +112,10 @@ when the live loop proves negative impact, and record the evidence.
 The smoke command writes `normal`, `prefixed`, `broad`, and `followup` JSONL/final
 files under `$EVIDENCE_DIR`. It is fail-fast: each phase is validated immediately
 after it runs, and the helper stops at the first evidence failure before spending
-tokens on later phases. It uses the regular fixed reviewer flow (`core-mix`, 6
+tokens on later phases. The helper also terminates a running `codex exec` early
+when the JSONL stream exposes a first-order violation such as pre-skill chatter,
+chained/discovery shell commands, forbidden search/browser tools, or raw child
+transport leakage. It uses the regular fixed reviewer flow (`core-mix`, 6
 reviewers). After stale-agent cleanup and a clean/root-only state, the normal path
 attempts the 6-reviewer wave first, then retries no-receiver capacity misses in a
 later wave if the runtime enforces a smaller effective child limit. The helper
@@ -130,7 +133,7 @@ The live smoke must exercise:
 Required evidence:
 
 - native `list_agents` capacity preflight happened before any reviewer spawn when the tool was available
-- the orchestrator closed stale Council reviewers before spawning and attempted the full 6-or-fewer roster from clean/root-only state
+- the coordinator proactively inspected the native thread tree, closed every visible stale Council reviewer child, re-checked state, and only then attempted the full 6-or-fewer roster from clean/root-only state
 - any `spawn_agent` failure with no `receiver_thread_ids` was treated as pending capacity work with no slot to clean, then retried after launched reviewers closed
 - native reviewer `spawn_agent` calls happened
 - `wait_agent` and `followup_task` supervision happened when needed
