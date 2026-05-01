@@ -1,18 +1,19 @@
 ---
 name: council
 description: >-
-  Use only for $council/review/debate. Inline text is complete; no MEMORY,
-  prior sessions, repo/local-file search, git history, Claude assets, or web
-  unless user gave @path, exact files, diff, or direct read/search. all/broad>6
-  without same-turn approval: output only `Council not run: broad council approval
-  not granted.` Else read SKILL first silently, use high reasoning, complete
-  material per reviewer, visible progress only as `Council progress:`, never solo
-  or raw child output.
+  Use only for $council/review/debate. No preface; say nothing before SKILL load.
+  Inline text is complete; no MEMORY, prior sessions, repo/local-file search, git
+  history, Claude assets, web, or shell-based agent probing unless user gave
+  @path, exact files, diff, or direct read/search. all/broad>6 without same-turn
+  approval: output only `Council not run: broad council approval not granted.`
+  Else read SKILL first silently, use high reasoning, complete material per
+  reviewer, visible progress only as `Council progress:`, never solo or raw child
+  output.
 ---
 
 # Council
 
-Run native Codex reviewer agents and synthesize accepted results. Never answer solo. Do not emit prefaces such as `Reading council skill`, `Council fan-out starting`, or `Spawning reviewers`; every visible non-final status line starts exactly `Council progress:`. Inline text is complete unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, local discovery, `pwd`, or shell command chaining. Treat reviewer agents as high-effort review agents: never intentionally run them at `medium` or `low` reasoning.
+Run native Codex reviewer agents and synthesize accepted results. Never answer solo. Do not emit prefaces such as `Reading council skill`, `Council setup`, `Council fan-out starting`, or `Spawning reviewers`; every visible non-final status line starts exactly `Council progress:`. Inline text is complete unless user gives `@path`, exact paths, a diff, or explicit read/search. Otherwise no web/browser/search, Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, repo search, git history, local discovery, `pwd`, or shell command chaining. Treat reviewer agents as high-effort review agents: never intentionally run them at `medium` or `low` reasoning.
 
 Fixed modes use keys below; do not read registry or agent files. For `auto/all/debate`, registry is `<loaded SKILL.md dir>/references/agents.md`; never try plugin-root `/references`, `ls`, `find`, or `rg`. If that read fails: `Council not run: reviewer fan-out failed.`
 
@@ -33,7 +34,7 @@ Rosters: `core-eng` = antirez, tef, muratori, hebert, meadows, chin. `core-ux` =
 1. Bound input first. Read only explicit `@path`, exact path, supplied diff, or snippet; no broad discovery.
 2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final headings and every citation in Convergence/Disagreement use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
 3. Use all exposed current/under-development agent features: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
-4. If available and schema permits, call `list_agents` with no args; if that errors, skip it. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
+4. If native `list_agents` tool is available and schema permits, call it with no args; if the native tool is absent or errors, skip this step. Never use shell/command execution for live-agent state. Do not run `rtk ls_agents`, `harness`, `ps`, `pgrep`, `pwd`, `ls`, `find`, or `rg` for Council orchestration. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
 5. Fan out in waves. Max 3 `spawn_agent`s per batch; six-reviewer roster is exactly two waves of 3. Wave order is strict: spawn wave N, wait until every wave-N reviewer is `accepted/missing/failed`, close every wave-N reviewer, observe the close results, then spawn wave N+1 if any selected slug remains. Closing is a hard tool-call barrier: never queue or attempt a next-wave `spawn_agent` until all wave-N `close_agent` calls have completed. Never synthesize after wave 1 of a six-reviewer roster. Unknown capacity means one per wave. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none", reasoning_effort: "high")` when the schema accepts `reasoning_effort`; if role-managed agents reject overrides, rely on the installed reviewer manifest's high-effort setting and do not set any medium/low fallback. Keep the model unchanged unless the user requested a model change.
 6. Every spawn or follow-up prompt must start exactly with this sentence and nothing before it: `You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.` Then add one blank line, then the complete `<council-review-assignment>` block. Do not put `## <display name> review`, summaries, aliases, or metadata before the assignment block; the reviewer writes that heading in its response. Every reviewer gets the full bounded material text; never write `same as other reviewers`, `same as assignment`, `see prior wave`, or any shorthand that depends on another child context.
 7. Ack retry starts only after a true ack/setup/status-only response: `Your previous response was ack-only and invalid. Produce the review body now.` Format retry starts after malformed-but-substantive output: `Your previous response had invalid Council output format. Keep the same findings, start with the required reviewer heading, and return only the review body now.` Retry prompts still follow the exact start sentence plus full assignment block from step 6. Do not mislabel substantive reviews as ack-only.

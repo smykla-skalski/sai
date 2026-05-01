@@ -127,6 +127,7 @@ Required evidence:
 - `wait_agent` and `followup_task` supervision happened when needed
 - fixed six-reviewer rosters did not stop after the first wave
 - every visible non-final status line started with exact `Council progress:`
+- no shell command was used for live-agent probing or Council orchestration
 - every reviewer spawn/follow-up prompt started with the exact `You are ... for Council` sentence, one blank line, and then the assignment block
 - every reviewer prompt carried complete bounded material
 - no reviewer prompt used `same as other reviewers`, `same as assignment`, or `see prior wave`

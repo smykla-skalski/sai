@@ -45,6 +45,7 @@ SKILL_NEEDLES = [
     "Every spawn or follow-up prompt must start exactly",
     "<subagent_notification>",
     "Do not emit prefaces",
+    "Never use shell/command execution for live-agent state",
 ]
 
 
@@ -336,6 +337,7 @@ def command_evidence(args: argparse.Namespace) -> None:
 
     bad_prompts: list[str] = []
     bad_status: list[str] = []
+    bad_commands: list[str] = []
     for event in events:
         item = event.get("item", {})
         if item.get("type") == "agent_message":
@@ -344,6 +346,12 @@ def command_evidence(args: argparse.Namespace) -> None:
                 continue
             if not text.startswith("Council progress:"):
                 bad_status.append(text[:120])
+            continue
+        if item.get("type") == "command_execution":
+            command = item.get("command") or ""
+            forbidden_command_bits = ["ls_agents", "list_agents", " pgrep", " ps ", " find ", " rg "]
+            if any(bit in command for bit in forbidden_command_bits):
+                bad_commands.append(command[:160])
             continue
         if item.get("type") != "collab_tool_call":
             continue
@@ -365,6 +373,8 @@ def command_evidence(args: argparse.Namespace) -> None:
                 )
     if bad_status:
         fail(f"non-Council progress status lines: {bad_status[:5]}")
+    if bad_commands:
+        fail(f"shell-based agent probing/orchestration commands: {bad_commands[:5]}")
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
 
