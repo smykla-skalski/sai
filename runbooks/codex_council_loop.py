@@ -54,7 +54,7 @@ SKILL_NEEDLES = [
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
-    "agent state clean: root only; running largest safe wave",
+    "agent state clean: root only; running full selected roster when within limit",
     "Close stale Council reviewer children first",
     "Fan out in waves sized by cleaned capacity",
     "Do not spawn into a known full session",
@@ -339,7 +339,7 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
         item = event.get("item", {})
         if item.get("type") == "agent_message":
             text = item.get("text") or ""
-            if text == "Council progress: agent state clean: root only; running largest safe wave.":
+            if text == "Council progress: agent state clean: root only; running full selected roster when within limit.":
                 if first_spawn_index is None:
                     capacity_checked_before_spawn = True
             continue
@@ -367,8 +367,8 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
         return
     if not capacity_checked_before_spawn:
         fail(f"{name} spawned reviewers before agent-state cleanup/check")
-    if max_active > 3:
-        fail(f"{name} spawned {max_active} concurrent reviewers; smoke cap is 3")
+    if max_active > 6:
+        fail(f"{name} spawned {max_active} concurrent reviewers; subagent limit is 6")
 
 
 def command_evidence(args: argparse.Namespace) -> None:
