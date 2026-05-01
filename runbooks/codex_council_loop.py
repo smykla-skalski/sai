@@ -42,6 +42,8 @@ SKILL_NEEDLES = [
     "same as other reviewers",
     "Council progress:",
     "Council not run: broad council approval not granted.",
+    "Every spawn or follow-up prompt must start exactly",
+    "<subagent_notification>",
 ]
 
 
@@ -312,14 +314,50 @@ def command_evidence(args: argparse.Namespace) -> None:
         if missing_headings:
             fail(f"{name} missing headings: {missing_headings}")
 
-    jsonl_text = "\n".join(
-        (evidence / name).read_text()
-        for name in ["normal.jsonl", "prefixed.jsonl", "followup.jsonl"]
-    )
+    jsonl_names = ["normal.jsonl", "prefixed.jsonl", "followup.jsonl"]
+    events: list[dict] = []
+    jsonl_chunks: list[str] = []
+    for name in jsonl_names:
+        text = (evidence / name).read_text()
+        jsonl_chunks.append(text)
+        for line in text.splitlines():
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                fail(f"{name} contains invalid JSONL line: {line[:120]}")
+    jsonl_text = "\n".join(jsonl_chunks)
+    forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
+    leaked = [needle for needle in forbidden_raw if needle in jsonl_text]
+    if leaked:
+        fail(f"raw child transport leaked into evidence stream: {leaked}")
+    if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
+        fail("shorthand reviewer material leaked into evidence stream")
+
+    bad_prompts: list[str] = []
+    for event in events:
+        item = event.get("item", {})
+        if item.get("type") != "collab_tool_call":
+            continue
+        tool = item.get("tool")
+        if tool not in {"spawn_agent", "send_input", "followup_task"}:
+            continue
+        prompt = item.get("prompt") or ""
+        if not prompt.startswith("You are "):
+            bad_prompts.append(f"{tool} prompt does not start with 'You are ': {prompt[:80]!r}")
+            continue
+        if "<council-review-assignment>" in prompt:
+            before_assignment = prompt.split("<council-review-assignment>", 1)[0]
+            if "\n## " in before_assignment:
+                bad_prompts.append(
+                    f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
+                )
+    if bad_prompts:
+        fail("; ".join(bad_prompts[:5]))
+
     counts = {
         "spawn_agent": jsonl_text.count("spawn_agent"),
         "wait_agent": jsonl_text.count("wait_agent"),
-        "followup_task": jsonl_text.count("followup_task"),
+        "followup_or_send_input": jsonl_text.count("followup_task") + jsonl_text.count('"tool":"send_input"'),
         "Council progress:": jsonl_text.count("Council progress:"),
     }
     if counts["spawn_agent"] == 0:

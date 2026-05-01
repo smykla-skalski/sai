@@ -126,6 +126,7 @@ Required evidence:
 - native reviewer `spawn_agent` calls happened
 - `wait_agent` and `followup_task` supervision happened when needed
 - fixed six-reviewer rosters did not stop after the first wave
+- every reviewer spawn/follow-up prompt started with the exact `You are ... for Council` sentence
 - every reviewer prompt carried complete bounded material
 - no reviewer prompt used `same as other reviewers`, `same as assignment`, or `see prior wave`
 - reviewer agents did not read memory, prior sessions, persona dossiers, git history, broad repo context, or local discovery surfaces outside exact assignment paths
@@ -133,7 +134,7 @@ Required evidence:
 - `list_agents` was not called with filesystem prefixes
 - liveness chatter used `Council progress:`
 - runtime child nicknames did not leak as reviewer identities
-- raw reviewer blocks and child payloads stayed internal
+- raw reviewer blocks, `<subagent_notification>` text, JSON envelopes, and child payloads stayed internal
 - final output used every mandatory Council heading as integrated synthesis
 
 ## Phase 8: Patch, Bump, And Repeat On Failure
