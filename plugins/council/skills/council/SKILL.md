@@ -1,10 +1,9 @@
 ---
 name: council
 description: >-
-  Use when user asks $council/review/debate. If all/broad>6 lacks approval: no
-  tools/commentary; output only `Council not run: broad council approval not
-  granted.` Else read SKILL, spawn reviewers, never solo. Inline complete unless
-  @path/files/diff; no web/MEMORY/repo/git/prior/Claude/local lookup.
+  Use when user asks $council/review/debate. Inline means no MEMORY/prior/repo
+  lookup before SKILL. If all/broad>6 lacks approval: no tools/commentary; output
+  only `Council not run: broad council approval not granted.` Else spawn reviewers.
 ---
 
 # Council
@@ -30,7 +29,7 @@ Rosters: `core-eng` = antirez, tef, muratori, hebert, meadows, chin. `core-ux` =
 1. Bound input first. Read only explicit `@path`, exact path, supplied diff, or snippet; no broad discovery.
 2. Select/dedupe slugs. Build `<slug> -> <display name>` before spawning from Fixed Rosters or registry Person cells. Final headings and every citation in Convergence/Disagreement use only exact display names, never short aliases (`antirez`, `tef`) or runtime nicknames.
 3. Use all exposed current/under-development agent features: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, `close_agent`. Demote only if the live loop proves harm. Never invent tools.
-4. If available, call `list_agents` with no args. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
+4. If available and schema permits, call `list_agents` with no args; if that errors, skip it. `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Respect session thread limits.
 5. Fan out in waves. Max 3 `spawn_agent`s per batch; six-reviewer roster is two waves of 3. Wave order is strict: spawn wave N, wait until every wave-N reviewer is `accepted/missing/failed`, close every wave-N reviewer, then and only then spawn wave N+1. Unknown capacity means one per wave. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none")`; lowercase task names; no model/reasoning override unless requested.
 6. Each spawn/follow-up starts: `You are <display name> (<slug>) for Council. Produce the review body now; do not acknowledge, wait, or describe setup.` Then include the Assignment block. Ack retry starts: `Your previous response was ack-only and invalid. Produce the review body now.`
 7. Supervise here. Non-final status after skill load must start `Council progress:`. Never write prefaces like `Using council`, `Fan-out starting`, or `Checking live agents`. Status only marks fan-out, half returned, nudge, stall/fail, or minute tick. Loop `wait_agent(timeout_ms: 60000)`; classify reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; nudge non-healthy once. Wave timeout 20m.
