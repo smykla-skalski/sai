@@ -5,6 +5,7 @@ description: >-
   Council debate. Use loaded SKILL body or one direct installed
   `skills/council/SKILL.md` read. Direct read path must contain
   `/.codex/plugins/cache/sai/council/` and end `/skills/council/SKILL.md`.
+  Direct read must not include `cd`, `pwd`, `&&`, `;`, `ls`, `find`, or `rg`.
   Never use repo-local paths. If unavailable, stop exactly
   `Council not run: skill unavailable.` Non-final lines start `Council progress:`.
 ---
@@ -14,7 +15,8 @@ description: >-
 Never answer solo. Use this loaded SKILL.md body or one direct installed
 `skills/council/SKILL.md` read. A direct read is allowed only when the path
 contains `/.codex/plugins/cache/sai/council/` and ends
-`/skills/council/SKILL.md`. Never use repo-local paths, marketplace temp paths,
+`/skills/council/SKILL.md`. That direct read must not include `cd`, `pwd`, `&&`,
+`;`, `ls`, `find`, or `rg`. Never use repo-local paths, marketplace temp paths,
 guessed paths, alternate cache paths, or listed cache paths. Never say `skill
 file unavailable`, never mention alternate paths, and never continue from
 `loaded session context`. If the loaded body and direct installed read are
