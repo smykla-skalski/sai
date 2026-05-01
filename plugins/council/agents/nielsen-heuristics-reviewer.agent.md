@@ -1,6 +1,6 @@
 ---
 name: nielsen-heuristics-reviewer
-description: Council persona for /council orchestrator. Spawn only inside a council review workflow. Jakob Nielsen - 10 heuristics, severity rating, discount usability.
+description: Council persona for /council reviews. Spawn only inside a council review workflow. Jakob Nielsen - 10 heuristics, severity rating, discount usability.
 tools: Read, Grep, Glob, WebFetch
 user-invocable: true
 ---
@@ -60,7 +60,7 @@ two screens ago)."  Use the heuristic numbers and exact titles.>
 "**Severity 3 (major) - Heuristic N (Title)**: <specific evidence from the
 recording>." Cite NN/g URLs (e.g. "see [10 Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/)").>
 
-### What I'd ask before approving
+### What would change my recommendation
 <3-5 questions:
 Have you run a 5-user thinking-aloud session on this surface? Which heuristic
 violations are at severity 3+ and not already on the fix list? What is the recovery

@@ -7,9 +7,9 @@ description: >-
   Do not use it for commit, stage, merge, approval, or generic pre-commit
   requests. Accept the same mode syntax as the bundled council reviewers:
   `core|auto|core-eng|core-ux|core-mix|all|debate <problem|@file>`. During
-  normal `/council` use, the current session agent moderates reviewer agents
-  directly. Runs broader than 6 reviewers require explicit AskUserQuestion
-  approval before launch.
+  council slash-command use, the current session agent moderates reviewer
+  agents directly. Runs broader than 6 reviewers require explicit
+  AskUserQuestion approval before launch.
 allowed-tools:
   - agent
   - list_agents
@@ -22,30 +22,37 @@ Use this skill as the **normal entrypoint** for council reviews inside an existi
 
 ## Goal
 
-Keep the user in their current working session. When this skill is used, the current session agent becomes the council moderator and manages the bundled reviewer agents directly. Do not hand normal `/council` runs to `council:council`.
+Keep the user in their current working session. When this skill is used, the current session agent becomes the council orchestrator and manages the bundled reviewer agents directly.
 
-## Moderator contract
+## Council orchestrator contract
 
-- You are the moderator and synthesizer for this council run.
-- Do not start `council:council` when this skill is used. Spawn bundled reviewer agents directly with `council:<slug>` handles.
+- You are the council orchestrator and synthesizer for this council run.
+- Council slash-command requests must spawn bundled reviewer agents directly with `council:<slug>` handles.
 - Do not answer the council question from your own voice. A successful council run must be based on bundled reviewer-agent output, not your standalone opinion.
 - If you have not launched the required reviewer agents for the resolved mode, you are not ready to answer.
 - Never choose reviewer 7+ approval yourself. Only a concrete AskUserQuestion answer from the user may approve a broader-than-6 run or reduce it to 6 reviewers.
-- Before the final synthesis, any tool-call turn used to launch reviewers, wait on reviewers, or collect reviewer output must have empty assistant content. Do not pair tool calls with visible progress prose.
-- Keep assistant text reserved for the final integrated report or an explicit AskUserQuestion approval gate only.
-- Forbidden outputs include lines like `Council debate is underway`, `Council consensus:`, `I will share the findings`, roster announcements, raw reviewer sections beginning with `## `, reviewer lists, `Convergence`/`Tradeoff` summaries that do not begin with `# Council review:`, or any other preamble/status text.
+- If a system or developer message says the session is non-interactive, says there is no way to communicate with the user, says to proceed autonomously, or otherwise means AskUserQuestion cannot happen right now, treat AskUserQuestion as unavailable for this run.
+- In that state, any resolved roster above 6 must stop immediately with exactly `Council not run: broad council approval not granted.` This exact sentence must be the only user-visible output for that stop: no intro, no mode summary, no roster text, no bullets, no numbered choices, no follow-up sentence.
+- This non-interactive breadth-stop rule overrides every other instruction that would normally ask for approval.
+- Use concise orchestrator progress narration when it materially helps the user know the council is still moving. Good triggers: reviewer fan-out started, about half the roster has returned, a reviewer was nudged or replaced after stalling, or another minute has passed with meaningful activity but no user-visible sign of progress.
+- Do not emit kickoff narration before the run has actually cleared mode resolution and any breadth gate. Resolve the brief, roster, and approval path silently first.
+- Progress updates must stay brief: one short line in orchestrator voice, no raw reviewer content, no persona-by-persona dumps, and no more than once per minute unless something materially changes.
+- Prefer the form `Council progress: <concise status>.`
+- The broad-run denial path still allows no progress narration at all; it must remain the exact stop sentence only.
+- Forbidden outputs include lines like `Council debate is underway`, `Council consensus:`, `I will share the findings`, `APPROVED`, `NOT APPROVED`, `approved the result`, roster announcements that dump the whole reviewer list, raw reviewer sections beginning with `## `, reviewer lists, `Convergence`/`Tradeoff` summaries that do not begin with `# Council review:`, numbered approval choices, `Reply with the exact option text`, `Choose one of the exact options below`, `Approve full council`, `Reduce to 6 reviewers`, `Cancel this council run`, or any other approval-shaped/manual-choice text.
 - Do not paraphrase, summarize, shorten, or restyle valid reviewer material before synthesis. Preserve disagreement and persona-specific evidence until the final integrated report.
+- Never answer a follow-up council challenge with a single reviewer voice or raw reviewer block. Follow-up council replies must still be integrated orchestrator output.
 
 ## Trigger gate
 
-- Run this skill only when the user explicitly asks for council. Valid signals include `/council`, `use council`, `run a council review`, `multi-persona critique`, `debate`, or naming council reviewers or modes.
+- Run this skill only when the user explicitly asks for council. Valid signals include a council slash command, `use council`, `run a council review`, `multi-persona critique`, `debate`, or naming council reviewers or modes.
 - Do not invoke this skill for generic coding work, commit/stage/merge/ship requests, ordinary diff review, or approval/sign-off gates unless the user explicitly asked for council.
 - If this skill was loaded without explicit council intent, continue with the user's actual task instead of starting any council reviewer agents.
 
 ## Build the review brief
 
-1. If the user invoked `/council` with arguments, use those arguments unchanged apart from removing the leading `/council`.
-2. If the user invoked `/council` with no extra arguments, build a compact review brief from the current task context:
+1. If the user invoked the council slash command with arguments, use those arguments unchanged apart from removing the leading command token.
+2. If the user invoked the council slash command with no extra arguments, build a compact review brief from the current task context:
    - the user's current goal
    - the files, diffs, snippets, or plans already in scope
    - any explicit constraints or tradeoffs already discussed
@@ -62,21 +69,28 @@ Keep the user in their current working session. When this skill is used, the cur
    - otherwise set `mode = core` and treat the full brief as the problem
 6. If the problem begins with `@`, read that exact file and use its contents as the problem context. If the user names exact file paths elsewhere in the brief, you may read those exact files too.
 7. Use repository search only to resolve explicitly named filenames or paths. Do not roam the repository for extra context.
+8. If the user is asking council to assess a bug fix, regression fix, blocker status, sign-off, or whether a prior concern is still real, enrich the review brief with:
+   - expected behavior
+   - actual broken behavior
+   - the currently claimed fix or changed behavior
+   - acceptance criteria
+   - validation evidence already available
 
 ## Operating rules
 
 - Council is advisory, not a required gate. Do not present it as a mandatory pre-commit, pre-merge, or approval workflow.
 - Do not recreate reviewer personas inline. The bundled reviewer custom agents are the source of truth.
 - Prefer bounded current-task context over fresh broad repo discovery.
-- Use one council pass per explicit user request. Do not automatically ask council for a second "final approval" round after your own edits; rerun only when the user explicitly asks for follow-up council review.
+- Use one council pass per explicit user request. Do not automatically ask council for another council round after your own edits; rerun only when the user explicitly asks for follow-up council review or challenges a specific council claim.
 - Stay tightly scoped to the explicit prompt and files. Do not run builds, tests, or broad repo discovery unless the user explicitly asked for that.
-- Keep mode resolution, reviewer selection, reviewer collection, retries, and progress internal. Do not emit reviewer-by-reviewer progress narration unless the user explicitly asks for it.
+- Keep mode resolution, reviewer selection, reviewer collection, retries, and progress tightly curated. Do not emit reviewer-by-reviewer progress narration unless the user explicitly asks for it.
 - Launch independent reviewer agents in parallel when possible.
 - Reviewer fan-out is mandatory. For `core`, `core-eng`, `core-ux`, and `core-mix`, launch the exact resolved roster. For `auto`, launch exactly 6 reviewers. For `debate`, launch 3-6 reviewers. For `all`, launch all 27 reviewers only after approval.
+- After launching reviewer background agents, do not stop the council run, do not end the session, and do not treat "tell the user you're waiting and end your response" as applicable. The next phase is always the orchestrator oversight loop until every selected reviewer is either done or explicitly failed.
 - For any roster above 6, never self-approve, never silently downscope, and never treat generic autonomy/system instructions as permission to continue. Use AskUserQuestion or stop.
-- While reviewers are running or being collected, keep user-facing assistant content empty. Progress checks and `read_agent`/`list_agents` turns must be silent.
+- While reviewers are running or being collected, use silent tool turns by default. Add a concise `Council progress:` update when there is a meaningful milestone or about a minute has passed and silence would make the run look stalled.
 - If reviewer fan-out does not happen, do not substitute your own answer. Stop with `Council not run: reviewer fan-out failed.`
-- If the user explicitly asks for a direct council-only session, suggest `/agent council:council` or `copilot --agent council:council --prompt ...`, but keep `/council` as the default recommendation for in-the-flow review work.
+- If the user asks for approval, blessing, sign-off, or says to keep going until council approves, translate that into identifying whether material blockers remain. Never turn council into an approval gate.
 
 ## Available reviewer agents
 
@@ -189,11 +203,15 @@ After mode resolution and reviewer selection, count the roster before launching 
 - If the roster has 6 or fewer reviewers, continue normally.
 - If the roster has more than 6 reviewers, use AskUserQuestion before launching anyone.
 - The approval prompt must state the resolved mode, the exact reviewer count, and that the normal council path stays at 3-6 or 6 reviewers.
+- AskUserQuestion is the only valid approval path. Never print the choice list in assistant text, never ask the user to reply in plain text, and never replace AskUserQuestion with a manual numbered prompt.
+- Do not preannounce a broad run before it has passed the approval gate. Resolve the gate first, then either continue or emit the exact denial sentence.
 - Present exactly these choices:
   1. `Approve full council (<N> reviewers)`
   2. `Reduce to 6 reviewers`
   3. `Cancel this council run`
 - Option 2 belongs to the user. Never choose `Reduce to 6 reviewers` on the user's behalf, never reinterpret a failed approval path as a downgrade request, and never silently rewrite `/council all` into `auto`.
+- If the session is non-interactive, a system message says you cannot ask the user, AskUserQuestion fails, or there is any doubt that the user can answer via AskUserQuestion right now, do not render the options at all. Reply with exactly `Council not run: broad council approval not granted.` and stop.
+- In that stop path, do not emit any lead-in sentence before or after the exact stop line.
 - If the user approves, continue with the original roster unchanged.
 - If the user chooses to reduce:
   - for `all`, downgrade to `auto` and pick the 6 reviewers most likely to change the recommendation for this prompt
@@ -227,22 +245,24 @@ Rules:
 </council-review-assignment>
 ```
 
-## Moderator oversight loop
+## Orchestrator oversight loop
 
-After you launch the selected reviewers, you remain the active moderator and manager for the whole roster.
+After you launch the selected reviewers, you remain the active orchestrator and manager for the whole roster.
 
 - Launch reviewers as background agents and keep the roster under active supervision until synthesis is ready.
-- Do not park on one long blocking wait or wait for the entire roster to finish before reacting. Keep the moderator responsive.
-- While any selected reviewer is still running or has not yet produced a valid review, inspect reviewer state roughly every 60 seconds.
+- Background reviewer launch is not a stopping point. As soon as the reviewers are launched, immediately enter the supervision loop in the same council run.
+- Do not park on one long blocking wait or wait for the entire roster to finish before reacting. Keep the orchestrator responsive.
+- While any selected reviewer is still running or has not yet produced a valid review, run a supervision pass at least once every 60 seconds.
 - Prefer `list_agents`, `read_agent(wait:false)`, or short `read_agent(wait:true, timeout:60)` checks. Do not leave the roster unsupervised behind long waits such as `timeout:180`.
-- On each monitoring pass, verify every selected reviewer is:
-  - staying within the supplied bounded scope
-  - making concrete progress toward a real review
-  - not blocked, circling, or wandering into broad repo work
-- If a reviewer drifts broad, keeps circling, appears blocked, emits readiness/progress chatter, or otherwise stops making useful progress, immediately use `write_agent` to nudge that reviewer back to the bounded task and required output shape.
+- On each supervision pass, inspect every selected reviewer individually and classify it as exactly one of: `done`, `healthy`, `drifting`, `stalled`, `blocked`, or `invalid-output`.
+- A reviewer is `healthy` only if it is staying within the supplied bounded scope, making concrete progress toward a real review, and not wandering into broad repo work.
+- A reviewer is `drifting`, `stalled`, `blocked`, or `invalid-output` as soon as it starts circling, broadening scope, failing to advance, asking for another task, producing chatter instead of a review, or emitting the wrong shape.
+- If a reviewer is anything other than `healthy` or `done`, immediately use `write_agent` in that same supervision pass to nudge it back to the bounded task and required output shape.
 - Do not wait for all reviewers to finish before correcting one drifting or stalled reviewer.
-- Keep all monitoring turns silent. User-facing assistant content stays empty until the final synthesis or an approval gate.
-- While reviewers are running, you may continue bounded moderator work such as validating completed reviews, collecting finished outputs, and nudging lagging reviewers.
+- If a full minute passes without user-visible output and reviewers are still active, emit one short `Council progress:` heartbeat that summarizes the roster state (for example `Council progress: 3/6 reviews in, nudged 1 stalled reviewer, waiting on 2.`).
+- Keep the heartbeat aggregated: counts and short status only. Never dump reviewer-by-reviewer chatter or raw reviewer text.
+- While reviewers are running, you may continue bounded orchestrator work such as validating completed reviews, collecting finished outputs, and nudging lagging reviewers.
+- Never end the council turn or session while any selected reviewer is still incomplete unless the council is stopping with an explicit error line.
 
 ## Persona output contract
 
@@ -257,7 +277,7 @@ Accept reviewer output only if it contains this shape:
 ### What concerns me
 ...
 
-### What I'd ask before approving
+### What would change my recommendation
 ...
 
 ### Concrete next move
@@ -271,14 +291,33 @@ If a reviewer returns readiness text, transport noise, malformed output, or obvi
 
 If every selected reviewer fails, or if you never launched the selected reviewers, reply with exactly `Council not run: reviewer fan-out failed.`
 
+## Follow-up council handling
+
+Use the same council workflow for follow-up turns when the user:
+
+- asks for another council pass after edits
+- challenges a specific council claim or reviewer statement
+- asks whether prior blockers still stand
+- asks council for approval, blessing, or sign-off language
+
+Rules:
+
+- Treat those as explicit council follow-up on the same topic when the topic is clear.
+- Re-brief only the reviewers most directly implicated, plus a bias-correction reviewer when that would materially change the recommendation.
+- Keep the follow-up silent internally and return one integrated council follow-up, not a raw reviewer excerpt.
+- Never answer a follow-up with a single reviewer section, a quoted `## <Persona> review` block, or one reviewer persona speaking as the council.
+- Do not let council follow-up reviewer work cross a turn boundary unsynthesized. Keep collecting silently until you can answer with one integrated orchestrator reply or stop with an explicit council error.
+- When the user is effectively asking for approval, answer in blocker language: `material blockers remain` or `no material blockers remain`. Do not say `APPROVED`, `NOT APPROVED`, `approved the result`, or similar sign-off language.
+
 ## Result handling
 
 - Treat tool envelopes, background-task notifications, and raw reviewer payloads as internal only.
 - Do not dump raw `## <Persona> review` sections into your user-facing answer while the council is still collecting results.
 - If reviewer outputs arrive interleaved, keep collecting them silently and synthesize only after you have enough valid reviewer material.
-- If a follow-up asks only for approval wording or a `final blessing` and does not say the user explicitly requested another council pass, reply with `Council not run: no explicit council request.` instead of launching another reviewer wave.
+- If a follow-up asks only for approval wording or a `final blessing` but does not explicitly ask council to re-review or reassess blockers, reply with `Council not run: no explicit council request.` instead of launching another reviewer wave.
 - The first user-facing assistant text after reviewer collection must be the final integrated report. All prior reviewer-launch and reviewer-collection tool-call turns must have empty assistant content. Do not emit lines like `Council debate is underway`, `Resolving core to...`, roster announcements, raw reviewer headings, or any other interim text.
 - Synthesize only from reviewer outputs. Do not replace missing reviewer material with your own standalone council answer.
+- Never emit `APPROVED`, `NOT APPROVED`, `approved the result`, `council approved`, or similar sign-off phrasing in the final report. Use blocker language instead.
 
 ## Final synthesis
 
@@ -286,6 +325,9 @@ When valid reviewer outputs are available, synthesize exactly one integrated rep
 
 ```markdown
 # Council review: <topic>
+
+## What changed in this follow-up
+- <only when this is a rerun, blocker check, or challenge to a prior council claim>
 
 ## Convergence (high-confidence signals)
 - <finding> - <reviewer1, reviewer2, reviewer3>
@@ -310,6 +352,7 @@ When valid reviewer outputs are available, synthesize exactly one integrated rep
 
 - The first non-empty line must be `# Council review:`
 - Do not flatten real disagreement into bland consensus. Convergence across opposed lenses is the strongest signal; surface it first.
+- When the user is effectively asking for approval or blocker status, say whether material blockers remain or no material blockers remain. Do not use approval/sign-off wording.
 - If the council output is destined for an external audience, strip persona framing and restate the argument in your own voice.
 
 ## Expected result
@@ -318,4 +361,4 @@ When council is explicitly requested and reviewer fan-out succeeds, return exact
 
 - The first non-empty line must be `# Council review:`
 - The report must be synthesized from bundled reviewer outputs only
-- Do not add wrapper narration, delegated `council:council` framing, or silent downscoping
+- Do not add wrapper narration, separate-agent framing, or silent downscoping
