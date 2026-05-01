@@ -49,6 +49,8 @@ SKILL_NEEDLES = [
     "If skill-use announcement is required",
     "After any `running` close result",
     "Never copy, quote, summarize-by-pasting, or echo",
+    "FIRST ACTION: load this SKILL",
+    "call no web/search/browser/tool",
 ]
 
 
@@ -362,6 +364,7 @@ def command_evidence(args: argparse.Namespace) -> None:
     bad_prompts: list[str] = []
     bad_status: list[str] = []
     bad_commands: list[str] = []
+    forbidden_tools: list[str] = []
     running_close_without_tool: list[str] = []
     for index, event in enumerate(events):
         item = event.get("item", {})
@@ -377,6 +380,9 @@ def command_evidence(args: argparse.Namespace) -> None:
             forbidden_command_bits = ["ls_agents", "list_agents", " pgrep", " ps ", " find ", " rg "]
             if any(bit in command for bit in forbidden_command_bits):
                 bad_commands.append(command[:160])
+            continue
+        if item.get("type") in {"web_search", "browser"}:
+            forbidden_tools.append(item.get("type"))
             continue
         if item.get("type") != "collab_tool_call":
             continue
@@ -404,6 +410,8 @@ def command_evidence(args: argparse.Namespace) -> None:
         fail(f"non-Council progress status lines: {bad_status[:5]}")
     if bad_commands:
         fail(f"shell-based agent probing/orchestration commands: {bad_commands[:5]}")
+    if forbidden_tools:
+        fail(f"forbidden search/browser tools used: {forbidden_tools[:5]}")
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
     if running_close_without_tool:
