@@ -4,9 +4,9 @@ description: >-
   Use when the user invokes $council, $council:council, Council review, or
   Council debate. FIRST ACTION: load this SKILL. Any visible setup/status/plan
   line must start `Council progress:`; unprefixed `Load Council rules first` is
-  invalid. Strict native Council: bounded input, no discovery without
-  exact/direct input, broad >6 denial, clean agents, high-effort reviewers, no
-  raw child leaks.
+  invalid. No final output after `close_agent` status `running`; recover with
+  wait/follow-up/close/list first. Strict native Council: bounded input, no
+  discovery without exact/direct input, broad >6 denial, high-effort reviewers.
 ---
 
 # Council
@@ -77,18 +77,23 @@ use `ls`, `find`, or `rg`. If registry read fails:
 5. Fan out in waves sized by cleaned capacity. Max 6 spawns per clean batch. A
    no-`receiver_thread_ids` failure is `pending-capacity`, not launched/missing.
    Supervise launched reviewers, close terminal children, wait for
-   close completion, then retry pending-capacity. No next wave until every prior
-   close completed and any `running` close result is resolved.
+   close completion, then retry pending-capacity. A `close_agent` result with
+   `status: running` means the close did not finish and the reviewer is still
+   live. No next wave until every prior close completed and any `running` close
+   result is resolved.
 6. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none",
    reasoning_effort: "high")`. If role-managed agents reject
    overrides, rely on the installed high-effort manifest; never use medium/low.
 7. Loop `wait_agent(timeout_ms: 60000)`. Every minute classify live reviewers as
    `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or
    `done`; nudge non-healthy once with `followup_task`. After one nudge plus one
-   timeout, close; mark `missing`/`failed` if no valid body exists.
+   timeout, close; mark `missing`/`failed` only after close completes, the agent
+   path is gone, or another native tool proves the reviewer is terminal.
 8. After any `running` close result, the next Council action must be an actual
    `wait_agent`, `followup_task`, `close_agent`, or `list_agents` call naming or
-   observing that reviewer. Do not claim retry/verification/close without tool evidence.
+   observing that reviewer. Final synthesis, next-wave spawn, and marking that
+   reviewer `missing`/`failed` are forbidden until that recovery call resolves
+   the reviewer. Do not claim retry/verification/close without tool evidence.
 9. Drain until every selected slug is `accepted`, `missing`, or `failed`. If no
    reviewer launched or all fail: `Council not run: reviewer fan-out failed.`
 
