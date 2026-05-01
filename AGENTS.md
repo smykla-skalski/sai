@@ -10,7 +10,7 @@ Validate the exact runtime surface you changed.
 
 - Claude plugin smoke: `claude --plugin-dir claude/{plugin-name}/`
 - Copilot council smoke: `copilot plugin install /absolute/path/to/sai/plugins/council`, then run `/council ...`
-- Codex council smoke: install the bumped local marketplace/plugin, then run `$council ...` from the real target repository
+- Codex council smoke: push/release the bumped Git marketplace plugin, run `codex plugin marketplace upgrade sai`, then run `$council ...` from the real target repository
 - Script-heavy changes: run the local checker/schema/smoke flow that belongs to that skill
 
 ## Codex council improvement loop
@@ -19,10 +19,10 @@ Use this loop for functional Codex changes under `plugins/council/`, `codex/agen
 
 1. Read `README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, and the Codex-facing files you are changing.
 2. Check version drift before editing: `plugins/council/plugin.json`, `plugins/council/.codex-plugin/plugin.json`, installed cache under `~/.codex/plugins/cache/sai/council/`, and README references.
-3. Change the complete Codex surface, not only one file: `plugins/council/codex-skills/council/SKILL.md`, `plugins/council/.codex-plugin/plugin.json`, relevant `plugins/council/agents/*.agent.md`, marketplace metadata, and README when behavior changes. Legacy dossiers for reviewer agents still live under `plugins/council/skills/council/references/`.
+3. Change the complete Codex surface, not only one file: `plugins/council/skills/council/SKILL.md`, `plugins/council/.codex-plugin/plugin.json`, relevant `plugins/council/agents/*.agent.md`, marketplace metadata, and README when behavior changes. `plugins/council/skills/council/` is the only Codex skill root; do not add a parallel `codex-skills/` tree.
 4. For functional Codex skill/plugin changes, bump the Codex plugin version in `plugins/council/.codex-plugin/plugin.json` in the same commit. Keep package versions intentionally aligned unless there is a documented reason not to.
 5. Commit the implementation first with `git commit -sS` before starting the live improvement loop.
-6. Install or upgrade the bumped local Codex plugin after that commit, then verify the installed cache contains the bumped version and the changed skill text.
+6. Release through the real marketplace path: push the signed commit, keep the `sai` marketplace configured as a Git marketplace, run `codex plugin marketplace upgrade sai`, then verify `~/.codex/plugins/cache/sai/council/<version>/` contains the bumped version and the changed skill text. Do not switch `sai` to a local marketplace path for validation; local-path registration can leave the versioned cache stale and cannot be upgraded with `codex plugin marketplace upgrade`.
 7. Check the local Codex feature surface before live validation: `codex --version` and `codex features list`. Enabled under-development features are in scope, not optional. When `multi_agent_v2`, `enable_fanout`, `child_agents_md`, or `runtime_metrics` are enabled, install and test the skill with those paths active instead of only the legacy single-agent path. Demote a feature only when the improvement loop proves a negative impact, and record the evidence.
 8. Use the cheapest practical model for repeated validation and smoke loops. Escalate only when the cheap model cannot diagnose or reproduce a real failure.
 9. Run Codex validations from the real target repository/cwd when behavior depends on repo context, not from `sai`.
