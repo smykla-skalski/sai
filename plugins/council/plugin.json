@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "description": "Run council reviews only when explicitly requested. Council keeps moderation in-session, sends complete bounded material to every selected high-effort reviewer, handles follow-up challenges without raw reviewer leaks, and requires explicit approval for runs above 6 reviewers.",
-  "version": "2.0.71",
+  "description": "Run council reviews only when explicitly requested. Council keeps moderation in-session, sends complete bounded material to every selected high-effort reviewer, preserves mandatory synthesis headings, handles follow-up challenges without raw reviewer leaks, and requires explicit approval for runs above 6 reviewers.",
+  "version": "2.0.72",
   "author": {
     "name": "Smykla Skalski Labs"
   },
