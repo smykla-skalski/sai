@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.90",
+  "version": "2.0.91",
   "description": "Strict $council only: first visible line, if any, must be Council progress; coordinator proactively cleans stale Council agents before any spawn.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -40,6 +40,7 @@
       "The coordinator must proactively remove every stale Council child it can see before any reviewer spawn.",
       "If state is clean/root-only, attempt the full selected roster when it is 6 or fewer; no-receiver thread-limit failures remain pending for retry after launched reviewers close.",
       "$council all needs explicit >6 reviewer approval.",
+      "$council spawn prompts must include `Your first line must be exactly: ## <display name> review` before the assignment block.",
       "$council never prefaces, truncates fixed rosters, accepts wrong reviewer headings, treats no-receiver capacity failures as final, skips mandatory headings, queues next-wave spawns before closes, sends malformed prompts, sends shorthand material, claims tool actions without the tool call, or leaks raw child payloads."
     ],
     "brandColor": "#7C3AED"

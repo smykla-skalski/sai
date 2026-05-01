@@ -43,6 +43,7 @@ SKILL_NEEDLES = [
     "Council progress:",
     "Council not run: broad council approval not granted.",
     "Every spawn or follow-up prompt must start exactly",
+    "Your first line must be exactly: ## <display name> review",
     "<subagent_notification>",
     "Never emit bare prefaces",
     "Never use shell/command execution for live-agent state",
@@ -570,8 +571,11 @@ def check_review_run(evidence: Path, name: str) -> None:
         if not prompt.startswith("You are "):
             bad_prompts.append(f"{tool} prompt does not start with 'You are ': {prompt[:80]!r}")
             continue
-        if "setup.\n\n<council-review-assignment>" not in prompt[:240]:
-            bad_prompts.append(f"{tool} prompt missing blank-line assignment boundary: {prompt[:120]!r}")
+        if "Your first line must be exactly: ## " not in prompt[:260]:
+            bad_prompts.append(f"{tool} prompt missing exact first-line heading requirement: {prompt[:160]!r}")
+            continue
+        if "\n\n<council-review-assignment>" not in prompt[:320]:
+            bad_prompts.append(f"{tool} prompt missing blank-line assignment boundary: {prompt[:160]!r}")
             continue
         if "<council-review-assignment>" in prompt:
             before_assignment = prompt.split("<council-review-assignment>", 1)[0]
