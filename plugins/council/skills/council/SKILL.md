@@ -66,6 +66,11 @@ watson=`watson-a11y-reviewer`/Leonie Watson;
 tognazzini=`tognazzini-fpid-reviewer`/Bruce Tognazzini;
 tufte=`tufte-density-reviewer`/Edward Tufte.
 
+Short aliases are selector keys only. The `<slug>` used in reviewer prompts,
+`agent_type`, and acceptance bookkeeping is the full role id from the map
+(example: `antirez-simplicity-reviewer`), never `antirez`, `tef`, or another
+short alias.
+
 Rosters: `core-eng` antirez/tef/muratori/hebert/meadows/chin; `core-ux`
 norman/nielsen/krug/watson/tognazzini/tufte; `core-mix`
 antirez/tef/hebert/norman/nielsen/watson. Use exact display names. For
@@ -75,8 +80,9 @@ guess cache paths and never use `ls`, `find`, or `rg`. If registry read fails:
 
 ## Orchestration
 
-1. Select slugs; build `<slug> -> <display name>` before spawning. Final
-   citations use exact display names, never aliases/runtime nicknames.
+1. Select roster keys, then resolve every key to a full role id and display
+   name before spawning. Final citations use exact display names, never
+   aliases/runtime nicknames. Prompts and `agent_type` use full role ids only.
 2. Use enabled agent features: `multi_agent_v2`, `enable_fanout`,
    `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`,
    `wait_agent`, `followup_task`, `close_agent`. Demote only on live evidence.
@@ -95,8 +101,11 @@ guess cache paths and never use `ls`, `find`, or `rg`. If registry read fails:
    Supervise launched reviewers, close terminal children, wait for
    close completion, then retry pending-capacity. A `close_agent` result with
    `status: running` means the close did not finish and the reviewer is still
-   live. No next wave until every prior close completed and any `running` close
-   result is resolved.
+   live. No next wave until every prior close completed and every `running`
+   close result has concrete native evidence: either a later `close_agent`
+   terminal result for that receiver, a `list_agents` result proving the path is
+   gone, or another native agent tool result that explicitly terminates it.
+   A plain timeout is not evidence that the reviewer is gone.
 6. Spawn with `spawn_agent(agent_type: "<slug>", fork_turns: "none",
    reasoning_effort: "high")`. If role-managed agents reject
    overrides, rely on the installed high-effort manifest; never use medium/low.
@@ -105,13 +114,27 @@ guess cache paths and never use `ls`, `find`, or `rg`. If registry read fails:
    `done`; nudge non-healthy once with `followup_task`. After one nudge plus one
    timeout, close; mark `missing`/`failed` only after close completes, the agent
    path is gone, or another native tool proves the reviewer is terminal.
-8. After any `running` close result, the next Council action must be an actual
-   `wait_agent`, `followup_task`, `close_agent`, or `list_agents` call naming or
-   observing that reviewer. Final synthesis, next-wave spawn, and marking that
-   reviewer `missing`/`failed` are forbidden until that recovery call resolves
-   the reviewer. Do not claim retry/verification/close without tool evidence.
+8. After any `running` close result, mark that reviewer `live-blocking`. The
+   next Council action must be an actual `wait_agent`, `followup_task`,
+   `close_agent`, or `list_agents` call naming or observing that reviewer. If
+   you write that you are retrying close, checking live state, verifying
+   root-only, or clearing capacity, the very next item must be the matching
+   native tool call. Do not emit another progress line, spawn, or final first.
+   Final synthesis, next-wave spawn, and marking that reviewer
+   `missing`/`failed` are forbidden until native evidence resolves the
+   live-blocking reviewer.
 9. Drain until every selected slug is `accepted`, `missing`, or `failed`. If no
    reviewer launched or all fail: `Council not run: reviewer fan-out failed.`
+
+## Transport Firebreak
+
+Tool results and child notifications are private inputs, not output material.
+After every `wait_agent` or `close_agent`, extract only accepted reviewer bodies,
+counts, and terminal status privately. Before any visible message, scan the
+draft: if it contains `<subagent_notification>`, `{"author":`, `"recipient"`,
+`/root/`, `trigger_turn`, raw JSON envelopes, or copied child payload text,
+discard the draft and emit only a sanitized `Council progress:` count or the
+integrated final synthesis. Never paste transport text to prove liveness.
 
 ## Reviewer Prompt
 
