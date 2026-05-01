@@ -9,7 +9,7 @@ description: >-
 
 # Council of Experts
 
-Use native Codex reviewer agents only. Inline text is complete bounded material. Do not use Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, local file reads, repo search, or git history unless the user explicitly asks for those sources by path, diff, or direct instruction.
+Use native Codex reviewer agents only. Inline text is complete bounded material. No Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, local reads, repo search, or git history unless the user explicitly asks by path, diff, or direct instruction.
 
 You are the orchestrator and synthesizer. Fan-out is not completion: final output must be based on accepted reviewer results and integrated in your voice.
 
@@ -33,12 +33,12 @@ For any roster above 6, get explicit current-run approval before spawning review
 2. Select/dedupe slugs from the registry. Do not pre-read agent definitions or dossiers.
 3. Create a roster map before spawning: `<slug> -> <display name>`. Final reviewer names must come from this map. Ignore runtime nicknames returned by `spawn_agent`; they are transport labels, not reviewer identities.
 4. Use all relevant current Codex agent features exposed in this session, including under-development ones. The preferred path is agents-v2 plus fan-out: `multi_agent_v2`, `enable_fanout`, `child_agents_md`, `runtime_metrics`, `list_agents`, `spawn_agent`, `wait_agent`, `followup_task`, and `close_agent`. Demote one of these features only when the live improvement loop proves a negative impact for Council behavior. Never invent tools that are not exposed in the current session.
-5. If available, call `list_agents`; close only stale council-owned reviewers. Never close unrelated workers/explorers/user agents. Unknown capacity means one reviewer per wave; known limited capacity means waves that fit, max 3. Respect `agents.max_threads`, `multi_agent_v2`, and live `max_concurrent_threads_per_session`.
+5. If available, call `list_agents` with no args; use `path_prefix` only for known `/root/...` agent paths, never filesystem paths. Close only stale council reviewers. Never close unrelated workers/explorers/user agents. Unknown capacity means one reviewer per wave; known capacity means waves that fit, max 3. Respect `agents.max_threads`, `multi_agent_v2`, and live `max_concurrent_threads_per_session`.
 6. Use native fan-out when capacity is proven: start reviewers in the same tool batch where possible instead of serializing startup. Do not downgrade to serial launch while `enable_fanout` and enough slots are available. Spawn each reviewer with `spawn_agent(agent_type: "<slug>", fork_turns: "none")`; task names use lowercase letters, digits, and underscores. Do not pass model or reasoning overrides unless requested. Unknown slug: skip and account for it.
 7. Treat `child_agents_md` as active context for child reviewers, then enforce the Assignment block below as the review boundary. Every spawn/follow-up task must include that block; do not replace it with ad hoc prompts.
-8. After spawn, supervise in this same run. Use sparse `Council progress:` lines only for real liveness: fan-out started, about half returned, a nudge happened, or another minute passed.
-9. Per wave, loop on `wait_agent(timeout_ms: 60000)`. At least once per minute classify every live reviewer as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; immediately `followup_task` non-healthy reviewers with the bounded task and output shape. Wave timeout is 20m.
-10. Accept only completed reviewer text with a reviewer-specific heading and real review body. Reject raw JSON/tags/tool payloads, ack-only/status/setup replies, generic `Findings:`, broad discovery, and empty output. Retry ack/no-task once with `fork_turns: "none"`; recover malformed near-reviews once with `followup_task`.
+8. After spawn, supervise in this same run. Liveness lines must start `Council progress:` and only mark fan-out, half returned, nudge, stall/fail, or minute tick.
+9. Per wave, loop on `wait_agent(timeout_ms: 60000)`. Each minute classify live reviewers as `healthy`, `drifting`, `stalled`, `blocked`, `invalid-output`, or `done`; `followup_task` non-healthy reviewers with the bounded task and output shape. Wave timeout is 20m.
+10. Accept only completed reviewer text with reviewer heading plus real body. Reject raw JSON/tags/tool payloads, ack/status/setup replies, generic `Findings:`, broad discovery, and empty output. Retry ack/no-task once; recover malformed near-reviews once with `followup_task`.
 11. Drain until every selected reviewer is `accepted`, `missing`, or `failed`. Close spawned reviewers only after terminal/invalid/retry handling; harvest `close_agent.previous_status.completed` if needed. Use `runtime_metrics` and session artifacts when available to verify fan-out/supervision internally, not as user-facing report filler.
 12. If every reviewer fails, or no reviewer was launched, output exactly `Council not run: reviewer fan-out failed.`
 13. Synthesize one integrated result. Never answer with a single reviewer payload, raw `## <reviewer> review`, runtime nickname, or unregistered reviewer label. Avoid approval-shaped language such as `APPROVED`, `NOT APPROVED`, or `approved`; say whether material blockers remain.
@@ -73,6 +73,7 @@ Use these headings exactly. Include `What changed in this follow-up` only for re
 
 ```markdown
 # Council review: <topic>
+<One sentence: `material blockers remain:` or `no material blockers remain:`.>
 ## What changed in this follow-up
 <Only for reruns, blocker checks, or challenges to a prior council claim.>
 ## Convergence (high-confidence signals)
