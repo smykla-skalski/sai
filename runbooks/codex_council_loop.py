@@ -501,9 +501,6 @@ def check_review_run(evidence: Path, name: str) -> None:
         fail(f"{name} evidence missing")
 
     final_text = final_path.read_text()
-    missing_headings = [heading for heading in MANDATORY_HEADINGS if heading not in final_text]
-    if missing_headings:
-        fail(f"{final_path.name} missing headings: {missing_headings}")
 
     events = load_jsonl(jsonl_path)
     jsonl_text = jsonl_path.read_text()
@@ -524,6 +521,16 @@ def check_review_run(evidence: Path, name: str) -> None:
         fail(f"reviewer alias heading accepted or leaked: {bad_heading}")
     if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
         fail("shorthand reviewer material leaked into evidence stream")
+
+    exact_fanout_failure = final_text.strip() == "Council not run: reviewer fan-out failed."
+    accepted_review_count = payload_text.count("## ")
+    if exact_fanout_failure:
+        if accepted_review_count:
+            fail("fan-out failure returned despite accepted reviewer bodies")
+    else:
+        missing_headings = [heading for heading in MANDATORY_HEADINGS if heading not in final_text]
+        if missing_headings:
+            fail(f"{final_path.name} missing headings: {missing_headings}")
     ensure_capacity_safe_spawns(events, jsonl_path.name)
     ensure_progress_claims_have_tools(events, jsonl_path.name)
 
