@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.77",
+  "version": "2.0.78",
   "description": "Run Codex council reviews only on supplied inline text or explicit files; no memory, repo, git, Claude asset, local discovery, or raw child output.",
   "author": {
     "name": "Smykla Skalski Labs",
@@ -22,7 +22,7 @@
   "interface": {
     "displayName": "Council",
     "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
-    "longDescription": "Strict $council/review/debate. No preface: say nothing before SKILL load. If a skill-use announcement is required, it must be a `Council progress:` line. Inline text is complete unless user gives @path, exact files, a diff, or direct read/search. No memory, prior sessions, repo/local-file discovery, git history, Claude assets, web, raw child output, raw subagent notifications, or shell-based agent probing. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first silently; every visible progress line starts `Council progress:`; then spawn every selected high-effort native reviewer with exact prompt templates and complete bounded material.",
+    "longDescription": "Strict $council/review/debate. No preface: say nothing before SKILL load. If a skill-use announcement is required, it must be a `Council progress:` line. Inline text is complete unless user gives @path, exact files, a diff, or direct read/search. No memory, prior sessions, repo/local-file discovery, git history, Claude assets, web, raw child output, raw subagent notifications, or shell-based agent probing. all/broad >6 without approval outputs exact denial with no tools/commentary. Otherwise load SKILL first silently; every visible progress line starts `Council progress:`; then spawn every selected high-effort native reviewer with exact prompt templates and complete bounded material. Raw child notifications are private input only, and `close_agent` status `running` is non-terminal until an actual wait/follow-up/close tool call resolves it.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [

@@ -47,6 +47,8 @@ SKILL_NEEDLES = [
     "Do not emit prefaces",
     "Never use shell/command execution for live-agent state",
     "If skill-use announcement is required",
+    "After any `running` close result",
+    "Never copy, quote, summarize-by-pasting, or echo",
 ]
 
 
@@ -293,6 +295,27 @@ def command_check_broad(args: argparse.Namespace) -> None:
     print("broad stop ok")
 
 
+def running_agents_from_close(item: dict) -> list[str]:
+    agents_states = item.get("agents_states") or {}
+    return [
+        agent_id
+        for agent_id, state in agents_states.items()
+        if isinstance(state, dict) and state.get("status") == "running"
+    ]
+
+
+def has_close_recovery(events: list[dict], start_index: int) -> bool:
+    recovery_tools = {"wait", "wait_agent", "send_input", "followup_task", "close_agent"}
+    for event in events[start_index + 1 :]:
+        item = event.get("item", {})
+        item_type = item.get("type")
+        if item_type == "collab_tool_call" and item.get("tool") in recovery_tools:
+            return True
+        if item_type == "agent_message" and (item.get("text") or "").startswith("# Council review:"):
+            return False
+    return False
+
+
 def command_evidence(args: argparse.Namespace) -> None:
     evidence = resolve_evidence_dir(args.evidence_dir)
     required_files = [
@@ -339,7 +362,8 @@ def command_evidence(args: argparse.Namespace) -> None:
     bad_prompts: list[str] = []
     bad_status: list[str] = []
     bad_commands: list[str] = []
-    for event in events:
+    running_close_without_tool: list[str] = []
+    for index, event in enumerate(events):
         item = event.get("item", {})
         if item.get("type") == "agent_message":
             text = item.get("text") or ""
@@ -357,6 +381,10 @@ def command_evidence(args: argparse.Namespace) -> None:
         if item.get("type") != "collab_tool_call":
             continue
         tool = item.get("tool")
+        if tool == "close_agent" and item.get("status") == "completed":
+            running_agents = running_agents_from_close(item)
+            if running_agents and not has_close_recovery(events, index):
+                running_close_without_tool.extend(running_agents)
         if tool not in {"spawn_agent", "send_input", "followup_task"}:
             continue
         prompt = item.get("prompt") or ""
@@ -378,10 +406,12 @@ def command_evidence(args: argparse.Namespace) -> None:
         fail(f"shell-based agent probing/orchestration commands: {bad_commands[:5]}")
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
+    if running_close_without_tool:
+        fail(f"running close result without recovery tool call: {running_close_without_tool[:5]}")
 
     counts = {
         "spawn_agent": jsonl_text.count("spawn_agent"),
-        "wait_agent": jsonl_text.count("wait_agent"),
+        "wait_agent": jsonl_text.count("wait_agent") + jsonl_text.count('"tool":"wait"'),
         "followup_or_send_input": jsonl_text.count("followup_task") + jsonl_text.count('"tool":"send_input"'),
         "Council progress:": jsonl_text.count("Council progress:"),
     }
