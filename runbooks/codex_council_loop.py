@@ -46,6 +46,7 @@ SKILL_NEEDLES = [
     "<subagent_notification>",
     "Do not emit prefaces",
     "Never use shell/command execution for live-agent state",
+    "If skill-use announcement is required",
 ]
 
 

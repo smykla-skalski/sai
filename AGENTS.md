@@ -51,7 +51,7 @@ optimization before the runbook's working-proof phase passes.
 
 - Council is opt-in review work, not a generic commit, pre-commit, or approval gate.
 - Codex Council uses native `spawn_agent` reviewer agents. Use all relevant current agent features, including enabled under-development agents-v2/fan-out features; do not run nested `codex exec`.
-- Council emits no preface. Every visible non-final status line starts exactly `Council progress:`.
+- Council emits no preface. If the runtime requires a skill-use announcement, that announcement is a `Council progress:` line. Every visible non-final status line starts exactly `Council progress:`.
 - Council uses native agent tools only for agent state. Do not use shell commands such as `rtk ls_agents`, `ps`, `pgrep`, `ls`, `find`, or `rg` for Council orchestration.
 - Broad runs above 6 reviewers require explicit current-run approval. If approval is unavailable, stop with exactly `Council not run: broad council approval not granted.`
 - Reviewer fan-out is not completion. The orchestrator must keep supervising until every selected reviewer is accepted, failed, or missing.
