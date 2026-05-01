@@ -1,7 +1,7 @@
 {
   "name": "council",
   "description": "Run council reviews only when explicitly requested. Council keeps moderation in-session, sends exact prompts and complete bounded material to every selected high-effort reviewer, preserves mandatory synthesis headings, reports progress only through Council progress lines, avoids shell-based agent probing, proactively cleans stale agents before fan-out, attempts the full safe reviewer roster, retries no-receiver capacity misses, handles follow-up challenges without raw reviewer leaks, and requires explicit approval for runs above 6 reviewers.",
-  "version": "2.0.105",
+  "version": "2.0.106",
   "author": {
     "name": "Smykla Skalski Labs"
   },

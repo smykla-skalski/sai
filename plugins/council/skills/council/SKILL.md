@@ -2,8 +2,10 @@
 name: council
 description: >-
   Use when the user invokes $council, $council:council, Council review, or
-  Council debate. Use loaded SKILL body or one direct installed
-  `skills/council/SKILL.md` read. Direct read path must contain
+  Council debate. First visible line must be exactly `Council progress:
+  reading council skill, then checking live agent state before any reviewer
+  wave.` Use loaded SKILL body or one direct installed `skills/council/SKILL.md`
+  read. Direct read path must contain
   `/.codex/plugins/cache/sai/council/` and end `/skills/council/SKILL.md`.
   `cd <cwd> && sed -n ... <path>` is valid. Do not use `pwd`, `ls`, `find`,
   `rg`, `cat`, multiple `&&`, or `;`. Never use repo-local paths. If unavailable, stop exactly
@@ -25,9 +27,9 @@ body and direct installed read are unavailable, stop exactly:
 `Council not run: skill unavailable.`
 
 At most one pre-tool message is allowed. If emitted, it is exactly:
-`Council progress: load rules, inspect live agents, clear stale council work,
-then run largest safe reviewer wave if root-only.` A second pre-tool message is
-forbidden. Every later visible non-final line starts `Council progress:`. Never emit bare prefaces like
+`Council progress: reading council skill, then checking live agent state before any reviewer wave.`
+A second pre-tool message is forbidden. Every later visible non-final line starts
+`Council progress:`. Never emit bare prefaces like
 `Using council`, `Loading Council rules`, `Pulling the council skill`, or
 `Spawning reviewers`. The first tool after the optional direct SKILL read must be
 native agent-state cleanup, not filesystem skill discovery. Never
@@ -88,13 +90,14 @@ guess cache paths and never use `ls`, `find`, or `rg`. If registry read fails:
    `wait_agent`, `followup_task`, `close_agent`. Demote only on live evidence.
    Never invent tools.
 3. Prepare agent capacity before any spawn. The coordinator must proactively clean the thread tree:
-   inspect native live-agent state, close every visible stale Council reviewer child,
-   wait for close results, re-check. Prefer `list_agents` no args. Never use shell/command execution for live-agent state.
+   call native `list_agents` with no args, close every visible stale Council reviewer child,
+   wait for close results, re-check with `list_agents` no args. This is how to
+   inspect native live-agent state. Never use shell/command execution for live-agent state.
    `path_prefix` only for known `/root/...` agent paths.
 4. If clean/root-only, emit exactly
    `Council progress: agent state clean: root only; running full selected roster when within limit.`
-   Then attempt the full selected roster when <=6. If capacity is constrained,
-   emit one `Council progress:` reason and use the largest safe wave. Do not spawn into a known full session.
+   only after a `list_agents` result proves it. Then attempt the full selected roster when <=6. If capacity is constrained,
+   emit one `Council progress:` reason and use the largest safe wave only after native agent-state evidence. Do not spawn into a known full session.
    Respect session thread limits.
 5. Fan out in waves sized by cleaned capacity. Max 6 spawns per clean batch. A
    no-`receiver_thread_ids` failure is `pending-capacity`, not launched/missing.
