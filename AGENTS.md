@@ -33,7 +33,7 @@ Use this loop for functional Codex changes under `plugins/council/`, `codex/agen
    - broad `$council all ...` stop/approval behavior
    - follow-up challenge via actual Codex resume/thread continuation, not a fresh fake session
    - stalled reviewer recovery, reviewer nudging, and raw reviewer output rejection
-12. Inspect Codex session artifacts and installed plugin files to prove what happened: agents-v2/fan-out path was used when available, subagents spawned, parent stayed alive after fan-out, `wait_agent`/`followup_task` supervision happened, raw reviewer blocks stayed internal, and final output was integrated synthesis.
+12. Inspect Codex session artifacts and installed plugin files to prove what happened: agents-v2/fan-out path was used when available, subagents spawned, parent stayed alive after fan-out, `wait_agent`/`followup_task` supervision happened, runtime child nicknames did not leak as reviewer identities, raw reviewer blocks stayed internal, and final output used the fixed Council headings as integrated synthesis.
 13. Treat Codex hooks as lifecycle guardrails only. Do not rely on hooks for council orchestration or pre-tool enforcement.
 14. If validation exposes a prompt or packaging bug, patch it, bump again, commit again with `git commit -sS`, reinstall that bumped version, and rerun the relevant live checks.
 

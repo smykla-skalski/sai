@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.50",
+  "version": "2.0.51",
   "description": "Run Codex council reviews with strict inline-or-explicit-file boundaries and exact broad-run denial.",
   "author": {
     "name": "Smykla Skalski Labs",
