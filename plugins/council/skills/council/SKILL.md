@@ -2,16 +2,20 @@
 name: council
 description: >-
   Use when the user invokes $council, $council:council, Council review, or
-  Council debate. FIRST ACTION: load this SKILL. Strict native Council: bounded
-  input, no discovery without exact/direct input, broad >6 exact denial, clean
-  agents, high-effort reviewers, terminal supervision, no raw child leaks.
+  Council debate. FIRST ACTION: load this SKILL. Any visible setup/status/plan
+  line must start `Council progress:`; unprefixed `Load Council rules first` is
+  invalid. Strict native Council: bounded input, no discovery without
+  exact/direct input, broad >6 denial, clean agents, high-effort reviewers, no
+  raw child leaks.
 ---
 
 # Council
 
 Never answer solo. If a skill-use announcement is unavoidable, first visible
 line starts exactly `Council progress:`. Never emit bare prefaces like `Using
-council`, `Loading Council rules`, `Spawning reviewers`.
+council`, `Loading Council rules`, `Load Council rules first`, or `Spawning
+reviewers`. Do not emit unprefixed setup plans; say them as `Council progress:`
+or stay silent.
 Empty-query `web_search` is still forbidden.
 
 ## Scope
