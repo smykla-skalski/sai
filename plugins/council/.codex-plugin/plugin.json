@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.79",
+  "version": "2.0.80",
   "description": "Run Codex council reviews only on supplied inline text or explicit files; no memory, repo, git, Claude asset, local discovery, or raw child output.",
   "author": {
     "name": "Smykla Skalski Labs",

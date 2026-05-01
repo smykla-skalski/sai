@@ -124,6 +124,8 @@ The live smoke must exercise:
 
 Required evidence:
 
+- native `list_agents` capacity preflight happened before any reviewer spawn when the tool was available
+- the orchestrator closed stale Council reviewers before spawning and reduced wave size to one when child capacity was unknown or constrained
 - native reviewer `spawn_agent` calls happened
 - `wait_agent` and `followup_task` supervision happened when needed
 - all 3 selected reviewers were accepted, failed, or explicitly reported missing

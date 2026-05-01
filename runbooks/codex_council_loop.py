@@ -51,6 +51,9 @@ SKILL_NEEDLES = [
     "Never copy, quote, summarize-by-pasting, or echo",
     "FIRST ACTION: load this SKILL",
     "call no web/search/browser/tool",
+    "Prepare agent capacity before any spawn",
+    "first Council orchestration tool call before `spawn_agent` must be `list_agents`",
+    "Do not spawn into a known full session",
 ]
 
 
@@ -193,6 +196,10 @@ def session_id_from_jsonl(path: Path) -> str:
             event = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if event.get("type") == "thread.started":
+            thread_id = event.get("thread_id")
+            if isinstance(thread_id, str) and thread_id:
+                return thread_id
         if event.get("type") == "session_meta":
             session_id = event.get("payload", {}).get("id")
             if isinstance(session_id, str) and session_id:
@@ -318,6 +325,23 @@ def has_close_recovery(events: list[dict], start_index: int) -> bool:
     return False
 
 
+def ensure_list_agents_before_spawn(events: list[dict], name: str) -> None:
+    first_spawn_index: int | None = None
+    for index, event in enumerate(events):
+        item = event.get("item", {})
+        if item.get("type") == "collab_tool_call" and item.get("tool") == "spawn_agent":
+            first_spawn_index = index
+            break
+    if first_spawn_index is None:
+        return
+
+    for event in events[:first_spawn_index]:
+        item = event.get("item", {})
+        if item.get("type") == "collab_tool_call" and item.get("tool") == "list_agents":
+            return
+    fail(f"{name} spawned reviewers before native list_agents capacity preflight")
+
+
 def command_evidence(args: argparse.Namespace) -> None:
     evidence = resolve_evidence_dir(args.evidence_dir)
     required_files = [
@@ -344,15 +368,20 @@ def command_evidence(args: argparse.Namespace) -> None:
 
     jsonl_names = ["normal.jsonl", "prefixed.jsonl", "followup.jsonl"]
     events: list[dict] = []
+    events_by_file: dict[str, list[dict]] = {}
     jsonl_chunks: list[str] = []
     for name in jsonl_names:
         text = (evidence / name).read_text()
         jsonl_chunks.append(text)
+        file_events: list[dict] = []
         for line in text.splitlines():
             try:
-                events.append(json.loads(line))
+                event = json.loads(line)
             except json.JSONDecodeError:
                 fail(f"{name} contains invalid JSONL line: {line[:120]}")
+            file_events.append(event)
+            events.append(event)
+        events_by_file[name] = file_events
     jsonl_text = "\n".join(jsonl_chunks)
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
     leaked = [needle for needle in forbidden_raw if needle in jsonl_text]
@@ -360,6 +389,8 @@ def command_evidence(args: argparse.Namespace) -> None:
         fail(f"raw child transport leaked into evidence stream: {leaked}")
     if "same as other reviewers" in jsonl_text or "same as assignment" in jsonl_text:
         fail("shorthand reviewer material leaked into evidence stream")
+    for name, file_events in events_by_file.items():
+        ensure_list_agents_before_spawn(file_events, name)
 
     bad_prompts: list[str] = []
     bad_status: list[str] = []
@@ -373,8 +404,7 @@ def command_evidence(args: argparse.Namespace) -> None:
             text = item.get("text") or ""
             if not first_agent_message_seen:
                 first_agent_message_seen = True
-                if text.startswith("Loading council"):
-                    continue
+                continue
             if text.startswith("# Council review:") or text.startswith("Council not run:"):
                 continue
             if not text.startswith("Council progress:"):
