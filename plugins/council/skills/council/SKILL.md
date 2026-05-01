@@ -2,28 +2,29 @@
 name: council
 description: >-
   Use when the user invokes $council, $council:council, Council review, or
-  Council debate. The loaded SKILL body is authority; never read or guess
-  SKILL.md cache paths. If the body is unavailable, stop exactly
-  `Council not run: skill unavailable.` Never fallback to loaded session context.
-  No setup narrative; visible non-final lines start `Council progress:`. Broad
-  >6 without approval outputs exact denial. Recover running closes first.
+  Council debate. Use loaded SKILL body or one direct installed
+  `skills/council/SKILL.md` read; never guess alternate cache paths. If
+  unavailable, stop exactly `Council not run: skill unavailable.` Never fallback
+  to loaded session context. Non-final lines start `Council progress:`.
 ---
 
 # Council
 
-Never answer solo. This loaded SKILL.md body is authoritative. Never read or
-guess SKILL.md from cache paths, marketplace paths, repo paths, or listed cache
-paths. Never say `skill file unavailable`, never mention cache paths, and never
-continue from `loaded session context`. If this loaded body is unavailable
-enough to run, stop exactly: `Council not run: skill unavailable.`
+Never answer solo. Use this loaded SKILL.md body or one direct installed
+`skills/council/SKILL.md` read. Never guess alternate SKILL.md cache paths,
+marketplace paths, repo paths, or listed cache paths. Never say `skill file
+unavailable`, never mention alternate paths, and never continue from `loaded
+session context`. If the loaded body and direct installed read are unavailable,
+stop exactly: `Council not run: skill unavailable.`
 
 Do not emit setup narrative. Every visible non-final line starts
 `Council progress:`. The first progress line, if needed, is exactly:
 `Council progress: load rules, inspect live agents, clear stale council work,
 then run largest safe reviewer wave if root-only.` Never emit bare prefaces like
 `Using council`, `Loading Council rules`, `Pulling the council skill`, or
-`Spawning reviewers`. The first tool after setup must be native agent-state
-cleanup, not filesystem skill discovery. Never web_search/browser/search.
+`Spawning reviewers`. The first tool after the optional direct SKILL read must be
+native agent-state cleanup, not filesystem skill discovery. Never
+web_search/browser/search.
 Empty-query `web_search` is still forbidden.
 
 ## Scope

@@ -50,8 +50,7 @@ SKILL_NEEDLES = [
     "Never use shell/command execution for live-agent state",
     "After any `running` close result",
     "Never copy, quote, summarize-by-pasting, or echo",
-    "Never read or\n"
-    "guess SKILL.md from cache paths",
+    "Never guess alternate SKILL.md cache paths",
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
@@ -232,6 +231,15 @@ def forbidden_authored_phrases(text: str) -> list[str]:
     return [phrase for phrase in FORBIDDEN_AUTHORED_PHRASES if phrase in lowered]
 
 
+def is_direct_skill_read_command(command: str) -> bool:
+    if "/skills/council/SKILL.md" not in command:
+        return False
+    if "/.codex/plugins/cache/sai/council/" not in command:
+        return False
+    forbidden = ["&&", ";", " find ", " rg ", " ls ", " pwd", "pwd ", "cat "]
+    return not any(bit in command for bit in forbidden)
+
+
 def prompt_texts(events: list[dict]) -> list[str]:
     prompts: list[str] = []
     for event in events:
@@ -282,6 +290,8 @@ def first_streaming_violation(event: dict, allow_initial_setup: bool = False) ->
         return None
     if item_type == "command_execution":
         command = item.get("command") or ""
+        if is_direct_skill_read_command(command):
+            return None
         forbidden_bits = [
             "&&",
             ";",
@@ -641,6 +651,8 @@ def check_review_run(evidence: Path, name: str) -> None:
             continue
         if item.get("type") == "command_execution":
             command = item.get("command") or ""
+            if is_direct_skill_read_command(command):
+                continue
             forbidden_command_bits = [
                 "ls_agents",
                 "list_agents",
@@ -774,6 +786,8 @@ def command_evidence(args: argparse.Namespace) -> None:
             continue
         if item.get("type") == "command_execution":
             command = item.get("command") or ""
+            if is_direct_skill_read_command(command):
+                continue
             forbidden_command_bits = [
                 "ls_agents",
                 "list_agents",
