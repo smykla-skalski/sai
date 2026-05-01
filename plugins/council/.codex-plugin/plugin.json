@@ -1,7 +1,7 @@
 {
   "name": "council",
-  "version": "2.0.48",
-  "description": "Run Codex council reviews with native reviewer agents, bounded orchestration, broad-run approval gates, and supervised synthesis.",
+  "version": "2.0.49",
+  "description": "Run Codex council reviews with native agents, strict inline-or-explicit-file boundaries, broad-run gates, and synthesis.",
   "author": {
     "name": "Smykla Skalski Labs",
     "email": "marcin.skalski@example.com",
@@ -21,8 +21,8 @@
   "skills": "./skills",
   "interface": {
     "displayName": "Council",
-    "shortDescription": "Run supervised Codex reviewer-agent councils",
-    "longDescription": "Council from the SAI Codex collection. Runs focused or broad reviews through native reviewer agents with sourced engineering, UX, reliability, performance, and strategy lenses, supervises reviewer progress, blocks unapproved broad runs, then synthesizes convergence, disagreement, and concrete next moves without leaking raw reviewer payloads.",
+    "shortDescription": "Run strictly bounded Codex reviewer-agent councils",
+    "longDescription": "Runs focused or broad Codex reviewer-agent councils. Inline text is the complete target unless the user supplies an @path, exact files, or a diff; Council must not search memory, repos, git history, prior sessions, Claude assets, or local files. It supervises reviewers, blocks unapproved broad runs, and returns one synthesized result.",
     "developerName": "SAI",
     "category": "Developer Tools",
     "capabilities": [
@@ -32,7 +32,7 @@
     "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
     "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
     "defaultPrompt": [
-      "Use $council to review this code or plan with best-fit reviewers.",
+      "Use $council to review this code or plan with best-fit reviewers; inline text is the full target.",
       "Use $council all for a broad engineering and UX review after explicit approval.",
       "Use $council debate to compare hard tradeoffs."
     ],

@@ -1,14 +1,15 @@
 ---
 name: council
 description: >-
-  Run native Codex reviewer-agent councils. Use when the user explicitly asks for
-  $council, council review, multi-reviewer critique, debate, or code/design/UX
-  feedback. Broad runs above 6 reviewers need current-run approval.
+  Use when the user explicitly asks for $council, council review, critique, or
+  debate. Inline text is complete unless @path, exact files, or a diff is
+  supplied; do not search MEMORY.md, repos, git, prior sessions, Claude assets,
+  or local files. Broad >6 needs current-run approval.
 ---
 
 # Council of Experts
 
-Use native Codex reviewer agents only. Do not use Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, or git history unless the user explicitly asks.
+Use native Codex reviewer agents only. Inline text is complete bounded material. Do not use Claude assets, nested `codex exec`, `MEMORY.md`, prior runs, local file reads, repo search, or git history unless the user explicitly asks for those sources by path, diff, or direct instruction.
 
 You are the orchestrator and synthesizer. Fan-out is not completion: final output must be based on accepted reviewer results and integrated in your voice.
 
