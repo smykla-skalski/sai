@@ -42,6 +42,7 @@ SKILL_NEEDLES = [
     "same as other reviewers",
     "Council progress:",
     "Council not run: broad council approval not granted.",
+    "Council not run: skill unavailable.",
     "Every spawn or follow-up prompt must start exactly",
     "Your first line must be exactly: ## <display name> review",
     "<subagent_notification>",
@@ -49,7 +50,8 @@ SKILL_NEEDLES = [
     "Never use shell/command execution for live-agent state",
     "After any `running` close result",
     "Never copy, quote, summarize-by-pasting, or echo",
-    "FIRST ACTION: load this SKILL",
+    "Never read or\n"
+    "guess SKILL.md from cache paths",
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
@@ -58,6 +60,15 @@ SKILL_NEEDLES = [
     "close every visible stale Council reviewer child",
     "Fan out in waves sized by cleaned capacity",
     "Do not spawn into a known full session",
+]
+
+FORBIDDEN_AUTHORED_PHRASES = [
+    "skill file unavailable",
+    "listed cache paths",
+    "loaded session context",
+    "cache paths",
+    ".codex/plugins/cache",
+    ".codex/skills",
 ]
 
 
@@ -216,6 +227,11 @@ def authored_agent_messages(events: list[dict]) -> list[str]:
     return messages
 
 
+def forbidden_authored_phrases(text: str) -> list[str]:
+    lowered = text.lower()
+    return [phrase for phrase in FORBIDDEN_AUTHORED_PHRASES if phrase in lowered]
+
+
 def prompt_texts(events: list[dict]) -> list[str]:
     prompts: list[str] = []
     for event in events:
@@ -255,6 +271,10 @@ def first_streaming_violation(event: dict, allow_initial_setup: bool = False) ->
             return None
         if "<subagent_notification>" in text or '"author":"/root' in text or '"recipient":"/root' in text:
             return "raw child transport leaked into visible message"
+        lowered = text.lower()
+        for phrase in FORBIDDEN_AUTHORED_PHRASES:
+            if phrase in lowered:
+                return f"forbidden skill-path fallback phrase: {phrase}"
         if allow_initial_setup:
             return None
         if not text.startswith("Council progress:"):
@@ -262,7 +282,18 @@ def first_streaming_violation(event: dict, allow_initial_setup: bool = False) ->
         return None
     if item_type == "command_execution":
         command = item.get("command") or ""
-        forbidden_bits = ["&&", ";", " pwd", "pwd ", " find ", " rg ", " ls "]
+        forbidden_bits = [
+            "&&",
+            ";",
+            " pwd",
+            "pwd ",
+            " find ",
+            " rg ",
+            " ls ",
+            "SKILL.md",
+            ".codex/plugins/cache",
+            ".codex/skills",
+        ]
         if any(bit in command for bit in forbidden_bits):
             return f"forbidden chained/discovery command: {command[:160]}"
         return None
@@ -564,6 +595,9 @@ def check_review_run(evidence: Path, name: str) -> None:
     events = load_jsonl(jsonl_path)
     jsonl_text = jsonl_path.read_text()
     visible_text = "\n".join(authored_agent_messages(events))
+    forbidden_skill_fallback = forbidden_authored_phrases(f"{final_text}\n{visible_text}")
+    if forbidden_skill_fallback:
+        fail(f"skill-path fallback leaked into authored/final messages: {forbidden_skill_fallback}")
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
     leaked = [needle for needle in forbidden_raw if needle in f"{final_text}\n{visible_text}"]
     if leaked:
@@ -607,7 +641,18 @@ def check_review_run(evidence: Path, name: str) -> None:
             continue
         if item.get("type") == "command_execution":
             command = item.get("command") or ""
-            forbidden_command_bits = ["ls_agents", "list_agents", " pgrep", " ps ", " find ", " rg ", "pwd &&"]
+            forbidden_command_bits = [
+                "ls_agents",
+                "list_agents",
+                " pgrep",
+                " ps ",
+                " find ",
+                " rg ",
+                "pwd &&",
+                "SKILL.md",
+                ".codex/plugins/cache",
+                ".codex/skills",
+            ]
             if any(bit in command for bit in forbidden_command_bits):
                 bad_commands.append(command[:160])
             continue
@@ -693,6 +738,9 @@ def command_evidence(args: argparse.Namespace) -> None:
     visible_text = "\n".join(authored_agent_messages(events))
     forbidden_raw = ["<subagent_notification>", '"author":"/root', '"recipient":"/root']
     final_text = "\n".join((evidence / name).read_text() for name in required_files if name.endswith("-final.txt"))
+    forbidden_skill_fallback = forbidden_authored_phrases(f"{final_text}\n{visible_text}")
+    if forbidden_skill_fallback:
+        fail(f"skill-path fallback leaked into authored/final messages: {forbidden_skill_fallback}")
     leaked = [needle for needle in forbidden_raw if needle in f"{final_text}\n{visible_text}"]
     if leaked:
         fail(f"raw child transport leaked into authored/final messages: {leaked}")
@@ -726,7 +774,17 @@ def command_evidence(args: argparse.Namespace) -> None:
             continue
         if item.get("type") == "command_execution":
             command = item.get("command") or ""
-            forbidden_command_bits = ["ls_agents", "list_agents", " pgrep", " ps ", " find ", " rg "]
+            forbidden_command_bits = [
+                "ls_agents",
+                "list_agents",
+                " pgrep",
+                " ps ",
+                " find ",
+                " rg ",
+                "SKILL.md",
+                ".codex/plugins/cache",
+                ".codex/skills",
+            ]
             if any(bit in command for bit in forbidden_command_bits):
                 bad_commands.append(command[:160])
             continue

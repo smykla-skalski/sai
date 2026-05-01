@@ -2,30 +2,35 @@
 name: council
 description: >-
   Use when the user invokes $council, $council:council, Council review, or
-  Council debate. FIRST ACTION: load this SKILL. Optional setup line is exactly
-  `Council progress: load rules, inspect live agents, clear stale council work,
-  then run largest safe reviewer wave if root-only.` First tool is direct SKILL
-  read; never web_search/browser/search. Broad >6 without approval outputs exact
-  denial. No final after `close_agent` status `running`; recover with tools.
+  Council debate. The loaded SKILL body is authority; never read or guess
+  SKILL.md cache paths. If the body is unavailable, stop exactly
+  `Council not run: skill unavailable.` Never fallback to loaded session context.
+  Broad >6 without approval outputs exact denial. Recover running closes first.
 ---
 
 # Council
 
-Never answer solo. If an initial setup line is emitted, it is exactly:
+Never answer solo. This loaded SKILL.md body is authoritative. Never read or
+guess SKILL.md from cache paths, marketplace paths, repo paths, or listed cache
+paths. Never say `skill file unavailable`, never mention cache paths, and never
+continue from `loaded session context`. If this loaded body is unavailable
+enough to run, stop exactly: `Council not run: skill unavailable.`
+
+If an initial setup line is emitted, it is exactly:
 `Council progress: load rules, inspect live agents, clear stale council work,
 then run largest safe reviewer wave if root-only.` After that, visible non-final
 status lines start with `Council progress:`. Never emit bare prefaces like
 `Using council`, `Loading Council rules`, or `Spawning reviewers`. The first tool
-must be a direct installed SKILL read unless this SKILL is already loaded; then
-use native agent-state cleanup. Never web_search/browser/search. Empty-query `web_search` is still forbidden.
+after setup must be native agent-state cleanup, not filesystem skill discovery.
+Never web_search/browser/search. Empty-query `web_search` is still forbidden.
 
 ## Scope
 
 Inline material is complete unless exact `@path`, paths, diff, or direct
 read/search is supplied. Otherwise no memory, prior sessions, repo
 files/listings, git history, AGENTS/RTK docs, Claude assets, persona dossiers,
-web/search/browser, nested `codex exec`, `cd`, `pwd`, `ls`, `find`,
-`rg`, shell chaining, `ps`, `pgrep`, `harness`, or `rtk`.
+SKILL.md/cache path discovery, web/search/browser, nested `codex exec`, `cd`,
+`pwd`, `ls`, `find`, `rg`, shell chaining, `ps`, `pgrep`, `harness`, or `rtk`.
 
 ## Modes
 
@@ -55,7 +60,7 @@ Rosters: `core-eng` antirez/tef/muratori/hebert/meadows/chin; `core-ux`
 norman/nielsen/krug/watson/tognazzini/tufte; `core-mix`
 antirez/tef/hebert/norman/nielsen/watson. Use exact display names. For
 `auto/all/debate`, read only `<loaded SKILL.md dir>/references/agents.md`; never
-use `ls`, `find`, or `rg`. If registry read fails:
+guess cache paths and never use `ls`, `find`, or `rg`. If registry read fails:
 `Council not run: reviewer fan-out failed.`
 
 ## Orchestration
