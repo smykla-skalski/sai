@@ -6,7 +6,7 @@ This repo has **no repo-level build, test, or lint entrypoint**. It is mostly Ma
 
 - Claude plugin smoke test: `claude --plugin-dir claude/{plugin-name}/`
 - Single-skill smoke run: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
-- Copilot council package smoke test: `copilot plugin install /absolute/path/to/sai/plugins/council`, then run `/council ...` in Copilot CLI
+- Copilot package smoke test: use `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin-name}` for the self-contained plugin packages under `claude/`, or `copilot --plugin-dir /absolute/path/to/sai/plugins/council` for council's dedicated bundle, then run the relevant slash command in Copilot CLI
 - For script-heavy skill changes, run the local checker/schema/smoke flow that belongs to that plugin rather than adding placeholder `mise`, `make`, or lint tasks
 
 ## Copilot plugin improvement loop
@@ -17,7 +17,7 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 2. If you are fixing runtime Copilot behavior, inspect real Copilot session artifacts under `~/.copilot/session-state/` and use unique `VALIDATE_*` tokens in smoke prompts so you can find the right session later.
 3. Make the behavior change across the whole surface, not just one file: `copilot-skills/.../SKILL.md`, any bundled `agents/*.agent.md`, `plugin.json`, and `README.md` when user-facing behavior changed.
 4. For any functional plugin change, bump that plugin’s `plugin.json` version in the same change.
-5. Refresh the local Copilot install with `copilot plugin install /absolute/path/to/sai/plugins/{plugin}` before validating.
+5. Load the local Copilot package with `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin}` for the self-contained plugin packages, or `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin}` when a dedicated bundle exists, before validating.
 6. Use the cheapest practical model for repeated validation and smoke loops (typically `gpt-5-mini`). Only escalate to a stronger model when the issue is genuinely diagnosis-heavy or the cheaper model is failing to make progress.
 7. Run long Copilot validations in the background and actively observe them rather than blocking on one giant wrapper. If one case hangs, split validations into separate commands per case.
 8. Run Copilot smoke validations from the **real target repository/cwd**, not from `sai`, when behavior depends on surrounding repo context.
@@ -40,8 +40,8 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 ## High-level architecture
 
 - The repo has three delivery surfaces:
-  - `claude/` contains Claude Code plugins
-  - `plugins/` contains installable plugin packages for Copilot CLI and Codex-compatible flows
+  - `claude/` contains self-contained plugin packages for Claude Code and Copilot CLI marketplace installs
+  - `plugins/` contains Codex-compatible packages and special multi-surface bundles such as `plugins/council/`
   - `codex/` contains Codex skills and shared native agent definitions
 - Claude plugins are self-contained and use a strict discovery layout:
   - `claude/{plugin}/.claude-plugin/plugin.json`

@@ -7,9 +7,9 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `claude/` contains all Claude Code plugins.
+- `claude/` contains the self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains Codex/Codex Desktop skills and shared native agent definitions.
-- `plugins/` contains installable plugin packages and marketplace entrypoints for Copilot CLI and Codex-compatible plugin flows.
+- `plugins/` contains Codex-compatible packages and special multi-surface bundles such as `plugins/council/`.
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
@@ -47,22 +47,22 @@ Add the SAI marketplace, then install individual plugins:
 /plugin marketplace add git@github.com:smykla-skalski/sai.git
 
 # Install individual plugins
-/plugin install sai/ai-daily-digest
-/plugin install sai/council
-/plugin install sai/service-mesh-debug
+/plugin install ai-daily-digest@sai
+/plugin install council@sai
+/plugin install service-mesh-debug@sai
 
-# (Codex marketplace also provides /plugin install sai/council for Codex sessions)
-/plugin install sai/gh-review-comments
-/plugin install sai/git-clean-gone
-/plugin install sai/git-stage-hunk
-/plugin install sai/go-code-review
-/plugin install sai/humanize
-/plugin install sai/kubecon-cfp
-/plugin install sai/promptgen
-/plugin install sai/review-claude-md
-/plugin install sai/staff-code-review
-/plugin install sai/staff-resume
-/plugin install sai/test-writer
+# (Codex marketplace also provides /plugin install council@sai for Codex sessions)
+/plugin install gh-review-comments@sai
+/plugin install git-clean-gone@sai
+/plugin install git-stage-hunk@sai
+/plugin install go-code-review@sai
+/plugin install humanize@sai
+/plugin install kubecon-cfp@sai
+/plugin install promptgen@sai
+/plugin install review-claude-md@sai
+/plugin install staff-code-review@sai
+/plugin install staff-resume@sai
+/plugin install test-writer@sai
 ```
 
 Each plugin is independent - install only what you need.
@@ -89,7 +89,11 @@ claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
 claude --plugin-dir /path/to/sai/claude/test-writer
 
-copilot plugin install /path/to/sai/plugins/council
+# Copilot CLI can load the same self-contained plugin directories directly.
+copilot --plugin-dir /path/to/sai/claude/staff-code-review
+
+# Council also has a dedicated multi-surface bundle.
+copilot --plugin-dir /path/to/sai/plugins/council
 ```
 
 ## Plugins

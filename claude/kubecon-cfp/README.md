@@ -25,7 +25,7 @@ Guides through the full CFP workflow: topic assessment against acceptance data, 
 ## Installation
 
 ```bash
-/plugin install sai/kubecon-cfp
+/plugin install kubecon-cfp@sai
 ```
 
 Or for local development:
