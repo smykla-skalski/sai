@@ -42,6 +42,11 @@ Codex skills:
 
 Add the SAI marketplace, then install individual plugins:
 
+These examples use interactive `/plugin ...` commands, which work in both
+Copilot CLI and Claude Code sessions.
+The equivalent non-interactive forms are `copilot plugin ...` and
+`claude plugin ...`.
+
 ```bash
 # Add the SAI marketplace
 /plugin marketplace add git@github.com:smykla-skalski/sai.git
