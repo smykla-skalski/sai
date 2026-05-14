@@ -88,30 +88,52 @@ Output:
 
 ### Pass 2: Deep review (parallel)
 
-Spawn parallel Agent subagents (subagent_type: "general-purpose") for each dimension group. Each agent gets the diff/files **and the Research Brief from Pass 1.5**. This parallelism is important for speed on large PRs.
+Spawn parallel Agent subagents — one per dimension group — using the **council persona** mapped to that dimension (see Persona dispatch table below). Each agent gets the diff/files **and the Research Brief from Pass 1.5**. This parallelism is important for speed on large PRs.
 
 Read [references/review-dimensions.md](references/review-dimensions.md) before distributing work to agents — it contains detailed checklists for each dimension.
 
-**Agent 1: Architecture & Design**
+#### Persona dispatch
+
+| Dimension | Primary persona | Fallback |
+|---|---|---|
+| Architecture & Design | `council:evans-ddd-reviewer` | `general-purpose` |
+| Reliability & Operations | `council:hebert-resilience-reviewer` | `general-purpose` |
+| Security & Dependencies | `council:ai-quality-advisor` | `general-purpose` |
+| Performance & Scalability | `council:gregg-perf-reviewer` | `general-purpose` |
+| Backward Compatibility | `council:siracusa-mac-critic` | `general-purpose` |
+| Convention Conformance & Code Reuse | `council:antirez-simplicity-reviewer` | `general-purpose` |
+| Dead Code Detection | `council:tef-deletability-reviewer` | `general-purpose` |
+
+**Spawn protocol:**
+1. Try `subagent_type: "council:<persona>"` first.
+2. If the spawn fails because the subagent type is unknown (council plugin not installed), retry with `subagent_type: "general-purpose"` and prepend the dimension's checklist directly to the prompt instead of relying on the persona system prompt.
+3. The persona will respond in its own native output format (e.g., `## Brendan Gregg review` with five sections). **Do not** ask personas to emit conventional-comment format — that loses their voice. Pass 2.5 translates their output into the format required by `parse_review_comments.py`.
+
+When spawning a council persona, the prompt MUST include:
+- The PR diff and Research Brief (verbatim).
+- The dimension checklist from this SKILL.md (so the persona knows which axes to cover).
+- An explicit instruction: *"Apply your lens to this PR. Stay in character. Use your normal output format. For each finding, name a specific file and line number from the diff."*
+
+**Agent 1: Architecture & Design** — `council:evans-ddd-reviewer` (Eric Evans lens: ubiquitous language, bounded contexts, model integrity)
 - Architectural alignment: does this introduce a pattern that will be copied? Does it violate existing conventions?
 - API design: deprecation path, error contract stability, surface area minimization
 - Data model evolution: schema impact on existing records, unbounded growth, denormalization
 - Cross-team impact: which teams consume affected APIs? Paved road drift?
 - **Use Research Brief:** Check "Existing Patterns" for convention violations. Use "Callers & Consumers" to assess cross-team impact with real caller counts. Reference "Architecture Context" for ADR compliance.
 
-**Agent 2: Reliability & Operations**
+**Agent 2: Reliability & Operations** — `council:hebert-resilience-reviewer` (Fred Hebert lens: operability, supervision trees, controlled-burn failure)
 - Failure mode analysis: what happens when downstream is unavailable? Blast radius? Retry idempotency? Race conditions?
 - Observability: can you diagnose a 3am outage? Structured logging with correlation IDs? Metrics for new paths? Alertability?
 - Migration/rollback safety: backward-compatible with current version? Rollback procedure? Feature flags for disable without rollback? Expand-and-contract for schema changes? Progressive rollout path?
 - **Use Research Brief:** Use "Callers & Consumers" to quantify blast radius (e.g., "47 callers affected" vs "unused internal helper"). Check "Related Tests" for coverage gaps on critical paths. Use "Git History" to calibrate risk — high-volatility areas deserve more scrutiny.
 
-**Agent 3: Security & Dependencies**
+**Agent 3: Security & Dependencies** — `council:ai-quality-advisor` (Simon Willison lens: prompt injection, sandboxed tools, eval-driven security; closest fit — council has no pure-security persona)
 - Security: input validation, auth on all endpoints, secrets in code/logs, PII exposure, injection risks, crypto choices
 - Dependency management: license, CVEs, maintenance status, transitive footprint, supply chain risk
 - Could this be done without the new dependency?
 - **Use Research Brief:** Use "Callers & Consumers" to trace data flow through changed functions — identify where untrusted input enters. Check "Existing Patterns" for security practice consistency (e.g., does similar code validate inputs?). Reference "Architecture Context" for security-related ADRs.
 
-**Agent 4: Performance & Scalability**
+**Agent 4: Performance & Scalability** — `council:gregg-perf-reviewer` (Brendan Gregg lens: USE method, profile in prod, BPF, systems perf)
 
 Read [references/performance-scalability.md](references/performance-scalability.md) before starting this analysis.
 
@@ -138,7 +160,7 @@ Severity calibration:
 
 - **Use Research Brief:** Use "Callers & Consumers" to determine if changed code is on a hot path (high caller count = higher severity). Check "Related Tests" for perf test coverage. Use "Git History" to identify recently optimized areas where the PR may regress. Reference "Existing Patterns" to check if the codebase has established patterns for caching, batching, or connection management that the PR should follow.
 
-**Agent 5: Backward Compatibility**
+**Agent 5: Backward Compatibility** — `council:siracusa-mac-critic` (John Siracusa lens: AppKit/Mac platform critique with strong backwards-compat sensibility; reads change-as-contract)
 
 Read [references/backward-compatibility.md](references/backward-compatibility.md) before starting this analysis.
 
@@ -162,7 +184,7 @@ Severity calibration:
 
 - **Use Research Brief:** Use "Callers & Consumers" to count affected consumers and quantify blast radius — high caller count + breaking change = blocking, zero callers = downgrade severity. Check "Existing Patterns" for versioning/deprecation conventions the PR should follow. Reference "Architecture Context" for API contracts and compatibility policies. Use "Git History" to identify recent breaking changes that may compound with this one.
 
-**Agent 6: Convention Conformance & Code Reuse**
+**Agent 6: Convention Conformance & Code Reuse** — `council:antirez-simplicity-reviewer` (antirez lens: simplicity, anti-bloat, reuse-or-rewrite tradeoff)
 
 Read [references/convention-conformance.md](references/convention-conformance.md) before starting this analysis.
 
@@ -185,7 +207,7 @@ Severity calibration:
 
 - **Use Research Brief:** Use "Existing Patterns" as primary input — this is the core data for convention analysis. Grep for function/type names similar to what the PR introduces. Check "Callers & Consumers" to understand if the PR's new code will be called alongside existing code with different conventions (inconsistency risk). Reference "Architecture Context" for documented conventions in READMEs or ADRs.
 
-**Agent 7: Dead Code Detection**
+**Agent 7: Dead Code Detection** — `council:tef-deletability-reviewer` (tef lens: easy to delete, anti-naive-DRY, protocol over topology)
 
 Read [references/dead-code.md](references/dead-code.md) before starting this analysis.
 
@@ -207,7 +229,13 @@ Severity calibration:
 
 - **Use Research Brief:** Use "Callers & Consumers" as primary input — cross-reference every new/modified symbol against its caller count. Zero callers on a non-public, non-interface symbol = dead code. Check "Existing Patterns" for framework conventions that create indirect reachability. Use "Git History" to identify recently removed features whose cleanup may be incomplete.
 
-Each agent returns findings as conventional comments (see format below).
+Each persona returns findings in **its own native output format** (see [council/agents/](../../../../council/agents/) for each persona's required structure). Do not attempt to enforce conventional-comment format on the persona itself — Pass 2.5 handles translation. If the spawn used the `general-purpose` fallback, the prompt MUST instruct that agent to emit conventional-comment format directly (see "Comment format" below); skip Pass 2.5 for findings produced by fallback agents.
+
+### Pass 2.5: Translation
+
+Persona output is rich but not parseable. Convert each persona's review into the conventional-comment structure that `parse_review_comments.py` expects, without losing technical content.
+
+Read [references/persona-translator-prompt.md](references/persona-translator-prompt.md) before spawning the translator — it contains the full prompt, label-selection rules, formatting constraints, and failure-recovery behavior. The translator returns dimension-grouped conventional comments. Pass these to Synthesis.
 
 ### Synthesis
 
@@ -450,3 +478,4 @@ Flag (don't block, but strongly recommend) when the PR:
 - Backward compatibility deep reference: [references/backward-compatibility.md](references/backward-compatibility.md)
 - Convention conformance deep reference: [references/convention-conformance.md](references/convention-conformance.md)
 - Dead code detection deep reference: [references/dead-code.md](references/dead-code.md)
+- Persona translator prompt: [references/persona-translator-prompt.md](references/persona-translator-prompt.md)

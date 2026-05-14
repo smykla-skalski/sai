@@ -6,9 +6,14 @@ Staff-engineer-level code review that goes beyond correctness to evaluate archit
 
 - **Triage pass** — six mental model questions (Tanya Reilly) before line-by-line review
 - **Codebase research** — caller counts, existing patterns, test coverage, git history, ADR context
-- **Parallel deep review** — three specialized agents: Architecture & Design, Reliability & Operations, Security & Dependencies
+- **Parallel deep review with council personas** — seven specialized agents, each routed to a council persona that owns the lens (Evans for Architecture, Hebert for Reliability, Willison for Security, **Gregg for Performance**, Siracusa for Backward Compat, antirez for Conventions, tef for Dead Code). Falls back to `general-purpose` if the council plugin is not installed.
+- **Translation pass** — persona-format reviews are converted to conventional comments without losing technical content
 - **Conventional comments** — `blocking:`, `issue:`, `question:`, `suggestion:`, `thought:`, `nit:`, `praise:`
 - **Design doc detection** — flags PRs that should have had an RFC/design doc first
+
+## Optional dependency
+
+For maximum review quality, install the [council](../council/) plugin alongside this one. Without it, Pass 2 still runs — it just uses generic `general-purpose` agents instead of opinionated personas.
 
 ## Usage
 
