@@ -1,0 +1,24 @@
+{
+  "name": "refactor-council",
+  "description": "Run refactoring reviews only when explicitly requested. Refactor Council keeps moderation in-session, scans the target for code smells and git hotspots, delegates to seven native refactoring reviewer agents (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill), synthesizes a safety-first sequenced refactoring plan, then has a separate adversary agent red-team the plan before returning it. Defaults to sequential reviewer delegation for reliable execution.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "copilot",
+    "custom-agents",
+    "refactoring",
+    "code-review",
+    "code-smells",
+    "technical-debt",
+    "legacy-code",
+    "architecture"
+  ],
+  "category": "Developer Tools",
+  "agents": "agents/",
+  "skills": "copilot-skills/"
+}

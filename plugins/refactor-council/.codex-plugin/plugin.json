@@ -1,0 +1,40 @@
+{
+  "name": "refactor-council",
+  "version": "0.1.0",
+  "description": "Refactoring review through seven sourced refactoring personas plus an adversarial pass",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "refactoring",
+    "code-review"
+  ],
+  "skills": "../../codex/refactor-council",
+  "interface": {
+    "displayName": "Refactor Council",
+    "shortDescription": "Refactoring review through opposed persona lenses",
+    "longDescription": "Refactor Council from the SAI Codex collection. Scans smells and git hotspots, reviews through seven refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill), synthesizes a safety-first sequenced plan, then adversarially stress-tests it. Defaults to sequential persona review on Codex for reliable execution.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $refactor-council for this task.",
+      "Open the Refactor Council skill and apply it to the current request.",
+      "Run the Refactor Council workflow and summarize the outcome."
+    ],
+    "brandColor": "#7C3AED"
+  }
+}

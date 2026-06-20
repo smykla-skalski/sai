@@ -12,6 +12,12 @@ ignore = [
     "S603", # subprocess is intentional: wraps kubectl with validated k8s resource names
     "S607", # partial path resolved via shutil.which; fallback retained for portability
 ]
+"claude/refactor-council/skills/refactor-council/scripts/**" = [
+    "S603", # subprocess is intentional: wraps git with a fixed arg list, no shell, no untrusted input
+]
+"plugins/refactor-council/copilot-skills/refactor-council/scripts/**" = [
+    "S603", # bundled copy of the refactor-council git scanner; subprocess wraps git with a fixed arg list
+]
 "tests/**" = [
     "D1",     # docstrings not required in test files
     "E501",   # test strings are naturally long; wrapping hurts readability
