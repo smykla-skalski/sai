@@ -23,6 +23,7 @@ Repository layout:
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
+| **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
@@ -33,6 +34,7 @@ Codex skills:
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
+| **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 
@@ -64,6 +66,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install humanize@sai
 /plugin install kubecon-cfp@sai
 /plugin install promptgen@sai
+/plugin install refactor-council@sai
 /plugin install review-claude-md@sai
 /plugin install staff-code-review@sai
 /plugin install staff-resume@sai
@@ -89,6 +92,7 @@ claude --plugin-dir /path/to/sai/claude/go-code-review
 claude --plugin-dir /path/to/sai/claude/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/claude/promptgen
+claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
@@ -97,8 +101,9 @@ claude --plugin-dir /path/to/sai/claude/test-writer
 # Copilot CLI can load the same self-contained plugin directories directly.
 copilot --plugin-dir /path/to/sai/claude/staff-code-review
 
-# Council also has a dedicated multi-surface bundle.
+# Council and Refactor Council also have dedicated multi-surface bundles.
 copilot --plugin-dir /path/to/sai/plugins/council
+copilot --plugin-dir /path/to/sai/plugins/refactor-council
 ```
 
 ## Plugins
@@ -186,6 +191,14 @@ Turn rough instructions into optimized, evidence-based AI prompts with outcome c
 **Usage**: `/promptgen <instructions> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]`
 
 [Full documentation ->](./claude/promptgen/README.md)
+
+### refactor-council
+
+Refactoring review through seven sourced refactoring-and-architecture persona agents - Martin Fowler, Robert C. Martin (Uncle Bob), Michael Feathers, Kent Beck, Sandi Metz, John Ousterhout, and Adam Tornhill. Scans the target for code smells and git hotspots, reviews it through opposed lenses (small-functions vs deep-modules, DRY vs duplication, what-to-refactor vs where-to-refactor), synthesizes a safety-first sequenced refactoring plan, then runs a separate adversary agent that red-teams the plan before returning it.
+
+**Usage**: `/refactor-council <path|@file|directory> [--no-scan] [--no-adversary] [--since 12.month] [--personas a,b,c]`
+
+[Full documentation ->](./claude/refactor-council/README.md)
 
 ### review-claude-md
 

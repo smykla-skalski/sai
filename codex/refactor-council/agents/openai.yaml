@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor Council"
+  short_description: "Refactoring review through opposed persona lenses"
+  default_prompt: "Use $refactor-council to review this code for refactoring: scan smells and git hotspots, review through the seven refactoring personas, synthesize a safety-first sequenced plan, then adversarially stress-test it."
