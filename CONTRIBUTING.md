@@ -19,7 +19,7 @@ Check the project's README for specific prerequisites. Common requirements inclu
 
 For the SAI project specifically:
 
-- Claude plugins live under `claude/{plugin-name}/`, Copilot/Codex plugin packages live under `plugins/{plugin-name}/`, and Codex skills live under `codex/{skill-name}/`
+- Claude plugins live under `claude/{plugin-name}/` and Codex skills live under `codex/{skill-name}/`
 - Test individual plugins: `claude --plugin-dir claude/{plugin-name}/`
 - Plugin-specific changes modify files in `claude/{plugin-name}/`
 - Monorepo-wide changes modify root files (README.md, CLAUDE.md, etc.)
