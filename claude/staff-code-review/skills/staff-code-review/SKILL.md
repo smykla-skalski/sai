@@ -1,6 +1,7 @@
 ---
 name: staff-code-review
 description: Staff-engineer-level code review that goes beyond correctness to evaluate architectural alignment, system-level implications, failure modes, performance, scalability, backward compatibility, observability, security, and cross-team impact. Use when reviewing a PR (URL or diff), analyzing code changes for architectural fitness, or when the user asks for a thorough/staff-level/senior review of code changes. Triggers on "review this PR", "review these changes", "staff review", "thorough code review", sharing a GitHub PR URL for review, or asking about the architectural impact of changes.
+argument-hint: "<pr-url|file-paths|diff> [--no-adversary]"
 allowed-tools: Agent, Bash, Read, Write
 ---
 
@@ -16,6 +17,9 @@ Accept any of:
 - GitHub PR URL → use `gh pr diff <url>` and `gh pr view <url>` to fetch
 - File paths → read the files and use `git diff` for changes
 - Pasted diff → analyze directly
+
+Flags (parse from `$ARGUMENTS`, strip before resolving the target):
+- `--no-adversary` → skip **both** adversary passes (the Code Adversary in Pass 2 and the Findings Adversary after synthesis). Default is to run both.
 
 ## Review process
 
@@ -88,7 +92,9 @@ Output:
 
 ### Pass 2: Deep review (parallel)
 
-Spawn parallel Agent subagents — one per dimension group — using the **council persona** mapped to that dimension (see Persona dispatch table below). Each agent gets the diff/files **and the Research Brief from Pass 1.5**. This parallelism is important for speed on large PRs.
+Spawn parallel Agent subagents — one per dimension group — using the **council persona** mapped to that dimension (see Persona dispatch table below), **plus one Code Adversary** that red-teams the code itself (Agent 8). All run concurrently. Each agent gets the diff/files **and the Research Brief from Pass 1.5**. This parallelism is important for speed on large PRs.
+
+The seven dimension personas review constructively, each from one lens. The Code Adversary is the counterweight: it assumes the change is broken and hunts for the concrete bug the constructive lenses rationalize away. The two adversaries are distinct — the Code Adversary (here) attacks the **code**; the Findings Adversary (post-synthesis) attacks the **findings**.
 
 Read [references/review-dimensions.md](references/review-dimensions.md) before distributing work to agents — it contains detailed checklists for each dimension.
 
@@ -229,7 +235,19 @@ Severity calibration:
 
 - **Use Research Brief:** Use "Callers & Consumers" as primary input — cross-reference every new/modified symbol against its caller count. Zero callers on a non-public, non-interface symbol = dead code. Check "Existing Patterns" for framework conventions that create indirect reachability. Use "Git History" to identify recently removed features whose cleanup may be incomplete.
 
-Each persona returns findings in **its own native output format** (see [council/agents/](../../../../council/agents/) for each persona's required structure). Do not attempt to enforce conventional-comment format on the persona itself — Pass 2.5 handles translation. If the spawn used the `general-purpose` fallback, the prompt MUST instruct that agent to emit conventional-comment format directly (see "Comment format" below); skip Pass 2.5 for findings produced by fallback agents.
+**Agent 8: Code Adversary** — `staff-code-review:code-adversary` (red-team lens: assume the change is broken, construct the failing input)
+
+This agent attacks the code, not a single dimension. It hunts for the concrete bug — correctness, edge/boundary cases, concurrency, broken error/failure paths, security, data integrity, hidden assumptions, and tests that don't actually test — and raises a finding only when it can name the input or sequence that makes the code fail.
+
+**Spawn protocol:**
+1. Try `subagent_type: "staff-code-review:code-adversary"` first.
+2. If the spawn fails because the subagent type is unknown, retry with `subagent_type: "general-purpose"` and prepend the adversary's mandate by reading [../../agents/code-adversary.md](../../agents/code-adversary.md) into the prompt.
+
+The prompt MUST include the PR diff/files and the Research Brief, plus: *"Assume this change has a bug. Find it and prove it with a concrete failing input or sequence. Read the surrounding code, not just the hunks. Emit findings as conventional comments with `*Location:*`."* The Code Adversary emits conventional-comment format directly — it is **not** a council persona, so **skip Pass 2.5 for its output** and pass it straight to Synthesis.
+
+- **Use Research Brief:** Use "Callers & Consumers" to learn which inputs actually reach the changed code (narrows real-world failure scenarios). Check "Related Tests" to see whether a failing path is already covered. Use "Git History" to spot areas that broke before.
+
+Each **persona** returns findings in **its own native output format** (see [council/agents/](../../../../council/agents/) for each persona's required structure). Do not attempt to enforce conventional-comment format on the persona itself — Pass 2.5 handles translation. If the spawn used the `general-purpose` fallback, the prompt MUST instruct that agent to emit conventional-comment format directly (see "Comment format" below); skip Pass 2.5 for findings produced by fallback agents and for the Code Adversary.
 
 ### Pass 2.5: Translation
 
@@ -239,13 +257,40 @@ Read [references/persona-translator-prompt.md](references/persona-translator-pro
 
 ### Synthesis
 
-After all agents return, merge findings and:
-1. Deduplicate overlapping concerns
+After all agents return — the seven dimension reviewers (via Pass 2.5 translation) **and the Code Adversary (Agent 8, already in conventional-comment format)** — merge findings and:
+1. Deduplicate overlapping concerns. The Code Adversary often lands on the same line as a dimension reviewer from a different angle — merge into one finding, keeping the most concrete failing scenario.
 2. Rank by severity (blocking first)
 3. Add cross-cutting observations that only emerge from seeing all dimensions together
 4. Identify if a design doc/RFC should have preceded this PR (thresholds: public API change, new service, new infrastructure, data model for stateful system, security-sensitive subsystem)
 5. **Note where research changed finding severity** — e.g., "47 callers makes this breaking change blocking" or "no callers found, downgrading to suggestion". Cite specific codebase evidence (file paths, caller counts, pattern matches) that grounded the assessment.
-6. **Validate blocking findings** — for each blocking issue, verify the evidence by re-reading the relevant code. If evidence is ambiguous or based on assumptions, downgrade to `question:` and request clarification from the author. Repeat until every blocking issue has verified codebase evidence.
+
+Do **not** validate blocking findings inline here — that is the Findings Adversary's job. Hand the full synthesized finding set to it next.
+
+### Adversarial Findings Review (skip only if `--no-adversary`)
+
+Synthesis produces findings; it does not prove them. Spawn the **Findings Adversary** to red-team the synthesized findings before they are humanized, saved, or posted. This is the second of the two adversaries (the first, the Code Adversary, ran in Pass 2 against the code). It is an independent skeptic, not another review dimension — its job is to break false positives, right-size inflated severities, kill duplicates, and kill hallucinated `file:line` locations that would break GitHub posting.
+
+**Spawn protocol:**
+1. Try `subagent_type: "staff-code-review:review-adversary"` first.
+2. If the spawn fails because the subagent type is unknown (plugin loaded by a path that doesn't register agents), retry with `subagent_type: "general-purpose"` and prepend the adversary's mandate by reading [../../agents/review-adversary.md](../../agents/review-adversary.md) into the prompt.
+
+The prompt MUST include, verbatim:
+- The full synthesized review (every finding with its severity and `*Location:*`).
+- The Research Brief from Pass 1.5.
+- The PR diff / changed files.
+- The instruction: *"Red-team these findings. Default to skepticism. Verify every blocking and issue finding against the actual code with Grep/Read. Return your verdict in the required output format."*
+
+The adversary returns SHIP / SHIP WITH CHANGES / HOLD plus challenged findings (UPHOLD / DOWNGRADE→label / REMOVE / REWORD), what survived scrutiny, any escaped bug it tripped over, bad locations, and the evidence it checked.
+
+**Fold the verdict into the review before anything downstream sees it:**
+- REMOVE / DOWNGRADE / REWORD verdicts revise findings in place — do not present a contested finding without the adversary's correction applied.
+- Mark "survived scrutiny" findings as high-confidence.
+- Promote any escaped bug it raised into the review with proper severity and `*Location:*`.
+- Drop or correct every "bad location" so the GitHub post cannot fail on an out-of-diff line.
+- Recompute the verdict and blocking/non-blocking counts in **Review Summary** after applying changes.
+- If the adversary returned HOLD, lead the review with that and do not present the contested finding as a blocker without its fix.
+
+Add an **Adversary Verdict** section to the output (see Output structure), reporting both the Code Adversary verdict (from Pass 2) and the Findings Adversary verdict.
 
 ### Humanize Comments
 
@@ -407,6 +452,7 @@ Output:
 **Verdict:** [APPROVE | APPROVE_WITH_COMMENTS | REQUEST_CHANGES]
 **Blocking issues:** [count]
 **Non-blocking suggestions:** [count]
+**Adversary verdicts:** Code: [FOUND BLOCKING (N) | FOUND ISSUES (N) | MINOR ONLY (N) | CLEAN] · Findings: [SHIP | SHIP WITH CHANGES | HOLD]
 
 ## Blocking Issues
 
@@ -440,9 +486,17 @@ Output:
 
 [Findings from Agent 7]
 
+## Adversarial Findings
+
+[Bugs the Code Adversary (Agent 8) found by red-teaming the change — each with a concrete failing input/sequence. Findings merged into the dimension sections above need not repeat here; list only adversary-unique findings.]
+
 ## Cross-Cutting Observations
 
 [Insights that emerge from seeing all dimensions together]
+
+## Adversary Verdict
+
+[Code Adversary verdict from Pass 2 and Findings Adversary verdict from post-synthesis. Note which findings survived scrutiny (high-confidence), which were downgraded/removed, and any escaped bug the Findings Adversary caught. Omit entirely if `--no-adversary` was set.]
 
 ## What's Done Well
 
