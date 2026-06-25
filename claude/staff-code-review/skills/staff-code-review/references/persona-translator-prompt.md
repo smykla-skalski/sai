@@ -48,7 +48,9 @@ RULES:
    persona did not state.
 4. Strip persona voice scaffolding (e.g., "G'Day", "What I see", "Where I'd be
    wrong"). Keep only the actionable finding text in the message.
-5. Keep messages under 280 characters. Staff engineers write tight prose.
+5. Keep messages concise and easy to understand: one to two sentences, under 280
+   characters. Lead with the problem and its impact, then the fix; plain language
+   a busy engineer skims in seconds. This text posts to the PR verbatim.
 6. Group output by dimension heading (## Architecture & Design, ## Reliability
    & Operations, etc.) so synthesis can consume them dimension-by-dimension.
 7. Emit nothing for the persona's "Where I'd be wrong" section unless it names

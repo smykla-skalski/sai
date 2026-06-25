@@ -243,11 +243,11 @@ This agent attacks the code, not a single dimension. It hunts for the concrete b
 1. Try `subagent_type: "staff-code-review:code-adversary"` first.
 2. If the spawn fails because the subagent type is unknown, retry with `subagent_type: "general-purpose"` and prepend the adversary's mandate by reading [../../agents/code-adversary.md](../../agents/code-adversary.md) into the prompt.
 
-The prompt MUST include the PR diff/files and the Research Brief, plus: *"Assume this change has a bug. Find it and prove it with a concrete failing input or sequence. Read the surrounding code, not just the hunks. Emit findings as conventional comments with `*Location:*`."* The Code Adversary emits conventional-comment format directly — it is **not** a council persona, so **skip Pass 2.5 for its output** and pass it straight to Synthesis.
+The prompt MUST include the PR diff/files and the Research Brief, plus: *"Assume this change has a bug. Find it and prove it with a concrete failing input or sequence. Read the surrounding code, not just the hunks. Emit findings as conventional comments with `*Location:*`. Keep each message concise and easy to understand — one to two sentences, ≤280 characters, the failing input and its impact first then the fix; it posts to the PR verbatim."* The Code Adversary emits conventional-comment format directly — it is **not** a council persona, so **skip Pass 2.5 for its output** and pass it straight to Synthesis.
 
 - **Use Research Brief:** Use "Callers & Consumers" to learn which inputs actually reach the changed code (narrows real-world failure scenarios). Check "Related Tests" to see whether a failing path is already covered. Use "Git History" to spot areas that broke before.
 
-Each **persona** returns findings in **its own native output format** (see [council/agents/](../../../../council/agents/) for each persona's required structure). Do not attempt to enforce conventional-comment format on the persona itself — Pass 2.5 handles translation. If the spawn used the `general-purpose` fallback, the prompt MUST instruct that agent to emit conventional-comment format directly (see "Comment format" below); skip Pass 2.5 for findings produced by fallback agents and for the Code Adversary.
+Each **persona** returns findings in **its own native output format** (see [council/agents/](../../../../council/agents/) for each persona's required structure). Do not attempt to enforce conventional-comment format on the persona itself — Pass 2.5 handles translation. If the spawn used the `general-purpose` fallback, the prompt MUST instruct that agent to emit conventional-comment format directly, following the "Message style" rules in "Comment format" below (concise, easy to understand, one to two sentences); skip Pass 2.5 for findings produced by fallback agents and for the Code Adversary.
 
 ### Pass 2.5: Translation
 
@@ -319,7 +319,7 @@ RULES:
    - Markdown headings (##, ###)
    - The Review Summary section (verdict, counts)
    - Code blocks and inline code
-5. Keep messages concise. Staff engineers write tight prose.
+5. Make every `**{label}:**` inline comment concise and easy to understand — these post to the PR verbatim. Each: one to two sentences, ≤280 characters, problem-and-impact first then the concrete fix, plain language, no persona voice or preamble. Tighten any that ramble or bury the point. (Narrative sections outside comment blocks: remove AI patterns but do not over-compress.)
 6. Preserve all technical details, file paths, function names, and codebase evidence.
 7. Do NOT add information that was not in the original.
 8. Return the complete review markdown with humanized prose — same structure, better writing.
@@ -356,6 +356,8 @@ Create a PENDING (draft) review on the PR with inline comments. The review is in
    COMMENTS_JSON=$(python3 "${CLAUDE_SKILL_DIR}/scripts/parse_review_comments.py" "$REVIEW_FILE")
    ```
    The script extracts comments with `*Location:*` annotations and filters to: all blockers, all issues, up to 5 suggestions, and up to 3 praises. Questions, thoughts, and nits are excluded from inline comments.
+
+   Each extracted `body` posts to the PR verbatim. Confirm every one meets the "Message style" rules in "Comment format" — concise, easy to understand, one to two sentences, problem-and-impact first then the fix. If humanize left any comment verbose or unclear, tighten it in the saved review file and re-run the extraction before continuing, so the saved record and the posted comment stay in sync.
 
 3. Write a concise top-level review body (2-4 sentences max). Do NOT mention the tool, "staff code review", or that this was AI-generated. Write it as a human reviewer would:
    - Lead with the verdict (approve / request changes) and why in one sentence
@@ -405,6 +407,17 @@ Rules:
 - Line number must reference the exact line in the current file (not the diff)
 - Every file-specific comment MUST have a `*Location:*` line — comments without location cannot be posted as inline GitHub review comments
 - General observations (cross-cutting, overall praise) that don't map to a specific line may omit `*Location:*` — these go in the review body instead
+
+**Message style — posted comments must be concise and easy to understand.** The author skims them inline on the PR, so each one posts verbatim and must stand on its own:
+- Lead with the problem and its impact in the first sentence; end with the concrete fix.
+- One to two sentences, ≤ 280 characters. If it needs more, the finding is too broad — split it.
+- Plain, direct language. Strip persona voice, preamble, hedging, and restating the code.
+- Keep the technical specifics that make it actionable (file, line, symbol, caller count); drop the lecture.
+
+<example>
+Verbose: "I want to flag that, having looked at this carefully, the outbound HTTP client here appears to be constructed without any timeout configured, which in my experience tends to be the kind of thing that can cause real problems, because if the downstream service becomes unavailable the call may block indefinitely and that pressure can cascade across the system."
+Concise: "No timeout on this HTTP client — an unavailable downstream blocks indefinitely and cascades. Set an explicit request timeout."
+</example>
 
 <example>
 Input: Finding a missing timeout on an HTTP call in `pkg/client/fetch.go:42`.
