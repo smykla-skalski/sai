@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate CLAUDE.md"
+  short_description: "Generate a lean CLAUDE.md for a repo"
+  default_prompt: "Use $generate-claude-md to analyze this repository and write a lean, high-signal CLAUDE.md, then validate it."

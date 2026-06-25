@@ -1,0 +1,39 @@
+{
+  "name": "generate-claude-md",
+  "version": "0.1.0",
+  "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis",
+  "author": {
+    "name": "Marcin Skalski",
+    "email": "marcin.skalski@example.com",
+    "url": "https://github.com/smykla-skalski"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "skills",
+    "agentic-workflows",
+    "generate-claude-md"
+  ],
+  "skills": "../../codex/generate-claude-md",
+  "interface": {
+    "displayName": "Generate CLAUDE.md",
+    "shortDescription": "Generate a lean, high-signal CLAUDE.md from codebase analysis",
+    "longDescription": "Generate CLAUDE.md from the SAI Codex collection.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $generate-claude-md for this task.",
+      "Open the Generate CLAUDE.md skill and apply it to the current request.",
+      "Run the Generate CLAUDE.md workflow and summarize the outcome."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

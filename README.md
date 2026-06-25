@@ -16,6 +16,7 @@ Repository layout:
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
+| **generate-claude-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-claude-md) | `claude/generate-claude-md/`  |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
@@ -59,6 +60,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install service-mesh-debug@sai
 
 # (Codex marketplace also provides /plugin install council@sai for Codex sessions)
+/plugin install generate-claude-md@sai
 /plugin install gh-review-comments@sai
 /plugin install git-clean-gone@sai
 /plugin install git-stage-hunk@sai
@@ -85,6 +87,7 @@ git clone git@github.com:smykla-skalski/sai.git
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/council
 claude --plugin-dir /path/to/sai/claude/service-mesh-debug
+claude --plugin-dir /path/to/sai/claude/generate-claude-md
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
@@ -199,6 +202,14 @@ Refactoring review through seven sourced refactoring-and-architecture persona ag
 **Usage**: `/refactor-council <path|@file|directory> [--no-scan] [--no-adversary] [--since 12.month] [--personas a,b,c]`
 
 [Full documentation ->](./claude/refactor-council/README.md)
+
+### generate-claude-md
+
+Generate a lean, high-signal CLAUDE.md from codebase analysis. The generator counterpart to `review-claude-md` — it targets the same best-practices rubric the reviewer audits against, with a bundled validator that enforces the reviewer's Critical checks, so output is built to pass that audit. Produces exact commands, an architecture map, and real gotchas while avoiding README duplication, directory trees, and generic advice. Non-destructive: never overwrites an existing CLAUDE.md without `--force`.
+
+**Usage**: `/generate-claude-md [path/to/repo] [--update] [--force] [--rules] [--dry-run]`
+
+[Full documentation ->](./claude/generate-claude-md/README.md)
 
 ### review-claude-md
 
