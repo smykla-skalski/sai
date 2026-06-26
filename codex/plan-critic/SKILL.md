@@ -29,10 +29,18 @@ Load only the source files needed for the current task. Do not recreate or copy 
 
 ## Workflow
 
-1. Treat `claude/plan-critic/skills/plan-critic/SKILL.md` as the source workflow and adapt any Claude-only delegation instructions to Codex rules.
+1. Treat `claude/plan-critic/skills/plan-critic/SKILL.md` as the source workflow. It spawns a grounding Explore agent and three parallel persona subagents (Skeptic, Architect, Verifier); run them per the "Codex execution notes" below - inline by default - instead of copying Claude's `Agent` / `subagent_type` calls.
 2. Read `claude/plan-critic/skills/plan-critic/references/personas.md` before writing the critique.
 3. Challenge hidden assumptions, missing rollback steps, and weak validation plans.
 4. Separate blockers from improvements so the user can act on the critique.
+
+## Codex execution notes - subagent spawning
+
+The source workflow uses Claude's `Agent` tool: a Phase 2 Explore agent for the Grounding Brief and three parallel persona subagents (Skeptic, Architect, Verifier) in Phase 3. Codex subagent fan-out is fragile - as of mid-2026 the default `agents.max_threads` is **6**, completed subagents do not free their slot unless explicitly closed ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and subagents can finish without returning their payload ([#16051](https://github.com/openai/codex/issues/16051)). Therefore:
+
+- **Default: sequential / inline.** Build the Grounding Brief yourself (grep/read), then adopt the Skeptic, Architect, and Verifier lenses in turn from `references/personas.md`, then synthesize the Approve/Reject/Refine verdict. This is the reliable Codex path and keeps all three personas grounded in the same brief.
+- **Optional parallel mode (only if the user asks and has raised `agents.max_threads`).** Three personas fit under a raised cap; still **`close_agent` each as soon as it returns** (completion alone does not free the slot) and **verify each returned a payload** before synthesizing - re-run any missing one inline. Never assume all spawned personas reported.
+- Use native agent tools only for agent state (`spawn_agent` / `wait_agent` / `close_agent`); do not run nested `codex exec`, and do not use shell for agent orchestration.
 
 ## Codex Notes
 

@@ -29,10 +29,18 @@ Load only the source files needed for the current task. Do not recreate or copy 
 
 ## Workflow
 
-1. Treat `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` as the source workflow and adapt it to Codex conventions.
+1. Treat `claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md` as the source workflow and adapt it to Codex conventions. Where it spawns a research subagent per phase, run those per the "Codex execution notes" below - inline by default.
 2. When the source skill refers to bundled references, read them from `claude/ai-daily-digest/skills/ai-daily-digest/references/` as needed.
 3. Because this task depends on current events, browse for up-to-date sources before drafting and use concrete dates in the result.
 4. Keep publication to Notion or another sink as a separate step after the digest content is correct.
+
+## Codex execution notes - subagent spawning
+
+The source workflow spawns a Claude `Agent` research subagent per phase (or per batch of independent phases). Codex subagent fan-out is fragile - as of mid-2026 the default `agents.max_threads` is **6**, completed subagents do not free their slot unless explicitly closed ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and subagents can finish without returning their payload ([#16051](https://github.com/openai/codex/issues/16051)). Therefore:
+
+- **Default: sequential / inline.** Run each research phase yourself in turn - browse and gather sources, hold the findings in context, move to the next phase - then synthesize the digest. This sidesteps the thread cap and the slot-leak and handoff bugs.
+- **Optional parallel mode (only if the user asks and has raised `agents.max_threads`).** Fan out only independent phases, cap concurrency at **<= 5**, **`close_agent` each research agent as soon as it returns** (completion alone does not free the slot), and **verify each returned its sources** before synthesizing - re-run any missing one inline. Never assume all spawned agents reported.
+- Use native agent tools only for agent state (`spawn_agent` / `wait_agent` / `close_agent`); do not run nested `codex exec`, and do not use shell for agent orchestration.
 
 ## Codex Notes
 

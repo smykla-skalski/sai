@@ -1,0 +1,13 @@
+{
+  "name": "plan-critic",
+  "description": "Critique an implementation plan from a normal Copilot session only when explicitly requested. Keeps orchestration in-session: triages the plan, builds a grounding brief from the codebase, delegates to three native persona reviewer agents (Skeptic, Architect, Verifier), then synthesizes an Approve/Reject/Refine verdict with concrete refinements. Defaults to sequential reviewer delegation for reliable, credit-efficient execution.",
+  "version": "0.1.0",
+  "author": { "name": "Smykla Skalski Labs" },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["copilot", "custom-agents", "planning", "plan-review", "code-review", "architecture"],
+  "category": "Developer Tools",
+  "agents": "agents/",
+  "skills": "copilot-skills/"
+}

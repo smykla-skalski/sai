@@ -49,6 +49,7 @@ Codex subagent fan-out is fragile at this council's size. As of mid-2026: the de
 
 - **Default: sequential / inline.** Do NOT fan out to one subagent per persona by default. Adopt each persona's lens in turn yourself - read the dossier, produce that persona's review in their voice, move to the next - then synthesize, then run the adversarial pass inline. This sidesteps the thread cap and the quota-leak and handoff bugs entirely, and is the reliable Codex path.
 - **Optional parallel mode (only if the user asks and has raised `agents.max_threads`).** Cap concurrency at **<= 5** so the manager thread is not starved; run the personas in batches (e.g. two waves), **`close_agent` each reviewer as soon as it returns** (completion alone does not free the slot), and **verify each reviewer actually returned a payload** before synthesizing - re-run any missing one inline. Never assume all spawned reviewers reported.
+- Use native agent tools only for agent state (`spawn_agent` / `wait_agent` / `close_agent`); do not run nested `codex exec`, and do not use shell (`ps`, `pgrep`, `ls`, `rg`) for agent orchestration.
 - Keep the adversarial pass as a final step regardless of mode; run it inline if spawning is unreliable.
 
 ## Codex Notes

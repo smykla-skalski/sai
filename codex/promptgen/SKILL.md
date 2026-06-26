@@ -53,6 +53,7 @@ Load only the source files needed for the current task. Do not recreate or copy 
 - Do not copy to clipboard unless the user explicitly asks for that side effect in the Codex session.
 - If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit. Default Codex behavior: pause only for actions that risk data loss, security boundaries, or external impact.
+- Promptgen itself runs in a single Codex agent loop. When the prompt you generate orchestrates Codex subagents (subagent briefing, three-agent harness), reflect Codex's real fan-out limits - default `agents.max_threads` 6, `close_agent` to free completed slots ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and verify each subagent returned a payload ([#16051](https://github.com/openai/codex/issues/16051)) - instead of assuming Claude-style unlimited fan-out.
 
 ## Verification
 

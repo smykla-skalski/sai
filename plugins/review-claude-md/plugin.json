@@ -1,0 +1,13 @@
+{
+  "name": "review-claude-md",
+  "description": "Audit a CLAUDE.md file against a structured rubric from a normal Copilot session. Keeps orchestration in-session: scans the repo, runs the bundled validation scripts, reports findings, applies fixes on request, then re-evaluates against the rubric (optionally via a native evaluator agent). Runs every step in-session by default for reliable execution.",
+  "version": "0.1.0",
+  "author": { "name": "Smykla Skalski Labs" },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["copilot", "custom-agents", "claude-md", "audit", "documentation", "linting"],
+  "category": "Developer Tools",
+  "agents": "agents/",
+  "skills": "copilot-skills/"
+}

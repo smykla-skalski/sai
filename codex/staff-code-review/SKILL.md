@@ -32,7 +32,15 @@ Load only the source files needed for the current task. Do not recreate or copy 
 1. Treat `claude/staff-code-review/skills/staff-code-review/SKILL.md` as the source workflow.
 2. Read the needed source references from `claude/staff-code-review/skills/staff-code-review/references/` before escalating findings in those dimensions.
 3. Ground the review in actual codebase context and report findings first, ordered by severity.
-4. Where the source skill suggests agent fan-out, follow Codex delegation rules instead of copying Claude-specific agent usage blindly.
+4. The source workflow fans out to many subagents (Pass 1.5 Explore brief, seven dimension personas, the Code Adversary, Pass 2.5 translation, the Findings Adversary, and a humanize pass). Run them per the "Codex execution notes" below - inline by default - rather than copying Claude's `Agent` / `subagent_type` calls.
+
+## Codex execution notes - subagent spawning
+
+The source workflow assumes Claude's `Agent` tool and named `council:*` subagent types, neither of which exists on Codex. It also fans out well past Codex's limits: a Research-Brief Explore agent, seven dimension personas, a Code Adversary, a per-persona translation pass, a Findings Adversary, and a humanize pass. Codex subagent fan-out is fragile at that size - as of mid-2026 the default `agents.max_threads` is **6**, completed subagents do not free their slot unless explicitly closed ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and subagents can finish without returning their payload ([#16051](https://github.com/openai/codex/issues/16051)). Therefore:
+
+- **Default: sequential / inline.** Do NOT spawn one subagent per dimension. Build the Research Brief yourself (grep/read), then work each dimension's checklist from `references/` in turn in its own lens, then run the Code Adversary and the Findings Adversary as inline red-team passes. The `council:*` persona types are unavailable, so apply each lens directly and emit conventional-comment format - this makes Pass 2.5 (translation) a no-op, so skip it. Humanize inline.
+- **Optional parallel mode (only if the user asks and has raised `agents.max_threads`).** Cap concurrency at **<= 5**, run the dimensions in waves, **`close_agent` each reviewer as soon as it returns** (completion alone does not free the slot), and **verify each returned a payload** before synthesizing - re-run any missing one inline. Keep both adversary passes as final inline steps. Never assume all spawned reviewers reported.
+- Use native agent tools only for agent state (`spawn_agent` / `wait_agent` / `close_agent`); do not run nested `codex exec`, and do not use shell (`ps`, `pgrep`, `ls`, `rg`) for agent orchestration.
 
 ## Codex Notes
 

@@ -35,10 +35,16 @@ Before any script call:
 
 ## Script directory
 
-Use this concrete skill path:
+Resolve `SKILL_DIR` to this skill's own directory (the folder that holds `scripts/`). Do not hardcode another machine's absolute path:
 
 ```bash
-SKILL_DIR="/Users/bart.smykla@konghq.com/Projects/github.com/smykla-skalski/sai/codex/gh-review-comments"
+# From a sai checkout the repo-relative path works; otherwise locate the installed
+# copy under the Codex plugins cache.
+SKILL_DIR="codex/gh-review-comments"
+if [ ! -d "$SKILL_DIR/scripts" ]; then
+  found="$(find "${CODEX_HOME:-$HOME/.codex}/plugins" -type f -name list-threads.sh -path '*gh-review-comments*' 2>/dev/null | head -n1)"
+  [ -n "$found" ] && SKILL_DIR="$(dirname "$(dirname "$found")")"
+fi
 ```
 
 Run scripts from that directory so behavior is consistent:
