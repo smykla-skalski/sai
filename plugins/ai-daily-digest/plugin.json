@@ -1,0 +1,13 @@
+{
+  "name": "ai-daily-digest",
+  "description": "Assemble a current AI news digest from a normal Copilot session. Keeps orchestration in-session: gathers dated, verified sources per topic (optionally delegating to a native research agent), then synthesizes a curated briefing. Defaults to sequential, in-session research for reliable, credit-efficient execution.",
+  "version": "0.1.0",
+  "author": { "name": "Smykla Skalski Labs" },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["copilot", "custom-agents", "ai-news", "digest", "research", "current-events"],
+  "category": "Developer Tools",
+  "agents": "agents/",
+  "skills": "copilot-skills/"
+}

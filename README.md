@@ -101,9 +101,14 @@ claude --plugin-dir /path/to/sai/claude/test-writer
 # Copilot CLI can load the same self-contained plugin directories directly.
 copilot --plugin-dir /path/to/sai/claude/staff-code-review
 
-# Council and Refactor Council also have dedicated multi-surface bundles.
+# Skills with agent fan-out also have dedicated multi-surface bundles
+# that ship native Copilot reviewer agents (sequential delegation by default).
 copilot --plugin-dir /path/to/sai/plugins/council
 copilot --plugin-dir /path/to/sai/plugins/refactor-council
+copilot --plugin-dir /path/to/sai/plugins/staff-code-review
+copilot --plugin-dir /path/to/sai/plugins/plan-critic
+copilot --plugin-dir /path/to/sai/plugins/ai-daily-digest
+copilot --plugin-dir /path/to/sai/plugins/review-claude-md
 ```
 
 ## Plugins

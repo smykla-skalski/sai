@@ -40,6 +40,7 @@ Load only the source files needed for the current task. Do not recreate or copy 
 - Infer inputs from the user request and local context before asking follow-up questions.
 - If a source script or networked command fails because of sandbox restrictions, rerun it with escalation and a short justification.
 - For destructive or irreversible actions, confirm intent unless the user was already explicit.
+- This skill runs in a single Codex agent loop - no subagent fan-out. If the source workflow spawns helper or persona subagents, do that work inline in the main loop.
 
 ## Verification
 

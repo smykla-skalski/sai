@@ -29,10 +29,17 @@ Load only the source files needed for the current task. Do not recreate or copy 
 
 ## Workflow
 
-1. Treat `claude/review-claude-md/skills/review-claude-md/SKILL.md` as the source workflow.
+1. Treat `claude/review-claude-md/skills/review-claude-md/SKILL.md` as the source workflow. It spawns helper subagents sequentially (repo scan, validation-script run, re-evaluation); run them per the "Codex execution notes" below - inline in the main loop.
 2. Read the needed source references from `claude/review-claude-md/skills/review-claude-md/references/`.
 3. Run the source helper scripts from `claude/review-claude-md/skills/review-claude-md/scripts/` instead of duplicating them.
 4. Report findings before fixes unless the user explicitly asked for immediate remediation.
+
+## Codex execution notes - subagent spawning
+
+The source workflow spawns Claude `Agent` helpers sequentially - an Explore agent to scan the repo, a general-purpose agent to run the validation scripts, and another to re-evaluate the fixed file. None of these need to be subagents on Codex, and Codex fan-out is fragile anyway (default `agents.max_threads` is **6**; completed subagents do not free their slot unless explicitly closed - [openai/codex#22779](https://github.com/openai/codex/issues/22779); subagents can finish without returning their payload - [#16051](https://github.com/openai/codex/issues/16051)). Therefore:
+
+- **Run every step inline in the main loop.** Do the repo scan with grep/read, run the validation scripts directly, apply fixes with the editor, then re-evaluate inline against the rubric. Do not spawn one subagent per step - the steps are sequential and share context, so inline is both simpler and more reliable.
+- Use native agent tools only for agent state (`spawn_agent` / `wait_agent` / `close_agent`); do not run nested `codex exec`, and do not use shell (`ps`, `pgrep`) for agent orchestration.
 
 ## Codex Notes
 

@@ -1,0 +1,13 @@
+{
+  "name": "staff-code-review",
+  "description": "Staff-level code review run from a normal Copilot session only when explicitly requested. Keeps orchestration in-session: triages the change, builds a research brief, delegates to seven native dimension reviewer agents (architecture, reliability, security, performance, backward-compatibility, convention-conformance, dead-code) plus a code adversary, synthesizes findings, then a findings adversary red-teams them before they are returned or posted. Defaults to sequential reviewer delegation for reliable, credit-efficient execution.",
+  "version": "0.1.0",
+  "author": { "name": "Smykla Skalski Labs" },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["copilot", "custom-agents", "code-review", "staff-engineer", "architecture", "reliability", "security", "performance"],
+  "category": "Developer Tools",
+  "agents": "agents/",
+  "skills": "copilot-skills/"
+}
