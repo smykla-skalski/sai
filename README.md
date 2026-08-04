@@ -28,6 +28,7 @@ Repository layout:
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
+| **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `claude/ship-issue/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `claude/test-writer/`         |
 
 Codex skills:
@@ -38,6 +39,7 @@ Codex skills:
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
+| **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
 
 ## Installation
 
@@ -72,6 +74,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install review-claude-md@sai
 /plugin install staff-code-review@sai
 /plugin install staff-resume@sai
+/plugin install ship-issue@sai
 /plugin install test-writer@sai
 ```
 
@@ -99,6 +102,7 @@ claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
+claude --plugin-dir /path/to/sai/claude/ship-issue
 claude --plugin-dir /path/to/sai/claude/test-writer
 
 # Copilot CLI can load the same self-contained plugin directories directly.

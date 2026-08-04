@@ -193,6 +193,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["testing", "table-driven", "behavior-testing", "tdd", "mocking", "test-quality"]
+    },
+    {
+      "name": "ship-issue",
+      "source": "./claude/ship-issue",
+      "description": "Take a GitHub issue from implementation through adversarial review and testing, PR, CI and Copilot review, merge, and closure.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["github", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
     }
   ]
 }

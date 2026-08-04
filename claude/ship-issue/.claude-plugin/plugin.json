@@ -1,0 +1,11 @@
+{
+  "name": "ship-issue",
+  "description": "Autonomously take a GitHub issue from implementation through adversarial review and testing, PR, CI and Copilot review, merge, and closure.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["github", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
+}
