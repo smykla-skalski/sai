@@ -1,6 +1,6 @@
 # KUP setup
 
-Setup takes about 15 minutes, once. Each step below also appears in the plugin README.
+Setup takes about 15 minutes, once.
 
 ## 1. Install the tools and log in to GitHub
 
