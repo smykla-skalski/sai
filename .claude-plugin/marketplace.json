@@ -204,6 +204,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["github", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
+    },
+    {
+      "name": "kup",
+      "source": "./plugins/kup",
+      "description": "Fill the monthly KUP report (Polish 50% creative-work tax deduction) from your merged GitHub pull requests and write it to your KUP Google Sheet.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["kup", "tax", "poland", "google-sheets", "github", "pull-requests", "reporting"]
     }
   ]
 }

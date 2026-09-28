@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kup",
+  "version": "1.0.0",
+  "description": "Fill the monthly KUP report (Polish 50% creative-work tax deduction) from your merged GitHub pull requests and write it to your KUP Google Sheet.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/kup",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["kup", "tax", "poland", "google-sheets", "github", "pull-requests", "reporting"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "KUP Report",
+        "shortDescription": "Fill the monthly KUP report from merged PRs",
+        "longDescription": "Collects your merged GitHub pull requests for a month, writes a Polish creative-work description for each, and records them in your KUP Google Sheet.",
+        "developerName": "SAI",
+        "category": "Productivity",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/kup",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $kup to fill my KUP report for the oldest missing month.",
+          "Use $kup to preview the KUP report for last month.",
+          "Use $kup to catch up every missing month in my KUP sheet."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}
