@@ -23,6 +23,7 @@ Repository layout:
 | **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `claude/go-code-review/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
+| **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
 | **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
@@ -38,6 +39,7 @@ Codex skills:
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
+| **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 | **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
 
@@ -69,6 +71,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install go-code-review@sai
 /plugin install humanize@sai
 /plugin install kubecon-cfp@sai
+/plugin install kup@sai
 /plugin install promptgen@sai
 /plugin install refactor-council@sai
 /plugin install review-claude-md@sai
@@ -97,6 +100,7 @@ claude --plugin-dir /path/to/sai/claude/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/go-code-review
 claude --plugin-dir /path/to/sai/claude/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
+claude --plugin-dir /path/to/sai/plugins/kup
 claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/claude/review-claude-md
@@ -195,6 +199,14 @@ Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ 
 **Usage**: `/kubecon-cfp [topic or talk idea] [--track AI|Security|Platform|...] [--format session|lightning|tutorial|panel] [--review]`
 
 [Full documentation ->](./claude/kubecon-cfp/README.md)
+
+### kup
+
+Fill the monthly KUP report (Koszty Uzyskania Przychodu, the Polish 50% tax deduction for creative work). A bundled script finds the missing month and its row, collects your merged GitHub PRs, drops backports and dependency bumps, and writes the row to your KUP Google Sheet, while the agent writes a Polish creative-work description for each PR. It also reads and edits the sheet cell by cell. A portable Agent Plugin, so the same package installs in Claude Code and Codex (`codex plugin add kup@sai`).
+
+**Usage**: `/kup` or "fill my KUP report", "catch up the KUP sheet", "preview KUP for 2026-03"
+
+[Full documentation ->](./plugins/kup/README.md)
 
 ### promptgen
 
