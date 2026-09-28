@@ -24,7 +24,7 @@ class Sheet:
         return [self.rows[row - 1]] if row <= len(self.rows) else []
 
 
-def pr(number, title, repo="kumahq/kuma", merged="2026-03-10T10:00:00Z"):
+def pr(number, title, repo="acme/app", merged="2026-03-10T10:00:00Z"):
     return {
         "number": number,
         "title": title,
@@ -128,16 +128,16 @@ def test_descriptions_and_history():
 
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "history.csv"
-        entry = {"url": "https://github.com/kumahq/kuma/pull/1", "repo": "kumahq/kuma", "original_title": 'a "quoted", title', "merged_at": "m", "description": "Opis"}
-        skipped = {**entry, "url": "https://github.com/kumahq/kuma/pull/2", "skip_reason": "backport_duplicate"}
+        entry = {"url": "https://github.com/acme/app/pull/1", "repo": "acme/app", "original_title": 'a "quoted", title', "merged_at": "m", "description": "Opis"}
+        skipped = {**entry, "url": "https://github.com/acme/app/pull/2", "skip_reason": "backport_duplicate"}
         assert kup.record_history(path, "2026-02", [entry], []) == 1
         assert kup.record_history(path, "2026-03", [entry], [skipped]) == 3
         assert kup.record_history(path, "2026-03", [entry], []) == 2
         with path.open(newline="") as f:
             rows = list(csv.DictReader(f))
         assert [(r["month"], r["pr_url"], r["status"]) for r in rows] == [
-            ("2026-02", "kumahq/kuma/pull/1", "included"),
-            ("2026-03", "kumahq/kuma/pull/1", "included"),
+            ("2026-02", "acme/app/pull/1", "included"),
+            ("2026-03", "acme/app/pull/1", "included"),
         ]
         assert rows[0]["original_title"] == 'a "quoted", title'
         assert path.read_text().startswith('"month","pr_url"')
