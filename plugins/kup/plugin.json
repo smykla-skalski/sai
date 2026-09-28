@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fill the monthly KUP report (Polish 50% creative-work tax deduction) from your merged GitHub pull requests and write it to your KUP Google Sheet.",
   "author": {
     "name": "Smykla Skalski Labs"
