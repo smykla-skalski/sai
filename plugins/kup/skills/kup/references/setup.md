@@ -1,6 +1,6 @@
 # KUP setup
 
-Setup takes about 15 minutes, once. Each step below also appears in the plugin README.
+Setup takes about 15 minutes, once.
 
 ## 1. Install the tools and log in to GitHub
 
@@ -53,7 +53,7 @@ Create `~/.config/kup/config.toml`:
 spreadsheet = "<sheet ID or URL>"
 sheet = "2022-2025"        # tab with the monthly rows
 author = "@me"             # whose merged PRs count
-orgs = ["kong", "kumahq"]  # leave out to count every repository
+orgs = ["acme"]            # leave out to count every repository
 service_account_file = "~/.config/kup/service-account.json"
 ```
 
