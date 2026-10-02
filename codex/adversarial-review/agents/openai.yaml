@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adversarial Review"
+  short_description: "Two-pass adversarial code review in clean-context subagents"
+  default_prompt: "Use $adversarial-review on the current branch: a Code Adversary subagent hunts the concrete bug, then a fresh Findings Adversary subagent refutes its findings. Lead with the Review Verdict line."

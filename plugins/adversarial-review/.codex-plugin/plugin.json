@@ -1,0 +1,30 @@
+{
+  "name": "adversarial-review",
+  "version": "1.0.0",
+  "description": "Fast two-pass adversarial code review: a Code Adversary subagent hunts the concrete bug, then a clean-context Findings Adversary subagent refutes false positives.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["codex", "skills", "code-review", "adversarial", "subagents"],
+  "skills": "../../codex/adversarial-review",
+  "interface": {
+    "displayName": "Adversarial Review",
+    "shortDescription": "Two-pass adversarial code review",
+    "longDescription": "Adversarial Review from the SAI Codex collection. A Code Adversary subagent red-teams the diff to find the concrete bug, then a separate clean-context Findings Adversary subagent tries to refute every finding. Runs the two subagents sequentially and falls back to inline passes when spawning fails.",
+    "developerName": "SAI",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive"],
+    "websiteURL": "https://github.com/smykla-skalski/sai",
+    "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Use $adversarial-review for this task.",
+      "Run $adversarial-review on the current branch.",
+      "Run $adversarial-review on this pull request."
+    ],
+    "brandColor": "#DC2626"
+  }
+}
