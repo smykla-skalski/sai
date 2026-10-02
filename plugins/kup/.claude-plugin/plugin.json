@@ -1,0 +1,12 @@
+{
+  "name": "kup",
+  "description": "Fill the monthly KUP report (Polish 50% creative-work tax deduction) from your merged GitHub pull requests and write it to your KUP Google Sheet.",
+  "version": "1.0.2",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/kup",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["kup", "tax", "poland", "google-sheets", "github", "pull-requests", "reporting"]
+}

@@ -221,6 +221,18 @@
       "category": "Developer Tools"
     },
     {
+      "name": "kup",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kup"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "adversarial-review",
       "source": {
         "source": "local",
