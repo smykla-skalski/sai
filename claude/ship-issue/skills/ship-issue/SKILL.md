@@ -1,10 +1,11 @@
 ---
 name: ship-issue
-description: End-to-end ship a GitHub issue — implement, adversarial code review via subagent, adversarial manual testing via subagent, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL and asked to implement and ship it.
+description: End-to-end ship a GitHub issue — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via subagent, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL and asked to implement and ship it.
 argument-hint: "<github-issue-url>"
 user-invocable: true
 allowed-tools:
   - Agent
+  - Skill
   - Read
   - Edit
   - Write
@@ -64,9 +65,21 @@ Do not add AI attribution or PR references to commit titles.
 
 ## Phase 5 — Adversarial code review
 
-Before pushing, use `staff-code-review:code-adversary` when available, otherwise a general-purpose subagent, to red-team the branch. Provide the issue body, `git diff <default>...HEAD`, and changed-file list. The reviewer must assume the change is broken and identify concrete failures: unsolved acceptance criteria, edge cases, races, error handling, security/regressions, weak tests, and convention violations. Each finding must include severity, location, failing scenario, and exact fix; no praise.
+Before pushing, write the issue title and body to a context file outside the repository, then run the `adversarial-review` skill against the branch:
 
-Apply blocker and should-fix findings, then rerun quality gates. Investigate uncertain findings; put genuinely unresolved questions in the PR body rather than silently blocking.
+```text
+Skill: adversarial-review:adversarial-review
+Args:  --base origin/<default> --context <issue-context-file>
+```
+
+It runs two clean-context subagents: a Code Adversary that hunts concrete failures, including unmet acceptance criteria, and a fresh Findings Adversary that refutes false positives. Its reply starts with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`.
+
+If the skill is not installed, run the same two passes yourself:
+
+1. Spawn `adversarial-review:code-adversary` (fallback: `general-purpose` told to assume the change is broken and prove each finding with a failing input, `file:line`, and fix) with the diff command, changed files, and issue context.
+2. Spawn a **new** `adversarial-review:findings-adversary` (fallback: `general-purpose` told to refute each finding against the source) with the same inputs plus only the numbered findings, never the first agent's reasoning.
+
+On NEEDS_FIXES, fix every surviving `blocking:` and `issue:`, rerun quality gates, and rerun the review against the new tip. Stop and ask the user after three rounds that still return NEEDS_FIXES. Put surviving `question:` findings you cannot settle from the code in the PR body rather than silently blocking. Do not start Phase 6 until the verdict is CLEAN.
 
 ## Phase 6 — Adversarial manual testing
 
