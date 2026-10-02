@@ -1,0 +1,11 @@
+{
+  "name": "adversarial-review",
+  "description": "Fast two-pass adversarial code review: a Code Adversary subagent hunts the concrete bug, then a clean-context Findings Adversary subagent refutes false positives.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["code-review", "adversarial", "red-team", "bugs", "subagents", "pr-review"]
+}

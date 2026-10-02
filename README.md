@@ -13,6 +13,7 @@ Repository layout:
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
+| **adversarial-review**  | Fast two-pass adversarial code review: Code Adversary subagent hunts the bug, clean-context Findings Adversary subagent refutes false positives | `claude/adversarial-review/`  |
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
@@ -35,6 +36,7 @@ Codex skills:
 
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
+| **adversarial-review** | Two-pass adversarial code review in sequential clean-context subagents; also runs on OpenCode | `codex/adversarial-review/` |
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
@@ -57,6 +59,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin marketplace add git@github.com:smykla-skalski/sai.git
 
 # Install individual plugins
+/plugin install adversarial-review@sai
 /plugin install ai-daily-digest@sai
 /plugin install council@sai
 /plugin install service-mesh-debug@sai
@@ -87,6 +90,7 @@ Clone the repository and point directly to plugin directories:
 ```bash
 git clone git@github.com:smykla-skalski/sai.git
 
+claude --plugin-dir /path/to/sai/claude/adversarial-review
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/council
 claude --plugin-dir /path/to/sai/claude/service-mesh-debug
@@ -118,7 +122,23 @@ copilot --plugin-dir /path/to/sai/plugins/ai-daily-digest
 copilot --plugin-dir /path/to/sai/plugins/review-claude-md
 ```
 
+### OpenCode
+
+OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents/skills/`. Symlink the portable skill:
+
+```bash
+ln -s /path/to/sai/codex/adversarial-review ~/.config/opencode/skills/adversarial-review
+```
+
 ## Plugins
+
+### adversarial-review
+
+Fast two-pass adversarial code review. A Code Adversary subagent assumes the change is broken and proves each bug with a failing input; a fresh Findings Adversary subagent sees only those findings and tries to refute them against the source. Leads with `Review Verdict: CLEAN|NEEDS_FIXES`. Runs on Claude Code, Codex, and OpenCode; `ship-issue` uses it as its review gate.
+
+**Usage**: `/adversarial-review [<pr-url> | <diff-file> | --base <ref>] [--context <file|text>]`
+
+[Full documentation ->](./claude/adversarial-review/README.md)
 
 ### ai-daily-digest
 
