@@ -1,7 +1,7 @@
 ---
 name: ship-issue
-description: End-to-end ship a GitHub issue — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via subagent, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL and asked to implement and ship it.
-argument-hint: "<github-issue-url>"
+description: End-to-end ship a GitHub issue — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via subagent, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL or a plain task description (an issue is created automatically) and asked to implement and ship it.
+argument-hint: "<github-issue-url | task description>"
 user-invocable: true
 allowed-tools:
   - Agent
@@ -16,7 +16,7 @@ allowed-tools:
 
 # Ship Issue
 
-Take a GitHub issue from URL to merged PR autonomously. Implement, review, manually test, open PR, wait for Copilot and CI, fix feedback, merge, and close.
+Take a GitHub issue, or a plain task description that becomes one, to a merged PR autonomously. Implement, review, manually test, open PR, wait for Copilot and CI, fix feedback, merge, and close.
 
 **Role:** Senior engineer owning the full lifecycle of one ticket.
 
@@ -26,9 +26,26 @@ Take a GitHub issue from URL to merged PR autonomously. Implement, review, manua
 
 ```text
 /ship-issue <github-issue-url>
+/ship-issue <task description>
 ```
 
-## Phase 1 — Read the issue
+## Phase 1 — Resolve the issue
+
+Classify the input:
+
+- **Issue URL** (or `owner/repo#N`, `#N` in the current repository): use it.
+- **Anything else is a task description.** If it contains an issue reference, use that issue and treat the rest as extra context. Otherwise create the issue yourself as described below. A missing linked issue is never a reason to stop or ask.
+- **Empty input:** stop and ask for an issue URL or a description.
+
+### Creating the issue from a description
+
+1. Resolve the target repository from the current directory with `gh repo view --json nameWithOwner`.
+2. Search for an existing open issue that already covers the task: `gh issue list --state open --search "<key terms>" --json number,title,url --limit 10`. Reuse it only when it is clearly the same work; otherwise create a new one.
+3. Write a title (plain English, ≤70 characters, no conventional-commit prefix) and a body with `## Motivation`, `## Scope`, and `## Acceptance criteria` (testable, one per bullet). Infer scope from the description and the repository; do not invent requirements the description does not imply. Use the `issue-authoring` skill for the writing when it is available.
+4. `gh issue create --title "<title>" --body "<body>" --label <label>` with a label only when one that fits already exists (`gh label list`). Capture the number and URL.
+5. Continue with the created issue as if it had been supplied. Do not ask for confirmation.
+
+### Reading the issue
 
 Parse the owner, repository, and issue number from the URL, then inspect the open issue with `gh issue view` including title, body, labels, assignees, milestone, state, and comments. Stop and report if it is closed. Extract scope hints from labels and linked PRs from comments.
 
@@ -129,7 +146,7 @@ Merge with squash and delete the branch only when CI is successful, Copilot has 
 
 ## Phase 11 — Close and report
 
-Verify that `Closes #<number>` closed the issue. If it did not, close it with a completion comment. Report: issue, PR link, commits, CI status, Copilot threads resolved/total, and merged/closed status.
+Verify that `Closes #<number>` closed the issue. If it did not, close it with a completion comment. Report: issue (mark it `created` when Phase 1 created it), PR link, commits, CI status, Copilot threads resolved/total, and merged/closed status.
 
 ## Phase 12 — Return to the default branch
 
