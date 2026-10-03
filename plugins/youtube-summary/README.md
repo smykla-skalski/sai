@@ -41,7 +41,7 @@ Set `YOUTUBE_SUMMARY_DIR` to an existing folder where notes should go, for examp
 export YOUTUBE_SUMMARY_DIR="$HOME/Documents/Obsidian Vault/0_Inbox"
 ```
 
-In Claude Code you can also set it under `env` in `~/.claude/settings.json`. Notes are named `YouTube - <title>.md`; when another video's note has that name, the video id is appended.
+In Claude Code you can also set it under `env` in `~/.claude/settings.json`. Notes are named `YouTube - <title>.md`; when another file already has that name, the video id (plus a counter if needed) is appended, so files that are not this video's summary are never overwritten.
 
 When the variable is unset (or points to a missing folder), Claude Code asks where to save the note; other agents print it without saving. Summarizing the same video again replaces its earlier note.
 

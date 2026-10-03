@@ -1,7 +1,7 @@
 {
   "name": "youtube-summary",
   "description": "Summarize a YouTube video from its transcript into a concise Markdown note, saved to a folder you configure or printed in chat.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Smykla Skalski Labs"
   },

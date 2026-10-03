@@ -114,10 +114,33 @@ def test_note_path_adds_id_when_another_video_owns_the_name():
         plain.write_text("**URL:** https://www.youtube.com/watch?v=otherVideo1\n")
         suffixed = folder / f"YouTube - Me at the zoo ({VIDEO_ID}).md"
         assert ft.note_path_for(folder, "Me at the zoo", VIDEO_ID) == (suffixed, False)
-        suffixed.write_text("summary")
+        suffixed.write_text(f"**URL:** https://www.youtube.com/watch?v={VIDEO_ID}\n")
         assert ft.note_path_for(folder, "Me at the zoo", VIDEO_ID) == (suffixed, True)
         plain.unlink()
         assert ft.note_path_for(folder, "Me at the zoo", VIDEO_ID) == (suffixed, True)
+
+
+def test_note_path_never_claims_an_unrelated_suffixed_file():
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        plain = folder / "YouTube - Talk.md"
+        plain.write_text("**URL:** https://www.youtube.com/watch?v=otherVideo1\n")
+        suffixed = folder / f"YouTube - Talk ({VIDEO_ID}).md"
+        suffixed.write_text("my own hand-written notes\n")
+        second = folder / f"YouTube - Talk ({VIDEO_ID}) 2.md"
+        assert ft.note_path_for(folder, "Talk", VIDEO_ID) == (second, False)
+        second.write_text(f"**URL:** https://www.youtube.com/watch?v={VIDEO_ID}\n")
+        assert ft.note_path_for(folder, "Talk", VIDEO_ID) == (second, True)
+        assert suffixed.read_text() == "my own hand-written notes\n"
+
+
+def test_unrelated_plain_file_without_url_is_kept():
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        plain = folder / "YouTube - Talk.md"
+        plain.write_text("draft\n")
+        suffixed = folder / f"YouTube - Talk ({VIDEO_ID}).md"
+        assert ft.note_path_for(folder, "Talk", VIDEO_ID) == (suffixed, False)
 
 
 def test_dash_leading_id_parses_with_equals_form():

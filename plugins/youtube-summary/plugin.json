@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "youtube-summary",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Summarize a YouTube video from its transcript into a concise Markdown note, saved to a folder you configure or printed in chat.",
   "author": {
     "name": "Smykla Skalski Labs"

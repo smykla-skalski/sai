@@ -50,6 +50,7 @@ SAVE_DIR_ENV: Final[str] = "YOUTUBE_SUMMARY_DIR"
 NOTE_PREFIX: Final[str] = "YouTube - "
 NOTE_URL_LABEL: Final[str] = "**URL:**"
 MAX_TITLE_BYTES: Final[int] = 200
+MAX_NOTE_SUFFIX: Final[int] = 99
 CHAPTER_CHARS: Final[int] = 280
 HTTP_TIMEOUT_SECONDS: Final[int] = 15
 PREFERRED_LANGUAGES: Final[tuple[str, ...]] = ("en", "en-US", "en-GB")
@@ -177,19 +178,25 @@ def mentions_video(path: Path, video_id: str) -> bool:
 def note_path_for(save_dir: Path, title: str, video_id: str) -> tuple[Path, bool]:
     """Pick the note file and report whether it holds an earlier summary.
 
-    The plain name is reused when it is free or already summarizes this video;
-    otherwise the video id is appended so another video's note is never replaced.
+    An existing file counts as an earlier summary only when its URL line names
+    this video. Otherwise the first free name is used: the plain title, then the
+    title with the video id, then the id plus a counter. A file that is not this
+    video's summary is never returned with `True`, so it is never overwritten.
     """
     stem = NOTE_PREFIX + sanitize_title(title, video_id)
-    plain = save_dir / f"{stem}.md"
-    suffixed = save_dir / f"{stem} ({video_id}).md"
-    if suffixed.exists():
-        return suffixed, True
-    if not plain.exists():
-        return plain, False
-    if mentions_video(plain, video_id):
-        return plain, True
-    return suffixed, False
+    candidates = [save_dir / f"{stem}.md", save_dir / f"{stem} ({video_id}).md"]
+    candidates += [
+        save_dir / f"{stem} ({video_id}) {n}.md" for n in range(2, MAX_NOTE_SUFFIX + 1)
+    ]
+    existing = [path for path in candidates if path.exists()]
+    for path in existing:
+        if mentions_video(path, video_id):
+            return path, True
+    for path in candidates:
+        if path not in existing:
+            return path, False
+    message = f"no free note name for '{stem}' after {MAX_NOTE_SUFFIX} tries"
+    raise FileExistsError(message)
 
 
 def fetch_metadata(video_id: str) -> dict[str, str]:
@@ -317,9 +324,13 @@ def main(argv: list[str] | None = None) -> int:
     meta = fetch_metadata(video_id)
     last = snippets[-1]
     duration = last.start + last.duration
-    note_path, note_exists = (
-        note_path_for(save_dir, meta["title"], video_id) if save_dir else (None, False)
-    )
+    note_path: Path | None = None
+    note_exists = False
+    if save_dir:
+        try:
+            note_path, note_exists = note_path_for(save_dir, meta["title"], video_id)
+        except OSError as exc:
+            save_dir, save_dir_error = None, f"Cannot pick a note file: {exc}"
 
     return emit(
         {
