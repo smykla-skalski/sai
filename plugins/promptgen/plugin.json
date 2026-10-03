@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "promptgen",
+  "version": "3.1.4",
+  "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents, coding agents, tools, eval graders, and subagent briefings. Built on Anthropic / OpenAI guidance through April 2026 and the 2025-2026 academic literature. Copies to the clipboard on macOS, Linux and Windows.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/promptgen",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["prompt-engineering", "prompt-generation", "clipboard", "security", "anti-patterns", "agent-prompts", "system-prompts", "codex-prompts", "eval-graders", "subagent-briefing", "lethal-trifecta", "rule-of-two", "scope-discipline"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Promptgen",
+        "shortDescription": "Turn rough asks into strong prompts",
+        "longDescription": "Turns a rough description into a structured prompt for Claude, GPT, Codex or a generic model, with an outcome contract, done-when criteria, security hardening when needed, and an anti-pattern self-check, then copies it to the clipboard.",
+        "developerName": "SAI",
+        "category": "Productivity",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/promptgen",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $promptgen to turn this rough instruction into a stronger prompt.",
+          "Use $promptgen to write a Codex coding-agent prompt for this task.",
+          "Use $promptgen to draft an eval grader prompt with calibration anchors."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

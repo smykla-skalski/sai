@@ -119,7 +119,7 @@
     },
     {
       "name": "promptgen",
-      "source": "./claude/promptgen",
+      "source": "./plugins/promptgen",
       "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents",
       "author": {
         "name": "Smykla Skalski Labs"
