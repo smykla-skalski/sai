@@ -28,7 +28,7 @@ ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skill
 
 Local checkout: `claude --plugin-dir /path/to/sai/plugins/ship-issue/`
 
-Install [adversarial-review](../../claude/adversarial-review/) and [adversarial-test](../adversarial-test/) too: ship-issue uses them as its review and testing gates. Without them it runs the same passes itself.
+Install [adversarial-review](../adversarial-review/) and [adversarial-test](../adversarial-test/) too: ship-issue uses them as its review and testing gates. Without them it runs the same passes itself.
 
 ## Usage
 

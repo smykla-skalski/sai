@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "service-mesh-debug",
+  "version": "1.2.2",
+  "description": "Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul). Covers 11 root causes: timing races, xDS propagation delays, Gomega misuse, pod availability races, mTLS/SDS readiness, Envoy circuit breakers, and outlier detection. Includes Python scripts for live Envoy diagnostics.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/service-mesh-debug",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["kuma", "istio", "linkerd", "consul", "envoy", "e2e", "testing", "flaky", "ginkgo", "gomega", "service-mesh", "xds", "mtls", "debugging"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Service Mesh Debug",
+        "shortDescription": "Debug flaky mesh tests and connectivity issues",
+        "longDescription": "Diagnoses flaky Kuma/Ginkgo e2e tests against 11 known root causes and applies the minimal fix, and debugs live mesh connectivity (Kuma, Istio, Linkerd, Consul) with read-only Envoy admin scripts for xDS, mTLS and control plane health.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/service-mesh-debug",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $service-mesh-debug to find why this e2e test is flaky and propose the smallest fix.",
+          "Use $service-mesh-debug to diagnose 503s between these two meshed services.",
+          "Use $service-mesh-debug to check xDS and mTLS health of this sidecar pod."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

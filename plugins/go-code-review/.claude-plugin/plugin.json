@@ -1,0 +1,12 @@
+{
+  "name": "go-code-review",
+  "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage with severity tiers and direct mistake references.",
+  "version": "1.0.2",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/go-code-review",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["go", "golang", "code-review", "100go", "best-practices", "static-analysis"]
+}
