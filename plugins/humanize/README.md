@@ -1,32 +1,41 @@
 # humanize
 
-A Claude Code plugin that identifies and removes signs of AI-generated writing from text, then rewrites using proven composition principles.
+Identifies and removes signs of AI-generated writing from text, then rewrites it using proven composition principles.
+
+The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
 
 Two complementary sources:
 
 - **Detection**: Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide (WikiProject AI Cleanup) - 24 patterns across content, language, style, communication, and filler categories
-- **Composition**: Strunk & White's [The Elements of Style](https://github.com/obra/the-elements-of-style) (1918) - active voice, concrete language, omitting needless words, sentence variety, emphasis placement
+- **Composition**: William Strunk Jr.'s [The Elements of Style](https://github.com/obra/the-elements-of-style) (1918) - active voice, concrete language, omitting needless words, sentence variety, emphasis placement
 
 ## Installation
 
-### Quick install
+Claude Code (Copilot CLI is the same with `copilot` in place of `claude`):
 
 ```bash
 claude plugin marketplace add smykla-skalski/sai
-claude plugin install humanize@smykla-skalski-sai
+claude plugin install humanize@sai
 ```
 
-### From GitHub Marketplace
-
-Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).
-
-### Manual
+Codex:
 
 ```bash
-claude --plugin-dir /path/to/sai/claude/humanize/
+codex plugin marketplace add smykla-skalski/sai
+codex plugin add humanize@sai
 ```
 
+opencode, or any agent that reads Agent Skills, loads `skills/humanize/` directly:
+
+```bash
+ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
+```
+
+Local checkout: `claude --plugin-dir /path/to/sai/plugins/humanize/`
+
 ## Usage
+
+In Claude Code and Copilot CLI use `/humanize`, in Codex `$humanize`, or ask in plain words ("humanize this PR description"). Where the agent has no subagent tool, the pattern scan runs inline instead of in a subagent; the output is the same.
 
 ```
 /humanize path/to/file.md

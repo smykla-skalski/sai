@@ -7,9 +7,10 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `claude/` contains the self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
-- `codex/` contains Codex/Codex Desktop skills and shared native agent definitions.
-- `plugins/` contains Codex-compatible packages and special multi-surface bundles such as `plugins/council/`.
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
+- `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
+- Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
@@ -23,7 +24,7 @@ Repository layout:
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
 | **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `claude/go-code-review/`      |
-| **humanize**            | Make text sound natural by removing AI writing patterns                                 | `claude/humanize/`            |
+| **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
@@ -43,6 +44,7 @@ Codex skills:
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
+| **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 | **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
@@ -106,7 +108,7 @@ claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/go-code-review
-claude --plugin-dir /path/to/sai/claude/humanize
+claude --plugin-dir /path/to/sai/plugins/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/plugins/kup
 claude --plugin-dir /path/to/sai/claude/promptgen
@@ -137,6 +139,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 ```bash
 ln -s /path/to/sai/codex/adversarial-review ~/.config/opencode/skills/adversarial-review
 ln -s /path/to/sai/codex/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ```
 
 ## Plugins
@@ -221,9 +224,9 @@ Auto-review Go code for 100+ common mistakes from [100go.co](https://100go.co/).
 
 Make text sound natural by removing AI writing patterns. Based on Wikipedia's Signs of AI Writing guide - detects 24 patterns across content, language, style, communication, and filler categories.
 
-**Usage**: `/humanize path/to/file.md [--score-only] [--inline]`
+**Usage**: `/humanize path/to/file.md [--score-only] [--dry-run]` (Codex: `$humanize`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/humanize/README.md)
+[Full documentation ->](./plugins/humanize/README.md)
 
 ### kubecon-cfp
 

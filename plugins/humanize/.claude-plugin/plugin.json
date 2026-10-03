@@ -1,10 +1,11 @@
 {
   "name": "humanize",
   "description": "Make text sound natural by removing AI writing patterns. For commit messages, PR descriptions, review comments, docs, changelogs, and any text that sounds robotic or AI-generated.",
-  "version": "2.5.0",
+  "version": "2.5.2",
   "author": {
     "name": "Smykla Skalski Labs"
   },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/humanize",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
   "keywords": ["writing", "ai-detection", "de-slop", "text", "style", "natural-language", "pattern-removal"]

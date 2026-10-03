@@ -86,7 +86,7 @@
     },
     {
       "name": "humanize",
-      "source": "./claude/humanize",
+      "source": "./plugins/humanize",
       "description": "Make text sound natural by removing AI writing patterns",
       "author": {
         "name": "Smykla Skalski Labs"
