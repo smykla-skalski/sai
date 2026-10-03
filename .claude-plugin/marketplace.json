@@ -75,7 +75,7 @@
     },
     {
       "name": "go-code-review",
-      "source": "./claude/go-code-review",
+      "source": "./plugins/go-code-review",
       "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage.",
       "author": {
         "name": "Smykla Skalski Labs"

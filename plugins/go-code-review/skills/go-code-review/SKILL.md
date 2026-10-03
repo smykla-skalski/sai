@@ -1,8 +1,12 @@
 ---
 name: go-code-review
 description: Auto-review Go code for 100+ common mistakes when analyzing .go files, discussing Go patterns, or reviewing PRs with Go code. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Read-only; no scripts or network access needed.
 allowed-tools: Read
 user-invocable: true
+metadata:
+  short-description: Review Go code for common mistakes
 ---
 
 # Go Code Review Skill
@@ -12,6 +16,19 @@ Auto-triggers when reviewing Go code to catch common mistakes from https://100go
 ## Scope
 
 Apply to `.go` files and Go PRs. Not a substitute for `go vet` or `golangci-lint` — use both alongside this review.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow uses no Claude-only runtime features, so it runs the same on every agent:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | Not used. Take the Go files, diff, or PR to review from the user's request or the code already in the conversation |
+| AskUserQuestion | Not used. If no Go code is named or in context, ask in plain text which files to review |
+| Subagent tool (Agent) | Not used. The whole review runs in the main agent loop |
+| `context: fork` | Not used; the skill runs in the main agent loop everywhere |
+
+In Codex, if reading a file fails because of sandbox restrictions, rerun the read with escalation and a short reason.
 
 ## Review Process
 
