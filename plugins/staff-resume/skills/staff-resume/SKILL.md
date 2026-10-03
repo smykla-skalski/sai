@@ -1,14 +1,34 @@
 ---
 name: staff-resume
 description: Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring. Use when building, improving, or tailoring a resume for Staff/Principal engineer roles.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. No scripts needed. Web search and fetch are optional (fresh research and job postings); without network access it falls back to the bundled reference and pasted text.
 argument-hint: "<resume-path> [--job-url URL] [--mode coach|tailor|full]"
 user-invocable: true
-allowed-tools: AskUserQuestion, Edit, Glob, Read, WebFetch, WebSearch, Write
+allowed-tools: AskUserQuestion Edit Glob Read WebFetch WebSearch Write
 context: fork
 agent: general-purpose
+metadata:
+  short-description: Coach and tailor staff resumes
 ---
 
 # Staff Resume Builder
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the resume path and flags from the user's request. If the request names no resume, ask for the path; never pick a file on your own |
+| AskUserQuestion | Ask the question in plain text and wait for the answer. If you cannot wait for an answer, stop and report what input is missing |
+| WebSearch, WebFetch | If web tools are missing or the network is blocked, skip the Phase 2 web searches and rely on the reference file, and ask the user to paste the job posting text instead of fetching the URL. In Codex, request escalation with a short reason before giving up on the network |
+| Subagent tool (Agent) | Not used |
+| `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
+
+Resume path gate on agents other than Claude Code: the resume path must come from the user's message. If the message does not name a resume file, ask which file to use and end your turn. Do not list directories, search for resume files, or read any file until the user answers, even when a file such as `resume.md` sits in the working directory.
+
+In Codex, if the sandbox blocks writing the resume or the companion analysis, request escalation with a short reason.
 
 ## Arguments
 
