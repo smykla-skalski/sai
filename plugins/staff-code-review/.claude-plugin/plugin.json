@@ -1,0 +1,12 @@
+{
+  "name": "staff-code-review",
+  "description": "Staff-engineer-level code review evaluating architectural alignment, system-level implications, failure modes, performance, scalability, observability, security, and cross-team impact.",
+  "version": "1.9.2",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/staff-code-review",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["code-review", "staff-engineer", "architecture", "security", "reliability", "github", "pr-review"]
+}

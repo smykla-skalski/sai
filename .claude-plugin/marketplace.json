@@ -163,7 +163,7 @@
     },
     {
       "name": "staff-code-review",
-      "source": "./claude/staff-code-review",
+      "source": "./plugins/staff-code-review",
       "description": "Staff-engineer-level code review evaluating architectural alignment, failure modes, observability, security, and cross-team impact.",
       "author": {
         "name": "Smykla Skalski Labs"
