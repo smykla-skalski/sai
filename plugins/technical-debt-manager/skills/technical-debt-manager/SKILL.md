@@ -96,6 +96,7 @@ Analyze technical debt in software repositories with a GitHub remote. Not design
     --jq '.data.repository.issue.subIssues.nodes[]'
   ```
   For each subissue, also read its body (`gh issue view N --json body`) to capture the `**Affected:**` file:line reference — needed for accurate dedup. Open subissues = active debt; closed subissues = already fixed.
+  If the umbrella body has a `**Continues:** #N` line (written by the rollover in Phase 5d), also fetch that earlier umbrella's subissues, and follow its own `**Continues:**` line in turn, so the baseline covers the whole chain.
 - Set the run mode: **fresh** (no umbrella → Phase 5 creates one) or **incremental** (umbrella exists → Phase 5 reuses it).
 - Read CLAUDE.md / AGENTS.md, README, CONTRIBUTING for known debt items/conventions
 - Note any existing TODO/FIXME/HACK conventions
@@ -269,6 +270,14 @@ for finding in findings; do
 done
 ```
 
+**Sub-issue cap.** GitHub allows at most 100 direct sub-issues per parent, and closed children count toward it. Before the loop, read the umbrella's current total (`gh issue view "$PARENT" --json subIssues --jq .subIssues.totalCount`; 0 for a just-created umbrella) and compute `FREE=$((100 - TOTAL))`. Create at most `FREE` children under `$PARENT`. If findings remain (or `FREE` is 0), roll over before creating the rest:
+
+1. Create a continuation umbrella with the **Umbrella Tracker** template, titled `☂️ Tech Debt Audit: {repo} ({date}, part {k})`, with `**Continues:** #{previous umbrella}` as the first line of its body.
+2. Add `**Continued in:** #{new umbrella}` to the top of the previous umbrella's body (`gh issue edit`), and keep both open.
+3. Set `PARENT` to the new umbrella and keep creating children there, rolling over again every 100.
+
+Rollover keeps a large audit from failing partway through. Report every umbrella in Phase 7.
+
 `--parent` creates the issue already linked as a sub-issue. To link an issue that already exists (for example after a partial failure), run `gh issue edit "$PARENT" --add-sub-issue "$CHILD"`.
 
 On gh older than 2.94 (no `--parent` flag), create the child without `--parent` and link it with the GraphQL `addSubIssue` mutation:
@@ -309,7 +318,7 @@ Display in chat.
 ```
 Tech debt audit complete
 
-Umbrella: {parent-issue-url}
+Umbrella: {parent-issue-url} (+ continuation umbrella URLs, if any)
 Subissues: {child-issue-numbers, comma-separated}
 Findings: {total-count}
   Critical + Quick wins: {count}
@@ -325,7 +334,7 @@ Top recommendation: {single most impactful action — reference child #}
 ```
 Tech debt re-audit complete
 
-Umbrella: {existing-umbrella-url} (reused)
+Umbrella: {existing-umbrella-url} (reused; + continuation umbrella URLs, if any)
 New subissues: {new-child-numbers, comma-separated} ({count})
 Deduplicated: {count} finding(s) already tracked — skipped
 Regressions: {closed subissues whose debt reappeared — #numbers, or "none"}
@@ -405,7 +414,8 @@ Before creating issues, verify:
 
 After creating issues, verify:
 
-- [ ] Exactly one umbrella exists — fresh mode created one, incremental mode reused `EXISTING_UMBRELLA` (no second umbrella opened)
+- [ ] Exactly one umbrella exists — fresh mode created one, incremental mode reused `EXISTING_UMBRELLA` (no second umbrella opened), except continuation umbrellas from the 100 sub-issue rollover, each linked with `**Continues:**` / `**Continued in:**`
+- [ ] No umbrella has more than 100 sub-issues
 - [ ] Umbrella issue title starts with ☂️
 - [ ] Each child issue title follows conventional commits format (`type(scope): description`)
 - [ ] Each child issue references the umbrella in its body (`**Parent:** #N`)
