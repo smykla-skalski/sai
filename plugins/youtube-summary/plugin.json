@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "youtube-summary",
+  "version": "1.0.0",
+  "description": "Summarize a YouTube video from its transcript into a concise Markdown note, saved to a folder you configure or printed in chat.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/youtube-summary",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["youtube", "summary", "transcript", "notes", "obsidian", "video"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "YouTube Summary",
+        "shortDescription": "Summarize a YouTube video into a note",
+        "longDescription": "Fetches a YouTube video's transcript, writes a short TL;DR with key points and timestamps, and saves it as a Markdown note in the folder set by YOUTUBE_SUMMARY_DIR, or prints it in chat.",
+        "developerName": "SAI",
+        "category": "Productivity",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/youtube-summary",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $youtube-summary to summarize https://www.youtube.com/watch?v=jNQXAC9IVRw",
+          "Use $youtube-summary to summarize this video without saving a note.",
+          "Use $youtube-summary to pull the key points and timestamps from this talk."
+        ],
+        "brandColor": "#DC2626"
+      }
+    }
+  }
+}
