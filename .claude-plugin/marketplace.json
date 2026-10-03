@@ -226,6 +226,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["code-review", "adversarial", "red-team", "subagents"]
+    },
+    {
+      "name": "adversarial-test",
+      "source": "./claude/adversarial-test",
+      "description": "Adversarial manual testing: a clean-context Test Adversary subagent runs the real product surface in isolated state and tries to break it; every reproduction is rerun before it counts.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["testing", "manual-testing", "adversarial", "qa", "subagents"]
     }
   ]
 }

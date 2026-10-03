@@ -1,6 +1,6 @@
 ---
 name: ship-issue
-description: End-to-end ship a GitHub issue — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via subagent, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL or a plain task description (an issue is created automatically) and asked to implement and ship it.
+description: End-to-end ship a GitHub issue — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via the adversarial-test skill, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL or a plain task description (an issue is created automatically) and asked to implement and ship it.
 argument-hint: "<github-issue-url | task description>"
 user-invocable: true
 allowed-tools:
@@ -100,23 +100,20 @@ On NEEDS_FIXES, fix every surviving `blocking:` and `issue:`, rerun quality gate
 
 ## Phase 6 — Adversarial manual testing
 
-Spawn a fresh general-purpose tester from the current branch tip after Phase 5. The tester must derive acceptance criteria from the issue and run the real changed product surface: start a service and probe it, run the real CLI in isolated state, exercise a sandbox, or otherwise execute the strongest user-visible behavior. Automated tests, lint, build, and grep are supporting evidence only.
-
-For pure refactors, internal helpers, or documentation changes with no runnable product surface, use the strongest behavioral regression evidence available; static review or grep alone is insufficient. In the Sybra repository, invoke `sybra-test` instead of improvising the test harness.
-
-The tester must attack happy paths, boundaries, malformed input, repeated/concurrent use, and adjacent flows and finish with exactly one line:
+From the branch tip after Phase 5, run the `adversarial-test` skill with the same issue context file:
 
 ```text
-TEST_VERDICT: PASS
+Skill: adversarial-test:adversarial-test
+Args:  --base origin/<default> --context <issue-context-file>
 ```
 
-or
+It spawns a clean-context Test Adversary that derives acceptance criteria from the issue, runs the real changed product surface in isolated state (service + probe, real CLI, sandbox), attacks happy paths, boundaries, malformed input, repeated/concurrent use, and adjacent flows, then reruns every reproduction to drop false failures. Automated tests, lint, build, and grep count only as supporting evidence. Its reply starts with `Test Verdict: PASS`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`.
 
-```text
-TEST_VERDICT: FAIL
-```
+In the Sybra repository, invoke `sybra-test` instead.
 
-On FAIL, treat every reproduction as a blocker: fix it, add a regression test, rerun quality gates, and respawn the tester against the new tip. After more than three unsuccessful fixes for the same reproduction, stop and ask the user. Do not open a PR until PASS.
+If the skill is not installed, spawn `adversarial-test:test-adversary` (fallback: `general-purpose` told to prove the change does not satisfy the issue by running the real surface in isolated temp state, and to report self-contained reproductions) with the repository, diff command, changed files, and issue context only; then rerun each reproduction yourself before acting on it.
+
+On FAIL, treat every surviving reproduction as a blocker: fix it, add a regression test, rerun quality gates, and rerun the skill against the new tip. After more than three unsuccessful fixes for the same reproduction, stop and ask the user. On BLOCKED, stop and surface the named human action. Do not open a PR until PASS.
 
 ## Phase 7 — Push and open the PR
 
@@ -154,4 +151,4 @@ After merge, switch to the default branch, fast-forward it, and delete the local
 
 ## Hard stops
 
-Stop and surface the exact next human action when the issue is already closed or actively owned, branch protection blocks merging, a Copilot thread loops more than three times, tests require disabling a check, or the issue needs a product/design decision that the repository cannot answer.
+Stop and surface the exact next human action when the issue is already closed or actively owned, branch protection blocks merging, a Copilot thread loops more than three times, tests require disabling a check, `adversarial-test` returns BLOCKED, or the issue needs a product/design decision that the repository cannot answer.
