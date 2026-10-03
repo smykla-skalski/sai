@@ -19,12 +19,12 @@ Check the project's README for specific prerequisites. Common requirements inclu
 
 For the SAI project specifically:
 
-- New plugins, and plugins migrated off the old split, use the portable layout below. Legacy Claude plugins still live under `claude/{plugin-name}/` and legacy Codex skills under `codex/{skill-name}/`
-- Test individual plugins: `claude --plugin-dir plugins/{plugin-name}/` (legacy: `claude/{plugin-name}/`)
+- Every plugin uses the portable layout below, one directory per plugin in `plugins/{plugin-name}/`
+- Test individual plugins: `claude --plugin-dir plugins/{plugin-name}/`
 - Plugin-specific changes modify files in the plugin's own directory
 - Monorepo-wide changes modify root files (README.md, CLAUDE.md, etc.)
 - Plugin versions are bumped by a pre-commit hook. Enable it once per clone with `git config core.hooksPath .githooks`
-- On each commit the hook bumps the patch version of every plugin with staged changes (`claude/{plugin-name}/`, `plugins/{plugin-name}/`, and any `codex/{skill-name}/` a manifest points to), keeps all manifests of one plugin on the same version, and stages them. README-only changes skip the bump
+- On each commit the hook bumps the patch version of every plugin with staged changes in `plugins/{plugin-name}/`, keeps all manifests of one plugin on the same version, and stages them. README-only changes skip the bump
 - For a minor or major bump, set the version yourself in the same commit; the hook leaves it alone
 - Stage with `git add` and run `git commit` without paths; `git commit <paths>` is rejected when a bump is needed
 - Hook tests: `python3 -m unittest discover -s tests`
