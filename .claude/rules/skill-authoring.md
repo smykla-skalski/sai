@@ -96,7 +96,7 @@ Organize complex skills into numbered phases:
 - Phase N+3: State persistence — save tracking files
 - Phase N+4: Verification — spawn separate agent for QA
 
-Reference: [claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md](claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md) for a 20-phase example.
+Reference: [plugins/ai-daily-digest/skills/ai-daily-digest/SKILL.md](plugins/ai-daily-digest/skills/ai-daily-digest/SKILL.md) for a 20-phase example.
 
 ## State Management
 
@@ -123,7 +123,7 @@ Resolve this path once in the setup phase via Bash and store as a variable (e.g.
 - Read on startup, update on successful completion only
 - Keep state files bounded (e.g., last 300 entries)
 
-Reference: [claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md](claude/ai-daily-digest/skills/ai-daily-digest/SKILL.md) for the pattern.
+Reference: [plugins/ai-daily-digest/skills/ai-daily-digest/SKILL.md](plugins/ai-daily-digest/skills/ai-daily-digest/SKILL.md) for the pattern.
 
 ## Reference file best practices
 
