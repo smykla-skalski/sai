@@ -53,7 +53,7 @@
     },
     {
       "name": "git-clean-gone",
-      "source": "./claude/git-clean-gone",
+      "source": "./plugins/git-clean-gone",
       "description": "Clean up local branches with deleted remote tracking and their worktrees",
       "author": {
         "name": "Smykla Skalski Labs"
