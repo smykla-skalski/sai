@@ -1,13 +1,33 @@
 {
   "name": "staff-code-review",
-  "description": "Staff-level code review run from a normal Copilot session only when explicitly requested. Keeps orchestration in-session: triages the change, builds a research brief, delegates to seven native dimension reviewer agents (architecture, reliability, security, performance, backward-compatibility, convention-conformance, dead-code) plus a code adversary, synthesizes findings, then a findings adversary red-teams them before they are returned or posted. Defaults to sequential reviewer delegation for reliable, credit-efficient execution.",
-  "version": "0.1.0",
-  "author": { "name": "Smykla Skalski Labs" },
-  "homepage": "https://github.com/smykla-skalski/sai",
+  "version": "1.9.2",
+  "description": "Staff-engineer-level code review evaluating architectural alignment, system-level implications, failure modes, performance, scalability, observability, security, and cross-team impact.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/staff-code-review",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["copilot", "custom-agents", "code-review", "staff-engineer", "architecture", "reliability", "security", "performance"],
-  "category": "Developer Tools",
-  "agents": "agents/",
-  "skills": "copilot-skills/"
+  "keywords": ["code-review", "staff-engineer", "architecture", "security", "reliability", "performance", "github", "pr-review", "subagents"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Staff Code Review",
+        "shortDescription": "Review code changes with staff-level depth",
+        "longDescription": "Triages the change, builds a codebase research brief, reviews it across seven dimensions (architecture, reliability, security, performance, backward compatibility, conventions, dead code) plus a code adversary, synthesizes, and red-teams the findings before returning or posting a pending GitHub review. Runs sequentially on Codex.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/staff-code-review",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $staff-code-review for this task.",
+          "Run $staff-code-review on the current branch.",
+          "Run $staff-code-review on this pull request."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
 }
