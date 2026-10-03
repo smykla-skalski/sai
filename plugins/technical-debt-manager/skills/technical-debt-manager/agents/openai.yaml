@@ -1,0 +1,4 @@
+interface:
+  display_name: "Technical Debt Manager"
+  short_description: "Audit tech debt into a GitHub issue tracker"
+  default_prompt: "Use $technical-debt-manager to audit this repo for technical debt and file an umbrella tracker issue with one sub-issue per finding."

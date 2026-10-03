@@ -31,7 +31,7 @@
     },
     {
       "name": "service-mesh-debug",
-      "source": "./claude/service-mesh-debug",
+      "source": "./plugins/service-mesh-debug",
       "description": "Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul). 11 root causes, Envoy debug scripts, minimal fixes.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -97,7 +97,7 @@
     },
     {
       "name": "kubecon-cfp",
-      "source": "./claude/kubecon-cfp",
+      "source": "./plugins/kubecon-cfp",
       "description": "Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -119,7 +119,7 @@
     },
     {
       "name": "promptgen",
-      "source": "./claude/promptgen",
+      "source": "./plugins/promptgen",
       "description": "Turn rough instructions into optimized, evidence-based prompts for AI agents",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -184,8 +184,19 @@
       "tags": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"]
     },
     {
+      "name": "technical-debt-manager",
+      "source": "./plugins/technical-debt-manager",
+      "description": "Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["technical-debt", "code-quality", "github-issues"]
+    },
+    {
       "name": "test-writer",
-      "source": "./claude/test-writer",
+      "source": "./plugins/test-writer",
       "description": "Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -196,7 +207,7 @@
     },
     {
       "name": "ship-issue",
-      "source": "./claude/ship-issue",
+      "source": "./plugins/ship-issue",
       "description": "Take a GitHub issue from implementation through adversarial review and testing, PR, CI and Copilot review, merge, and closure.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -218,7 +229,7 @@
     },
     {
       "name": "adversarial-review",
-      "source": "./claude/adversarial-review",
+      "source": "./plugins/adversarial-review",
       "description": "Fast two-pass adversarial code review: a Code Adversary subagent hunts the concrete bug, then a clean-context Findings Adversary subagent refutes false positives.",
       "author": {
         "name": "Smykla Skalski Labs"
