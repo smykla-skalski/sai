@@ -53,7 +53,7 @@
     },
     {
       "name": "git-clean-gone",
-      "source": "./claude/git-clean-gone",
+      "source": "./plugins/git-clean-gone",
       "description": "Clean up local branches with deleted remote tracking and their worktrees",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -64,7 +64,7 @@
     },
     {
       "name": "git-stage-hunk",
-      "source": "./claude/git-stage-hunk",
+      "source": "./plugins/git-stage-hunk",
       "description": "Non-interactive hunk staging for selective git add without TTY",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -75,7 +75,7 @@
     },
     {
       "name": "go-code-review",
-      "source": "./claude/go-code-review",
+      "source": "./plugins/go-code-review",
       "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -141,7 +141,7 @@
     },
     {
       "name": "generate-claude-md",
-      "source": "./claude/generate-claude-md",
+      "source": "./plugins/generate-claude-md",
       "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis; built to pass review-claude-md",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -229,7 +229,7 @@
     },
     {
       "name": "adversarial-test",
-      "source": "./claude/adversarial-test",
+      "source": "./plugins/adversarial-test",
       "description": "Adversarial manual testing: a clean-context Test Adversary subagent runs the real product surface in isolated state and tries to break it; every reproduction is rerun before it counts.",
       "author": {
         "name": "Smykla Skalski Labs"

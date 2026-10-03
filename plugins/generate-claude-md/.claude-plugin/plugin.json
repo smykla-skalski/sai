@@ -1,0 +1,12 @@
+{
+  "name": "generate-claude-md",
+  "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-claude-md's critical checks.",
+  "version": "0.1.1",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/generate-claude-md",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["claude-md", "generate", "scaffold", "init", "best-practices", "configuration", "codebase-analysis"]
+}
