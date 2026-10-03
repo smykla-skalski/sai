@@ -16,9 +16,12 @@ the "skills" field (for example 'codex/<name>' for Codex plugins).
 
 Rules:
     - Only staged files count; README.md changes alone never trigger a bump
-    - A plugin whose staged version already differs from HEAD is not bumped
-      again, its other manifests are only synced to the highest version
-    - New plugins (no manifest in HEAD) and deleted plugins are left alone
+    - A plugin whose highest staged version is already above every version in
+      the base commit is not bumped again; its other manifests are synced to
+      that version. Otherwise the target is the highest base version + 1 patch
+    - The base commit is HEAD, or HEAD^ for 'git commit --amend'
+    - New plugins (no manifest in the base) and deleted plugins are left alone
+    - A broken manifest only blocks commits that touch its plugin
     - Merges, cherry-picks, reverts, and the initial commit are skipped
 
 Git calls use a fixed argv; paths and contents go through stdin so repository
@@ -65,6 +68,8 @@ IN_PROGRESS_MARKERS: Final[tuple[str, ...]] = (
     "REVERT_HEAD",
 )
 PATHSPEC_INDEX_PREFIX: Final[str] = "next-index"
+AMEND_FLAG: Final[str] = "--amend"
+AMEND_MIN_PREFIX: Final[int] = len("--am")
 
 
 class BumpError(Exception):
@@ -73,7 +78,7 @@ class BumpError(Exception):
 
 @dataclass(frozen=True)
 class Entry:
-    """One blob entry of the index or of HEAD."""
+    """One blob entry of the index or of a commit."""
 
     mode: str
     sha: str
@@ -113,34 +118,106 @@ def git_dir() -> Path:
     return Path(_check(result, "rev-parse --absolute-git-dir").decode().strip())
 
 
-def head_exists() -> bool:
-    """Return True when HEAD points at a commit."""
-    result = subprocess.run(
-        ["/usr/bin/env", "git", "rev-parse", "--verify", "--quiet", "HEAD"],
-        capture_output=True,
-        check=False,
-        timeout=GIT_TIMEOUT_SECONDS,
-    )
+def base_exists(*, amend: bool) -> bool:
+    """Return True when the commit to compare against exists."""
+    if amend:
+        result = subprocess.run(
+            ["/usr/bin/env", "git", "rev-parse", "--verify", "--quiet", "HEAD^"],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    else:
+        result = subprocess.run(
+            ["/usr/bin/env", "git", "rev-parse", "--verify", "--quiet", "HEAD"],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
     return result.returncode == 0
 
 
-def staged_paths() -> list[str]:
-    """Return paths whose staged content differs from HEAD."""
+def head_author_date() -> str:
+    """Return the author date of HEAD in raw format."""
     result = subprocess.run(
-        [
-            "/usr/bin/env",
-            "git",
-            "diff",
-            "--cached",
-            "--name-only",
-            "--no-renames",
-            "-z",
-            "HEAD",
-        ],
+        ["/usr/bin/env", "git", "show", "-s", "--format=%ad", "--date=raw", "HEAD"],
         capture_output=True,
         check=False,
         timeout=GIT_TIMEOUT_SECONDS,
     )
+    return result.stdout.decode("utf-8", "replace").strip()
+
+
+def parent_argv() -> list[str]:
+    """Return the argv words of the process that ran this hook, or []."""
+    try:
+        result = subprocess.run(
+            ["/usr/bin/env", "ps", "-A", "-o", "pid=,args="],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    except OSError:
+        return []
+    parent = str(os.getppid())
+    for line in result.stdout.decode("utf-8", "replace").splitlines():
+        pid, _, args = line.strip().partition(" ")
+        if pid == parent:
+            return args.split()
+    return []
+
+
+def is_amend() -> bool:
+    """Return True when the commit being made amends HEAD.
+
+    pre-commit gets no amend signal, so two independent hints must agree: the
+    parent git process was given --amend, and git kept HEAD's author date for
+    the new commit (it sets GIT_AUTHOR_DATE to it when amending).
+    """
+    words = parent_argv()
+    if "commit" not in words:
+        return False
+    after = words[words.index("commit") + 1 :]
+    if not any(len(w) >= AMEND_MIN_PREFIX and AMEND_FLAG.startswith(w) for w in after):
+        return False
+    author_date = os.environ.get("GIT_AUTHOR_DATE", "").removeprefix("@")
+    return bool(author_date) and author_date == head_author_date()
+
+
+def staged_paths(*, amend: bool) -> list[str]:
+    """Return paths whose staged content differs from the base commit."""
+    if amend:
+        result = subprocess.run(
+            [
+                "/usr/bin/env",
+                "git",
+                "diff",
+                "--cached",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                "HEAD^",
+            ],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    else:
+        result = subprocess.run(
+            [
+                "/usr/bin/env",
+                "git",
+                "diff",
+                "--cached",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                "HEAD",
+            ],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
     out = _check(result, "diff --cached")
     return sorted(_decode_path(p) for p in out.split(b"\0") if p)
 
@@ -164,16 +241,24 @@ def index_entries() -> dict[str, Entry]:
     return entries
 
 
-def head_entries() -> dict[str, Entry]:
-    """Return blob entries of HEAD keyed by path."""
-    result = subprocess.run(
-        ["/usr/bin/env", "git", "ls-tree", "-r", "-z", "HEAD"],
-        capture_output=True,
-        check=False,
-        timeout=GIT_TIMEOUT_SECONDS,
-    )
+def base_entries(*, amend: bool) -> dict[str, Entry]:
+    """Return blob entries of the base commit keyed by path."""
+    if amend:
+        result = subprocess.run(
+            ["/usr/bin/env", "git", "ls-tree", "-r", "-z", "HEAD^"],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
+    else:
+        result = subprocess.run(
+            ["/usr/bin/env", "git", "ls-tree", "-r", "-z", "HEAD"],
+            capture_output=True,
+            check=False,
+            timeout=GIT_TIMEOUT_SECONDS,
+        )
     entries: dict[str, Entry] = {}
-    for record in _check(result, "ls-tree HEAD").split(b"\0"):
+    for record in _check(result, "ls-tree").split(b"\0"):
         if not record:
             continue
         meta, _, raw_path = record.partition(b"\t")
@@ -254,7 +339,7 @@ def format_version(version: tuple[int, int, int]) -> str:
 def load_manifest(content: bytes, path: str) -> dict[str, object]:
     """Parse manifest JSON and require a top-level object."""
     try:
-        data = json.loads(content.decode("utf-8"))
+        data = json.loads(content.decode("utf-8-sig"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         msg = f"'{path}' is not valid JSON: {exc}"
         raise BumpError(msg) from exc
@@ -271,7 +356,7 @@ def replace_version(text: str, old: str, new: str, path: str) -> str:
             continue
         candidate = f"{text[: match.start(2)]}{new}{text[match.end(2) :]}"
         try:
-            data = json.loads(candidate)
+            data = json.loads(candidate.removeprefix("\ufeff"))
         except json.JSONDecodeError:
             continue
         if isinstance(data, dict) and data.get("version") == new:
@@ -287,6 +372,7 @@ class Plugin:
     root: str
     manifests: list[str] = field(default_factory=list)
     owned: set[str] = field(default_factory=set)
+    errors: list[str] = field(default_factory=list)
 
     def owns(self, path: str) -> bool:
         """Return True when path belongs to this plugin."""
@@ -323,7 +409,11 @@ def discover_plugins(
         root = match.group("root")
         plugin = plugins.setdefault(root, Plugin(root=root, owned={root}))
         plugin.manifests.append(path)
-        data = load_manifest(blobs[index[path].sha], path)
+        try:
+            data = load_manifest(blobs[index[path].sha], path)
+        except BumpError as exc:
+            plugin.errors.append(str(exc))
+            continue
         plugin.owned.update(skills_dirs(root, data))
     return plugins
 
@@ -345,31 +435,31 @@ class Change:
 def plan_plugin(
     plugin: Plugin,
     index: dict[str, Entry],
-    head: dict[str, Entry],
+    base: dict[str, Entry],
     blobs: dict[str, bytes],
 ) -> tuple[str, list[Change]]:
     """Return the target version and manifest rewrites for one plugin."""
+    if plugin.errors:
+        raise BumpError("; ".join(plugin.errors))
     staged: dict[str, tuple[int, int, int]] = {}
     for path in plugin.manifests:
         data = load_manifest(blobs[index[path].sha], path)
         staged[path] = parse_version(data.get("version"), path)
 
-    previous: dict[str, tuple[int, int, int] | None] = {}
+    previous: list[tuple[int, int, int]] = []
     for path in plugin.manifests:
-        if path not in head:
+        if path not in base:
             continue
-        data = load_manifest(blobs[head[path].sha], path)
-        value = data.get("version")
-        previous[path] = (
-            parse_version(value, path)
-            if isinstance(value, str) and VERSION_RE.match(value)
-            else None
-        )
+        try:
+            data = load_manifest(blobs[base[path].sha], path)
+            previous.append(parse_version(data.get("version"), path))
+        except BumpError:
+            continue
 
     highest = max(staged.values())
-    already_bumped = any(staged[p] != v for p, v in previous.items())
-    if previous and not already_bumped:
-        highest = (highest[0], highest[1], highest[2] + 1)
+    if previous and highest <= max(previous):
+        released = max(previous)
+        highest = (released[0], released[1], released[2] + 1)
 
     target = format_version(highest)
     changes = [
@@ -432,23 +522,26 @@ def commit_in_progress() -> bool:
 
 def run() -> int:
     """Bump versions for staged plugins and return the exit code."""
-    if not head_exists() or commit_in_progress():
+    if commit_in_progress():
         return 0
-    paths = [p for p in staged_paths() if triggers_bump(p)]
+    amend = is_amend()
+    if not base_exists(amend=amend):
+        return 0
+    paths = [p for p in staged_paths(amend=amend) if triggers_bump(p)]
     if not paths:
         return 0
 
     index = index_entries()
-    head = head_entries()
+    base = base_entries(amend=amend)
     manifest_shas = [e.sha for p, e in index.items() if MANIFEST_RE.match(p)]
-    manifest_shas += [e.sha for p, e in head.items() if MANIFEST_RE.match(p)]
+    manifest_shas += [e.sha for p, e in base.items() if MANIFEST_RE.match(p)]
     blobs = read_blobs(manifest_shas)
 
     changes: list[Change] = []
     for plugin in discover_plugins(index, blobs).values():
         if not any(plugin.owns(p) for p in paths):
             continue
-        target, plugin_changes = plan_plugin(plugin, index, head, blobs)
+        target, plugin_changes = plan_plugin(plugin, index, base, blobs)
         for change in plugin_changes:
             print(
                 f"{PROG}: {change.path}: {change.old} -> {target}",

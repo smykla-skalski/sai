@@ -282,6 +282,69 @@ class BumpHookTest(unittest.TestCase):
         self.assert_commit_ok(result)
         self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.3")
 
+    def test_amend_does_not_bump_twice(self) -> None:
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2 fixed\n")
+        self.repo.git("add", "-A")
+        result = self.repo.git("commit", "-q", "--amend", "--no-edit", check=False)
+        self.assert_commit_ok(result)
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+        self.assertEqual(self.repo.status(), "")
+
+    def test_amend_bumps_plugin_new_to_the_commit(self) -> None:
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.repo.write("codex/gamma/SKILL.md", "gamma v2\n")
+        self.repo.git("add", "-A")
+        result = self.repo.git("commit", "-q", "--amend", "--no-edit", check=False)
+        self.assert_commit_ok(result)
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+        self.assertEqual(self.repo.committed_version(CODEX_MANIFEST), "2.0.1")
+
+    def test_message_mentioning_amend_is_a_normal_commit(self) -> None:
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v3\n")
+        self.assert_commit_ok(self.repo.commit_all("fix --amend handling"))
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.5")
+
+    def test_partial_manual_sync_of_drifted_manifests_still_bumps(self) -> None:
+        self.repo.write(PORTABLE_CLAUDE_MANIFEST, manifest("beta", "0.3.9"))
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "drift")
+        self.repo.write("plugins/beta/skills/beta/SKILL.md", "beta v2\n")
+        self.repo.write(PORTABLE_CLAUDE_MANIFEST, manifest("beta", "0.4.0"))
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(self.repo.committed_version(PORTABLE_ROOT_MANIFEST), "0.4.1")
+        self.assertEqual(
+            self.repo.committed_version(PORTABLE_CLAUDE_MANIFEST),
+            "0.4.1",
+        )
+
+    def test_broken_manifest_only_blocks_its_own_plugin(self) -> None:
+        self.repo.write(CODEX_MANIFEST, "{not json\n")
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "break gamma")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+        self.repo.write("plugins/gamma/extra.md", "x\n")
+        result = self.repo.commit_all()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("is not valid JSON", result.stderr)
+
+    def test_manifest_with_bom_is_bumped(self) -> None:
+        self.repo.write(CLAUDE_MANIFEST, "﻿" + manifest("alpha", "1.2.3"))
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "bom")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        committed = self.repo.git("show", f"HEAD:{CLAUDE_MANIFEST}").stdout
+        self.assertTrue(committed.startswith("﻿"))
+        self.assertEqual(json.loads(committed.lstrip("﻿"))["version"], "1.2.4")
+
 
 if __name__ == "__main__":
     unittest.main()
