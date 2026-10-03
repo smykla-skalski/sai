@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "go-code-review",
+  "version": "1.0.1",
+  "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage with severity tiers and direct mistake references.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/go-code-review",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["go", "golang", "code-review", "100go", "best-practices", "static-analysis"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Go Code Review",
+        "shortDescription": "Review Go code for common mistakes",
+        "longDescription": "Reviews Go files and PRs against 100+ common mistakes from 100go.co and real-world OSS patterns, and reports each finding with severity, file:line, mistake number, and a suggested fix.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/go-code-review",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $go-code-review to review these Go changes for common mistakes.",
+          "Use $go-code-review to check handler.go for error handling and concurrency issues.",
+          "Use $go-code-review to review the Go files in this PR and rank findings by severity."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

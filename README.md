@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `generate-claude-md`, `gh-review-comments`, `git-stage-hunk`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `generate-claude-md`, `gh-review-comments`, `git-stage-hunk`, `go-code-review`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -23,7 +23,7 @@ Repository layout:
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `plugins/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `plugins/git-stage-hunk/`     |
-| **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `claude/go-code-review/`      |
+| **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `plugins/go-code-review/`     |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
@@ -46,6 +46,7 @@ Codex skills:
 | **generate-claude-md** | Generate a lean CLAUDE.md from codebase analysis (same portable package as Claude Code) | `plugins/generate-claude-md/skills/generate-claude-md/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts (same portable package as Claude Code) | `plugins/gh-review-comments/skills/gh-review-comments/` |
 | **git-stage-hunk**     | Stage selected git hunks without a TTY; explicit invocation only (same portable package as Claude Code) | `plugins/git-stage-hunk/skills/git-stage-hunk/` |
+| **go-code-review**     | Review Go code for 100+ common mistakes from 100go.co (same portable package as Claude Code) | `plugins/go-code-review/skills/go-code-review/` |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
@@ -109,7 +110,7 @@ claude --plugin-dir /path/to/sai/plugins/generate-claude-md
 claude --plugin-dir /path/to/sai/plugins/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/plugins/git-stage-hunk
-claude --plugin-dir /path/to/sai/claude/go-code-review
+claude --plugin-dir /path/to/sai/plugins/go-code-review
 claude --plugin-dir /path/to/sai/plugins/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/plugins/kup
@@ -144,6 +145,7 @@ ln -s /path/to/sai/codex/adversarial-test ~/.config/opencode/skills/adversarial-
 ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
 ln -s /path/to/sai/plugins/gh-review-comments/skills/gh-review-comments ~/.config/opencode/skills/gh-review-comments
 ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
+ln -s /path/to/sai/plugins/go-code-review/skills/go-code-review ~/.config/opencode/skills/go-code-review
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ```
 
@@ -221,9 +223,9 @@ Non-interactive hunk staging for selective `git add` without a TTY. Lists hunks 
 
 Auto-review Go code for 100+ common mistakes from [100go.co](https://100go.co/). Auto-triggers when reviewing `.go` files or Go PRs. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage with severity tiers and direct mistake references.
 
-**Usage**: `/go-code-review` (auto-triggers on `.go` files and Go PRs)
+**Usage**: `/go-code-review` (Codex: `$go-code-review`; auto-triggers on `.go` files and Go PRs). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/go-code-review/README.md)
+[Full documentation ->](./plugins/go-code-review/README.md)
 
 ### humanize
 
