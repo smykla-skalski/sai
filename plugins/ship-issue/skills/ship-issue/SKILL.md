@@ -1,17 +1,13 @@
 ---
 name: ship-issue
 description: End-to-end ship a GitHub issue — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via the adversarial-test skill, open PR, wait for Copilot review + green CI, address feedback, merge, close issue. Use when given a GitHub issue URL or a plain task description (an issue is created automatically) and asked to implement and ship it.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and an authenticated gh CLI with push and merge rights on the target repository. Uses the adversarial-review and adversarial-test skills when installed.
 argument-hint: "<github-issue-url | task description>"
+allowed-tools: Agent Bash Edit Glob Grep Read Skill Write
 user-invocable: true
-allowed-tools:
-  - Agent
-  - Skill
-  - Read
-  - Edit
-  - Write
-  - Grep
-  - Glob
-  - Bash
+metadata:
+  short-description: Ship a GitHub issue through merge
 ---
 
 # Ship Issue
@@ -22,12 +18,30 @@ Take a GitHub issue, or a plain task description that becomes one, to a merged P
 
 **Mode:** Autonomous. Ask no clarifying questions unless the issue is ambiguous and the repository cannot resolve it. Default to the most reasonable interpretation and ship.
 
+## Agent compatibility
+
+The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | Claude Code appends the arguments to this skill. If none are appended, take the issue URL or task description from the user's request |
+| Skill tool (Phases 5 and 6) | Codex: invoke `$adversarial-review` and `$adversarial-test` (plugins `adversarial-review@sai`, `adversarial-test@sai`) with the same arguments. Copilot CLI: `/adversarial-review`, `/adversarial-test`. opencode: load the skill of the same name. Not installed: run the passes each phase describes yourself |
+| Named agents `adversarial-review:code-adversary`, `adversarial-review:findings-adversary`, `adversarial-test:test-adversary` | Registered only where their plugin is installed in Claude Code or Copilot CLI. Codex and opencode do not register them; there, or whenever the type is unknown, spawn a generic subagent with the fallback mandate the phase gives |
+| Subagent tool (Agent) | Codex: `spawn_agent`, waited on and closed before the next pass. opencode: the `task` tool. Copilot CLI: its agent tool. Always one subagent at a time, never in parallel: the Findings Adversary starts only after the Code Adversary returns. No subagent tool: run each pass inline yourself, in order, and reread the source for the refutation pass instead of trusting the first pass |
+| AskUserQuestion | Not used; a hard-stop question goes to the user as plain text, then end the turn |
+| `context: fork` | Not used |
+| Explicit invocation | This skill pushes, merges and closes issues, so it runs only when the user invokes it by name. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`). On other agents, start only when the user asked to ship an issue or invoked `/ship-issue` or `$ship-issue` |
+
+On agents with a command sandbox (Codex), the user's request to ship the issue authorizes normal branch, commit, push, PR, review-reply, merge and issue-close actions in the target repository. If a networked `git` or `gh` command fails because of the sandbox, rerun it with escalation and a one-line justification. After each state-changing step, inspect the git or GitHub state before continuing.
+
 ## Invocation
 
 ```text
 /ship-issue <github-issue-url>
 /ship-issue <task description>
 ```
+
+In Codex use `$ship-issue` with the same arguments.
 
 ## Phase 1 — Resolve the issue
 
