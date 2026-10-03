@@ -174,7 +174,7 @@
     },
     {
       "name": "staff-resume",
-      "source": "./claude/staff-resume",
+      "source": "./plugins/staff-resume",
       "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -182,6 +182,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"]
+    },
+    {
+      "name": "technical-debt-manager",
+      "source": "./plugins/technical-debt-manager",
+      "description": "Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["technical-debt", "code-quality", "github-issues"]
     },
     {
       "name": "test-writer",
