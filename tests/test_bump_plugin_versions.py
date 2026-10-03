@@ -45,6 +45,8 @@ class HookRepo:
                 "GIT_AUTHOR_EMAIL": "test@example.com",
                 "GIT_COMMITTER_NAME": "Test",
                 "GIT_COMMITTER_EMAIL": "test@example.com",
+                "GIT_AUTHOR_DATE": "@1790000000 +0000",
+                "GIT_COMMITTER_DATE": "@1790000000 +0000",
             },
         )
         self.git("init", "-q", "-b", "main")
@@ -309,6 +311,48 @@ class BumpHookTest(unittest.TestCase):
         self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v3\n")
         self.assert_commit_ok(self.repo.commit_all("fix --amend handling"))
         self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.5")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v4\n")
+        self.assert_commit_ok(self.repo.commit_all("--amend"))
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.6")
+
+    def test_amend_with_new_author_date_does_not_bump_twice(self) -> None:
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2 fixed\n")
+        self.repo.git("add", "-A")
+        result = self.repo.git(
+            "commit",
+            "-q",
+            "--reset-author",
+            "--date=@1800000000 +0000",
+            "--amend",
+            "--no-edit",
+            check=False,
+        )
+        self.assert_commit_ok(result)
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+
+    def test_amend_through_alias_does_not_bump_twice(self) -> None:
+        self.repo.git("config", "alias.fix", "commit --amend --no-edit")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2 fixed\n")
+        self.repo.git("add", "-A")
+        self.assert_commit_ok(self.repo.git("fix", "-q", check=False))
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+
+    def test_crlf_manifest_keeps_line_endings(self) -> None:
+        crlf = manifest("alpha", "1.2.3").replace("\n", "\r\n")
+        (self.repo.root / CLAUDE_MANIFEST).write_bytes(crlf.encode())
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "crlf")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(
+            (self.repo.root / CLAUDE_MANIFEST).read_bytes(),
+            crlf.replace("1.2.3", "1.2.4").encode(),
+        )
+        self.assertEqual(self.repo.status(), "")
 
     def test_partial_manual_sync_of_drifted_manifests_still_bumps(self) -> None:
         self.repo.write(PORTABLE_CLAUDE_MANIFEST, manifest("beta", "0.3.9"))

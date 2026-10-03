@@ -40,6 +40,8 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import json
 import os
 import posixpath
@@ -68,8 +70,26 @@ IN_PROGRESS_MARKERS: Final[tuple[str, ...]] = (
     "REVERT_HEAD",
 )
 PATHSPEC_INDEX_PREFIX: Final[str] = "next-index"
-AMEND_FLAG: Final[str] = "--amend"
-AMEND_MIN_PREFIX: Final[int] = len("--am")
+MIN_LONG_PREFIX: Final[int] = 2
+CTL_KERN: Final[int] = 1
+KERN_PROCARGS2: Final[int] = 49
+ARGC_BYTES: Final[int] = 4
+GIT_OPTIONS_WITH_VALUE: Final[frozenset[str]] = frozenset({"-c", "-C"})
+COMMIT_SHORT_OPTIONS_WITH_VALUE: Final[frozenset[str]] = frozenset("mFCct")
+COMMIT_LONG_OPTIONS_WITH_VALUE: Final[tuple[str, ...]] = (
+    "author",
+    "cleanup",
+    "date",
+    "file",
+    "fixup",
+    "message",
+    "pathspec-from-file",
+    "reedit-message",
+    "reuse-message",
+    "squash",
+    "template",
+    "trailer",
+)
 
 
 class BumpError(Exception):
@@ -137,51 +157,97 @@ def base_exists(*, amend: bool) -> bool:
     return result.returncode == 0
 
 
-def head_author_date() -> str:
-    """Return the author date of HEAD in raw format."""
-    result = subprocess.run(
-        ["/usr/bin/env", "git", "show", "-s", "--format=%ad", "--date=raw", "HEAD"],
-        capture_output=True,
-        check=False,
-        timeout=GIT_TIMEOUT_SECONDS,
-    )
-    return result.stdout.decode("utf-8", "replace").strip()
+def _proc_argv(pid: int) -> list[str] | None:
+    cmdline = Path(f"/proc/{pid}/cmdline")
+    try:
+        raw = cmdline.read_bytes()
+    except OSError:
+        return None
+    return [_decode_path(arg) for arg in raw.removesuffix(b"\0").split(b"\0")]
+
+
+def _darwin_argv(pid: int) -> list[str] | None:
+    libc_path = ctypes.util.find_library("c")
+    if libc_path is None:
+        return None
+    libc = ctypes.CDLL(libc_path, use_errno=True)
+    mib = (ctypes.c_int * 3)(CTL_KERN, KERN_PROCARGS2, pid)
+    size = ctypes.c_size_t(0)
+    if libc.sysctl(mib, 3, None, ctypes.byref(size), None, 0) != 0:
+        return None
+    buf = ctypes.create_string_buffer(size.value)
+    if libc.sysctl(mib, 3, buf, ctypes.byref(size), None, 0) != 0:
+        return None
+    raw = buf.raw[: size.value]
+    argc = int.from_bytes(raw[:ARGC_BYTES], sys.byteorder)
+    exec_end = raw.find(b"\0", ARGC_BYTES)
+    if exec_end < 0:
+        return None
+    pos = exec_end
+    while pos < len(raw) and raw[pos] == 0:
+        pos += 1
+    args = raw[pos:].split(b"\0")[:argc]
+    return [_decode_path(arg) for arg in args] if len(args) == argc else None
 
 
 def parent_argv() -> list[str]:
-    """Return the argv words of the process that ran this hook, or []."""
-    try:
-        result = subprocess.run(
-            ["/usr/bin/env", "ps", "-A", "-o", "pid=,args="],
-            capture_output=True,
-            check=False,
-            timeout=GIT_TIMEOUT_SECONDS,
-        )
-    except OSError:
-        return []
-    parent = str(os.getppid())
-    for line in result.stdout.decode("utf-8", "replace").splitlines():
-        pid, _, args = line.strip().partition(" ")
-        if pid == parent:
-            return args.split()
-    return []
+    """Return the exact argv of the process that ran this hook, or []."""
+    pid = os.getppid()
+    argv = _proc_argv(pid)
+    if argv is None and sys.platform == "darwin":
+        argv = _darwin_argv(pid)
+    return argv or []
+
+
+def _long_option(word: str, names: tuple[str, ...]) -> bool:
+    name = word[2:]
+    return len(name) >= MIN_LONG_PREFIX and any(n.startswith(name) for n in names)
+
+
+def _commit_args(argv: list[str]) -> list[str]:
+    pos = 1
+    while pos < len(argv) and argv[pos] != "commit":
+        pos += 2 if argv[pos] in GIT_OPTIONS_WITH_VALUE else 1
+    return argv[pos + 1 :]
+
+
+def _option_effect(word: str) -> tuple[bool | None, int]:
+    """Return (amend setting or None, number of following values consumed)."""
+    if word.startswith("--"):
+        if "=" in word:
+            return None, 0
+        if _long_option(word, ("amend",)):
+            return True, 0
+        if _long_option(word, ("no-amend",)):
+            return False, 0
+        return None, int(_long_option(word, COMMIT_LONG_OPTIONS_WITH_VALUE))
+    if word.startswith("-"):
+        for index, flag in enumerate(word[1:], start=1):
+            if flag in COMMIT_SHORT_OPTIONS_WITH_VALUE:
+                return None, int(index == len(word) - 1)
+    return None, 0
+
+
+def amend_requested(argv: list[str]) -> bool:
+    """Return True when an argv runs 'commit' with --amend in effect."""
+    args = _commit_args(argv)
+    amend = False
+    pos = 0
+    while pos < len(args) and args[pos] != "--":
+        setting, consumed = _option_effect(args[pos])
+        if setting is not None:
+            amend = setting
+        pos += 1 + consumed
+    return amend
 
 
 def is_amend() -> bool:
     """Return True when the commit being made amends HEAD.
 
-    pre-commit gets no amend signal, so two independent hints must agree: the
-    parent git process was given --amend, and git kept HEAD's author date for
-    the new commit (it sets GIT_AUTHOR_DATE to it when amending).
+    pre-commit gets no amend signal, so this reads the exact argv of the parent
+    process (/proc on Linux, sysctl on macOS) and parses the commit options.
     """
-    words = parent_argv()
-    if "commit" not in words:
-        return False
-    after = words[words.index("commit") + 1 :]
-    if not any(len(w) >= AMEND_MIN_PREFIX and AMEND_FLAG.startswith(w) for w in after):
-        return False
-    author_date = os.environ.get("GIT_AUTHOR_DATE", "").removeprefix("@")
-    return bool(author_date) and author_date == head_author_date()
+    return amend_requested(parent_argv())
 
 
 def staged_paths(*, amend: bool) -> list[str]:
@@ -474,24 +540,23 @@ def sync_worktree(top: Path, change: Change, staged_text: str, new_text: str) ->
     """Mirror an index rewrite into the working tree file."""
     target = top / change.path
     try:
-        current = target.read_text(encoding="utf-8")
+        current = target.read_bytes().decode("utf-8")
     except (OSError, UnicodeDecodeError):
         print(f"{PROG}: warning: '{change.path}' not updated on disk", file=sys.stderr)
         return
     if current == staged_text:
-        target.write_text(new_text, encoding="utf-8")
+        target.write_bytes(new_text.encode("utf-8"))
         return
     try:
-        target.write_text(
-            replace_version(current, change.old, change.new, change.path),
-            encoding="utf-8",
-        )
+        rewritten = replace_version(current, change.old, change.new, change.path)
     except BumpError:
         print(
             f"{PROG}: warning: '{change.path}' has unstaged edits; "
             f"set its version to {change.new} by hand",
             file=sys.stderr,
         )
+        return
+    target.write_bytes(rewritten.encode("utf-8"))
 
 
 def apply_changes(
