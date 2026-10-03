@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "staff-resume",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -18,7 +18,7 @@
         "longDescription": "Runs a gap analysis of a resume against staff-level criteria, coaches you through each role to surface scope and impact, rewrites bullets, and tailors the resume to a job posting with keyword mapping and ATS checks.",
         "developerName": "SAI",
         "category": "Writing",
-        "capabilities": ["Interactive"],
+        "capabilities": ["Interactive", "Write"],
         "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/staff-resume",
         "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
         "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
