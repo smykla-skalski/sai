@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `generate-claude-md`, `gh-review-comments`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -15,7 +15,7 @@ Repository layout:
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **adversarial-review**  | Fast two-pass adversarial code review: Code Adversary subagent hunts the bug, clean-context Findings Adversary subagent refutes false positives | `claude/adversarial-review/`  |
-| **adversarial-test**    | Adversarial manual testing: clean-context Test Adversary subagent runs the real product surface and tries to break it; reproductions are rerun before they count | `claude/adversarial-test/`    |
+| **adversarial-test**    | Adversarial manual testing: clean-context Test Adversary subagent runs the real product surface and tries to break it; reproductions are rerun before they count | `plugins/adversarial-test/`   |
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
@@ -40,7 +40,7 @@ Codex skills:
 | Skill                  | Description                                                                      | Source Path                  |
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
 | **adversarial-review** | Two-pass adversarial code review in sequential clean-context subagents; also runs on OpenCode | `codex/adversarial-review/` |
-| **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent; also runs on OpenCode | `codex/adversarial-test/` |
+| **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent (same portable package as Claude Code) | `plugins/adversarial-test/skills/adversarial-test/` |
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **generate-claude-md** | Generate a lean CLAUDE.md from codebase analysis (same portable package as Claude Code) | `plugins/generate-claude-md/skills/generate-claude-md/` |
@@ -100,7 +100,7 @@ Clone the repository and point directly to plugin directories:
 git clone git@github.com:smykla-skalski/sai.git
 
 claude --plugin-dir /path/to/sai/claude/adversarial-review
-claude --plugin-dir /path/to/sai/claude/adversarial-test
+claude --plugin-dir /path/to/sai/plugins/adversarial-test
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/council
 claude --plugin-dir /path/to/sai/claude/service-mesh-debug
@@ -139,7 +139,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 
 ```bash
 ln -s /path/to/sai/codex/adversarial-review ~/.config/opencode/skills/adversarial-review
-ln -s /path/to/sai/codex/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/adversarial-test/skills/adversarial-test ~/.config/opencode/skills/adversarial-test
 ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
 ln -s /path/to/sai/plugins/gh-review-comments/skills/gh-review-comments ~/.config/opencode/skills/gh-review-comments
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
@@ -157,11 +157,11 @@ Fast two-pass adversarial code review. A Code Adversary subagent assumes the cha
 
 ### adversarial-test
 
-Adversarial manual testing. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) against isolated temp state, and attacks boundaries, malformed input, repetition, and adjacent flows. Every reproduction is rerun before it counts; a PASS backed only by unit tests or lint is rejected. Leads with `Test Verdict: PASS|FAIL|BLOCKED`. Runs on Claude Code, Codex, and OpenCode; `ship-issue` uses it as its testing gate.
+Adversarial manual testing. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) against isolated temp state, and attacks boundaries, malformed input, repetition, and adjacent flows. Every reproduction is rerun before it counts; a PASS backed only by unit tests or lint is rejected. Leads with `Test Verdict: PASS|FAIL|BLOCKED`. One package for Claude Code, Codex, Copilot CLI and opencode (Codex: `$adversarial-test`); `ship-issue` uses it as its testing gate.
 
 **Usage**: `/adversarial-test [<pr-url> | --base <ref>] [--context <file|text>]`
 
-[Full documentation ->](./claude/adversarial-test/README.md)
+[Full documentation ->](./plugins/adversarial-test/README.md)
 
 ### ai-daily-digest
 

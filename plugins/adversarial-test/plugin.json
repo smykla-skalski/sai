@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "adversarial-test",
+  "version": "1.0.1",
+  "description": "Adversarial manual testing: a clean-context Test Adversary subagent runs the real product surface in isolated state and tries to break it; every reproduction is rerun before it counts.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/adversarial-test",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["testing", "manual-testing", "adversarial", "qa", "subagents", "acceptance"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Adversarial Test",
+        "shortDescription": "Adversarial manual testing of a change",
+        "longDescription": "A clean-context Test Adversary subagent derives acceptance criteria, runs the real service, CLI, or sandbox in isolated state, and attacks it; the caller reruns every reproduction to drop hallucinated failures. Falls back to an inline pass when spawning fails.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/adversarial-test",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $adversarial-test for this task.",
+          "Run $adversarial-test on the current branch.",
+          "Run $adversarial-test on this pull request."
+        ],
+        "brandColor": "#EA580C"
+      }
+    }
+  }
+}
