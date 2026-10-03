@@ -130,7 +130,7 @@
     },
     {
       "name": "refactor-council",
-      "source": "./claude/refactor-council",
+      "source": "./plugins/refactor-council",
       "description": "Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it.",
       "author": {
         "name": "Smykla Skalski Labs"
