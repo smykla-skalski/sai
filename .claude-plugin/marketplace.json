@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "ai-daily-digest",
-      "source": "./claude/ai-daily-digest",
+      "source": "./plugins/ai-daily-digest",
       "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
       "author": {
         "name": "Smykla Skalski Labs"
