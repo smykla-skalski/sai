@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "git-clean-gone",
+  "version": "1.0.3",
+  "description": "Clean up local branches with deleted remote tracking and their worktrees",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/git-clean-gone",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["git", "branch-cleanup", "worktree", "stale-branches", "merged", "squash-merge", "housekeeping"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Git Clean Gone",
+        "shortDescription": "Clean stale local branches and worktrees safely",
+        "longDescription": "Deletes local branches whose upstream is gone, merged by rebase, or squash-merged through a PR, and removes their worktrees. Preview with --dry-run first.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/git-clean-gone",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $git-clean-gone with --dry-run to preview which stale branches would be deleted.",
+          "Use $git-clean-gone to delete gone and merged branches and their worktrees.",
+          "Use $git-clean-gone with --no-worktrees to delete only branches whose upstream is gone."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

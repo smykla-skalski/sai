@@ -53,7 +53,7 @@
     },
     {
       "name": "git-clean-gone",
-      "source": "./claude/git-clean-gone",
+      "source": "./plugins/git-clean-gone",
       "description": "Clean up local branches with deleted remote tracking and their worktrees",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -229,7 +229,7 @@
     },
     {
       "name": "adversarial-test",
-      "source": "./claude/adversarial-test",
+      "source": "./plugins/adversarial-test",
       "description": "Adversarial manual testing: a clean-context Test Adversary subagent runs the real product surface in isolated state and tries to break it; every reproduction is rerun before it counts.",
       "author": {
         "name": "Smykla Skalski Labs"
