@@ -27,7 +27,7 @@ Repository layout:
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
-| **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `claude/promptgen/`           |
+| **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `plugins/promptgen/`          |
 | **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
@@ -48,7 +48,7 @@ Codex skills:
 | **git-stage-hunk**     | Stage selected git hunks without a TTY; explicit invocation only (same portable package as Claude Code) | `plugins/git-stage-hunk/skills/git-stage-hunk/` |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
-| **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
+| **promptgen**          | Turn rough instructions into stronger prompts; clipboard copy with print fallback (same portable package as Claude Code) | `plugins/promptgen/skills/promptgen/` |
 | **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
 
 ## Installation
@@ -113,7 +113,7 @@ claude --plugin-dir /path/to/sai/claude/go-code-review
 claude --plugin-dir /path/to/sai/plugins/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
 claude --plugin-dir /path/to/sai/plugins/kup
-claude --plugin-dir /path/to/sai/claude/promptgen
+claude --plugin-dir /path/to/sai/plugins/promptgen
 claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
@@ -251,11 +251,11 @@ Fill the monthly KUP report (Koszty Uzyskania Przychodu, the Polish 50% tax dedu
 
 ### promptgen
 
-Turn rough instructions into optimized, evidence-based AI prompts with outcome contracts, model fit, safety boundaries, and verification rules. Copies to clipboard.
+Turn rough instructions into optimized, evidence-based AI prompts with outcome contracts, model fit, safety boundaries, and verification rules. Copies to clipboard. A portable Agent Plugin, so the same package installs in Claude Code and Codex (`codex plugin add promptgen@sai`).
 
 **Usage**: `/promptgen <instructions> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]`
 
-[Full documentation ->](./claude/promptgen/README.md)
+[Full documentation ->](./plugins/promptgen/README.md)
 
 ### refactor-council
 

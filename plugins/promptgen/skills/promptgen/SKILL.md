@@ -2,8 +2,12 @@
 name: promptgen
 description: Use when turning rough instructions into optimized, evidence-based AI prompts for system prompts, task prompts, coding-agent instructions, tools, eval graders, subagent briefings, or prompt-improvement work. Copies to clipboard.
 argument-hint: "<prompt-description> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]"
-allowed-tools: AskUserQuestion, Bash, Read, Task
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Clipboard copy needs bash plus pbcopy (macOS), clip (Windows), or wl-copy, xclip, xsel or clip.exe (Linux, WSL); without one the prompt is only printed.
+allowed-tools: AskUserQuestion Bash Read Task
 user-invocable: true
+metadata:
+  short-description: Turn rough asks into strong prompts
 ---
 
 <!-- justify: CF-side-effect Clipboard copy is the only side effect and is non-destructive -->
@@ -11,6 +15,20 @@ user-invocable: true
 # Promptgen
 
 Generate optimized, evidence-based prompts from rough human instructions. Built on Anthropic / OpenAI guidance through April 2026, the 2025-2026 academic literature (Mollick / Wharton Prompting Science Reports 1-4, Chroma context-rot research, GEPA, IFScale, "Reasoning Models Struggle to Control CoT"), Simon Willison's lethal trifecta and Meta's Rule of Two, and current agent / coding-agent patterns (AGENTS.md, SKILL.md, three-agent harness, ACI design).
+
+## Agent compatibility
+
+`<skill-dir>` below is the absolute path of this skill's directory (the one holding this SKILL.md). In Claude Code it is `${CLAUDE_SKILL_DIR}`. Reference links are relative to it. The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Skill directory substitution | If the Claude Code path above is not absolute, use the directory that holds this SKILL.md as `<skill-dir>` |
+| Argument substitution | If the Phase 0 `<prompt-description>` block holds an unreplaced placeholder instead of text, take the description and flags from the user's request. Infer them from the request and local context before asking a follow-up question |
+| AskUserQuestion | Ask the question in plain text and wait for the answer |
+| Subagent tool (Task) | Run the Phase 2 analysis and Phase 3 security assessment inline against the same reference files. On Codex always run them inline, since Codex subagent fan-out is unreliable |
+| `context: fork` | Not used; the skill runs in the main agent loop |
+
+In Codex, if the sandbox blocks the clipboard script, do not escalate: the copy is optional. Report "Clipboard not available" and leave the prompt in the chat. If the sandbox blocks a `--research` read or command the user asked for, rerun it with escalation and a short reason.
 
 ## Arguments
 
@@ -31,7 +49,7 @@ Two input channels:
 
 ## Responsibility boundary
 
-By default, promptgen does no research. No codebase exploration, no file reads outside `${CLAUDE_SKILL_DIR}`. All investigation work belongs inside the generated prompt as explicit instructions for the target agent.
+By default, promptgen does no research. No codebase exploration, no file reads outside `<skill-dir>`. All investigation work belongs inside the generated prompt as explicit instructions for the target agent.
 
 `--research light` and `--research deep` opt into investigation before generation:
 
@@ -179,6 +197,8 @@ Compose the prompt from the prompt brief:
 9. Apply `--raw` by skipping opinionated author preferences while preserving safety and task-specific constraints.
 10. Apply the target/type-aware token budget from prompt-mechanics.md ("Prompt quality gate"). Cut lowest-value process text first. Identity and the highest-priority constraint sit in the first ~200 tokens; verification and stop rules sit at the end.
 11. If the prompt is an eval grader, verify the rubric defines explicit calibration anchors (low / mid / high or 0 / 0.5 / 1) for each scoring dimension, an input contract that forbids outside knowledge, and edge-case handling for empty / identical / refused candidates. Without anchors, scores are not reproducible across graders.
+12. If the prompt orchestrates Codex subagents (subagent briefing, three-agent harness), reflect Codex's real fan-out limits instead of assuming unlimited parallelism: default `agents.max_threads` 6, `close_agent` to free finished slots, and a check that each subagent returned a payload.
+13. If the prompt sets durable repo-wide norms for coding agents, recommend putting them in `AGENTS.md` at the repo root (or nested per directory). Codex, Cursor, Copilot, Amp, Jules, Factory, Windsurf and Aider read it; Codex caps it at 32 KiB (`project_doc_max_bytes`).
 
 ### Phase 5: Self-check
 
@@ -206,15 +226,19 @@ Verify the prompt does not request visible chain-of-thought from a reasoning mod
    - Anti-pattern checks passed
    - Token count estimate
 
-3. Unless `--no-copy` is set, copy to clipboard:
+3. Unless `--no-copy` is set, copy to clipboard. Pass the prompt through a quoted heredoc so quotes, `$` and backticks in it stay literal (pick another delimiter if the prompt contains a line that is exactly `PROMPTGEN_EOF`):
 
 ```bash
-echo '<generated_prompt>' | "${CLAUDE_SKILL_DIR}/scripts/clipboard.sh"
+"<skill-dir>/scripts/clipboard.sh" <<'PROMPTGEN_EOF'
+<generated_prompt>
+PROMPTGEN_EOF
 ```
+
+   The script tries pbcopy on macOS, clip on Windows (Git Bash, MSYS, Cygwin), and wl-copy (Wayland), xclip, xsel, then clip.exe (WSL) on Linux. It exits 0 and prints `COPIED <tool>` on success, or exits 1 with `NO_CLIPBOARD_TOOL` when no tool works.
 
 4. Report clipboard status:
    - Success: "Copied to clipboard."
-   - Failure (no clipboard tool): "Clipboard not available - install pbcopy (macOS), xclip, or xsel (Linux)."
+   - Failure (no clipboard tool, or the sandbox blocked it): "Clipboard not available - the prompt is printed above. Install pbcopy (macOS), wl-copy, xclip or xsel (Linux) to enable copying." The prompt from step 1 is the fallback output; never skip printing it.
    - `--no-copy`: skip clipboard entirely.
 
 ## Example invocations
