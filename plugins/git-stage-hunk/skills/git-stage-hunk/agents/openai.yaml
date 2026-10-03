@@ -2,3 +2,6 @@ interface:
   display_name: "Git Stage Hunk"
   short_description: "Stage selected diff hunks safely"
   default_prompt: "Use $git-stage-hunk to list unstaged hunks, stage only the requested subset, and verify the staged result."
+
+policy:
+  allow_implicit_invocation: false

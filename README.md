@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `git-stage-hunk`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -22,7 +22,7 @@ Repository layout:
 | **generate-claude-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-claude-md) | `claude/generate-claude-md/`  |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
-| **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
+| **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `plugins/git-stage-hunk/`     |
 | **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `claude/go-code-review/`      |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
@@ -44,6 +44,7 @@ Codex skills:
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
+| **git-stage-hunk**     | Stage selected git hunks without a TTY; explicit invocation only (same portable package as Claude Code) | `plugins/git-stage-hunk/skills/git-stage-hunk/` |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
@@ -106,7 +107,7 @@ claude --plugin-dir /path/to/sai/claude/service-mesh-debug
 claude --plugin-dir /path/to/sai/claude/generate-claude-md
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
-claude --plugin-dir /path/to/sai/claude/git-stage-hunk
+claude --plugin-dir /path/to/sai/plugins/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/go-code-review
 claude --plugin-dir /path/to/sai/plugins/humanize
 claude --plugin-dir /path/to/sai/claude/kubecon-cfp
@@ -139,6 +140,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 ```bash
 ln -s /path/to/sai/codex/adversarial-review ~/.config/opencode/skills/adversarial-review
 ln -s /path/to/sai/codex/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ```
 
@@ -208,9 +210,9 @@ Clean up local branches with deleted remote tracking and their worktrees. Detect
 
 Non-interactive hunk staging for selective `git add` without a TTY. Lists hunks with stable IDs, then stages by ID, pattern, file, or line range. Works in scripted and multi-agent environments where `git add -p` is unavailable.
 
-**Usage**: `/git-stage-hunk [--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]`
+**Usage**: `/git-stage-hunk [--list] [--hunk H1,H2] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--dry-run]` (Codex: `$git-stage-hunk`, explicit invocation only). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/git-stage-hunk/README.md)
+[Full documentation ->](./plugins/git-stage-hunk/README.md)
 
 ### go-code-review
 
