@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "ai-daily-digest",
-      "source": "./claude/ai-daily-digest",
+      "source": "./plugins/ai-daily-digest",
       "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -108,8 +108,8 @@
     },
     {
       "name": "plan-critic",
-      "source": "./claude/plan-critic",
-      "description": "Critique a Claude implementation plan before approving execution. Spawns parallel persona subagents (Skeptic, Architect, Verifier) to evaluate the plan against the codebase.",
+      "source": "./plugins/plan-critic",
+      "description": "Critique an implementation plan before approving execution. Persona reviewers (Skeptic, Architect, Verifier) evaluate the plan against the codebase and return an Approve/Reject/Refine verdict.",
       "author": {
         "name": "Smykla Skalski Labs"
       },
