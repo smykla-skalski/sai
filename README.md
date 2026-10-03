@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `review-claude-md`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `review-claude-md`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -27,6 +27,7 @@ Repository layout:
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `plugins/kubecon-cfp/`        |
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
+| **plan-critic**         | Critique an implementation plan before coding: Skeptic, Architect, and Verifier personas return an Approve/Refine/Reject verdict | `plugins/plan-critic/`        |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `plugins/promptgen/`          |
 | **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `plugins/review-claude-md/`   |
@@ -55,6 +56,7 @@ Codex skills:
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kubecon-cfp**        | Draft and refine KubeCon CFP submissions, explicit invocation only (same portable package as Claude Code) | `plugins/kubecon-cfp/skills/kubecon-cfp/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
+| **plan-critic**        | Critique implementation plans before coding; personas run sequentially on Codex (same portable package as Claude Code) | `plugins/plan-critic/skills/plan-critic/` |
 | **promptgen**          | Turn rough instructions into stronger prompts; clipboard copy with print fallback (same portable package as Claude Code) | `plugins/promptgen/skills/promptgen/` |
 | **service-mesh-debug** | Diagnose flaky service-mesh e2e tests and connectivity issues with read-only Envoy diagnostic scripts (same portable package as Claude Code) | `plugins/service-mesh-debug/skills/service-mesh-debug/` |
 | **staff-resume**       | Coach and tailor staff-level engineering resumes (same portable package as Claude Code) | `plugins/staff-resume/skills/staff-resume/` |
@@ -94,6 +96,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install humanize@sai
 /plugin install kubecon-cfp@sai
 /plugin install kup@sai
+/plugin install plan-critic@sai
 /plugin install promptgen@sai
 /plugin install refactor-council@sai
 /plugin install review-claude-md@sai
@@ -127,6 +130,7 @@ claude --plugin-dir /path/to/sai/plugins/go-code-review
 claude --plugin-dir /path/to/sai/plugins/humanize
 claude --plugin-dir /path/to/sai/plugins/kubecon-cfp
 claude --plugin-dir /path/to/sai/plugins/kup
+claude --plugin-dir /path/to/sai/plugins/plan-critic
 claude --plugin-dir /path/to/sai/plugins/promptgen
 claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/plugins/review-claude-md
@@ -145,7 +149,6 @@ copilot --plugin-dir /path/to/sai/claude/staff-code-review
 copilot --plugin-dir /path/to/sai/plugins/council
 copilot --plugin-dir /path/to/sai/plugins/refactor-council
 copilot --plugin-dir /path/to/sai/plugins/staff-code-review
-copilot --plugin-dir /path/to/sai/plugins/plan-critic
 copilot --plugin-dir /path/to/sai/plugins/review-claude-md
 ```
 
@@ -164,6 +167,7 @@ ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/openco
 ln -s /path/to/sai/plugins/go-code-review/skills/go-code-review ~/.config/opencode/skills/go-code-review
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ln -s /path/to/sai/plugins/kubecon-cfp/skills/kubecon-cfp ~/.config/opencode/skills/kubecon-cfp
+ln -s /path/to/sai/plugins/plan-critic/skills/plan-critic ~/.config/opencode/skills/plan-critic
 ln -s /path/to/sai/plugins/review-claude-md/skills/review-claude-md ~/.config/opencode/skills/review-claude-md
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
 ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skills/ship-issue
@@ -274,6 +278,14 @@ Fill the monthly KUP report (Koszty Uzyskania Przychodu, the Polish 50% tax dedu
 **Usage**: `/kup` or "fill my KUP report", "catch up the KUP sheet", "preview KUP for 2026-03"
 
 [Full documentation ->](./plugins/kup/README.md)
+
+### plan-critic
+
+Critique an implementation plan before any code is written. Triages the plan, builds a Grounding Brief that verifies every file and symbol it names against the codebase, then runs three persona reviewers (Verifier, Architect, Skeptic) and returns one Approve/Refine/Reject verdict with concrete refinements. One package for Claude Code, Codex, Copilot CLI and opencode: Claude Code runs the personas in parallel, the other agents one at a time.
+
+**Usage**: `/plan-critic [plan file path | paste plan inline | --from-conversation]` (Codex: `$plan-critic`)
+
+[Full documentation ->](./plugins/plan-critic/README.md)
 
 ### promptgen
 
