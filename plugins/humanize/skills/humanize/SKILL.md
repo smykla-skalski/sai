@@ -19,7 +19,7 @@ metadata:
 Remove AI writing patterns from text and replace them with natural, human-sounding alternatives. Uses two complementary sources:
 
 - **Detection**: Wikipedia's "Signs of AI writing" guide (WikiProject AI Cleanup) - what to remove
-- **Composition**: Strunk & White's "The Elements of Style" (1918) - how to write the replacement well
+- **Composition**: William Strunk Jr.'s "The Elements of Style" (1918) - how to write the replacement well
 
 ## Scope
 

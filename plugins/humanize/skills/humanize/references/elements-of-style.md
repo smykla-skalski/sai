@@ -1,6 +1,6 @@
 # Composition principles
 
-Distilled from Strunk & White's "The Elements of Style" (1918). Apply these during the rewrite phase after removing AI patterns. They address how to write well, not just how to avoid writing badly.
+Distilled from William Strunk Jr.'s "The Elements of Style" (1918). Apply these during the rewrite phase after removing AI patterns. They address how to write well, not just how to avoid writing badly.
 
 ## Contents
 

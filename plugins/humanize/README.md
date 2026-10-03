@@ -7,7 +7,7 @@ The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Age
 Two complementary sources:
 
 - **Detection**: Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide (WikiProject AI Cleanup) - 24 patterns across content, language, style, communication, and filler categories
-- **Composition**: Strunk & White's [The Elements of Style](https://github.com/obra/the-elements-of-style) (1918) - active voice, concrete language, omitting needless words, sentence variety, emphasis placement
+- **Composition**: William Strunk Jr.'s [The Elements of Style](https://github.com/obra/the-elements-of-style) (1918) - active voice, concrete language, omitting needless words, sentence variety, emphasis placement
 
 ## Installation
 

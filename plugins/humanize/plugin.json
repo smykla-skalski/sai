@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "humanize",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "Make text sound natural by removing AI writing patterns. For commit messages, PR descriptions, review comments, docs, changelogs, and any text that sounds robotic or AI-generated.",
   "author": {
     "name": "Smykla Skalski Labs"

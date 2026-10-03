@@ -24,7 +24,7 @@ hooks:                              # Skill-scoped lifecycle hooks (same format 
 ---
 ```
 
-Reference: [plugins/humanize/skills/humanize/SKILL.md](plugins/humanize/skills/humanize/SKILL.md) for a complete example. Portable skills must keep `name` equal to the directory name and the description under 1024 characters; see "Portable plugin layout" in CONTRIBUTING.md.
+Reference: [plugins/humanize/skills/humanize/SKILL.md](../../plugins/humanize/skills/humanize/SKILL.md) for a complete example. Portable skills must keep `name` equal to the directory name and the description under 1024 characters; see "Portable plugin layout" in CONTRIBUTING.md.
 
 ### Invocation control
 
