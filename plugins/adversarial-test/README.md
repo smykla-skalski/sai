@@ -55,6 +55,7 @@ In Claude Code and Copilot CLI use `/adversarial-test`, in Codex `$adversarial-t
 | Agent | Subagent |
 | :-- | :-- |
 | Claude Code | Named agent `adversarial-test:test-adversary` from `agents/`; `general-purpose` with the mandate prepended as fallback |
+| Copilot CLI | `general-purpose` with the mandate prepended (Copilot does not register the named agent) |
 | Codex | One `spawn_agent` call with the mandate prepended, closed after the pass |
 | opencode | `task` tool with an installed `test-adversary` agent or the built-in `general` subagent |
 
