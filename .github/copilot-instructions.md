@@ -5,8 +5,8 @@
 This repo has **no repo-level build, test, or lint entrypoint**. It is mostly Markdown plus small validation/automation scripts, so validate the client surface you changed instead of inventing a monorepo-wide task.
 
 - Claude plugin smoke test: `claude --plugin-dir plugins/{plugin-name}/` for portable packages, `claude --plugin-dir claude/{plugin-name}/` for legacy ones
-- Single-skill smoke run: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
-- Copilot package smoke test: use `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin-name}` for the self-contained plugin packages under `claude/`, or `copilot --plugin-dir /absolute/path/to/sai/plugins/council` for council's dedicated bundle, then run the relevant slash command in Copilot CLI
+- Single-skill smoke run: `claude --plugin-dir plugins/{plugin-name}/ -p "/{skill-name} test args"` (legacy: `claude/{plugin-name}/`)
+- Copilot package smoke test: use `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin-name}` for portable packages, `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin-name}` for the legacy self-contained packages under `claude/`, or `copilot --plugin-dir /absolute/path/to/sai/plugins/council` for council's dedicated bundle, then run the relevant slash command in Copilot CLI
 - For script-heavy skill changes, run the local checker/schema/smoke flow that belongs to that plugin rather than adding placeholder `mise`, `make`, or lint tasks
 
 ## Copilot plugin improvement loop

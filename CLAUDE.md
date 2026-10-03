@@ -87,7 +87,7 @@ Never remove, overwrite, or move any file (rm, mv, Write over an existing file, 
 - Deduplicate BEFORE generating output — downstream phases assume unique entries
 - Spawn verification agents separately to avoid polluting main context
 - First run has no state files — always handle missing state gracefully
-- `$ARGUMENTS` is the only way Claude Code skills receive user input — parse flags from it; other agents leave it empty, so fall back to the user's request
+- `$ARGUMENTS` is the only way Claude Code skills receive user input — parse flags from it; other agents leave it empty or unreplaced (Codex keeps the literal text), so fall back to the user's request
 - CI workflows in `.github/workflows/` are org-synced — do not edit manually
 
 ## Claude Code skills
