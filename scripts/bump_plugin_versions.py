@@ -385,10 +385,10 @@ def write_blob(content: bytes) -> str:
 
 def stage_blobs(updates: dict[str, Entry]) -> None:
     """Point index entries at new blobs."""
-    lines = "".join(f"{e.mode} {e.sha}\t{path}\n" for path, e in updates.items())
+    records = "".join(f"{e.mode} {e.sha}\t{path}\0" for path, e in updates.items())
     result = subprocess.run(
-        ["/usr/bin/env", "git", "update-index", "--index-info"],
-        input=lines.encode("utf-8", "surrogateescape"),
+        ["/usr/bin/env", "git", "update-index", "-z", "--index-info"],
+        input=records.encode("utf-8", "surrogateescape"),
         capture_output=True,
         check=False,
         timeout=GIT_TIMEOUT_SECONDS,
@@ -426,6 +426,17 @@ def load_manifest(content: bytes, path: str) -> dict[str, object]:
 
 def replace_version(text: str, old: str, new: str, path: str) -> str:
     """Rewrite the top-level version in place, keeping the file's formatting."""
+    try:
+        current = json.loads(text.removeprefix("\ufeff"))
+    except json.JSONDecodeError as exc:
+        msg = f"'{path}' is not valid JSON: {exc}"
+        raise BumpError(msg) from exc
+    version = current.get("version") if isinstance(current, dict) else None
+    if version == new:
+        return text
+    if version != old:
+        msg = f"'{path}' has version {version!r}, expected {old!r}"
+        raise BumpError(msg)
     for match in VERSION_FIELD_RE.finditer(text):
         if match.group(2) != old:
             continue
@@ -534,7 +545,8 @@ def plan_plugin(
             continue
         try:
             data = load_manifest(blobs[entry.sha], path)
-            if same_path or data.get("name") in names:
+            name = data.get("name")
+            if same_path or (isinstance(name, str) and name in names):
                 previous.append(parse_version(data.get("version"), path))
         except BumpError:
             continue
@@ -661,6 +673,13 @@ def main() -> int:
     except (BumpError, subprocess.TimeoutExpired) as exc:
         print(f"{PROG}: error: {exc}", file=sys.stderr)
         return 1
+    except OSError as exc:
+        print(
+            f"{PROG}: warning: cannot run git through /usr/bin/env ({exc}); "
+            "plugin versions were not bumped, bump them by hand",
+            file=sys.stderr,
+        )
+        return 0
 
 
 if __name__ == "__main__":

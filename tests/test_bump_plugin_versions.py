@@ -390,6 +390,31 @@ class BumpHookTest(unittest.TestCase):
         )
         self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.3")
 
+    def test_unstaged_sync_leaves_nested_version_alone(self) -> None:
+        self.repo.write(PORTABLE_CLAUDE_MANIFEST, manifest("beta", "0.4.1"))
+        self.repo.git("add", PORTABLE_CLAUDE_MANIFEST)
+        unstaged = (
+            '{\n  "name": "beta",\n  "version": "0.4.1",\n'
+            '  "keywords": ["a", "b"],\n  "extensions": {"x": {"version": "0.4.0"}}\n}\n'
+        )
+        self.repo.write(PORTABLE_ROOT_MANIFEST, unstaged)
+        result = self.repo.git("commit", "-q", "-m", "bump", check=False)
+        self.assert_commit_ok(result)
+        self.assertEqual(self.repo.committed_version(PORTABLE_ROOT_MANIFEST), "0.4.1")
+        self.assertEqual(self.repo.read(PORTABLE_ROOT_MANIFEST), unstaged)
+
+    def test_deleted_manifest_with_odd_name_does_not_crash(self) -> None:
+        self.repo.write(
+            "claude/delta/.claude-plugin/plugin.json",
+            json.dumps({"name": [], "version": "1.0.0"}),
+        )
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "delta")
+        self.repo.git("rm", "-r", "-q", "claude/delta")
+        self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
+
     def test_crlf_manifest_keeps_line_endings(self) -> None:
         crlf = manifest("alpha", "1.2.3").replace("\n", "\r\n")
         (self.repo.root / CLAUDE_MANIFEST).write_bytes(crlf.encode())
