@@ -53,7 +53,7 @@
     },
     {
       "name": "git-clean-gone",
-      "source": "./claude/git-clean-gone",
+      "source": "./plugins/git-clean-gone",
       "description": "Clean up local branches with deleted remote tracking and their worktrees",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -64,7 +64,7 @@
     },
     {
       "name": "git-stage-hunk",
-      "source": "./claude/git-stage-hunk",
+      "source": "./plugins/git-stage-hunk",
       "description": "Non-interactive hunk staging for selective git add without TTY",
       "author": {
         "name": "Smykla Skalski Labs"

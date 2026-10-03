@@ -1,15 +1,13 @@
 ---
 name: git-stage-hunk
-description: >-
-  Stage only specific hunks from the working tree for selective commits.
-  Use when a file has changes from multiple sessions, parallel AI agents,
-  or mixed user and agent edits and you need to commit only the changes
-  made by the current session. Use when git add -p is unavailable or
-  when you need non-interactive partial staging. Lists hunks with IDs,
-  stages by hunk ID, file, regex pattern, or line range.
+description: Stage only specific hunks from the working tree for selective commits. Use when a file has changes from multiple sessions, parallel AI agents, or mixed user and agent edits and you need to commit only the changes made by the current session. Use when git add -p is unavailable or when you need non-interactive partial staging. Lists hunks with IDs, stages by hunk ID, file, regex pattern, or line range.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and python3; patchutils is optional. Writes the git index of the current repository.
 argument-hint: "[--list [--file PATH] [--split] [--table]] [--hunk H1,H3.1,H5:5-10] [--pattern REGEX] [--file PATH] [--range FILE:S-E] [--verify] [--dry-run] [--table]"
-allowed-tools: AskUserQuestion, Bash
+allowed-tools: AskUserQuestion Bash
 user-invocable: true
+metadata:
+  short-description: Stage selected diff hunks safely
 ---
 
 <!-- justify: CF-side-effect Stages hunks via git apply --cached which is additive and reversible - safe to auto-invoke -->
@@ -20,8 +18,10 @@ Non-interactive hunk staging for selective `git add` without a TTY. Replaces `gi
 
 The heavy lifting happens in the Python script. Your first action MUST be Bash - call the script directly, then present the output. Do not re-implement git diff/apply logic yourself.
 
+`<skill-dir>` in every command below is the absolute path of this skill's directory (the one holding this SKILL.md). In Claude Code it is `${CLAUDE_SKILL_DIR}`. Run the commands from the root of the user's repository and call the script by that absolute path, keeping the double quotes: the script stages changes in the repository of the current working directory, so never `cd` into the skill directory.
+
 ```
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --table
 ```
 
 ## Quick workflow
@@ -29,13 +29,13 @@ The heavy lifting happens in the Python script. Your first action MUST be Bash -
 1. List hunks:
 
    ```
-   "${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --table
+   "<skill-dir>/scripts/git-stage-hunk.py" --list --table
    ```
 
 2. Stage the ones you want:
 
    ```
-   "${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --hunk H1,H3 --table
+   "<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --table
    ```
 
 3. Commit, then re-list to see what remains.
@@ -45,8 +45,22 @@ The heavy lifting happens in the Python script. Your first action MUST be Bash -
 Filter the listing to one file:
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
 ```
+
+## Agent compatibility
+
+The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Skill directory substitution | If the Claude Code path in the paragraph above is not absolute, use the directory that holds this SKILL.md as `<skill-dir>` |
+| Argument substitution | If the "Parse from" line under Arguments shows no flags or an unreplaced placeholder, take the mode and flags from the user's request; with none, default to `--list` |
+| Shell preprocessing (Preprocessed context) | If the OS line below shows a command instead of a value, run `uname -s` yourself before Phase 2 |
+| AskUserQuestion | Ask the question in plain text and wait for the answer |
+| Subagents, `context: fork` | Not used; the skill runs in the main agent loop |
+
+In Codex the skill is explicit-invocation only (`agents/openai.yaml` sets `allow_implicit_invocation: false`) because it writes the git index. If the sandbox blocks the script from writing `.git/index`, rerun it with escalation and a short reason. Prefer `--list` or `--dry-run` first unless the user clearly asked to stage.
 
 ## Preprocessed context
 
@@ -87,7 +101,7 @@ Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes
 1. Run the script with `--check-deps`:
 
    ```
-   "${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --check-deps
+   "<skill-dir>/scripts/git-stage-hunk.py" --check-deps
    ```
 
 2. Parse the NDJSON output. Each line is a dependency status.
@@ -107,18 +121,18 @@ Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes
 Run the script with the user's requested mode. Always pass `--table` for human-readable output:
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --list --split --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --split H3
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --hunk H1,H3 --dry-run --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --hunk H1,H3 --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --hunk H3.1,H3.2 --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --hunk H3:5-10 --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --pattern 'handleAuth' --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --file src/auth.ts --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --range src/auth.ts:45-60 --table
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --verify --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --split --table
+"<skill-dir>/scripts/git-stage-hunk.py" --split H3
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --dry-run --table
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H3.1,H3.2 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H3:5-10 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --pattern 'handleAuth' --table
+"<skill-dir>/scripts/git-stage-hunk.py" --file src/auth.ts --table
+"<skill-dir>/scripts/git-stage-hunk.py" --range src/auth.ts:45-60 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --verify --table
 ```
 
 Add `--fallback` if the user declined patchutils in Phase 2.
@@ -138,7 +152,7 @@ If the summary includes `"fallback":true`, note that `--pattern` and `--range` m
 After staging, optionally run `--verify` to show what ended up staged vs unstaged:
 
 ```
-"${CLAUDE_SKILL_DIR}/scripts/git-stage-hunk.py" --verify --table
+"<skill-dir>/scripts/git-stage-hunk.py" --verify --table
 ```
 
 ## Hunk ID scheme
