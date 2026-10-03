@@ -1,7 +1,7 @@
 {
   "name": "service-mesh-debug",
   "description": "Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul). Covers 11 root causes: timing races, xDS propagation delays, Gomega misuse, pod availability races, mTLS/SDS readiness, Envoy circuit breakers, and outlier detection. Includes Python scripts for live Envoy diagnostics.",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": {
     "name": "Smykla Skalski Labs"
   },

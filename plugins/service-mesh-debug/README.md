@@ -42,7 +42,7 @@ Local checkout: `claude --plugin-dir /path/to/sai/plugins/service-mesh-debug/`
 
 Auto-triggers on mentions of flaky tests, intermittent CI failures, `test/e2e/` file paths, 503 errors, mTLS failures, or service mesh connectivity issues. Also invocable by name: `/service-mesh-debug` in Claude Code and Copilot CLI, `$service-mesh-debug` in Codex.
 
-The diagnostic scripts need Python 3.9+ and `kubectl` pointed at the cluster you are debugging.
+The diagnostic scripts need Python 3.10+ and `kubectl` pointed at the cluster you are debugging.
 
 ## Reference Material
 

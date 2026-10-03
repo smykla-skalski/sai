@@ -10,7 +10,7 @@ description: >
   circuit breakers, mTLS readiness, Gomega misuse) AND universal mesh debugging (control plane
   connectivity, proxy lifecycle, certificate problems, traffic routing/policy, service discovery).
 license: MIT
-compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Diagnostic scripts need Python 3.9+ and kubectl with access to the target cluster; they only read Envoy admin endpoints and never change cluster state.
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Diagnostic scripts need Python 3.10+ and kubectl with access to the target cluster; they only read Envoy admin endpoints and never change cluster state.
 allowed-tools: Bash Grep Read
 user-invocable: true
 metadata:
@@ -117,7 +117,7 @@ For live cluster debugging, suggest running the scripts in `scripts/` directly a
 "${CLAUDE_SKILL_DIR}/scripts/mtls_check.py" <pod> -n <namespace>
 ```
 
-Scripts require only `kubectl` in PATH and Python 3.9+. No extra dependencies.
+Scripts require only `kubectl` in PATH and Python 3.10+. No extra dependencies.
 All scripts support `--admin-port` (default 9901) for non-Kuma meshes (Istio: 15000, Consul: 19000).
 
 ---
