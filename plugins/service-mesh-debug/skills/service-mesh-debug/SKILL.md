@@ -9,8 +9,12 @@ description: >
   not in cluster". Covers Kuma flakiness patterns (timing races, xDS propagation delays, Envoy
   circuit breakers, mTLS readiness, Gomega misuse) AND universal mesh debugging (control plane
   connectivity, proxy lifecycle, certificate problems, traffic routing/policy, service discovery).
-allowed-tools: Read, Grep, Bash
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Diagnostic scripts need Python 3.10+ and kubectl with access to the target cluster; they only read Envoy admin endpoints and never change cluster state.
+allowed-tools: Bash Grep Read
 user-invocable: true
+metadata:
+  short-description: Debug flaky mesh tests and traffic
 ---
 
 # Fix Flaky E2E / Service Mesh Debugging Skill
@@ -22,6 +26,20 @@ Two modes: **Flaky E2E Fix** (Kuma/Ginkgo test files) and **Mesh Connectivity De
 - Designed for Kuma/Envoy e2e test flakiness and service mesh connectivity issues
 - Not designed for unit test failures, application-level bugs, or non-mesh networking problems
 - Assumes the test framework is Ginkgo/Gomega with the Kuma `test/framework/` helpers (Mode 1) or a live K8s cluster with mesh sidecar injection (Mode 2)
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | Not used: take the test file, pod, namespace or symptom from the user's request and local context, and ask only for what you cannot find |
+| Skill directory substitution | Claude Code replaces the placeholder at the start of every script command with this skill's absolute directory. If a script path below does not start with `/`, replace everything before `/scripts/` with the absolute path of the directory holding this SKILL.md, and run the script from the user's working directory (`envoy_snapshot.py` writes its snapshot there). Never search plugin caches for the scripts |
+| AskUserQuestion, subagents, `context: fork` | Not used; the skill runs in the main agent loop everywhere |
+
+Cluster safety on every agent: the bundled scripts only read Envoy admin endpoints and `kubectl get` output. Commands from the references that change cluster or proxy state (Envoy `--post-data` log-level changes, sidecar or pod restarts, `kubectl apply`/`delete`, policy edits) are suggestions for the user; run one yourself only after the user explicitly asks for it or confirms it. Before the first script run, check `kubectl config current-context` and name that cluster in your reply.
+
+In Codex, `kubectl` needs network access to the cluster API, so if a script or `kubectl` call fails because of sandbox or network restrictions, rerun the same command with escalation (`sandbox_permissions=require_escalated`) and a short reason. State whether a diagnosis is confirmed by live output or inferred from code and partial evidence.
 
 ## Mode 1: Flaky E2E Fix
 
@@ -99,7 +117,7 @@ For live cluster debugging, suggest running the scripts in `scripts/` directly a
 "${CLAUDE_SKILL_DIR}/scripts/mtls_check.py" <pod> -n <namespace>
 ```
 
-Scripts require only `kubectl` in PATH and Python 3.9+. No extra dependencies.
+Scripts require only `kubectl` in PATH and Python 3.10+. No extra dependencies.
 All scripts support `--admin-port` (default 9901) for non-Kuma meshes (Istio: 15000, Consul: 19000).
 
 ---

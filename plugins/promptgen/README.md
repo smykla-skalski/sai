@@ -8,22 +8,35 @@ You describe what you want a prompt to do in plain language. The skill generates
 
 Supports four target formats: Claude (XML tags), GPT (outcome-first Markdown), Codex (coding-agent contract), and generic (Markdown-only). Handles task prompts, system prompts, reusable templates, tool descriptions, eval graders, subagent briefings, three-agent harness instructions, and prompt-improvement passes.
 
+The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
+
 ## Installation
 
-### Quick install
+Claude Code (Copilot CLI is the same with `copilot` in place of `claude`):
 
 ```bash
 claude plugin marketplace add smykla-skalski/sai
-claude plugin install promptgen@smykla-skalski-sai
+claude plugin install promptgen@sai
 ```
 
-### Manual
+Codex:
 
 ```bash
-claude --plugin-dir /path/to/sai/claude/promptgen
+codex plugin marketplace add smykla-skalski/sai
+codex plugin add promptgen@sai
 ```
 
+opencode, or any agent that reads Agent Skills, loads `skills/promptgen/` directly:
+
+```bash
+ln -s /path/to/sai/plugins/promptgen/skills/promptgen ~/.config/opencode/skills/promptgen
+```
+
+Local checkout: `claude --plugin-dir /path/to/sai/plugins/promptgen/`
+
 ## Usage
+
+In Claude Code and Copilot CLI use `/promptgen`, in Codex `$promptgen`. On agents without subagents (and always on Codex) the analysis and security phases run inline against the same reference files, with the same result.
 
 ```
 /promptgen <instructions> [--for claude|gpt|codex|generic] [--research light|deep] [--verbose] [--no-copy] [--examples] [--raw]
@@ -118,5 +131,5 @@ Reference materials are condensed from:
 
 ## Requirements
 
-- macOS (pbcopy) or Linux (xclip / xsel) for clipboard support.
-- Clipboard is optional - prompts are always displayed in chat.
+- bash plus a clipboard tool: pbcopy (macOS), clip (Windows Git Bash / MSYS / Cygwin), or wl-copy, xclip, xsel, clip.exe (Linux, WSL).
+- Clipboard is optional - prompts are always displayed in chat, and when no clipboard tool works (or a sandbox blocks it) the printed prompt is the output.
