@@ -56,13 +56,14 @@ In Claude Code and Copilot CLI use `/adversarial-review`, in Codex `$adversarial
 | Claude Code | Named agents `adversarial-review:code-adversary` and `adversarial-review:findings-adversary` (also used by `ship-issue`); `general-purpose` with the mandate prepended when they are not registered |
 | Codex | `spawn_agent` with the mandate prepended, sequential, closed after each pass |
 | opencode | `task` tool with the installed named agents or the built-in `general` subagent |
-| Copilot CLI | Its subagent tool with the mandate prepended |
+| Copilot CLI | The same named agents through its subagent tool; a generic subagent with the mandate prepended otherwise |
 
 Every agent falls back to two labelled inline passes when no subagent tool is available.
 
 ## Files
 
 - `agents/code-adversary.md`, `agents/findings-adversary.md` - Claude Code agent definitions
+- `plugin.json` - Agent Plugins manifest for Codex. It has no `$schema` key on purpose: with `$schema` present, Copilot CLI stops registering the plugin's `agents/` directory
 - `skills/adversarial-review/references/code-adversary.md`, `findings-adversary.md` - the same mandates without frontmatter, for generic subagents and inline passes on every agent. Agent bodies and reference files must stay identical; edit both together
 
 ## License

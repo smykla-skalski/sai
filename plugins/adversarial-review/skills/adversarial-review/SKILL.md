@@ -87,7 +87,9 @@ Each pass is one fresh subagent whose prompt is the Review assignment plus the p
 - If a `code-adversary` / `findings-adversary` subagent is installed (see the plugin README), use it and pass the Review assignment plus payload; the mandate is already its system prompt.
 - Otherwise use the built-in `general` subagent with the mandate prepended.
 
-**Other agents** (Copilot CLI and anything else with a subagent tool): spawn a fresh generic subagent with the mandate prepended. Without a subagent tool, use the inline Fallback.
+**Copilot CLI.** The plugin registers the same named agents (`adversarial-review:code-adversary`, `adversarial-review:findings-adversary`); use them through its subagent tool when offered, otherwise a fresh generic subagent with the mandate prepended.
+
+**Other agents** with a subagent tool: spawn a fresh generic subagent with the mandate prepended. Without a subagent tool, use the inline Fallback.
 
 **Validation and retry.** If a reply is empty or lacks its required final verdict line, spawn a fresh subagent once more. If that fails too, run the pass inline (see Fallback).
 
