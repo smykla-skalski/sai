@@ -11,12 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python <3.11 is unsupported here.
-    tomllib = None
-
-
 FEATURE_FLAGS = [
     "--enable",
     "multi_agent_v2",
@@ -43,7 +37,7 @@ SKILL_NEEDLES = [
     "Council progress:",
     "Council not run: broad council approval not granted.",
     "Council not run: skill unavailable.",
-    "Every spawn or follow-up prompt must start exactly",
+    "Every spawn or follow-up prompt, on every agent, starts exactly with",
     "Your first line must be exactly: ## <display name> review",
     "<subagent_notification>",
     "Never emit bare prefaces",
@@ -54,12 +48,18 @@ SKILL_NEEDLES = [
     "Empty-query `web_search` is still forbidden",
     "Prepare agent capacity before any spawn",
     "inspect native live-agent state",
-    "agent state clean: root only; running full selected roster when within limit",
+    "agent state clean: root only; running selected roster one reviewer at a time",
     "coordinator must proactively clean the thread tree",
     "close every visible stale Council reviewer child",
-    "Fan out in waves sized by cleaned capacity",
+    "Run reviewers sequentially by default",
+    "<persona-mandate>",
     "Do not spawn into a known full session",
 ]
+
+PLUGIN_DIR = "plugins/council"
+PERSONA_COUNT = 27
+MAX_CONCURRENT_REVIEWERS = 1
+CODEX_CACHE = Path.home() / ".codex/plugins/cache/sai/council"
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -77,9 +77,9 @@ def load_json(path: Path) -> dict:
 
 
 def source_version(root: Path) -> str:
-    plugin = load_json(root / "plugins/council/plugin.json")
-    codex = load_json(root / "plugins/council/.codex-plugin/plugin.json")
-    versions = {plugin.get("version"), codex.get("version")}
+    plugin = load_json(root / PLUGIN_DIR / "plugin.json")
+    claude = load_json(root / PLUGIN_DIR / ".claude-plugin/plugin.json")
+    versions = {plugin.get("version"), claude.get("version")}
     if len(versions) != 1:
         fail(f"version mismatch: {sorted(str(v) for v in versions)}")
     version = versions.pop()
@@ -89,10 +89,9 @@ def source_version(root: Path) -> str:
 
 
 def cache_versions() -> list[str]:
-    cache = Path.home() / ".codex/plugins/cache/sai/council"
-    if not cache.exists():
+    if not CODEX_CACHE.exists():
         return []
-    return sorted(path.name for path in cache.iterdir() if path.is_dir())
+    return sorted(path.name for path in CODEX_CACHE.iterdir() if path.is_dir())
 
 
 def command_version(args: argparse.Namespace) -> None:
@@ -107,36 +106,18 @@ def command_baseline(args: argparse.Namespace) -> None:
 
 
 def command_static(args: argparse.Namespace) -> None:
-    if tomllib is None:
-        fail("python3 must provide tomllib")
-
     root = repo_root()
     version = source_version(root)
+    plugin = root / PLUGIN_DIR
 
-    agents = sorted((root / "codex/agents").glob("*.toml"))
-    if not agents:
-        fail("no codex/agents/*.toml files found")
-    medium_agents = [
-        path.name
-        for path in agents
-        if tomllib.loads(path.read_text()).get("model_reasoning_effort") != "high"
-    ]
-    if medium_agents:
-        fail(f"non-high codex agents: {medium_agents}")
+    agents = check_agents(plugin)
+    mandates = sorted((plugin / "skills/council/references/agents").glob("*.md"))
+    if [path.name for path in mandates] != [path.name for path in agents]:
+        fail("skills/council/references/agents/ mandates do not match agents/")
+    if "$schema" in load_json(plugin / "plugin.json"):
+        fail("root plugin.json must not set $schema: Copilot CLI then skips agents/")
 
-    packaged = sorted((root / "plugins/council/agents").glob("*.agent.md"))
-    if len(packaged) != len(agents):
-        fail(f"agent count mismatch: packaged={len(packaged)} toml={len(agents)}")
-    bad_packaged = [
-        path.name
-        for path in packaged
-        if "model_reasoning_effort: high" not in path.read_text()
-        or "tools: Read" not in path.read_text()
-    ]
-    if bad_packaged:
-        fail(f"bad packaged agents: {bad_packaged}")
-
-    skill = (root / "plugins/council/skills/council/SKILL.md").read_text()
+    skill = (plugin / "skills/council/SKILL.md").read_text()
     missing = [needle for needle in SKILL_NEEDLES if needle not in skill]
     if missing:
         fail(f"skill missing required text: {missing}")
@@ -150,22 +131,15 @@ def command_static(args: argparse.Namespace) -> None:
 def command_installed(args: argparse.Namespace) -> None:
     root = repo_root()
     version = args.version or source_version(root)
-    cache = Path.home() / ".codex/plugins/cache/sai/council" / version
-    manifest = load_json(cache / ".codex-plugin/plugin.json")
+    cache = CODEX_CACHE / version
+    manifest = load_json(cache / "plugin.json")
     if manifest.get("version") != version:
         fail(f"installed manifest version mismatch: {manifest.get('version')} != {version}")
 
-    agents = sorted((cache / "agents").glob("*.agent.md"))
-    if len(agents) != 27:
-        fail(f"installed agent count mismatch: {len(agents)}")
-    bad_agents = [
-        path.name
-        for path in agents
-        if "model_reasoning_effort: high" not in path.read_text()
-        or "tools: Read" not in path.read_text()
-    ]
-    if bad_agents:
-        fail(f"bad installed agents: {bad_agents}")
+    check_agents(cache)
+    mandates = sorted((cache / "skills/council/references/agents").glob("*.md"))
+    if len(mandates) != PERSONA_COUNT:
+        fail(f"installed mandate count mismatch: {len(mandates)}")
 
     skill = (cache / "skills/council/SKILL.md").read_text()
     missing = [needle for needle in SKILL_NEEDLES if needle not in skill]
@@ -177,12 +151,33 @@ def command_installed(args: argparse.Namespace) -> None:
     print(f"installed cache ok: {cache}")
 
 
+def check_agents(plugin: Path) -> list[Path]:
+    """Fail unless the plugin ships every persona agent at high effort."""
+    agents = sorted((plugin / "agents").glob("*.md"))
+    if len(agents) != PERSONA_COUNT:
+        fail(f"agent count mismatch in {plugin}: {len(agents)} != {PERSONA_COUNT}")
+    bad_agents = [
+        path.name
+        for path in agents
+        if "model_reasoning_effort: high" not in path.read_text()
+        or "tools: Read" not in path.read_text()
+    ]
+    if bad_agents:
+        fail(f"bad persona agents: {bad_agents}")
+    return agents
+
+
 def description_length(skill_text: str) -> int:
     if "description: >-" not in skill_text:
         return 0
-    after = skill_text.split("description: >-", 1)[1]
-    before_end = after.split("---", 1)[0]
-    return len(" ".join(line.strip() for line in before_end.splitlines() if line.strip()))
+    after = skill_text.split("description: >-", 1)[1].split("\n---", 1)[0]
+    folded: list[str] = []
+    for line in after.splitlines()[1:]:
+        if line and not line.startswith(" "):
+            break
+        if line.strip():
+            folded.append(line.strip())
+    return len(" ".join(folded))
 
 
 def resolve_evidence_dir(value: str | None) -> Path:
@@ -320,11 +315,11 @@ def command_smoke(args: argparse.Namespace) -> None:
     runs = [
         (
             "normal",
-            '$council core-mix Council validation smoke. Inline material only: review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. Use the regular fixed reviewer flow. Clean stale council agents first; if state is clean/root-only, run the largest safe wave.',
+            '$council core-mix Council validation smoke. Inline material only: review the rule "always run all selected reviewers with complete bounded material" and report only material blockers. Use the regular fixed reviewer flow. Clean stale council agents first; if state is clean/root-only, run the reviewers one at a time.',
         ),
         (
             "prefixed",
-            "$council:council core-mix Council validation smoke. Inline material only: verify the plugin-prefixed alias follows the same bounded-review behavior. Use the regular fixed reviewer flow. Clean stale council agents first; if state is clean/root-only, run the largest safe wave.",
+            "$council:council core-mix Council validation smoke. Inline material only: verify the plugin-prefixed alias follows the same bounded-review behavior. Use the regular fixed reviewer flow. Clean stale council agents first; if state is clean/root-only, run the reviewers one at a time.",
         ),
         (
             "broad",
@@ -409,8 +404,15 @@ def has_close_recovery(events: list[dict], start_index: int) -> bool:
     return False
 
 
+def has_persona_mandate(prompt: str) -> bool:
+    """Codex reviewers are generic agents; the mandate block carries the persona."""
+    after_assignment = prompt.split("</council-review-assignment>", 1)[-1]
+    return "<persona-mandate>" in after_assignment
+
+
 def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
     active_agents: set[str] = set()
+    pending_close: set[str] = set()
     max_active = 0
 
     for event in events:
@@ -425,13 +427,24 @@ def ensure_capacity_safe_spawns(events: list[dict], name: str) -> None:
                     active_agents.add(agent_id)
             max_active = max(max_active, len(active_agents))
             continue
+        still_running = set(running_agents_from_close(item))
         if tool == "close_agent":
             for agent_id in item.get("receiver_thread_ids") or []:
-                if isinstance(agent_id, str):
+                if isinstance(agent_id, str) and agent_id not in still_running:
                     active_agents.discard(agent_id)
+            pending_close.update(still_running)
+        resolved = {
+            agent_id
+            for agent_id, state in (item.get("agents_states") or {}).items()
+            if agent_id in pending_close and isinstance(state, dict)
+            and state.get("status") != "running"
+        }
+        active_agents.difference_update(resolved)
+        pending_close.difference_update(resolved)
 
-    if max_active > 6:
-        fail(f"{name} spawned {max_active} concurrent reviewers; subagent limit is 6")
+    if max_active > MAX_CONCURRENT_REVIEWERS:
+        limit = MAX_CONCURRENT_REVIEWERS
+        fail(f"{name} spawned {max_active} concurrent reviewers; limit is {limit}")
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -524,6 +537,10 @@ def check_review_run(evidence: Path, name: str) -> None:
                 bad_prompts.append(
                     f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
                 )
+        if tool == "spawn_agent" and not has_persona_mandate(prompt):
+            bad_prompts.append(
+                f"spawn_agent prompt lacks <persona-mandate>: {prompt[:120]!r}",
+            )
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
     if running_close_without_tool:
@@ -615,6 +632,10 @@ def command_evidence(args: argparse.Namespace) -> None:
                 bad_prompts.append(
                     f"{tool} prompt has reviewer heading before assignment: {before_assignment[:120]!r}"
                 )
+        if tool == "spawn_agent" and not has_persona_mandate(prompt):
+            bad_prompts.append(
+                f"spawn_agent prompt lacks <persona-mandate>: {prompt[:120]!r}",
+            )
     if bad_prompts:
         fail("; ".join(bad_prompts[:5]))
     if running_close_without_tool:

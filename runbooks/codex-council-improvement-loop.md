@@ -1,7 +1,9 @@
 # Codex Council Improvement Loop Runbook
 
 This is the canonical process for functional Codex Council changes under
-`plugins/council/`, `codex/agents/`, or Codex marketplace metadata.
+`plugins/council/` or Codex marketplace metadata. Council is one portable package
+shared with Claude Code, Copilot CLI and opencode, so Codex-only rules live in the
+`## Codex` section of the skill and in the root `plugin.json`.
 
 Do not validate through a local marketplace path. Do not rediscover equivalent
 CLI syntax during the loop. Do not optimize plugin-eval score, brevity, token
@@ -28,7 +30,7 @@ sed -n '1,180p' README.md CLAUDE.md CONTRIBUTING.md
 ```
 
 Check version drift across `plugins/council/plugin.json`,
-`plugins/council/.codex-plugin/plugin.json`, installed cache under
+`plugins/council/.claude-plugin/plugin.json`, installed cache under
 `~/.codex/plugins/cache/sai/council/`, and README references when behavior docs
 change.
 
@@ -37,19 +39,22 @@ change.
 For functional Codex behavior changes, update the complete surface:
 
 - `plugins/council/skills/council/SKILL.md`
-- `plugins/council/.codex-plugin/plugin.json`
-- `plugins/council/plugin.json`
-- relevant `plugins/council/agents/*.agent.md`
-- relevant `codex/agents/*.toml`
+- `plugins/council/plugin.json` (Codex UI under `extensions."com.openai".interface`)
+- `plugins/council/.claude-plugin/plugin.json`
+- relevant `plugins/council/agents/*.md` and the identical bodies in
+  `plugins/council/skills/council/references/agents/*.md` (Codex passes these as
+  the `<persona-mandate>` block; `tests/test_council_persona_mandates.py` keeps
+  them in sync)
 - marketplace metadata when applicable
 - `AGENTS.md` or this runbook when the process changes
 
-`plugins/council/skills/council/` is the only Codex skill root. Do not add a
-parallel `codex-skills/` tree.
+`plugins/council/skills/council/` is the only skill root for every agent. Do not
+add a parallel `codex-skills/` or `copilot-skills/` tree, and do not add
+`.codex-plugin/`: Codex reads the root `plugin.json`.
 
 Keep strict bounded-context and stop-output rules in the first metadata Codex
-sees, not only in the skill body. The skill frontmatter description and
-`.codex-plugin/plugin.json` summary must say that inline text is complete, Council
+sees, not only in the skill body. The skill frontmatter description and the
+root `plugin.json` interface summary must say that inline text is complete, Council
 must not search memory, repos, git history, prior sessions, Claude assets, or
 local files unless the user supplied `@path`, exact files, a diff, or a direct
 instruction, and broad runs above 6 without approval must output exactly:
@@ -62,14 +67,12 @@ Council not run: broad council approval not granted.
 
 ```sh
 ./runbooks/codex_council_loop.py static
+python3 -m unittest discover -s tests
 ```
 
-Functional Codex skill/plugin changes must bump the Codex plugin version in
-`plugins/council/.codex-plugin/plugin.json` in the same commit. The pre-commit
-hook (`git config core.hooksPath .githooks`) does this for changes under
-`plugins/council/` and keeps its manifests on one version. `codex/agents/` is
-shared and not owned by any plugin, so a commit that only touches
-`codex/agents/*.toml` needs the council version bumped by hand.
+Functional skill/plugin changes must bump the council version in the same
+commit. The pre-commit hook (`git config core.hooksPath .githooks`) does this for
+changes under `plugins/council/` and keeps both manifests on one version.
 
 ## Phase 4: Commit Before Live Loop
 
@@ -120,8 +123,10 @@ when the JSONL stream exposes a first-order violation such as pre-skill chatter,
 chained/discovery shell commands, forbidden search/browser tools, or raw child
 transport leakage. It uses the regular fixed reviewer flow (`core-mix`, 6
 reviewers). After stale-agent cleanup and a clean/root-only state, the normal path
-attempts the 6-reviewer wave first, then retries no-receiver capacity misses in a
-later wave if the runtime enforces a smaller effective child limit. The helper
+runs the reviewers one at a time (Codex fan-out is fragile), and retries
+no-receiver capacity misses after the previous reviewer closes. The helper fails a
+run that has more than one live reviewer at once or a `spawn_agent` prompt without
+the `<persona-mandate>` block. The helper
 resumes the normal smoke session by exact session id for the follow-up challenge;
 do not replace that with `--last`.
 
@@ -136,14 +141,14 @@ The live smoke must exercise:
 Required evidence:
 
 - native `list_agents` capacity preflight happened before any reviewer spawn when the tool was available
-- the coordinator proactively inspected the native thread tree, closed every visible stale Council reviewer child, re-checked state, and only then attempted the full 6-or-fewer roster from clean/root-only state
+- the coordinator proactively inspected the native thread tree, closed every visible stale Council reviewer child, re-checked state, and only then ran the roster one reviewer at a time from clean/root-only state
 - any `spawn_agent` failure with no `receiver_thread_ids` was treated as pending capacity work with no slot to clean, then retried after launched reviewers closed
 - native reviewer `spawn_agent` calls happened
 - `wait_agent` and `followup_task` supervision happened when needed
 - all selected reviewers were accepted, failed, or explicitly reported missing
 - every visible non-final status line started with exact `Council progress:`
 - no shell command was used for live-agent probing or Council orchestration
-- every reviewer spawn/follow-up prompt started with the exact `You are ... for Council` sentence, one blank line, and then the assignment block
+- every reviewer spawn/follow-up prompt started with the exact `You are ... for Council` sentence, one blank line, and then the assignment block, followed by the `<persona-mandate>` block
 - every reviewer prompt carried complete bounded material
 - no reviewer prompt used `same as other reviewers`, `same as assignment`, or `see prior wave`
 - reviewer agents did not read memory, prior sessions, persona dossiers, git history, broad repo context, or local discovery surfaces outside exact assignment paths

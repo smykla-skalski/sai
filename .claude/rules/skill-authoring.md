@@ -317,7 +317,7 @@ For script format, structure, NDJSON conventions, and code quality defaults, see
 
 ## Plugin Integration
 
-- Install: `claude --plugin-dir claude/{plugin-name}/`
+- Install: `claude --plugin-dir plugins/{plugin-name}/`
 - Invoke: `/{skill-name} [args]`
 - Arguments: parsed from `$ARGUMENTS` env var
 - Tool restrictions: `allowed-tools` frontmatter
