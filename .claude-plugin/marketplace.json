@@ -174,7 +174,7 @@
     },
     {
       "name": "staff-resume",
-      "source": "./claude/staff-resume",
+      "source": "./plugins/staff-resume",
       "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring",
       "author": {
         "name": "Smykla Skalski Labs"

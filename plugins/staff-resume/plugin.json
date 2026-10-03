@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "staff-resume",
+  "version": "1.1.1",
+  "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/staff-resume",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Staff Resume",
+        "shortDescription": "Coach and tailor staff-level engineering resumes",
+        "longDescription": "Runs a gap analysis of a resume against staff-level criteria, coaches you through each role to surface scope and impact, rewrites bullets, and tailors the resume to a job posting with keyword mapping and ATS checks.",
+        "developerName": "SAI",
+        "category": "Writing",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/staff-resume",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $staff-resume to coach me on resume.tex for staff-level positioning.",
+          "Use $staff-resume to tailor resume.md to a job posting URL I will share.",
+          "Use $staff-resume in full mode on resume.tex for a job posting URL I will share."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

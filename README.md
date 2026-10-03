@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kup` and `staff-resume`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -31,7 +31,7 @@ Repository layout:
 | **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
-| **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
+| **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `plugins/staff-resume/`       |
 | **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `claude/ship-issue/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `claude/test-writer/`         |
 
@@ -50,6 +50,7 @@ Codex skills:
 | **go-code-review**     | Review Go code for 100+ common mistakes from 100go.co (same portable package as Claude Code) | `plugins/go-code-review/skills/go-code-review/` |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
+| **staff-resume**       | Coach and tailor staff-level engineering resumes (same portable package as Claude Code) | `plugins/staff-resume/skills/staff-resume/` |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
 | **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
 
@@ -119,7 +120,7 @@ claude --plugin-dir /path/to/sai/claude/promptgen
 claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
-claude --plugin-dir /path/to/sai/claude/staff-resume
+claude --plugin-dir /path/to/sai/plugins/staff-resume
 claude --plugin-dir /path/to/sai/claude/ship-issue
 claude --plugin-dir /path/to/sai/claude/test-writer
 
@@ -149,6 +150,7 @@ ln -s /path/to/sai/plugins/git-clean-gone/skills/git-clean-gone ~/.config/openco
 ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
 ln -s /path/to/sai/plugins/go-code-review/skills/go-code-review ~/.config/opencode/skills/go-code-review
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
+ln -s /path/to/sai/plugins/staff-resume/skills/staff-resume ~/.config/opencode/skills/staff-resume
 ```
 
 ## Plugins
@@ -297,9 +299,9 @@ Staff-engineer-level code review that goes beyond correctness to evaluate archit
 
 Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.
 
-**Usage**: `/staff-resume <resume-path> [--job-url URL] [--mode coach|tailor|full]`
+**Usage**: `/staff-resume <resume-path> [--job-url URL] [--mode coach|tailor|full]` (Codex: `$staff-resume` with the path and flags in plain words). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/staff-resume/README.md)
+[Full documentation ->](./plugins/staff-resume/README.md)
 
 ### test-writer
 
