@@ -1,10 +1,11 @@
 {
   "name": "git-clean-gone",
   "description": "Clean up local branches with deleted remote tracking and their worktrees",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": {
     "name": "Smykla Skalski Labs"
   },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/git-clean-gone",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
   "keywords": ["git", "branch-cleanup", "worktree", "stale-branches", "merged", "squash-merge", "housekeeping"]

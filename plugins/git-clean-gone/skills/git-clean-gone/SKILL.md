@@ -1,15 +1,35 @@
 ---
 name: git-clean-gone
 description: Clean up local branches with deleted remote tracking and their worktrees. Use after merging PRs to remove stale branches, detect squash-merged and rebased branches, and clean up associated worktrees.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs bash and git; the gh CLI is optional (squash-merge detection). Fetches from all remotes.
 argument-hint: "[--dry-run] [--no-worktrees]"
 allowed-tools: Bash
 user-invocable: true
 disable-model-invocation: true
+metadata:
+  short-description: Clean stale local branches safely
 ---
 
 # Clean Gone
 
 Delete local branches whose remote tracking is gone or merged, and remove their associated worktrees.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the flags from the user's request |
+| Skill directory substitution | If the script path under Constraints is not an absolute path, run `bash <absolute skill directory>/scripts/clean-gone.sh` without changing directory. The script acts on the repository in the current working directory, so that must stay the user's repository, never the skill directory |
+| Preprocessed context | If the values under Preprocessed context are unexpanded commands, ignore them: the script detects the remote, default branch and `gh` itself |
+| `disable-model-invocation` | This skill deletes branches and worktrees and is meant to run only when the user invokes it by name. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`); where nothing enforces it (for example opencode), apply the confirmation gate below |
+| AskUserQuestion, subagents, `context: fork` | Not used |
+
+Confirmation gate on agents other than Claude Code: run the real cleanup directly only when the user invoked this skill by name (`/git-clean-gone` or `$git-clean-gone`) without `--dry-run` and without exclusions or conditions (such as "but keep feat/x"). In every other case, including plain requests such as "clean up stale branches", run with `--dry-run` first, show the preview, then end your turn and wait for the user's reply. Never run the real cleanup in the same turn as the preview; only an explicit yes in a later user message allows it. Approval is all-or-nothing: the script cannot skip individual branches, so if the user wants to keep any listed branch or worktree, stop and do not run the real cleanup. The real run fetches again, so after it, compare its `DELETED`/`REMOVED_WT` lines with the preview and call out every branch or worktree that was not in the preview. In Claude Code, invoking `/git-clean-gone` without `--dry-run` is that explicit request.
+
+In Codex, `git fetch --prune` and `gh` need network access and the deletions write to `.git`, so run the script with escalation and a short reason from the start, for the `--dry-run` preview as well as the real run. A preview without network silently misses gone and squash-merged branches. If the output has a `fatal:` or `error:` line from `git fetch`, the fetch failed: report it and do not run the real cleanup.
 
 ## Arguments
 
@@ -34,12 +54,13 @@ Parse from `$ARGUMENTS`:
 - Never remove the main worktree — only feature/task worktrees
 - Execute `"${CLAUDE_SKILL_DIR}/scripts/clean-gone.sh"` as a single Bash invocation
 - Output summary directly as text (NOT via bash/printf)
+- Agents other than Claude Code: follow the confirmation gate in [Agent compatibility](#agent-compatibility); a `--dry-run` preview always ends the turn
 
 ## Workflow
 
 ### Phase 1: Execute Cleanup Script
 
-Execute `"${CLAUDE_SKILL_DIR}/scripts/clean-gone.sh"` immediately, passing through any flags from `$ARGUMENTS`.
+Execute `"${CLAUDE_SKILL_DIR}/scripts/clean-gone.sh"` immediately, passing through any flags from `$ARGUMENTS`. On agents other than Claude Code, apply the confirmation gate from [Agent compatibility](#agent-compatibility) first.
 
 - No flags → full cleanup (gone + merged branches + worktrees)
 - `--dry-run` → preview only, no changes
