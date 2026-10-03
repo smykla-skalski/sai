@@ -23,8 +23,8 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | Not used. Take the files, diff, or PR to review from the user's request. If none is named, review the Go files changed in the working tree |
-| AskUserQuestion | Not used. Infer the target from the request and local context; ask in plain text only when there is no Go code to review |
+| Argument substitution | Not used. Take the Go files, diff, or PR to review from the user's request or the code already in the conversation |
+| AskUserQuestion | Not used. If no Go code is named or in context, ask in plain text which files to review |
 | Subagent tool (Agent) | Not used. The whole review runs in the main agent loop |
 | `context: fork` | Not used; the skill runs in the main agent loop everywhere |
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "go-code-review",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage with severity tiers and direct mistake references.",
   "author": {
     "name": "Smykla Skalski Labs"
