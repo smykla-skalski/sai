@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `git-stage-hunk`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `gh-review-comments`, `git-stage-hunk`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -20,7 +20,7 @@ Repository layout:
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
 | **generate-claude-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-claude-md) | `claude/generate-claude-md/`  |
-| **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
+| **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `plugins/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `plugins/git-stage-hunk/`     |
 | **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `claude/go-code-review/`      |
@@ -43,7 +43,7 @@ Codex skills:
 | **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent; also runs on OpenCode | `codex/adversarial-test/` |
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
-| **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
+| **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts (same portable package as Claude Code) | `plugins/gh-review-comments/skills/gh-review-comments/` |
 | **git-stage-hunk**     | Stage selected git hunks without a TTY; explicit invocation only (same portable package as Claude Code) | `plugins/git-stage-hunk/skills/git-stage-hunk/` |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
@@ -105,7 +105,7 @@ claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/council
 claude --plugin-dir /path/to/sai/claude/service-mesh-debug
 claude --plugin-dir /path/to/sai/claude/generate-claude-md
-claude --plugin-dir /path/to/sai/claude/gh-review-comments
+claude --plugin-dir /path/to/sai/plugins/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/plugins/git-stage-hunk
 claude --plugin-dir /path/to/sai/claude/go-code-review
@@ -140,6 +140,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 ```bash
 ln -s /path/to/sai/codex/adversarial-review ~/.config/opencode/skills/adversarial-review
 ln -s /path/to/sai/codex/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/gh-review-comments/skills/gh-review-comments ~/.config/opencode/skills/gh-review-comments
 ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ```
@@ -194,9 +195,9 @@ Diagnose and fix flaky e2e tests and connectivity issues in service mesh environ
 
 List, reply to, resolve, and create GitHub PR review comment threads using gh CLI scripts. Manage code review feedback, reply to reviewer remarks, resolve conversations.
 
-**Usage**: `/gh-review-comments owner/repo 42 [--reply "message"] [--resolve] [--author login]`
+**Usage**: `/gh-review-comments owner/repo 42 [--reply "message"] [--resolve] [--author login]` (Codex: `$gh-review-comments`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/gh-review-comments/README.md)
+[Full documentation ->](./plugins/gh-review-comments/README.md)
 
 ### git-clean-gone
 
