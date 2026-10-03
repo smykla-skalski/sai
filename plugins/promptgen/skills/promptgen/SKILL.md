@@ -234,7 +234,7 @@ Verify the prompt does not request visible chain-of-thought from a reasoning mod
 PROMPTGEN_EOF
 ```
 
-   The script tries pbcopy on macOS, clip on Windows (Git Bash, MSYS, Cygwin), and wl-copy (Wayland), xclip, xsel, then clip.exe (WSL) on Linux. It exits 0 and prints `COPIED <tool>` on success, or exits 1 with `NO_CLIPBOARD_TOOL` when no tool works.
+   The script tries pbcopy on macOS, clip on Windows (Git Bash, MSYS, Cygwin), and wl-copy (Wayland), xclip, xsel, then clip.exe (WSL) on Linux. Windows clip gets the text as UTF-16 via iconv; without iconv a non-ASCII prompt skips clip rather than paste mojibake. It exits 0 and prints `COPIED <tool>` on success, or exits 1 with `NO_CLIPBOARD_TOOL` when no tool works.
 
 4. Report clipboard status:
    - Success: "Copied to clipboard."
