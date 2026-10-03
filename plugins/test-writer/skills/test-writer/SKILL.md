@@ -1,16 +1,15 @@
 ---
 name: test-writer
 description: Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Triggers when asked to write tests, add test coverage, or create test files. Also triggers when reviewing existing tests for quality.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Writes test files and may run the project's test command; no network access needed.
 argument-hint: "[file-or-function-to-test] [--review] [--lang go|python|ts|java|rust]"
 user-invocable: true
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Glob
-  - Grep
+allowed-tools: Bash Glob Grep Read Write
 context: fork
 agent: general-purpose
+metadata:
+  short-description: Write behavior-first tests
 ---
 
 # Test Writer
@@ -18,6 +17,19 @@ agent: general-purpose
 Write tests that survive refactoring, catch real bugs, and don't waste maintenance effort.
 
 **Philosophy:** Test what the code does, not how it does it. If you refactor internals and tests break — the tests are wrong, not the code.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the target, `--review` and `--lang` from the user's request and local context |
+| AskUserQuestion | Not used. When the target is missing, ask in plain text and wait. If you cannot wait (for example you run as a forked subagent), stop and report that a target is needed |
+| Subagent tool (Agent) | Not used. The whole workflow runs in one agent loop |
+| `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
+
+In Codex, run the narrowest relevant test command after adding or changing tests. If it fails because of sandbox restrictions, rerun it with escalation and a short reason.
 
 ## Arguments
 
@@ -46,11 +58,7 @@ If no arguments: ask what to test.
 
 ## Phase 2: Design Test Structure
 
-Read the knowledge base before writing:
-
-```bash
-cat "$(dirname "$0")/references/testing-principles.md" 2>/dev/null || cat references/testing-principles.md
-```
+Read [references/testing-principles.md](references/testing-principles.md) (the knowledge base) before writing tests.
 
 ### Decision: Table-Driven or Individual Tests?
 

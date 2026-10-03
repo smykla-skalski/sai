@@ -48,7 +48,7 @@ This applies to all linters: ruff, mypy, shellcheck, and any future linters. Fix
 - Both marketplaces list the plugin: `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json`
 - Legacy layout, still used by plugins not yet migrated: Claude package in `claude/{plugin-name}/`, Codex wrapper in `codex/{plugin-name}/` plus `plugins/{plugin-name}/.codex-plugin/plugin.json`
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
-- Plugins: `adversarial-review` (portable), `adversarial-test` (portable), `ai-daily-digest`, `council`, `generate-claude-md` (portable), `gh-review-comments` (portable), `git-clean-gone` (portable), `git-stage-hunk` (portable), `go-code-review` (portable), `humanize` (portable), `kubecon-cfp`, `kup` (portable), `plan-critic`, `promptgen`, `review-claude-md`, `service-mesh-debug`, `staff-code-review`, `staff-resume`, `test-writer`
+- Plugins: `adversarial-review` (portable), `adversarial-test` (portable), `ai-daily-digest`, `council`, `generate-claude-md` (portable), `gh-review-comments` (portable), `git-clean-gone` (portable), `git-stage-hunk` (portable), `go-code-review` (portable), `humanize` (portable), `kubecon-cfp`, `kup` (portable), `plan-critic`, `promptgen`, `review-claude-md`, `service-mesh-debug`, `staff-code-review`, `staff-resume`, `test-writer` (portable)
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "test-writer",
+  "version": "1.0.1",
+  "description": "Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/test-writer",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["testing", "table-driven", "behavior-testing", "tdd", "mocking", "test-quality", "go", "python", "typescript", "java", "rust"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Test Writer",
+        "shortDescription": "Write and review behavior-first tests",
+        "longDescription": "Writes tests that check behavior instead of implementation, uses table-driven patterns when cases share one assertion shape, mocks only external boundaries, and reviews existing tests for 10 common anti-patterns. Supports Go, Python, TypeScript, Java, and Rust.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/test-writer",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $test-writer to add behavior-first tests for src/parser.go.",
+          "Use $test-writer to review tests/parser_test.go for anti-patterns.",
+          "Use $test-writer to write table-driven tests for this Python module."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}
