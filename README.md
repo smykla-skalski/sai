@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `review-claude-md`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-claude-md`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -29,7 +29,7 @@ Repository layout:
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
 | **plan-critic**         | Critique an implementation plan before coding: Skeptic, Architect, and Verifier personas return an Approve/Refine/Reject verdict | `plugins/plan-critic/`        |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `plugins/promptgen/`          |
-| **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
+| **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `plugins/refactor-council/`   |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `plugins/review-claude-md/`   |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `plugins/staff-resume/`       |
@@ -46,7 +46,7 @@ Codex skills:
 | **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent (same portable package as Claude Code) | `plugins/adversarial-test/skills/adversarial-test/` |
 | **ai-daily-digest**    | Daily AI news digest from dated, verified sources; explicit invocation only, inline research by default (same portable package as Claude Code) | `plugins/ai-daily-digest/skills/ai-daily-digest/` |
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
-| **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
+| **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution (same portable package as Claude Code) | `plugins/refactor-council/skills/refactor-council/` |
 | **review-claude-md**   | Audit and fix CLAUDE.md files against a tiered checklist; steps run inline (same portable package as Claude Code) | `plugins/review-claude-md/skills/review-claude-md/` |
 | **generate-claude-md** | Generate a lean CLAUDE.md from codebase analysis (same portable package as Claude Code) | `plugins/generate-claude-md/skills/generate-claude-md/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts (same portable package as Claude Code) | `plugins/gh-review-comments/skills/gh-review-comments/` |
@@ -132,7 +132,7 @@ claude --plugin-dir /path/to/sai/plugins/kubecon-cfp
 claude --plugin-dir /path/to/sai/plugins/kup
 claude --plugin-dir /path/to/sai/plugins/plan-critic
 claude --plugin-dir /path/to/sai/plugins/promptgen
-claude --plugin-dir /path/to/sai/claude/refactor-council
+claude --plugin-dir /path/to/sai/plugins/refactor-council
 claude --plugin-dir /path/to/sai/plugins/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/plugins/staff-resume
@@ -168,6 +168,7 @@ ln -s /path/to/sai/plugins/go-code-review/skills/go-code-review ~/.config/openco
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ln -s /path/to/sai/plugins/kubecon-cfp/skills/kubecon-cfp ~/.config/opencode/skills/kubecon-cfp
 ln -s /path/to/sai/plugins/plan-critic/skills/plan-critic ~/.config/opencode/skills/plan-critic
+ln -s /path/to/sai/plugins/refactor-council/skills/refactor-council ~/.config/opencode/skills/refactor-council
 ln -s /path/to/sai/plugins/review-claude-md/skills/review-claude-md ~/.config/opencode/skills/review-claude-md
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
 ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skills/ship-issue
@@ -297,11 +298,11 @@ Turn rough instructions into optimized, evidence-based AI prompts with outcome c
 
 ### refactor-council
 
-Refactoring review through seven sourced refactoring-and-architecture persona agents - Martin Fowler, Robert C. Martin (Uncle Bob), Michael Feathers, Kent Beck, Sandi Metz, John Ousterhout, and Adam Tornhill. Scans the target for code smells and git hotspots, reviews it through opposed lenses (small-functions vs deep-modules, DRY vs duplication, what-to-refactor vs where-to-refactor), synthesizes a safety-first sequenced refactoring plan, then runs a separate adversary agent that red-teams the plan before returning it.
+Refactoring review through seven sourced refactoring-and-architecture persona agents - Martin Fowler, Robert C. Martin (Uncle Bob), Michael Feathers, Kent Beck, Sandi Metz, John Ousterhout, and Adam Tornhill. Scans the target for code smells and git hotspots, reviews it through opposed lenses (small-functions vs deep-modules, DRY vs duplication, what-to-refactor vs where-to-refactor), synthesizes a safety-first sequenced refactoring plan, then runs a separate adversary agent that red-teams the plan before returning it. One package for Claude Code, Codex, Copilot CLI and opencode; personas run in parallel on Claude Code and sequentially elsewhere.
 
-**Usage**: `/refactor-council <path|@file|directory> [--no-scan] [--no-adversary] [--since 12.month] [--personas a,b,c]`
+**Usage**: `/refactor-council <path|@file|directory> [--no-scan] [--no-adversary] [--since 12.month] [--personas a,b,c]` (Codex: `$refactor-council`)
 
-[Full documentation ->](./claude/refactor-council/README.md)
+[Full documentation ->](./plugins/refactor-council/README.md)
 
 ### generate-claude-md
 
