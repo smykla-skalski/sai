@@ -124,7 +124,7 @@ Three personas, each with its own mandate file. Read the mandate of every person
 | **Architect** | `plan-critic:architect-reviewer` | [references/architect-reviewer.md](references/architect-reviewer.md) | Is the structure sound? File selection, order, conventions, scope, compatibility |
 | **Skeptic** | `plan-critic:skeptic-reviewer` | [references/skeptic-reviewer.md](references/skeptic-reviewer.md) | What's missing? Edge cases, failure modes, rollback, verification criteria |
 
-Each persona receives the full plan text **and** the Grounding Brief from Phase 2 verbatim, plus the user's original request quoted verbatim when you have it (the Skeptic checks the plan against it), and nothing else.
+Each persona receives the full plan text **and** the Grounding Brief from Phase 2 verbatim, plus the user's original request quoted verbatim when you have it (the Skeptic checks the plan against it). A generic subagent also gets its mandate file prepended; a named persona agent already has it. Pass nothing else: not your own reading of the plan or the code.
 
 #### Spawning persona reviewers
 
