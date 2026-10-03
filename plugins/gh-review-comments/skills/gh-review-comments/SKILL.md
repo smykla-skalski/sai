@@ -1,9 +1,13 @@
 ---
 name: gh-review-comments
 description: List, reply to, resolve, and create GitHub PR review comment threads using gh CLI scripts. Use when managing code review feedback, replying to reviewer remarks, resolving review conversations, creating reviews with line-level comments, or bulk-processing threads by author.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs bash, gh (authenticated), jq, python3 and network access to the GitHub API.
 argument-hint: "<owner/repo> <pr-number> [--author <login>] [--reply <message>] [--resolve] [--unresolve] [--create-review] [--thread-id <id>] [--unresolved-only]"
-allowed-tools: AskUserQuestion, Bash, Read, Task
+allowed-tools: AskUserQuestion Agent Bash Read
 user-invocable: true
+metadata:
+  short-description: Manage GitHub PR review threads with gh
 ---
 
 <!-- justify: CF-side-effect All gh API operations target a specific PR the user is actively working on -->
@@ -11,6 +15,20 @@ user-invocable: true
 # GH Review Comments
 
 Wraps `gh api` (REST and GraphQL) via bash scripts to operate on PR review threads. Each action maps to a script in `scripts/`.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take `owner/repo`, the PR number, and the flags from the user's request. If either required value is still missing, ask for it before Phase 2 |
+| Skill directory substitution | Claude Code replaces the placeholder at the start of every script command with this skill's absolute directory. If a script path below does not start with `/`, replace everything before `/scripts/` with the absolute path of the directory holding this SKILL.md. Never search plugin caches or the working directory for the scripts |
+| AskUserQuestion | Ask the question in plain text and wait for the answer. If you cannot wait, stop and report what input is missing |
+| Subagent tool (Agent) | Run the Phase 4 verification inline: re-run `scripts/list-threads.sh` yourself and compare before/after state. On Codex always run it inline, since Codex subagent fan-out is unreliable |
+| `context: fork` | Not used; the skill runs in the main agent loop everywhere |
+
+In Codex, run `gh auth status` before the first script call. If it or a later `gh api` call fails because of sandbox or network restrictions, rerun the same command with escalation (`sandbox_permissions=require_escalated`) and a short reason. If auth is invalid, ask the user to run `gh auth login`.
 
 ## Arguments
 
@@ -190,12 +208,12 @@ Running it again creates a duplicate review. There is no partial success - it ei
 
 ### Phase 4: Verify and Summarize
 
-**For reply/resolve/unresolve actions:** spawn a `general-purpose` verification agent via `Task`. Pass it:
+**For reply/resolve/unresolve actions:** spawn a `general-purpose` verification agent with the Agent tool (without a subagent tool, run the same checks inline). Pass it:
 
 - The PR identifier (`owner/repo#number`)
 - The action performed (`reply`, `resolve`, `unresolve`, or combination)
 - The before-state thread data captured in Phase 2 (thread IDs with their resolution status and reply counts)
-- The path to the list-threads script: `"${CLAUDE_SKILL_DIR}/scripts/list-threads.sh"`
+- The absolute path to the list-threads script (resolved as described in [Agent compatibility](#agent-compatibility)): `"${CLAUDE_SKILL_DIR}/scripts/list-threads.sh"`
 
 The agent must:
 

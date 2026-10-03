@@ -42,7 +42,7 @@
     },
     {
       "name": "gh-review-comments",
-      "source": "./claude/gh-review-comments",
+      "source": "./plugins/gh-review-comments",
       "description": "List, reply to, resolve, and create GitHub PR review comment threads",
       "author": {
         "name": "Smykla Skalski Labs"
