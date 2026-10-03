@@ -1,14 +1,13 @@
 ---
 name: plan-critic
-description: Critique a Claude implementation plan before approving execution. Spawns parallel persona subagents (Skeptic, Architect, Verifier) to evaluate the plan against the codebase and return an Approve/Reject/Refine verdict with concrete refinements. Use when a plan has been generated (Plan Mode output, ExitPlanMode, pasted plan text, or plan file path) and needs review before code is written. Triggers on "critique this plan", "review this plan", "is this plan good", "poke holes in this plan", "should I approve this plan", or sharing a plan for evaluation.
+description: Critique an implementation plan before approving execution. Runs three persona reviewers (Skeptic, Architect, Verifier) against the codebase, in parallel on Claude Code and one at a time on other agents, and returns an Approve/Reject/Refine verdict with concrete refinements. Use when a plan has been generated (Plan Mode output, ExitPlanMode, pasted plan text, or plan file path) and needs review before code is written. Triggers on "critique this plan", "review this plan", "is this plan good", "poke holes in this plan", "should I approve this plan", or sharing a plan for evaluation.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs read access to the codebase the plan targets; no scripts or network access.
 argument-hint: "[plan file path | paste plan inline | --from-conversation]"
+allowed-tools: Agent AskUserQuestion Bash Glob Grep Read
 user-invocable: true
-allowed-tools:
-  - Agent
-  - Read
-  - Grep
-  - Bash
-  - AskUserQuestion
+metadata:
+  short-description: Critique implementation plans before coding starts
 ---
 
 # Plan Critic
@@ -17,11 +16,26 @@ Critique a Claude implementation plan **before** any code is written. The cost o
 
 **Core principle:** A plan that names files generically has not been read. A plan that references `verify_jwt_token` at `auth/middleware.go:42` has been read. The job of this skill is to tell those apart and force the second.
 
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the plan path, pasted plan, or `--from-conversation` from the user's request |
+| AskUserQuestion | Ask the same question in plain text with the same options and wait for the answer |
+| Explore subagent (Phase 2) | Build the Grounding Brief inline with grep/read. Do this on Codex, opencode and Copilot CLI, and in Claude Code whenever the Explore agent is unavailable |
+| Named agents `plan-critic:skeptic-reviewer` / `architect-reviewer` / `verifier-reviewer` | Claude Code and Copilot CLI register them from the plugin's `agents/` directory. Codex and opencode do not; there, or whenever the type is unknown, use a generic subagent with the matching mandate from `references/` prepended (see [Spawning persona reviewers](#spawning-persona-reviewers)) |
+| Parallel subagents (Agent) | Claude Code: all three personas in parallel. Copilot CLI, opencode, Codex: one persona at a time, Skeptic, then Architect, then Verifier. With no subagent tool, adopt each persona inline in the same order |
+| `context: fork` | Not used |
+
 ## Arguments
+
+Parse from `$ARGUMENTS`:
 
 | Argument | Type | Description |
 | :-- | :-- | :-- |
-| `[plan file path]` | positional | Path to a markdown file containing the plan. Read with the Read tool. |
+| `[plan file path]` | positional | Path to a markdown file containing the plan. Read it. |
 | `[paste plan inline]` | positional | Plan text pasted directly in the user's message. Use as-is. |
 | `--from-conversation` | flag | Use the plan most recently produced in the current conversation (e.g., from ExitPlanMode or a planning response). |
 
@@ -31,11 +45,13 @@ If input is ambiguous (multiple candidates, unclear which plan), use AskUserQues
 - **Paste inline** — the user pastes the plan text in the next message
 - **Use `--from-conversation`** — adopt the most recent plan produced in this conversation
 
+If no plan is resolvable, ask which plan to review; never invent one.
+
 ## Workflow
 
 ### Phase 1: Triage (fast, <1 min)
 
-Resolve the plan input first: read the file if a path was given, use the inline text if pasted, or fetch the most recent plan from the conversation if `--from-conversation` was passed. Then do a fast scope check:
+Resolve the plan input first: read the file if a path was given, use the inline text if pasted, or fetch the most recent plan from the conversation if `--from-conversation` was passed. Then do a fast scope check. This phase never delegates:
 
 1. **Is this actually a plan?** It should describe *what* will change and *where*, not just narrative discussion. If it has no concrete file/function/step list, ask the user to convert it into a plan first.
 2. **Plan size scan:**
@@ -57,11 +73,14 @@ Input: A plan touching 14 files across 4 packages with no symbol-level reference
 Triage result: Scope warning (7+ files) AND surface-level reading risk. Recommend splitting into sub-plans before review continues.
 </example>
 
-### Phase 2: Codebase Grounding (single Explore agent, 30-60s)
+### Phase 2: Codebase Grounding (one Grounding Brief, 30-60s)
 
-Spawn one `Agent` (subagent_type: `Explore`, thoroughness: `medium`) to build a **Grounding Brief**. All three review personas will share this brief — no redundant exploration.
+Build a **Grounding Brief**. All three review personas share this brief — no redundant exploration.
 
-The Grounding agent must:
+- **Claude Code:** spawn one `Agent` (subagent_type: `Explore`, thoroughness: `medium`) with the tasks below.
+- **Other agents** (and Claude Code without the Explore agent): build the brief yourself with grep/read. Do not delegate it, and do not let each persona re-explore.
+
+The brief must cover:
 
 1. For every file the plan names, verify the file exists. List any missing/misnamed paths.
 2. For every function, type, or symbol the plan names, grep for it and report the actual location (`path:line`). Flag symbols the plan names that do not exist in the codebase.
@@ -95,17 +114,31 @@ The Grounding agent must:
 - No tests exist for the package the plan modifies most heavily
 ```
 
-### Phase 3: Persona Review (parallel subagents)
+### Phase 3: Persona Review
 
-Read [references/personas.md](references/personas.md) in full before spawning Phase 3 agents — it contains the exact instruction blocks for each persona.
+Three personas, each with its own mandate file. Read the mandate of every persona you brief or adopt before Phase 3 starts:
 
-Spawn three `Agent` subagents **in parallel** (single message, multiple Agent tool calls) using the prompts in personas.md. Parallelize because the personas are independent perspectives on the same inputs, so sequential spawning wastes wall time without improving quality:
+| Persona | Named agent | Mandate | Lens |
+| :-- | :-- | :-- | :-- |
+| **Verifier** | `plan-critic:verifier-reviewer` | [references/verifier-reviewer.md](references/verifier-reviewer.md) | Did the author actually read the code, or skim file names? |
+| **Architect** | `plan-critic:architect-reviewer` | [references/architect-reviewer.md](references/architect-reviewer.md) | Is the structure sound? File selection, order, conventions, scope, compatibility |
+| **Skeptic** | `plan-critic:skeptic-reviewer` | [references/skeptic-reviewer.md](references/skeptic-reviewer.md) | What's missing? Edge cases, failure modes, rollback, verification criteria |
 
-- **Verifier** — Did Claude actually read the code, or skim file names?
-- **Architect** — Is the structure sound? File selection, order, conventions, scope?
-- **Skeptic** — What's missing? Edge cases, failure modes, verification criteria?
+Each persona receives the full plan text **and** the Grounding Brief from Phase 2 verbatim, plus the user's original request quoted verbatim when you have it (the Skeptic checks the plan against it), and nothing else.
 
-Each persona receives the full plan text **and** the Grounding Brief from Phase 2.
+#### Spawning persona reviewers
+
+**Claude Code.** Spawn all three **in parallel** (single message, three Agent tool calls) using the named agent types above; their mandate is already the agent's system prompt. Parallelize because the personas are independent perspectives on the same inputs, so sequential spawning wastes wall time without improving quality. If a named type is unknown (plugin loaded without agent registration), retry with `subagent_type: "general-purpose"` and the mandate file prepended.
+
+**Copilot CLI.** Delegate through the `agent` tool to the same named agents (`plan-critic:skeptic-reviewer`, `plan-critic:architect-reviewer`, `plan-critic:verifier-reviewer`), one at a time: Skeptic, then Architect, then Verifier. Copilot parallel fan-out burns AI credits with no reliability gain. Fan out in parallel only if the user explicitly asks, then supervise with `list_agents` / `read_agent` and confirm each returned a payload before synthesizing.
+
+**Codex.** Default to inline: adopt the Skeptic, Architect, and Verifier lenses in turn, each following its mandate file, all grounded in the same brief. Codex subagent fan-out is fragile: the default `agents.max_threads` is 6, completed subagents do not free their slot until closed ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and subagents can finish without returning a payload ([openai/codex#16051](https://github.com/openai/codex/issues/16051)). Spawn subagents only if the user asks: one `spawn_agent` per persona with the mandate prepended, sequentially, `wait_agent`, then `close_agent` as soon as it returns. Use only the native agent tools; never nested `codex exec` or shell-based orchestration.
+
+**opencode.** Use the `task` tool once per persona, sequentially. Use an installed `skeptic-reviewer` / `architect-reviewer` / `verifier-reviewer` subagent when present (see the plugin README); otherwise the built-in `general` subagent with the mandate prepended.
+
+**No subagent tool.** Adopt each persona inline, in order, as a separate labelled section that follows its mandate's output contract.
+
+**Validate every reply.** It must start with `## <Persona> review` and contain the persona's contract sections. If a reply is empty or malformed, spawn that persona once more with the same inputs; if it fails again, run that persona inline and note `inline` next to its findings.
 
 ### Phase 4: Synthesis & Verdict
 
@@ -121,7 +154,7 @@ Recall the Triage scope flags from Phase 1 and the Grounding Brief from Phase 2 
 
 ### Phase 5: Output
 
-Produce the final report in this exact structure:
+Produce the final report in this exact structure. Under each persona heading, put that persona's review without its `## <Persona> review` line:
 
 ```markdown
 # Plan Review
@@ -142,15 +175,15 @@ Produce the final report in this exact structure:
 
 ## Verifier Findings
 
-[Output from Persona 1]
+[Verifier review]
 
 ## Architect Findings
 
-[Output from Persona 2]
+[Architect review]
 
 ## Skeptic Findings
 
-[Output from Persona 3]
+[Skeptic review]
 
 ## Cross-Cutting Issues
 
@@ -201,6 +234,7 @@ This skill is not designed for, and you should avoid using it on:
 - One-sentence changes (typo, rename, single-line log) — execute directly instead
 - Changes already executed — review the diff with `staff-code-review` instead
 - Discussion-only outputs that aren't structured plans — ask the user to formalize the plan first
+- Executing the plan itself — this skill only evaluates it
 
 ## Troubleshooting
 
@@ -217,8 +251,18 @@ Common failure modes and recovery:
 Each anti-pattern lists the failure mode followed by the correct alternative:
 
 - **Spawning persona subagents before Phase 2 grounding** → run Phase 2 first, then pass the Grounding Brief to all three personas, because skipping it causes duplicate exploration and ungrounded persona output
-- **Spawning personas sequentially** → spawn all three in a single message with parallel Agent calls, since the personas are independent perspectives
+- **Spawning personas sequentially in Claude Code** → spawn all three in a single message with parallel Agent calls, since the personas are independent perspectives (other agents run them one at a time, see Phase 3)
 - **Approving a plan whose symbols don't exist** → reject and require Claude to re-read the codebase before re-planning, because hallucinated symbols guarantee broken code
 - **Approving a plan with no verification criteria** → refine to add concrete success criteria (test passes, command output, endpoint response), so Claude can know whether the change worked
 - **Rewriting the plan yourself in the output** → return findings only and let Claude (or the user) revise, because evaluation and authorship are different jobs and conflating them hides plan quality signals
 - **Skipping the Grounding Brief because "the plan looks fine"** → always run Phase 2, since plan depth cannot be verified without ground truth from the codebase
+
+## Example invocations
+
+In Codex use `$plan-critic` in place of `/plan-critic`.
+
+```text
+/plan-critic docs/plans/add-rate-limiter.md
+/plan-critic --from-conversation
+/plan-critic <paste plan inline>
+```

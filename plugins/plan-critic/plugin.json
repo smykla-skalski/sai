@@ -1,13 +1,33 @@
 {
   "name": "plan-critic",
-  "description": "Critique an implementation plan from a normal Copilot session only when explicitly requested. Keeps orchestration in-session: triages the plan, builds a grounding brief from the codebase, delegates to three native persona reviewer agents (Skeptic, Architect, Verifier), then synthesizes an Approve/Reject/Refine verdict with concrete refinements. Defaults to sequential reviewer delegation for reliable, credit-efficient execution.",
-  "version": "0.1.0",
-  "author": { "name": "Smykla Skalski Labs" },
-  "homepage": "https://github.com/smykla-skalski/sai",
+  "version": "1.0.1",
+  "description": "Critique an implementation plan before approving execution. Persona reviewers (Skeptic, Architect, Verifier) evaluate the plan against the codebase and return an Approve/Reject/Refine verdict.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/plan-critic",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["copilot", "custom-agents", "planning", "plan-review", "code-review", "architecture"],
-  "category": "Developer Tools",
-  "agents": "agents/",
-  "skills": "copilot-skills/"
+  "keywords": ["plan-review", "plan-mode", "critique", "verifier", "architect", "skeptic", "grounding", "pre-execution"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Plan Critic",
+        "shortDescription": "Challenge implementation plans before coding starts",
+        "longDescription": "Triages an implementation plan, builds a Grounding Brief from the codebase, runs the Skeptic, Architect, and Verifier persona reviews, and returns one Approve/Reject/Refine verdict with concrete refinements. Runs the personas sequentially on Codex.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/plan-critic",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $plan-critic for this task.",
+          "Use $plan-critic to challenge this implementation plan before coding starts.",
+          "Run $plan-critic on the plan in this conversation."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
 }
