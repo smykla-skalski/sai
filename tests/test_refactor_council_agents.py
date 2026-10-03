@@ -71,6 +71,22 @@ class AgentCopiesSyncTest(unittest.TestCase):
                 )
                 self.assertEqual(head.splitlines()[0], f"name: {name}")
 
+    def test_agent_frontmatter_loads_in_copilot(self) -> None:
+        for name in sorted(EXPECTED_AGENTS):
+            with self.subTest(agent=name):
+                head, _ = split_frontmatter(
+                    (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+                )
+                fields = dict(line.split(": ", 1) for line in head.splitlines())
+                self.assertNotIn("model", fields, "Claude cannot resolve model pins")
+                description = fields["description"]
+                if not description.startswith(('"', "'")):
+                    self.assertNotIn(
+                        ": ",
+                        description,
+                        "unquoted ': ' in description makes Copilot drop the agent",
+                    )
+
     def test_persona_dossiers_exist(self) -> None:
         references = SKILL_DIR / "references"
         for name in sorted(EXPECTED_AGENTS - {"refactor-adversary"}):
