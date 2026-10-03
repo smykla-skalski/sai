@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "git-stage-hunk",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Non-interactive hunk staging for selective git add without TTY. Stage only part of a file, specific hunks, or pattern-matched changes when git add -p is unavailable.",
   "author": {
     "name": "Smykla Skalski Labs"

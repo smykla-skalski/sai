@@ -18,10 +18,10 @@ Non-interactive hunk staging for selective `git add` without a TTY. Replaces `gi
 
 The heavy lifting happens in the Python script. Your first action MUST be Bash - call the script directly, then present the output. Do not re-implement git diff/apply logic yourself.
 
-`<skill-dir>` in every command below is the absolute path of this skill's directory (the one holding this SKILL.md). In Claude Code it is `${CLAUDE_SKILL_DIR}`. Run the commands from the root of the user's repository and call the script by that absolute path: the script stages changes in the repository of the current working directory, so never `cd` into the skill directory.
+`<skill-dir>` in every command below is the absolute path of this skill's directory (the one holding this SKILL.md). In Claude Code it is `${CLAUDE_SKILL_DIR}`. Run the commands from the root of the user's repository and call the script by that absolute path, keeping the double quotes: the script stages changes in the repository of the current working directory, so never `cd` into the skill directory.
 
 ```
-<skill-dir>/scripts/git-stage-hunk.py --list --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --table
 ```
 
 ## Quick workflow
@@ -29,13 +29,13 @@ The heavy lifting happens in the Python script. Your first action MUST be Bash -
 1. List hunks:
 
    ```
-   <skill-dir>/scripts/git-stage-hunk.py --list --table
+   "<skill-dir>/scripts/git-stage-hunk.py" --list --table
    ```
 
 2. Stage the ones you want:
 
    ```
-   <skill-dir>/scripts/git-stage-hunk.py --hunk H1,H3 --table
+   "<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --table
    ```
 
 3. Commit, then re-list to see what remains.
@@ -45,7 +45,7 @@ The heavy lifting happens in the Python script. Your first action MUST be Bash -
 Filter the listing to one file:
 
 ```
-<skill-dir>/scripts/git-stage-hunk.py --list --file src/auth.ts --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
 ```
 
 ## Agent compatibility
@@ -101,7 +101,7 @@ Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes
 1. Run the script with `--check-deps`:
 
    ```
-   <skill-dir>/scripts/git-stage-hunk.py --check-deps
+   "<skill-dir>/scripts/git-stage-hunk.py" --check-deps
    ```
 
 2. Parse the NDJSON output. Each line is a dependency status.
@@ -121,18 +121,18 @@ Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes
 Run the script with the user's requested mode. Always pass `--table` for human-readable output:
 
 ```
-<skill-dir>/scripts/git-stage-hunk.py --list --table
-<skill-dir>/scripts/git-stage-hunk.py --list --file src/auth.ts --table
-<skill-dir>/scripts/git-stage-hunk.py --list --split --table
-<skill-dir>/scripts/git-stage-hunk.py --split H3
-<skill-dir>/scripts/git-stage-hunk.py --hunk H1,H3 --dry-run --table
-<skill-dir>/scripts/git-stage-hunk.py --hunk H1,H3 --table
-<skill-dir>/scripts/git-stage-hunk.py --hunk H3.1,H3.2 --table
-<skill-dir>/scripts/git-stage-hunk.py --hunk H3:5-10 --table
-<skill-dir>/scripts/git-stage-hunk.py --pattern 'handleAuth' --table
-<skill-dir>/scripts/git-stage-hunk.py --file src/auth.ts --table
-<skill-dir>/scripts/git-stage-hunk.py --range src/auth.ts:45-60 --table
-<skill-dir>/scripts/git-stage-hunk.py --verify --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
+"<skill-dir>/scripts/git-stage-hunk.py" --list --split --table
+"<skill-dir>/scripts/git-stage-hunk.py" --split H3
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --dry-run --table
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H3.1,H3.2 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --hunk H3:5-10 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --pattern 'handleAuth' --table
+"<skill-dir>/scripts/git-stage-hunk.py" --file src/auth.ts --table
+"<skill-dir>/scripts/git-stage-hunk.py" --range src/auth.ts:45-60 --table
+"<skill-dir>/scripts/git-stage-hunk.py" --verify --table
 ```
 
 Add `--fallback` if the user declined patchutils in Phase 2.
@@ -152,7 +152,7 @@ If the summary includes `"fallback":true`, note that `--pattern` and `--range` m
 After staging, optionally run `--verify` to show what ended up staged vs unstaged:
 
 ```
-<skill-dir>/scripts/git-stage-hunk.py --verify --table
+"<skill-dir>/scripts/git-stage-hunk.py" --verify --table
 ```
 
 ## Hunk ID scheme
