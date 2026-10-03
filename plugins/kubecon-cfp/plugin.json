@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "kubecon-cfp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks and official reviewer criteria.",
   "author": {
     "name": "Smykla Skalski Labs"

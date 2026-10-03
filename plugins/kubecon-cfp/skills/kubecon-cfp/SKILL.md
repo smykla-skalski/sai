@@ -23,7 +23,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Explicit-only invocation (`disable-model-invocation`) | Codex honors it through `agents/openai.yaml` (`allow_implicit_invocation: false`). Elsewhere, run this skill only when the user names it or asks for a KubeCon CFP |
+| Explicit-only invocation (`disable-model-invocation`) | Codex honors it through `agents/openai.yaml` (`allow_implicit_invocation: false`). Elsewhere, run this skill only when the user names it explicitly |
 | Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the topic and flags from the user's request |
 | AskUserQuestion | Ask the Phase 3 and Phase 4 questions in plain text and wait for the answers before moving on |
 | Subagent tool (Agent) | Run the Phase 9 competitive analysis inline with web search if available; otherwise compare against [references/talk-patterns.md](references/talk-patterns.md) and say no live search was done. On Codex always run it inline, since Codex subagent fan-out is unreliable |
