@@ -1,10 +1,11 @@
 {
   "name": "ai-daily-digest",
-  "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
-  "version": "1.7.0",
+  "description": "Daily AI news digest covering technical advances, business news, and engineering impact, built from dated, verified sources.",
+  "version": "1.7.1",
   "author": {
     "name": "Smykla Skalski Labs"
   },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/ai-daily-digest",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
   "keywords": ["news", "digest", "ai-research", "notion", "obsidian", "aggregation", "newsletter", "web-search", "daily"]

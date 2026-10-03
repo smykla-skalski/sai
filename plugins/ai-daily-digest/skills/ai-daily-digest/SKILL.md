@@ -1,15 +1,38 @@
 ---
 name: ai-daily-digest
-description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments.
+description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments. Depends on current sources, so it browses and verifies dates before drafting and never writes from memory. Not for timeless explanations of how a model or technique works.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs web search or fetch, a shell, and write access to the XDG data directory. Notion publishing needs a Notion MCP server.
 argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion] [--obsidian-vault PATH]"
-allowed-tools: AskUserQuestion, Bash, Read, Task, ToolSearch, WebFetch, WebSearch, Write
+allowed-tools: Agent AskUserQuestion Bash Read Task ToolSearch WebFetch WebSearch Write
 user-invocable: true
 disable-model-invocation: true
+metadata:
+  short-description: Assemble a daily AI news digest
 ---
 
 # AI Daily Digest Skill
 
 Generate comprehensive daily AI news digest with technical, business, and engineering coverage.
+
+This is a current-events skill: its value is dated, verifiable sources. Always browse before drafting and never fabricate a date, URL, or headline. For "how does X work" questions, answer directly instead of running this workflow.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the flags from the user's request |
+| Preprocessed context | If the values under Preprocessed context are unexpanded commands, run each command with the shell and use its output |
+| AskUserQuestion | Ask the same question in plain text, end your turn, and wait for the reply |
+| `disable-model-invocation` | Run only when the user asks for the digest by name or clearly asks for an AI news digest. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`). Copilot CLI honors the key: the skill loads from `/ai-daily-digest` in an interactive session, not from plain requests or `copilot -p` |
+| Named agent `ai-daily-digest:digest-research-agent` | Claude Code and Copilot CLI register it from the plugin's `agents/` directory. Codex and opencode do not; there, or whenever the type is unknown, spawn a generic subagent with the full mandate from [references/digest-research-agent.md](references/digest-research-agent.md) prepended |
+| Subagent tool (Agent, Task) | See "Research execution per agent" under Phases 2-15. No subagent tool, or spawning fails: research the phase inline yourself, following the same mandate |
+| ToolSearch for Notion | Use whatever Notion "create page" tool the agent exposes. None available: warn and continue with the archive copy |
+| `~/.claude/settings.json` env | Other agents read `NOTION_PARENT_PAGE_ID` and `OBSIDIAN_VAULT_PATH` from the shell environment only |
+| Unsandboxed writes | Codex: the data directory and Obsidian vault sit outside the workspace, and research needs network access; request escalation with a short reason when the sandbox blocks them |
+| `context: fork` | Not used |
 
 ## Arguments
 
@@ -147,13 +170,22 @@ Example:
 
 **Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full for all search queries, source-specific patterns, and the Friday Weekly Recap section.**
 
-Spawn a `general-purpose` research agent for each phase (or batch of independent phases).
-Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md).
+Spawn an `ai-daily-digest:digest-research-agent` research agent for each phase (or batch of independent phases). If that agent type is unknown, spawn a `general-purpose` agent with the full mandate from [references/digest-research-agent.md](references/digest-research-agent.md) prepended.
+Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md). In weekly recap mode, also tell each agent it is a recap and pass the past 7 days as its window.
 Phases 2-5 are independent - spawn them in parallel. Subsequent phases can be batched as appropriate.
 
-Each agent executes all web searches for its phase and returns ONLY a list of story items: title, URL, 1-line summary, and story_id. No analysis, no ranking - that happens in Phase 16.
+Each agent executes all web searches for its phase and returns ONLY its `## Research: <topic>` list of story items: title, 1-line summary, publication date, URL, and story_id. No analysis, no ranking - that happens in Phase 16. Check that each reply starts with `## Research:` and that every item carries a date and a URL; rerun a phase inline if its reply is missing or malformed.
 
 Collect results from all research agents before proceeding to Phase 16. Do not skip phases - missing a phase means missing an entire digest section.
+
+**Research execution per agent:**
+
+| Agent | How to run the research phases |
+| :-- | :-- |
+| Claude Code | As above: named agent, Phases 2-5 in parallel |
+| Copilot CLI | Named agent `ai-daily-digest:digest-research-agent` through the `agent` tool, one phase at a time, or research each phase inline. Parallel fan-out burns AI credits: only when the user asks, in waves of at most 5, checking each agent's state and reply before synthesis |
+| Codex | Sequential and inline by default: research each phase yourself, hold the findings, move on. Subagent fan-out is fragile (the default `agents.max_threads` is 6, finished subagents keep their slot until `close_agent`, and some finish without returning their payload). Only if the user asks and has raised `agents.max_threads`: `spawn_agent` independent phases with the mandate prepended, at most 5 at a time, `close_agent` each as soon as it returns, and rerun any phase that returned no sources inline. Never run nested `codex exec` |
+| opencode | The `task` tool with the built-in `general` subagent and the mandate prepended, one phase at a time, or inline |
 
 | Phase | Topic | Skip unless focus includes |
 | --- | --- | --- |
@@ -239,7 +271,7 @@ Choose ONE based on Phase 1 resolution:
 
 ### Phase 19: Duplicate Verification
 
-Spawn a `general-purpose` verification agent to check today's digest against:
+Spawn a `general-purpose` verification agent (Codex, Copilot CLI, opencode, or no subagent tool: run the check inline yourself) to check today's digest against:
 
 1. `$DATA_DIR/.covered-stories` (should NOT include today's stories yet)
 2. Last 3 digests from `$DATA_DIR/`
@@ -288,7 +320,7 @@ Story items use `- [ ]` checkbox format for newsletter curation. User checks sto
 Default digest with all focus areas:
 
 ```bash
-/ai-digest
+/ai-daily-digest
 ```
 </example>
 
@@ -296,8 +328,8 @@ Default digest with all focus areas:
 Focus on a single area:
 
 ```bash
-/ai-digest --focus technical
-/ai-digest --focus business
+/ai-daily-digest --focus technical
+/ai-daily-digest --focus business
 ```
 </example>
 
@@ -305,9 +337,9 @@ Focus on a single area:
 Explicit Notion page or archive-only mode:
 
 ```bash
-/ai-digest --notion-page-id 12345678-abcd-1234-efgh-123456789abc
-/ai-digest --no-notion
-/ai-digest --focus technical --no-notion
+/ai-daily-digest --notion-page-id 12345678-abcd-1234-efgh-123456789abc
+/ai-daily-digest --no-notion
+/ai-daily-digest --focus technical --no-notion
 ```
 </example>
 
@@ -315,6 +347,6 @@ Explicit Notion page or archive-only mode:
 Explicit Obsidian vault path:
 
 ```bash
-/ai-digest --obsidian-vault ~/Documents/my-vault/0_Inbox
+/ai-daily-digest --obsidian-vault ~/Documents/my-vault/0_Inbox
 ```
 </example>
