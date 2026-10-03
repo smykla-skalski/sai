@@ -1,14 +1,14 @@
 ---
 name: kubecon-cfp
 description: Interactive KubeCon CFP submission writer. Guides through topic selection, title crafting, abstract writing, and benefits section using acceptance data from 1,100+ talks across 7 KubeCon events (2024-2025). Use when preparing a conference talk proposal for KubeCon/CloudNativeCon, writing a CFP, or asking about KubeCon submission strategy.
-argument-hint: [topic or talk idea] [--track AI|Security|Platform|Observability|...] [--format session|lightning|tutorial|panel] [--review]
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. No scripts needed; the optional competitive analysis uses web search when the agent has it.
+argument-hint: "[topic or talk idea] [--track AI|Security|Platform|Observability|...] [--format session|lightning|tutorial|panel] [--review]"
 user-invocable: true
 disable-model-invocation: true
-allowed-tools:
-  - Agent
-  - AskUserQuestion
-  - Read
-  - Write
+allowed-tools: Agent AskUserQuestion Read Write
+metadata:
+  short-description: Draft and refine KubeCon CFPs
 ---
 
 <!-- justify: CF-side-effect Edit/Write fix detected issues in SKILL.md with user approval -->
@@ -16,6 +16,19 @@ allowed-tools:
 # KubeCon CFP Submission Writer
 
 Craft a high-quality KubeCon CFP submission using data-driven insights from 1,100+ accepted talks and official reviewer criteria.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Explicit-only invocation (`disable-model-invocation`) | Codex honors it through `agents/openai.yaml` (`allow_implicit_invocation: false`). Elsewhere, run this skill only when the user names it explicitly |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the topic and flags from the user's request |
+| AskUserQuestion | Ask the Phase 3 and Phase 4 questions in plain text and wait for the answers before moving on |
+| Subagent tool (Agent) | Run the Phase 9 competitive analysis inline with web search if available; otherwise compare against [references/talk-patterns.md](references/talk-patterns.md) and say no live search was done. On Codex always run it inline, since Codex subagent fan-out is unreliable |
+
+In Codex, if the sandbox blocks saving the submission file in Phase 10, request escalation with a short reason.
 
 ## Arguments
 
