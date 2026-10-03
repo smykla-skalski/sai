@@ -341,6 +341,43 @@ class BumpHookTest(unittest.TestCase):
         self.assert_commit_ok(self.repo.git("fix", "-q", check=False))
         self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.4")
 
+    def test_moving_claude_plugin_into_plugins_bumps_past_both(self) -> None:
+        self.repo.write(
+            "plugins/alpha/.codex-plugin/plugin.json",
+            manifest("alpha", "0.1.0"),
+        )
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "codex alpha")
+        self.repo.git(
+            "mv", "claude/alpha/.claude-plugin", "plugins/alpha/.claude-plugin"
+        )
+        self.repo.git("mv", "claude/alpha/skills", "plugins/alpha/skills")
+        self.repo.write("plugins/alpha/skills/alpha/SKILL.md", "alpha moved\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(
+            self.repo.committed_version("plugins/alpha/.claude-plugin/plugin.json"),
+            "1.2.4",
+        )
+        self.assertEqual(
+            self.repo.committed_version("plugins/alpha/.codex-plugin/plugin.json"),
+            "1.2.4",
+        )
+
+    def test_same_name_plugin_elsewhere_is_ignored(self) -> None:
+        self.repo.write(
+            "plugins/alpha/.codex-plugin/plugin.json",
+            manifest("alpha", "0.1.0"),
+        )
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "--no-verify", "-m", "codex alpha")
+        self.repo.write("plugins/alpha/skills/alpha/SKILL.md", "codex only\n")
+        self.assert_commit_ok(self.repo.commit_all())
+        self.assertEqual(
+            self.repo.committed_version("plugins/alpha/.codex-plugin/plugin.json"),
+            "0.1.1",
+        )
+        self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.3")
+
     def test_crlf_manifest_keeps_line_endings(self) -> None:
         crlf = manifest("alpha", "1.2.3").replace("\n", "\r\n")
         (self.repo.root / CLAUDE_MANIFEST).write_bytes(crlf.encode())

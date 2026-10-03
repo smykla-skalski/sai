@@ -20,6 +20,9 @@ Rules:
       the base commit is not bumped again; its other manifests are synced to
       that version. Otherwise the target is the highest base version + 1 patch
     - The base commit is HEAD, or HEAD^ for 'git commit --amend'
+    - Base versions come from manifests at the same path plus manifests with
+      the same "name" that the commit moves or deletes, so moving
+      'claude/<name>' into 'plugins/<name>' still bumps past both
     - New plugins (no manifest in the base) and deleted plugins are left alone
     - A broken manifest only blocks commits that touch its plugin
     - Merges, cherry-picks, reverts, and the initial commit are skipped
@@ -508,17 +511,25 @@ def plan_plugin(
     if plugin.errors:
         raise BumpError("; ".join(plugin.errors))
     staged: dict[str, tuple[int, int, int]] = {}
+    names: set[str] = set()
     for path in plugin.manifests:
         data = load_manifest(blobs[index[path].sha], path)
         staged[path] = parse_version(data.get("version"), path)
+        if isinstance(name := data.get("name"), str):
+            names.add(name)
 
     previous: list[tuple[int, int, int]] = []
-    for path in plugin.manifests:
-        if path not in base:
+    for path, entry in base.items():
+        if not MANIFEST_RE.match(path):
+            continue
+        same_path = path in staged
+        moved_away = path not in index
+        if not same_path and not moved_away:
             continue
         try:
-            data = load_manifest(blobs[base[path].sha], path)
-            previous.append(parse_version(data.get("version"), path))
+            data = load_manifest(blobs[entry.sha], path)
+            if same_path or data.get("name") in names:
+                previous.append(parse_version(data.get("version"), path))
         except BumpError:
             continue
 
