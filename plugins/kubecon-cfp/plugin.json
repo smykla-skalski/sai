@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "kubecon-cfp",
+  "version": "1.0.1",
+  "description": "Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks and official reviewer criteria.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/kubecon-cfp",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["kubecon", "cfp", "conference", "talk", "proposal", "cncf", "cloudnativecon"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "KubeCon CFP",
+        "shortDescription": "Draft and refine KubeCon CFP submissions",
+        "longDescription": "Turns a rough talk idea into a KubeCon/CloudNativeCon CFP: topic assessment against 1,100+ accepted talks, title options, abstract, benefits section, and scoring against the official reviewer criteria.",
+        "developerName": "SAI",
+        "category": "Writing",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/kubecon-cfp",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $kubecon-cfp to turn this talk idea into a KubeCon submission.",
+          "Use $kubecon-cfp to review and score my KubeCon CFP draft.",
+          "Use $kubecon-cfp to draft a lightning talk proposal for the Security track."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}
