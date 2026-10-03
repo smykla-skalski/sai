@@ -16,7 +16,7 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 1. Read the current repo docs first: `README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, and any plugin-local docs you are touching.
 2. If you are fixing runtime Copilot behavior, inspect real Copilot session artifacts under `~/.copilot/session-state/` and use unique `VALIDATE_*` tokens in smoke prompts so you can find the right session later.
 3. Make the behavior change across the whole surface, not just one file: `copilot-skills/.../SKILL.md`, any bundled `agents/*.agent.md`, `plugin.json`, and `README.md` when user-facing behavior changed.
-4. For any functional plugin change, bump that plugin’s `plugin.json` version in the same change.
+4. The pre-commit hook (`git config core.hooksPath .githooks`) bumps the patch version of every plugin with staged changes; set a minor/major bump by hand in the same commit.
 5. Load the local Copilot package with `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin}` for the self-contained plugin packages, or `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin}` when a dedicated bundle exists, before validating.
 6. Use the cheapest practical model for repeated validation and smoke loops (typically `gpt-5-mini`). Only escalate to a stronger model when the issue is genuinely diagnosis-heavy or the cheaper model is failing to make progress.
 7. Run long Copilot validations in the background and actively observe them rather than blocking on one giant wrapper. If one case hangs, split validations into separate commands per case.
@@ -61,7 +61,7 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 - Exact skill discovery paths matter. Claude will only discover skills at `claude/{plugin}/skills/{skill}/SKILL.md`.
 - Treat `SKILL.md` frontmatter as required in practice: `name`, `description`, `allowed-tools`, and `user-invocable`.
 - Keep `SKILL.md` concise and move detailed material into linked `references/` files. Repo skill prompts are typically organized into explicit phases rather than long free-form instructions.
-- Functional plugin changes must bump that plugin's `plugin.json` version in the same commit. Pure docs/comment/typo changes skip the bump.
+- Plugin versions are bumped by the pre-commit hook in `.githooks/pre-commit` (patch bump, all manifests of a plugin kept in sync). Enable it once with `git config core.hooksPath .githooks`. README-only changes skip the bump.
 - Validate via the surface you changed: Claude smoke commands for `claude/`, Copilot install/run flow for `plugins/`, and local checker/schema flows for script-based skills.
 - Repo-specific authoring rules live in `.claude/rules/skill-authoring.md` and `.claude/rules/script-authoring-conventions.md`; follow those for new skills and Python-based checker scripts.
 - Script defaults in this repo are Python with `#!/usr/bin/env python3`, `from __future__ import annotations`, `pathlib.Path`, deterministic NDJSON output, and explicit exit codes (`0` pass, `1` findings, `2` usage/input errors). Reuse shared helpers such as `_skill_check_common.py` when available.

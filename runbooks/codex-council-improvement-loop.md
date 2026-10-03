@@ -65,8 +65,9 @@ Council not run: broad council approval not granted.
 ```
 
 Functional Codex skill/plugin changes must bump the Codex plugin version in
-`plugins/council/.codex-plugin/plugin.json` in the same commit. Keep package
-versions aligned unless there is a documented reason not to.
+`plugins/council/.codex-plugin/plugin.json` in the same commit. The pre-commit
+hook (`git config core.hooksPath .githooks`) does this and keeps the
+`plugins/council/` manifests on one version.
 
 ## Phase 4: Commit Before Live Loop
 
