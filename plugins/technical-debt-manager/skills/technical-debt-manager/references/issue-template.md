@@ -102,6 +102,7 @@ Title: conventional commits format — `type(scope): description` (max 70 chars)
 **Impact:** {High|Medium|Low} — {1-line justification}
 **Contagion:** {High|Medium|Low} — {1-line justification}
 **Effort:** {High|Medium|Low|Minutes|Hours|Days}
+**Business Alignment:** {High|Medium|Low} — {1-line justification}
 
 **Fix:**
 {Numbered list of concrete steps. Must pass actionability standard: developer can start within 2 days without architectural redesign.}
