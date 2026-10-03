@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adversarial Test"
+  short_description: "Adversarial manual testing in a clean-context subagent"
+  default_prompt: "Use $adversarial-test on the current branch: a clean-context Test Adversary subagent runs the real product surface and tries to break it, then rerun every reproduction. Lead with the Test Verdict line."
