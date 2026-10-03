@@ -1,13 +1,33 @@
 {
   "name": "review-claude-md",
-  "description": "Audit a CLAUDE.md file against a structured rubric from a normal Copilot session. Keeps orchestration in-session: scans the repo, runs the bundled validation scripts, reports findings, applies fixes on request, then re-evaluates against the rubric (optionally via a native evaluator agent). Runs every step in-session by default for reliable execution.",
-  "version": "0.1.0",
-  "author": { "name": "Smykla Skalski Labs" },
-  "homepage": "https://github.com/smykla-skalski/sai",
+  "version": "1.7.3",
+  "description": "Audit and fix CLAUDE.md files using a tiered binary checklist, with an evaluator agent for a clean-context post-fix verdict where subagents are available.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-claude-md",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["copilot", "custom-agents", "claude-md", "audit", "documentation", "linting"],
-  "category": "Developer Tools",
-  "agents": "agents/",
-  "skills": "copilot-skills/"
+  "keywords": ["claude-md", "audit", "checklist", "best-practices", "configuration", "linting", "scoring"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Review CLAUDE.md",
+        "shortDescription": "Audit and fix CLAUDE.md files",
+        "longDescription": "Scans the repository, runs the bundled validation scripts, scores CLAUDE.md against a tiered Critical / Important / Polish checklist, reports a PASS / NEEDS WORK / FAIL verdict with evidence, fixes failing checks, then re-evaluates. Runs every step inline on Codex.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-claude-md",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $review-claude-md for this task.",
+          "Run $review-claude-md on this repository.",
+          "Run $review-claude-md --score-only on this repository."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
 }
