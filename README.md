@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kup`, `service-mesh-debug`, `ship-issue` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `service-mesh-debug`, `ship-issue` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -25,7 +25,7 @@ Repository layout:
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `plugins/git-stage-hunk/`     |
 | **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `plugins/go-code-review/`     |
 | **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
-| **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `claude/kubecon-cfp/`         |
+| **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `plugins/kubecon-cfp/`        |
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
 | **promptgen**           | Turn rough instructions into optimized, evidence-based AI prompts                       | `plugins/promptgen/`          |
 | **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
@@ -49,6 +49,7 @@ Codex skills:
 | **git-stage-hunk**     | Stage selected git hunks without a TTY; explicit invocation only (same portable package as Claude Code) | `plugins/git-stage-hunk/skills/git-stage-hunk/` |
 | **go-code-review**     | Review Go code for 100+ common mistakes from 100go.co (same portable package as Claude Code) | `plugins/go-code-review/skills/go-code-review/` |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
+| **kubecon-cfp**        | Draft and refine KubeCon CFP submissions, explicit invocation only (same portable package as Claude Code) | `plugins/kubecon-cfp/skills/kubecon-cfp/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**          | Turn rough instructions into stronger prompts; clipboard copy with print fallback (same portable package as Claude Code) | `plugins/promptgen/skills/promptgen/` |
 | **service-mesh-debug** | Diagnose flaky service-mesh e2e tests and connectivity issues with read-only Envoy diagnostic scripts (same portable package as Claude Code) | `plugins/service-mesh-debug/skills/service-mesh-debug/` |
@@ -115,7 +116,7 @@ claude --plugin-dir /path/to/sai/plugins/git-clean-gone
 claude --plugin-dir /path/to/sai/plugins/git-stage-hunk
 claude --plugin-dir /path/to/sai/plugins/go-code-review
 claude --plugin-dir /path/to/sai/plugins/humanize
-claude --plugin-dir /path/to/sai/claude/kubecon-cfp
+claude --plugin-dir /path/to/sai/plugins/kubecon-cfp
 claude --plugin-dir /path/to/sai/plugins/kup
 claude --plugin-dir /path/to/sai/plugins/promptgen
 claude --plugin-dir /path/to/sai/claude/refactor-council
@@ -151,6 +152,7 @@ ln -s /path/to/sai/plugins/git-clean-gone/skills/git-clean-gone ~/.config/openco
 ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
 ln -s /path/to/sai/plugins/go-code-review/skills/go-code-review ~/.config/opencode/skills/go-code-review
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
+ln -s /path/to/sai/plugins/kubecon-cfp/skills/kubecon-cfp ~/.config/opencode/skills/kubecon-cfp
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
 ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skills/ship-issue
 ln -s /path/to/sai/plugins/test-writer/skills/test-writer ~/.config/opencode/skills/test-writer
@@ -246,9 +248,9 @@ Make text sound natural by removing AI writing patterns. Based on Wikipedia's Si
 
 Interactive KubeCon CFP submission writer with data-driven insights from 1,100+ accepted talks across 7 KubeCon events (2024-2025). Guides through topic assessment, title crafting, abstract writing, and review scoring.
 
-**Usage**: `/kubecon-cfp [topic or talk idea] [--track AI|Security|Platform|...] [--format session|lightning|tutorial|panel] [--review]`
+**Usage**: `/kubecon-cfp [topic or talk idea] [--track AI|Security|Platform|...] [--format session|lightning|tutorial|panel] [--review]` (Codex: `$kubecon-cfp`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/kubecon-cfp/README.md)
+[Full documentation ->](./plugins/kubecon-cfp/README.md)
 
 ### kup
 
