@@ -266,10 +266,12 @@ class BumpHookTest(unittest.TestCase):
         self.assertEqual(self.repo.committed_version(CLAUDE_MANIFEST), "1.2.3")
 
     def test_invalid_version_blocks_commit(self) -> None:
-        self.repo.write(CLAUDE_MANIFEST, manifest("alpha", "next"))
-        result = self.repo.commit_all()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("expected MAJOR.MINOR.PATCH", result.stderr)
+        for version in ("next", "1.2.03", "1.2"):
+            with self.subTest(version=version):
+                self.repo.write(CLAUDE_MANIFEST, manifest("alpha", version))
+                result = self.repo.commit_all()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("expected MAJOR.MINOR.PATCH", result.stderr)
 
     def test_second_commit_bumps_again(self) -> None:
         self.repo.write("claude/alpha/skills/alpha/SKILL.md", "alpha v2\n")
@@ -437,10 +439,6 @@ class BumpHookTest(unittest.TestCase):
         self.assertEqual(json.loads(committed.lstrip("﻿"))["version"], "1.2.4")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class AmendRequestedTest(unittest.TestCase):
     def test_parses_commit_options(self) -> None:
         cases = [
@@ -468,3 +466,7 @@ class AmendRequestedTest(unittest.TestCase):
         argv = ["git", "-c", "x=commit", "-C", "commit", "commit", "--amend"]
         self.assertTrue(bump.amend_requested(argv))
         self.assertFalse(bump.amend_requested(["git", "status", "--amend"]))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -62,7 +62,9 @@ MANIFEST_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?P<root>(?:claude|plugins)/[^/]+)/(?:\.claude-plugin/|\.codex-plugin/)?"
     r"plugin\.json$",
 )
-VERSION_RE: Final[re.Pattern[str]] = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
+VERSION_RE: Final[re.Pattern[str]] = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$",
+)
 VERSION_FIELD_RE: Final[re.Pattern[str]] = re.compile(
     r'("version"\s*:\s*")([^"\\]*)(")',
 )

@@ -66,8 +66,10 @@ Council not run: broad council approval not granted.
 
 Functional Codex skill/plugin changes must bump the Codex plugin version in
 `plugins/council/.codex-plugin/plugin.json` in the same commit. The pre-commit
-hook (`git config core.hooksPath .githooks`) does this and keeps the
-`plugins/council/` manifests on one version.
+hook (`git config core.hooksPath .githooks`) does this for changes under
+`plugins/council/` and keeps its manifests on one version. `codex/agents/` is
+shared and not owned by any plugin, so a commit that only touches
+`codex/agents/*.toml` needs the council version bumped by hand.
 
 ## Phase 4: Commit Before Live Loop
 
