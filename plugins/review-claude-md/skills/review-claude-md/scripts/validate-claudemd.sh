@@ -51,13 +51,13 @@ fi
 README_MD="${REPO_ROOT}/README.md"
 if [[ -f "$README_MD" ]]; then
   # Extract first 5 non-empty lines from each file
-  CLAUDE_LINES=$(grep -v '^[[:space:]]*$' "$CLAUDE_MD" | head -5)
-  README_LINES=$(grep -v '^[[:space:]]*$' "$README_MD" | head -5)
+  CLAUDE_LINES=$(grep -v '^[[:space:]]*$' "$CLAUDE_MD" | head -5 || true)
+  README_LINES=$(grep -v '^[[:space:]]*$' "$README_MD" | head -5 || true)
 
   SHARED=0
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
-    if echo "$README_LINES" | grep -qF "$line"; then
+    if echo "$README_LINES" | grep -qF -- "$line"; then
       SHARED=$((SHARED + 1))
     fi
   done <<< "$CLAUDE_LINES"
