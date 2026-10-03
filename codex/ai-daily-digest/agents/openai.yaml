@@ -1,4 +1,0 @@
-interface:
-  display_name: "AI Daily Digest"
-  short_description: "Assemble a daily AI news digest"
-  default_prompt: "Use $ai-daily-digest to produce a concise AI news digest with technical, business, and engineering takeaways."

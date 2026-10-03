@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "ai-daily-digest",
-      "source": "./claude/ai-daily-digest",
+      "source": "./plugins/ai-daily-digest",
       "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -108,8 +108,8 @@
     },
     {
       "name": "plan-critic",
-      "source": "./claude/plan-critic",
-      "description": "Critique a Claude implementation plan before approving execution. Spawns parallel persona subagents (Skeptic, Architect, Verifier) to evaluate the plan against the codebase.",
+      "source": "./plugins/plan-critic",
+      "description": "Critique an implementation plan before approving execution. Persona reviewers (Skeptic, Architect, Verifier) evaluate the plan against the codebase and return an Approve/Reject/Refine verdict.",
       "author": {
         "name": "Smykla Skalski Labs"
       },
@@ -130,7 +130,7 @@
     },
     {
       "name": "refactor-council",
-      "source": "./claude/refactor-council",
+      "source": "./plugins/refactor-council",
       "description": "Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -152,7 +152,7 @@
     },
     {
       "name": "review-claude-md",
-      "source": "./claude/review-claude-md",
+      "source": "./plugins/review-claude-md",
       "description": "Audit and fix CLAUDE.md files using tiered binary checklist",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -163,7 +163,7 @@
     },
     {
       "name": "staff-code-review",
-      "source": "./claude/staff-code-review",
+      "source": "./plugins/staff-code-review",
       "description": "Staff-engineer-level code review evaluating architectural alignment, failure modes, observability, security, and cross-team impact.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -174,7 +174,7 @@
     },
     {
       "name": "staff-resume",
-      "source": "./claude/staff-resume",
+      "source": "./plugins/staff-resume",
       "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -182,6 +182,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"]
+    },
+    {
+      "name": "technical-debt-manager",
+      "source": "./plugins/technical-debt-manager",
+      "description": "Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["technical-debt", "code-quality", "github-issues"]
     },
     {
       "name": "test-writer",
@@ -237,6 +248,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["testing", "manual-testing", "adversarial", "qa", "subagents"]
+    },
+    {
+      "name": "youtube-summary",
+      "source": "./plugins/youtube-summary",
+      "description": "Summarize a YouTube video from its transcript into a concise Markdown note, saved to a folder you configure or printed in chat.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["youtube", "summary", "transcript", "notes", "obsidian"]
     }
   ]
 }

@@ -4,9 +4,9 @@
 
 This repo has **no repo-level build, test, or lint entrypoint**. It is mostly Markdown plus small validation/automation scripts, so validate the client surface you changed instead of inventing a monorepo-wide task.
 
-- Claude plugin smoke test: `claude --plugin-dir plugins/{plugin-name}/` for portable packages, `claude --plugin-dir claude/{plugin-name}/` for legacy ones
-- Single-skill smoke run: `claude --plugin-dir plugins/{plugin-name}/ -p "/{skill-name} test args"` (legacy: `claude/{plugin-name}/`)
-- Copilot package smoke test: use `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin-name}` for portable packages, `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin-name}` for the legacy self-contained packages under `claude/`, or `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin-name}` for the remaining dedicated Copilot bundles (for example `refactor-council`), then run the relevant slash command in Copilot CLI
+- Claude plugin smoke test: `claude --plugin-dir plugins/{plugin-name}/`
+- Single-skill smoke run: `claude --plugin-dir plugins/{plugin-name}/ -p "/{skill-name} test args"`
+- Copilot package smoke test: `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin-name}`, then run the relevant slash command in Copilot CLI
 - For script-heavy skill changes, run the local checker/schema/smoke flow that belongs to that plugin rather than adding placeholder `mise`, `make`, or lint tasks
 
 ## Copilot plugin improvement loop
@@ -15,9 +15,9 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 
 1. Read the current repo docs first: `README.md`, `CLAUDE.md`, `CONTRIBUTING.md`, and any plugin-local docs you are touching.
 2. If you are fixing runtime Copilot behavior, inspect real Copilot session artifacts under `~/.copilot/session-state/` and use unique `VALIDATE_*` tokens in smoke prompts so you can find the right session later.
-3. Make the behavior change across the whole surface, not just one file: `skills/.../SKILL.md` (or `copilot-skills/.../SKILL.md` in a legacy bundle), any bundled `agents/*.md` or `agents/*.agent.md` plus their `references/` mandate copies, `plugin.json`, and `README.md` when user-facing behavior changed. Council keeps its Copilot rules in the "Copilot CLI" section of `plugins/council/skills/council/SKILL.md`.
+3. Make the behavior change across the whole surface, not just one file: `skills/.../SKILL.md`, any bundled `agents/*.md` plus their `references/` mandate copies, `plugin.json`, and `README.md` when user-facing behavior changed. Council keeps its Copilot rules in the "Copilot CLI" section of `plugins/council/skills/council/SKILL.md`.
 4. The pre-commit hook (`git config core.hooksPath .githooks`) bumps the patch version of every plugin with staged changes; set a minor/major bump by hand in the same commit.
-5. Load the local Copilot package with `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin}` for the self-contained plugin packages, or `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin}` when a dedicated bundle exists, before validating.
+5. Load the local Copilot package with `copilot --plugin-dir /absolute/path/to/sai/plugins/{plugin}` before validating.
 6. Use the cheapest practical model for repeated validation and smoke loops (typically `gpt-5-mini`). Only escalate to a stronger model when the issue is genuinely diagnosis-heavy or the cheaper model is failing to make progress.
 7. Run long Copilot validations in the background and actively observe them rather than blocking on one giant wrapper. If one case hangs, split validations into separate commands per case.
 8. Run Copilot smoke validations from the **real target repository/cwd**, not from `sai`, when behavior depends on surrounding repo context.
@@ -39,27 +39,13 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 
 ## High-level architecture
 
-- Portable packages (`plugins/{plugin}/` with a root Agent Plugins `plugin.json`, `.claude-plugin/plugin.json` and `skills/{skill}/SKILL.md`, for example `plugins/humanize/` and `plugins/kup/`) serve Claude Code, Codex, Copilot CLI and opencode from one directory. New and migrated plugins use this layout; see "Portable plugin layout" in `CONTRIBUTING.md`.
-- Plugins not yet migrated use three legacy delivery surfaces:
-  - `claude/` contains self-contained plugin packages for Claude Code and Copilot CLI marketplace installs
-  - `plugins/` contains Codex-compatible packages and special multi-surface bundles such as `plugins/refactor-council/`
-  - `codex/` contains Codex skills and shared native agent definitions
-- Claude plugins are self-contained and use a strict discovery layout:
-  - `claude/{plugin}/.claude-plugin/plugin.json`
-  - `claude/{plugin}/skills/{skill}/SKILL.md`
-  - `claude/{plugin}/skills/{skill}/references/`
-  - `claude/{plugin}/skills/{skill}/scripts/`
-- Legacy Copilot bundles use a different shape. For example, `plugins/refactor-council/` keeps:
-  - `plugin.json` for package metadata and versioning
-  - `copilot-skills/` for slash-command entrypoints
-  - `agents/` for bundled custom-agent definitions
-  - `skills/` for Codex-facing skill parity
-- Unmigrated capabilities span more than one surface: `refactor-council` has a Claude plugin under `claude/refactor-council/`, a Copilot bundle under `plugins/refactor-council/`, and a Codex skill under `codex/refactor-council/`. Behavior changes there often need coordinated updates across more than one tree. `council` is a portable package with persona agents in `plugins/council/agents/`; the root `plugin.json` omits `$schema` so Copilot CLI keeps registering them.
+- Every plugin is a portable package (`plugins/{plugin}/` with a root Agent Plugins `plugin.json`, `.claude-plugin/plugin.json` and `skills/{skill}/SKILL.md`, for example `plugins/humanize/` and `plugins/kup/`) that serves Claude Code, Codex, Copilot CLI and opencode from one directory; see "Portable plugin layout" in `CONTRIBUTING.md`.
+- Plugins with persona agents (for example `plugins/council/`) keep them in `agents/*.md` with identical bodies under `skills/{skill}/references/`, and their root `plugin.json` omits `$schema` so Copilot CLI keeps registering `agents/`.
 - Persistent skill state must live outside plugin directories at `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` because plugin cache directories are replaced on update.
 
 ## Key conventions
 
-- Exact skill discovery paths matter. Claude will only discover skills at `{plugin-dir}/skills/{skill}/SKILL.md` (`plugins/{plugin}/` for portable packages, `claude/{plugin}/` for legacy ones).
+- Exact skill discovery paths matter. Claude will only discover skills at `{plugin-dir}/skills/{skill}/SKILL.md` (`plugins/{plugin}/`).
 - Treat `SKILL.md` frontmatter as required in practice: `name`, `description`, `allowed-tools`, and `user-invocable`.
 - Keep `SKILL.md` concise and move detailed material into linked `references/` files. Repo skill prompts are typically organized into explicit phases rather than long free-form instructions.
 - Plugin versions are bumped by the pre-commit hook in `.githooks/pre-commit` (patch bump, all manifests of a plugin kept in sync). Enable it once with `git config core.hooksPath .githooks`. README-only changes skip the bump.

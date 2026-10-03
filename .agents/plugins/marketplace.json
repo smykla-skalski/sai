@@ -185,6 +185,18 @@
       "category": "Writing"
     },
     {
+      "name": "technical-debt-manager",
+      "source": {
+        "source": "local",
+        "path": "./plugins/technical-debt-manager"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    },
+    {
       "name": "test-writer",
       "source": {
         "source": "local",
@@ -255,6 +267,18 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Developer Tools"
+    },
+    {
+      "name": "youtube-summary",
+      "source": {
+        "source": "local",
+        "path": "./plugins/youtube-summary"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
     }
   ]
 }

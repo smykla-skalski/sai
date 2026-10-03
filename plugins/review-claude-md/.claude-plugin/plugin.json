@@ -1,0 +1,12 @@
+{
+  "name": "review-claude-md",
+  "description": "Audit and fix CLAUDE.md files using a tiered binary checklist, with an evaluator agent for a clean-context post-fix verdict where subagents are available.",
+  "version": "1.7.3",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-claude-md",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["claude-md", "audit", "checklist", "best-practices", "configuration", "linting", "scoring"]
+}

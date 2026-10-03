@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "technical-debt-manager",
+  "version": "1.0.2",
+  "description": "Audit a repo for technical debt, research version-specific best practices, and file an umbrella GitHub tracker issue with one rated, actionable sub-issue per finding. Re-runs reuse the umbrella and dedupe against its sub-issues.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/technical-debt-manager",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["technical-debt", "code-quality", "audit", "github-issues", "sub-issues", "refactoring"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Technical Debt Manager",
+        "shortDescription": "Audit tech debt into a GitHub issue tracker",
+        "longDescription": "Scans a repository for technical debt, compares it with current best practices for the detected language and framework versions, rates each finding on impact, effort, contagion and business alignment, and files an umbrella tracker issue with one sub-issue per finding. Re-runs reuse the umbrella and skip findings that are already tracked.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/technical-debt-manager",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $technical-debt-manager to audit this repo and file tech-debt issues.",
+          "Use $technical-debt-manager --focus dependencies to audit only dependency debt.",
+          "Use $technical-debt-manager to re-audit this repo and add only new findings to the tracker."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

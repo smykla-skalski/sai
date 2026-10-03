@@ -1,0 +1,352 @@
+---
+name: ai-daily-digest
+description: Daily AI news digest covering technical advances, business news, and engineering impact. Aggregates from research papers, tech blogs, HN, newsletters. Use daily for staying current on AI developments. Depends on current sources, so it browses and verifies dates before drafting and never writes from memory. Not for timeless explanations of how a model or technique works.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs web search or fetch, a shell, and write access to the XDG data directory. Notion publishing needs a Notion MCP server.
+argument-hint: "[--focus technical|business|engineering|leadership|all] [--notion-page-id ID] [--no-notion] [--obsidian-vault PATH]"
+allowed-tools: Agent AskUserQuestion Bash Read Task ToolSearch WebFetch WebSearch Write
+user-invocable: true
+disable-model-invocation: true
+metadata:
+  short-description: Assemble a daily AI news digest
+---
+
+# AI Daily Digest Skill
+
+Generate comprehensive daily AI news digest with technical, business, and engineering coverage.
+
+This is a current-events skill: its value is dated, verifiable sources. Always browse before drafting and never fabricate a date, URL, or headline. For "how does X work" questions, answer directly instead of running this workflow.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the flags from the user's request |
+| Preprocessed context | If the values under Preprocessed context are unexpanded commands, run each command with the shell and use its output |
+| AskUserQuestion | Ask the same question in plain text, end your turn, and wait for the reply |
+| `disable-model-invocation` | Run only when the user asks for the digest by name or clearly asks for an AI news digest. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`). Copilot CLI honors the key: the skill loads from `/ai-daily-digest` in an interactive session, not from plain requests or `copilot -p` |
+| Named agent `ai-daily-digest:digest-research-agent` | Claude Code and Copilot CLI register it from the plugin's `agents/` directory. Codex and opencode do not; there, or whenever the type is unknown, spawn a generic subagent with the full mandate from [references/digest-research-agent.md](references/digest-research-agent.md) prepended |
+| Subagent tool (Agent, Task) | See "Research execution per agent" under Phases 2-15. No subagent tool, or spawning fails: research the phase inline yourself, following the same mandate |
+| ToolSearch for Notion | Use whatever Notion "create page" tool the agent exposes. None available: warn and continue with the archive copy |
+| `~/.claude/settings.json` env | Other agents read `NOTION_PARENT_PAGE_ID` and `OBSIDIAN_VAULT_PATH` from the shell environment only |
+| Unsandboxed writes | Codex: the data directory and Obsidian vault sit outside the workspace, and research needs network access; request escalation with a short reason when the sandbox blocks them |
+| `context: fork` | Not used |
+
+## Arguments
+
+Parse from `$ARGUMENTS`:
+
+- `--focus [technical|business|engineering|leadership|all]` — Default: all
+- `--notion-page-id [UUID]` — Notion parent page ID for digest publishing (overrides env var)
+- `--no-notion` — Skip Notion publishing entirely (archive-only mode)
+- `--obsidian-vault [PATH]` — Obsidian vault path for digest output (overrides env var)
+
+## Configuration
+
+### Notion Parent Page ID (required for publishing)
+
+Resolve the Notion parent page ID using this precedence (first match wins):
+
+1. `--notion-page-id` argument
+2. `NOTION_PARENT_PAGE_ID` environment variable
+3. Interactive prompt — use AskUserQuestion at runtime
+
+When prompting the user, provide these instructions for finding the page ID:
+
+- Open the target parent page in the browser
+- Copy the URL (`https://www.notion.so/Page-Title-{32-hex-chars}`)
+- Extract the last 32 hex characters, insert hyphens as `8-4-4-4-12` for UUID format
+- Alternative: click "Share" → "Copy link" and extract the ID
+
+Recommend persisting via env var in `~/.zshrc` / `~/.bashrc`:
+
+```bash
+export NOTION_PARENT_PAGE_ID="your-page-id-here"
+```
+
+Or in `~/.claude/settings.json` under the `"env"` key:
+
+```json
+{
+  "env": {
+    "NOTION_PARENT_PAGE_ID": "your-page-id-here"
+  }
+}
+```
+
+### Obsidian Vault (fallback when Notion not configured)
+
+When Notion is not configured (no page ID resolved and no `--no-notion` flag), the digest is written to an Obsidian vault instead.
+
+Resolve the Obsidian vault path using this precedence (first match wins):
+
+1. `--obsidian-vault` argument
+2. `OBSIDIAN_VAULT_PATH` environment variable
+3. **Auto-detect** — scan for `.obsidian/` directories in common locations:
+   - `~/Documents/*/` (one level deep)
+   - `~/*/` (one level deep, e.g. `~/vault/`, `~/notes/`)
+   - `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/*/` (iCloud sync)
+   Use: `find ~/Documents ~/Library/Mobile\ Documents/iCloud~md~obsidian/Documents ~ -maxdepth 2 -name .obsidian -type d 2>/dev/null`
+   If exactly one vault found, use its parent directory. If multiple found, present choices via AskUserQuestion. If none found, fall back to archive-only mode.
+4. Within the resolved vault, prefer an `0_Inbox/` subdirectory if it exists, otherwise write to vault root.
+
+The digest is saved as `AI Digest {YYYY-MM-DD}.md` in the resolved path. Integrates with Obsidian's file-based workflow — the digest appears as a regular note with full markdown rendering.
+
+Persist via env var in `~/.zshrc` / `~/.bashrc`:
+
+```bash
+export OBSIDIAN_VAULT_PATH="$HOME/Documents/my-vault/0_Inbox"
+```
+
+Or in `~/.claude/settings.json` under the `"env"` key:
+
+```json
+{
+  "env": {
+    "OBSIDIAN_VAULT_PATH": "/Users/you/Documents/your-vault/0_Inbox"
+  }
+}
+```
+
+## Preprocessed context
+
+- Data directory: !`echo "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ai-daily-digest"`
+- Today: !`date +%Y-%m-%d`
+- Day of week: !`date +%A`
+- Notion page ID (env): !`echo "${NOTION_PARENT_PAGE_ID:-}"`
+- Obsidian vault path (env): !`echo "${OBSIDIAN_VAULT_PATH:-}"`
+
+## Persistent Data Directory
+
+All persistent state and generated artifacts are stored in the data directory from preprocessed context above. This path is independent of the plugin cache and project working directory — artifacts survive plugin updates and work from any project.
+
+Use the pre-resolved data directory path for all file operations. Do NOT use `./findings/` or other relative paths — they may resolve to the plugin cache and be lost on updates.
+
+## State Files
+
+All state stored in the persistent data directory.
+
+### Last Run Date (`.last-run`)
+
+Format: `YYYY-MM-DD`. Read on startup to calculate date range. If missing, default to past 7 days.
+
+### Covered Stories (`.covered-stories`)
+
+Pipe-separated: `{date}|{story_id}|{url}` — one story per line.
+
+- `story_id` — Normalized: lowercase, hyphen-separated, key terms (e.g., `falcon-h1r-7b-release`, `xai-20b-funding`)
+- Keep last 300 entries (trim oldest when exceeding)
+- Prevents duplicate stories across days via story_id fuzzy matching and URL matching
+
+Example:
+
+```text
+2026-01-28|deepseek-r1-release|https://api-docs.deepseek.com/news/news250120
+2026-01-29|falcon-h1r-7b-release|https://falcon-lm.github.io/blog/falcon-h1r-7b/
+```
+
+## Workflow
+
+### Phase 1: Setup
+
+1. Read [references/sources.md](references/sources.md) for source URLs and tiers
+2. Read [references/output-template.md](references/output-template.md) for digest format
+3. Parse arguments for `--focus` area and `--notion-page-id`
+4. **Resolve Notion page ID** — if `--no-notion` is set, set `notion_page_id` to `null`.
+   Otherwise check in order: `--notion-page-id` arg → Notion page ID from preprocessed context → prompt user interactively.
+   Store resolved value as `notion_page_id` for Phase 18.
+   If the preprocessed value is empty and user declines to provide an ID, set `notion_page_id` to `null`.
+5. **Resolve Obsidian vault** — only when `notion_page_id` is `null` (Notion not configured).
+   Check in order: `--obsidian-vault` arg → Obsidian vault path from preprocessed context → auto-detect (see Configuration section above).
+   Store resolved value as `obsidian_path` for Phase 18. If no vault found, fall back to archive-only mode.
+6. **Set up persistent data directory** — use the data directory from preprocessed context as `DATA_DIR`. Run `mkdir -p "$DATA_DIR"` to ensure it exists.
+7. Read `$DATA_DIR/.last-run` — set date range from last run to the today value from preprocessed context
+8. Read `$DATA_DIR/.covered-stories` — build in-memory `covered_ids` and `covered_urls` sets
+9. Check day of week from preprocessed context — if Friday, enable weekly recap mode (Friday Weekly Recap section in search patterns)
+
+### Phases 2-15: Research
+
+**Before starting Phase 2, read [references/search-patterns.md](references/search-patterns.md) in full for all search queries, source-specific patterns, and the Friday Weekly Recap section.**
+
+Spawn an `ai-daily-digest:digest-research-agent` research agent for each phase (or batch of independent phases). If that agent type is unknown, spawn a `general-purpose` agent with the full mandate from [references/digest-research-agent.md](references/digest-research-agent.md) prepended.
+Pass each agent: the date range, `covered_ids` and `covered_urls` sets, the focus area, and the relevant section from [references/search-patterns.md](references/search-patterns.md). In weekly recap mode, also tell each agent it is a recap and pass the past 7 days as its window.
+Phases 2-5 are independent - spawn them in parallel. Subsequent phases can be batched as appropriate.
+
+Each agent executes all web searches for its phase and returns ONLY its `## Research: <topic>` list of story items: title, 1-line summary, publication date, URL, and story_id. No analysis, no ranking - that happens in Phase 16. Check that each reply starts with `## Research:` and that every item carries a date and a URL; rerun a phase inline if its reply is missing or malformed.
+
+Collect results from all research agents before proceeding to Phase 16. Do not skip phases - missing a phase means missing an entire digest section.
+
+**Research execution per agent:**
+
+| Agent | How to run the research phases |
+| :-- | :-- |
+| Claude Code | As above: named agent, Phases 2-5 in parallel |
+| Copilot CLI | Named agent `ai-daily-digest:digest-research-agent` through the `agent` tool, one phase at a time, or research each phase inline. Parallel fan-out burns AI credits: only when the user asks, in waves of at most 5, checking each agent's state and reply before synthesis |
+| Codex | Sequential and inline by default: research each phase yourself, hold the findings, move on. Subagent fan-out is fragile (the default `agents.max_threads` is 6, finished subagents keep their slot until `close_agent`, and some finish without returning their payload). Only if the user asks and has raised `agents.max_threads`: `spawn_agent` independent phases with the mandate prepended, at most 5 at a time, `close_agent` each as soon as it returns, and rerun any phase that returned no sources inline. Never run nested `codex exec` |
+| opencode | The `task` tool with the built-in `general` subagent and the mandate prepended, one phase at a time, or inline |
+
+| Phase | Topic | Skip unless focus includes |
+| --- | --- | --- |
+| 2 | Technical research (models, papers, frameworks) | technical |
+| 3 | Business research (funding, acquisitions, launches) | business |
+| 4 | Engineering impact (dev tools, workflow, job market) | engineering |
+| 5 | Leadership research (strategy, org transformation) | leadership |
+| 6 | GitHub trending AI repos | technical |
+| 7 | AI tools for professionals (9 domains) | all (always run) |
+| 8 | AI application domains (7 verticals) | all (always run) |
+| 9 | AI safety & ethics | all (always run) |
+| 10 | Open source AI ecosystem | technical |
+| 11 | AI infrastructure & hardware | technical |
+| 12 | Regional AI developments | all (always run) |
+| 13 | YouTube AI videos | all (always run) |
+| 14 | Cool & thought-provoking research | all (always run) |
+| 15 | Newsletter & blog aggregation | all (always run) |
+
+### Phase 16: Synthesis (CRITICAL — Dedup BEFORE Digest)
+
+All deduplication happens here before generating the digest.
+
+**Step 1: Generate story IDs** for all collected items.
+
+Normalized format — lowercase, hyphen-separated, company/product + action + key detail:
+
+- "Falcon-H1R 7B release" → `falcon-h1r-7b-release`
+- "xAI raises $20B" → `xai-20b-funding`
+- "Simon Willison on sandboxes" → `simonwillison-sandboxes-post`
+
+**Step 2: Deduplicate within session** — remove same event from different URLs.
+
+**Step 3: Deduplicate against history** — use in-memory `covered_ids` and `covered_urls` from Phase 1. DO NOT re-read or update the file.
+
+Filter out stories where:
+
+1. Exact story_id match in `covered_ids`
+2. Similar story_id (same product/company + same action)
+3. Exact URL match in `covered_urls`
+4. Same announcement, different angle
+
+**Step 4: Rank** by source credibility (tier 1 > tier 2 > tier 3), engagement, relevance.
+
+**Step 5: Categorize** into template sections and select Top 5 from filtered content.
+
+**Step 6: Completeness check** — compare categorized items against the Length Guidelines table in [references/output-template.md](references/output-template.md).
+If any section is below its target minimum, return to the corresponding research phase and run additional searches from [references/search-patterns.md](references/search-patterns.md) to fill the gap.
+Every section in the template must have content before proceeding.
+
+### Phase 17: Generate Digest
+
+1. Load [references/output-template.md](references/output-template.md)
+2. Fill sections with filtered items from Phase 16 only
+3. Format: `- [ ] **[Title]** — [1-line summary] [Source: URL]`
+   - Checkbox `- [ ]` on ALL story items with source URLs (renders as Notion task)
+   - NO checkbox on: Top 5 summary, prose bullets, Action Items, Things to Explore, Connections, Sources section
+4. If fewer than 5 stories after filtering, note "Light news day"
+
+### Phase 18: Save Digest Files
+
+DO NOT update `.covered-stories` in this phase — wait for verification.
+
+**Step 1: Publish digest**
+
+Choose ONE based on Phase 1 resolution:
+
+- **Notion** (when `notion_page_id` is set): Load Notion tool via ToolSearch (`select:mcp__notion__notion-create-pages`), then create page:
+  - Parent page ID: use `notion_page_id` resolved in Phase 1
+  - Title: `🤖 AI Digest {YYYY-MM-DD}`
+  - Content: Full digest markdown (excluding H1 title)
+  - If page creation fails, warn the user and continue — the archive copy in Step 2 still provides value.
+
+- **Obsidian** (when `obsidian_path` is set): Write digest to `{obsidian_path}/AI Digest {YYYY-MM-DD}.md`.
+  - Include full digest with H1 title
+  - Checkboxes `- [ ]` render natively in Obsidian
+  - If the vault path does not exist, warn and fall back to archive-only
+
+- **Archive-only** (neither set): Skip publishing, archive copy in Step 2 still provides value.
+
+**Step 2:** Write archive copy to `$DATA_DIR/ai-digest-{YYYY-MM-DD}.md`
+
+**Step 3:** Update `$DATA_DIR/.last-run` with today's date (YYYY-MM-DD).
+
+### Phase 19: Duplicate Verification
+
+Spawn a `general-purpose` verification agent (Codex, Copilot CLI, opencode, or no subagent tool: run the check inline yourself) to check today's digest against:
+
+1. `$DATA_DIR/.covered-stories` (should NOT include today's stories yet)
+2. Last 3 digests from `$DATA_DIR/`
+
+Agent checks for: exact duplicates, near duplicates (same company + similar action within 7 days), URL duplicates, topic fatigue (same topic 3+ times in past week).
+
+**On duplicate detection:**
+
+- REMOVE flagged: edit both Notion and archive copies, then proceed to Phase 20
+- Borderline only: keep stories, add footer note `*Verification: {N} borderline items retained*`
+- All clear: proceed to Phase 20
+
+### Phase 20: Update Covered Stories (FINAL)
+
+Only after Phase 19 passes. Append to `$DATA_DIR/.covered-stories` for each story in final digest:
+
+```text
+{date}|{story_id}|{url}
+```
+
+Keep file under 300 lines — trim oldest from top if over.
+
+## Output Requirements
+
+- Emojis for section headers (per template)
+- Bullet points over paragraphs
+- All items must have source URLs
+- Top 5 stories section required
+- Personal takeaways with actionable items
+- Coverage period in header (e.g., "Coverage: Jan 25 - Jan 28 (3 days)")
+
+## Error Handling
+
+- If WebSearch fails for a source, log and continue with others
+- Minimum viable digest: at least 5 items total
+- If < 5 items, expand date range by 1 day and retry
+- Only update `.last-run` on successful digest generation
+
+## Newsletter Integration
+
+Story items use `- [ ]` checkbox format for newsletter curation. User checks stories in Notion or Obsidian → `/ai-newsletter` extracts checked items.
+
+## Example Invocations
+
+<example>
+Default digest with all focus areas:
+
+```bash
+/ai-daily-digest
+```
+</example>
+
+<example>
+Focus on a single area:
+
+```bash
+/ai-daily-digest --focus technical
+/ai-daily-digest --focus business
+```
+</example>
+
+<example>
+Explicit Notion page or archive-only mode:
+
+```bash
+/ai-daily-digest --notion-page-id 12345678-abcd-1234-efgh-123456789abc
+/ai-daily-digest --no-notion
+/ai-daily-digest --focus technical --no-notion
+```
+</example>
+
+<example>
+Explicit Obsidian vault path:
+
+```bash
+/ai-daily-digest --obsidian-vault ~/Documents/my-vault/0_Inbox
+```
+</example>

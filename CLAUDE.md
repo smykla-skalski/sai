@@ -6,7 +6,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 
 ## Commands
 
-- Test plugin locally: `claude --plugin-dir plugins/{plugin-name}/` (legacy: `claude/{plugin-name}/`)
+- Test plugin locally: `claude --plugin-dir plugins/{plugin-name}/`
 - Test specific skill: `claude --plugin-dir plugins/{plugin-name}/ -p "/{skill-name} test args"`
 - Validate manifests: `claude plugin validate .` and `claude plugin validate plugins/{plugin-name}`
 - Validate a portable skill: `uvx --from skills-ref agentskills validate plugins/{plugin-name}/skills/{skill-name}`
@@ -24,7 +24,7 @@ check, or plugin install/run flow for the files you touched.
 
 - Run the relevant client-level smoke command, schema check, or plugin install/run flow before committing functional changes
 - Verify SKILL.md frontmatter has all required fields (name, description, allowed-tools, user-invocable)
-- Test modified plugins with `claude --plugin-dir plugins/{plugin-name}/` (legacy: `claude/{plugin-name}/`)
+- Test modified plugins with `claude --plugin-dir plugins/{plugin-name}/`
 - Update root README.md if adding/removing plugins
 - Follow conventional commits: `type(scope): description` — see `CONTRIBUTING.md:93`
 - Plugin versions are bumped by the pre-commit hook (`.githooks/pre-commit` runs `scripts/bump_plugin_versions.py`): patch bump for every plugin with staged changes, all manifests of a plugin kept on one version. Set a minor/major bump by hand in the same commit and the hook leaves it alone. README-only changes skip the bump. Use `git add` + `git commit`; `git commit <paths>` is rejected when a bump is needed
@@ -46,9 +46,8 @@ This applies to all linters: ruff, mypy, shellcheck, and any future linters. Fix
 - `plugins/{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition; `references/` and `scripts/` sit next to it
 - Claude persona agents: `plugins/{plugin-name}/agents/*.md`; keep identical bodies in `skills/{skill-name}/references/` so other agents can prepend them to a generic subagent (example: `plugins/adversarial-review/`)
 - Both marketplaces list the plugin: `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json`
-- Legacy layout, still used by plugins not yet migrated: Claude package in `claude/{plugin-name}/`, Codex wrapper in `codex/{plugin-name}/` plus `plugins/{plugin-name}/.codex-plugin/plugin.json`
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
-- Plugins: `adversarial-review` (portable), `adversarial-test` (portable), `ai-daily-digest`, `council` (portable), `generate-claude-md` (portable), `gh-review-comments` (portable), `git-clean-gone` (portable), `git-stage-hunk` (portable), `go-code-review` (portable), `humanize` (portable), `kubecon-cfp` (portable), `kup` (portable), `plan-critic`, `promptgen` (portable), `review-claude-md`, `service-mesh-debug` (portable), `ship-issue` (portable), `staff-code-review`, `staff-resume`, `test-writer` (portable)
+- Plugins: `adversarial-review` (portable), `adversarial-test` (portable), `ai-daily-digest` (portable), `council` (portable), `generate-claude-md` (portable), `gh-review-comments` (portable), `git-clean-gone` (portable), `git-stage-hunk` (portable), `go-code-review` (portable), `humanize` (portable), `kubecon-cfp` (portable), `kup` (portable), `plan-critic` (portable), `promptgen` (portable), `review-claude-md` (portable), `service-mesh-debug` (portable), `ship-issue` (portable), `staff-code-review` (portable), `staff-resume` (portable), `technical-debt-manager` (portable), `test-writer` (portable), `youtube-summary` (portable)
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins
