@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kup` and `service-mesh-debug`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kup`, `service-mesh-debug` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -33,7 +33,7 @@ Repository layout:
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
 | **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `claude/ship-issue/` |
-| **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `claude/test-writer/`         |
+| **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `plugins/test-writer/`        |
 
 Codex skills:
 
@@ -53,6 +53,7 @@ Codex skills:
 | **promptgen**          | Turn rough instructions into stronger prompts; clipboard copy with print fallback (same portable package as Claude Code) | `plugins/promptgen/skills/promptgen/` |
 | **service-mesh-debug** | Diagnose flaky service-mesh e2e tests and connectivity issues with read-only Envoy diagnostic scripts (same portable package as Claude Code) | `plugins/service-mesh-debug/skills/service-mesh-debug/` |
 | **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
+| **test-writer**        | Write or review behavior-first tests with table-driven patterns and minimal mocking (same portable package as Claude Code) | `plugins/test-writer/skills/test-writer/` |
 
 ## Installation
 
@@ -122,7 +123,7 @@ claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
 claude --plugin-dir /path/to/sai/claude/ship-issue
-claude --plugin-dir /path/to/sai/claude/test-writer
+claude --plugin-dir /path/to/sai/plugins/test-writer
 
 # Copilot CLI can load the same self-contained plugin directories directly.
 copilot --plugin-dir /path/to/sai/claude/staff-code-review
@@ -151,6 +152,7 @@ ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/openco
 ln -s /path/to/sai/plugins/go-code-review/skills/go-code-review ~/.config/opencode/skills/go-code-review
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
+ln -s /path/to/sai/plugins/test-writer/skills/test-writer ~/.config/opencode/skills/test-writer
 ```
 
 ## Plugins
@@ -307,9 +309,9 @@ Build and refine staff-level engineering resumes through interactive coaching, r
 
 Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.
 
-**Usage**: `/test-writer [file-or-function] [--review] [--lang go|python|ts|java|rust]`
+**Usage**: `/test-writer [file-or-function] [--review] [--lang go|python|ts|java|rust]` (Codex: `$test-writer`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/test-writer/README.md)
+[Full documentation ->](./plugins/test-writer/README.md)
 
 ## Development
 

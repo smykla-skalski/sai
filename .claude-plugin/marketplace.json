@@ -185,7 +185,7 @@
     },
     {
       "name": "test-writer",
-      "source": "./claude/test-writer",
+      "source": "./plugins/test-writer",
       "description": "Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.",
       "author": {
         "name": "Smykla Skalski Labs"
