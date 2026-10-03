@@ -7,17 +7,27 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOKS_DIR = REPO_ROOT / ".githooks"
+SCRIPT = REPO_ROOT / "scripts" / "bump_plugin_versions.py"
 GIT = shutil.which("git") or "git"
+
+_spec = importlib.util.spec_from_file_location("bump_plugin_versions", SCRIPT)
+assert _spec is not None
+assert _spec.loader is not None
+bump = importlib.util.module_from_spec(_spec)
+sys.modules[_spec.name] = bump
+_spec.loader.exec_module(bump)
 
 CLAUDE_MANIFEST = "claude/alpha/.claude-plugin/plugin.json"
 PORTABLE_ROOT_MANIFEST = "plugins/beta/plugin.json"
@@ -429,3 +439,32 @@ class BumpHookTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AmendRequestedTest(unittest.TestCase):
+    def test_parses_commit_options(self) -> None:
+        cases = [
+            (["--amend"], True),
+            (["--am"], True),
+            (["-a", "--amend"], True),
+            (["-SDEADBEEF", "--amend"], True),
+            (["-uno", "--amend"], True),
+            (["--reset-author", "--amend", "--no-edit"], True),
+            (["--amend", "--no-amend"], False),
+            (["-m", "--amend"], False),
+            (["-am", "--amend"], False),
+            (["-mfix", "--amend"], True),
+            (["--author", "--amend"], False),
+            (["--message=--amend"], False),
+            (["-m", "fix --amend"], False),
+            (["--", "--amend"], False),
+            ([], False),
+        ]
+        for args, expected in cases:
+            with self.subTest(args=args):
+                self.assertIs(bump.amend_requested(["git", "commit", *args]), expected)
+
+    def test_skips_git_global_options(self) -> None:
+        argv = ["git", "-c", "x=commit", "-C", "commit", "commit", "--amend"]
+        self.assertTrue(bump.amend_requested(argv))
+        self.assertFalse(bump.amend_requested(["git", "status", "--amend"]))

@@ -79,6 +79,7 @@ KERN_PROCARGS2: Final[int] = 49
 ARGC_BYTES: Final[int] = 4
 GIT_OPTIONS_WITH_VALUE: Final[frozenset[str]] = frozenset({"-c", "-C"})
 COMMIT_SHORT_OPTIONS_WITH_VALUE: Final[frozenset[str]] = frozenset("mFCct")
+COMMIT_SHORT_OPTIONS_ATTACHED_VALUE: Final[frozenset[str]] = frozenset("Su")
 COMMIT_LONG_OPTIONS_WITH_VALUE: Final[tuple[str, ...]] = (
     "author",
     "cleanup",
@@ -193,13 +194,13 @@ def _darwin_argv(pid: int) -> list[str] | None:
     return [_decode_path(arg) for arg in args] if len(args) == argc else None
 
 
-def parent_argv() -> list[str]:
-    """Return the exact argv of the process that ran this hook, or []."""
+def parent_argv() -> list[str] | None:
+    """Return the exact argv of the process that ran this hook, or None."""
     pid = os.getppid()
     argv = _proc_argv(pid)
     if argv is None and sys.platform == "darwin":
         argv = _darwin_argv(pid)
-    return argv or []
+    return argv
 
 
 def _long_option(word: str, names: tuple[str, ...]) -> bool:
@@ -228,6 +229,8 @@ def _option_effect(word: str) -> tuple[bool | None, int]:
         for index, flag in enumerate(word[1:], start=1):
             if flag in COMMIT_SHORT_OPTIONS_WITH_VALUE:
                 return None, int(index == len(word) - 1)
+            if flag in COMMIT_SHORT_OPTIONS_ATTACHED_VALUE:
+                break
     return None, 0
 
 
@@ -244,13 +247,14 @@ def amend_requested(argv: list[str]) -> bool:
     return amend
 
 
-def is_amend() -> bool:
-    """Return True when the commit being made amends HEAD.
+def is_amend() -> bool | None:
+    """Return True when the commit being made amends HEAD, None if unknown.
 
     pre-commit gets no amend signal, so this reads the exact argv of the parent
     process (/proc on Linux, sysctl on macOS) and parses the commit options.
     """
-    return amend_requested(parent_argv())
+    argv = parent_argv()
+    return None if argv is None else amend_requested(argv)
 
 
 def staged_paths(*, amend: bool) -> list[str]:
@@ -600,7 +604,8 @@ def run() -> int:
     """Bump versions for staged plugins and return the exit code."""
     if commit_in_progress():
         return 0
-    amend = is_amend()
+    detected = is_amend()
+    amend = bool(detected)
     if not base_exists(amend=amend):
         return 0
     paths = [p for p in staged_paths(amend=amend) if triggers_bump(p)]
@@ -630,11 +635,19 @@ def run() -> int:
     index_file = posixpath.basename(os.environ.get("GIT_INDEX_FILE", ""))
     if index_file.startswith(PATHSPEC_INDEX_PREFIX):
         msg = (
-            "cannot stage version bumps for 'git commit <paths>'; "
-            "stage the files with 'git add' and run 'git commit' without paths"
+            "cannot stage version bumps when git commits from a temporary "
+            "index ('git commit <paths>' or '--only'); stage the files with "
+            "'git add' and run 'git commit' without paths or '--only'"
         )
         raise BumpError(msg)
 
+    if detected is None:
+        print(
+            f"{PROG}: warning: cannot read the git command line on this "
+            "platform; if this is 'git commit --amend', check the bumped "
+            "versions are not one patch too high",
+            file=sys.stderr,
+        )
     apply_changes(git_toplevel(), changes, index, blobs)
     return 0
 
