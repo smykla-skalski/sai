@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -35,6 +35,7 @@ Repository layout:
 | **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `plugins/ship-issue/` |
 | **technical-debt-manager** | Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding | `plugins/technical-debt-manager/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `plugins/test-writer/`        |
+| **youtube-summary**     | Summarize a YouTube video from its transcript into a concise note saved to a configured folder | `plugins/youtube-summary/`    |
 
 Codex skills:
 
@@ -58,6 +59,7 @@ Codex skills:
 | **ship-issue**         | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-issue/skills/ship-issue/` |
 | **test-writer**        | Write or review behavior-first tests with table-driven patterns and minimal mocking (same portable package as Claude Code) | `plugins/test-writer/skills/test-writer/` |
 | **technical-debt-manager** | Audit tech debt into an umbrella GitHub issue with one sub-issue per finding (same portable package as Claude Code) | `plugins/technical-debt-manager/skills/technical-debt-manager/` |
+| **youtube-summary**    | Summarize a YouTube video from its transcript into a note (same portable package as Claude Code) | `plugins/youtube-summary/skills/youtube-summary/` |
 
 ## Installation
 
@@ -98,6 +100,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install ship-issue@sai
 /plugin install technical-debt-manager@sai
 /plugin install test-writer@sai
+/plugin install youtube-summary@sai
 ```
 
 Each plugin is independent - install only what you need.
@@ -130,6 +133,7 @@ claude --plugin-dir /path/to/sai/plugins/staff-resume
 claude --plugin-dir /path/to/sai/plugins/ship-issue
 claude --plugin-dir /path/to/sai/plugins/technical-debt-manager
 claude --plugin-dir /path/to/sai/plugins/test-writer
+claude --plugin-dir /path/to/sai/plugins/youtube-summary
 
 # Copilot CLI can load the same self-contained plugin directories directly.
 copilot --plugin-dir /path/to/sai/claude/staff-code-review
@@ -163,6 +167,7 @@ ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skill
 ln -s /path/to/sai/plugins/staff-resume/skills/staff-resume ~/.config/opencode/skills/staff-resume
 ln -s /path/to/sai/plugins/technical-debt-manager/skills/technical-debt-manager ~/.config/opencode/skills/technical-debt-manager
 ln -s /path/to/sai/plugins/test-writer/skills/test-writer ~/.config/opencode/skills/test-writer
+ln -s /path/to/sai/plugins/youtube-summary/skills/youtube-summary ~/.config/opencode/skills/youtube-summary
 ```
 
 ## Plugins
@@ -338,6 +343,14 @@ Write tests that verify behavior (not implementation), use table-driven/paramete
 **Usage**: `/test-writer [file-or-function] [--review] [--lang go|python|ts|java|rust]` (Codex: `$test-writer`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
 [Full documentation ->](./plugins/test-writer/README.md)
+
+### youtube-summary
+
+Summarize a YouTube video from its transcript into a concise Markdown note: TL;DR, key points with timestamps, and takeaways. A bundled `uv` script fetches the transcript with no manual dependency setup. The note is saved to the folder in `YOUTUBE_SUMMARY_DIR` (for example an Obsidian inbox); when that is unset, the skill asks where to save it or prints it.
+
+**Usage**: `/youtube-summary <youtube-url> [--no-save] [--dir PATH]` (Codex: `$youtube-summary`). One package for Claude Code, Codex, Copilot CLI and opencode.
+
+[Full documentation ->](./plugins/youtube-summary/README.md)
 
 ## Development
 
