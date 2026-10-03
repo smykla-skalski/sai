@@ -1,11 +1,15 @@
 ---
 name: generate-claude-md
 description: Generate a lean, high-signal CLAUDE.md for a repository from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-claude-md (a bundled validator enforces the same critical checks). Use when the user asks to "generate CLAUDE.md", "create a CLAUDE.md", "write a CLAUDE.md", "init CLAUDE.md", "scaffold CLAUDE.md", or "bootstrap CLAUDE.md" for a project.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs python3 for the bundled validator; no network access.
 argument-hint: "[path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]"
-allowed-tools: Bash, Edit, Glob, Grep, Read, Task, Write
+allowed-tools: Agent Bash Edit Glob Grep Read Write
 user-invocable: true
 context: fork
 agent: general-purpose
+metadata:
+  short-description: Generate a lean CLAUDE.md for a repo
 ---
 
 <!-- justify: writes a new CLAUDE.md; non-destructive by default, never overwrites an existing file without --force -->
@@ -26,6 +30,23 @@ review FAIL verdict. The remaining quality (architecture as relationships, domai
 mapping, real gotchas, style deltas) is your job during synthesis. Read
 [references/principles.md](references/principles.md) in full before synthesizing —
 it is the source of truth for every rule below.
+
+Not for auditing an existing CLAUDE.md against a checklist (that is
+`review-claude-md`) or for generic markdown authoring.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the repo root and flags from the user's request and local context (default: current working directory, no flags) |
+| Skill directory substitution | If the Phase 7 validator command shows an unreplaced placeholder instead of an absolute path, run `scripts/validate-claude-md.py` from this skill's directory |
+| AskUserQuestion | Not used. The skill never blocks on questions: missing input falls back to the defaults above, and an existing CLAUDE.md is protected by Write safety |
+| Subagent tool (Explore agent) | Run the Phase 2 scan inline: follow [references/scan-spec.md](references/scan-spec.md) yourself and build the same summary. Do this whenever no subagent tool is available, including in Claude Code inside a forked skill. On Codex always run it inline, since Codex subagent fan-out is unreliable |
+| `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
+
+In Codex, if the sandbox blocks the validator or writing the target file, rerun with escalation and a short reason.
 
 ## Arguments
 
@@ -67,7 +88,9 @@ Spawn one `Explore` agent. Pass it the repo root and the full contents of
 [references/scan-spec.md](references/scan-spec.md) as its instructions. It reads
 manifests, task runners, CI, lint/test config, entry points, and git history, and
 returns the compact structured summary that file specifies. Do not re-read what
-the agent already summarized.
+the agent already summarized. Without a subagent tool, follow the same spec
+yourself inline and produce the same summary (see
+[Agent compatibility](#agent-compatibility)).
 
 ### Phase 3: Verify commands
 
@@ -121,7 +144,10 @@ counter-example.
 
 ### Phase 7: Validate & iterate
 
-Run the validator on the written file (or, for `--dry-run`, on a temp copy):
+Run the validator on the written file. For `--dry-run`, write the content to a
+temp directory together with a copy of the repo's `README.md` and validate that
+copy; the validator compares against the `README.md` next to the file it checks.
+Never skip this phase, including in a dry run:
 
 ```bash
 python3 "${CLAUDE_SKILL_DIR}/scripts/validate-claude-md.py" "<target-file>" --human
