@@ -4,7 +4,7 @@
 
 This repo has **no repo-level build, test, or lint entrypoint**. It is mostly Markdown plus small validation/automation scripts, so validate the client surface you changed instead of inventing a monorepo-wide task.
 
-- Claude plugin smoke test: `claude --plugin-dir claude/{plugin-name}/`
+- Claude plugin smoke test: `claude --plugin-dir plugins/{plugin-name}/` for portable packages, `claude --plugin-dir claude/{plugin-name}/` for legacy ones
 - Single-skill smoke run: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
 - Copilot package smoke test: use `copilot --plugin-dir /absolute/path/to/sai/claude/{plugin-name}` for the self-contained plugin packages under `claude/`, or `copilot --plugin-dir /absolute/path/to/sai/plugins/council` for council's dedicated bundle, then run the relevant slash command in Copilot CLI
 - For script-heavy skill changes, run the local checker/schema/smoke flow that belongs to that plugin rather than adding placeholder `mise`, `make`, or lint tasks
@@ -39,7 +39,8 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 
 ## High-level architecture
 
-- The repo has three delivery surfaces:
+- Portable packages (`plugins/{plugin}/` with a root Agent Plugins `plugin.json`, `.claude-plugin/plugin.json` and `skills/{skill}/SKILL.md`, for example `plugins/humanize/` and `plugins/kup/`) serve Claude Code, Codex, Copilot CLI and opencode from one directory. New and migrated plugins use this layout; see "Portable plugin layout" in `CONTRIBUTING.md`.
+- Plugins not yet migrated use three legacy delivery surfaces:
   - `claude/` contains self-contained plugin packages for Claude Code and Copilot CLI marketplace installs
   - `plugins/` contains Codex-compatible packages and special multi-surface bundles such as `plugins/council/`
   - `codex/` contains Codex skills and shared native agent definitions
@@ -58,7 +59,7 @@ Use this full loop for behavior changes in `plugins/`, especially `plugins/counc
 
 ## Key conventions
 
-- Exact skill discovery paths matter. Claude will only discover skills at `claude/{plugin}/skills/{skill}/SKILL.md`.
+- Exact skill discovery paths matter. Claude will only discover skills at `{plugin-dir}/skills/{skill}/SKILL.md` (`plugins/{plugin}/` for portable packages, `claude/{plugin}/` for legacy ones).
 - Treat `SKILL.md` frontmatter as required in practice: `name`, `description`, `allowed-tools`, and `user-invocable`.
 - Keep `SKILL.md` concise and move detailed material into linked `references/` files. Repo skill prompts are typically organized into explicit phases rather than long free-form instructions.
 - Plugin versions are bumped by the pre-commit hook in `.githooks/pre-commit` (patch bump, all manifests of a plugin kept in sync). Enable it once with `git config core.hooksPath .githooks`. README-only changes skip the bump.

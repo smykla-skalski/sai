@@ -1,11 +1,15 @@
 ---
 name: humanize
 description: Identify and remove AI writing patterns to make text sound natural and human-written. Use when humanizing commit messages, PR descriptions, review comments, docs, changelogs, or release notes. Also for de-slopping text that sounds robotic, has AI vibes, or reads like ChatGPT output.
+license: MIT
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. No scripts or network access needed.
 argument-hint: "[file-path] [--score-only] [--dry-run]"
-allowed-tools: AskUserQuestion, Edit, Read, Task, Write
+allowed-tools: AskUserQuestion Agent Edit Read Write
 user-invocable: true
 context: fork
 agent: general-purpose
+metadata:
+  short-description: Rewrite text to sound natural
 ---
 
 <!-- justify: CF-side-effect Edit/Write are used on user-provided files, not infrastructure - safe to auto-invoke -->
@@ -19,7 +23,20 @@ Remove AI writing patterns from text and replace them with natural, human-soundi
 
 ## Scope
 
-Designed for prose text: commit messages, PR descriptions, docs, changelogs, blog posts, review comments. Not for code, structured data (JSON/YAML), or text where AI patterns are intentional.
+Designed for prose text: commit messages, PR descriptions, docs, changelogs, blog posts, review comments. Not for code, structured data (JSON/YAML), translation, edits where the wording must stay nearly exact, or text where AI patterns are intentional.
+
+## Agent compatibility
+
+Paths in this file are relative to the skill directory (the one holding this SKILL.md). The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
+
+| Claude Code feature | Fallback |
+| :-- | :-- |
+| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the file path, text, and flags from the user's request |
+| AskUserQuestion | Ask the question in plain text and wait for the answer. If you cannot wait (for example you run as a forked subagent), stop and report what input is missing |
+| Subagent tool (Agent) | Run the Phase 2 scan inline: read the catalog yourself and build the same JSON hit list. Do this whenever no subagent tool is available, including in Claude Code inside a forked skill. On Codex always run it inline, since Codex subagent fan-out is unreliable |
+| `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
+
+In Codex, if the sandbox blocks writing the target file, request escalation with a short reason.
 
 ## Arguments
 
@@ -51,16 +68,16 @@ Read [references/elements-of-style.md](references/elements-of-style.md) for comp
 
 ### Phase 1: Input discovery
 
-1. Parse `$ARGUMENTS` for file path and flags.
-2. If no file path provided, use AskUserQuestion to get the target file or text.
+1. Parse `$ARGUMENTS` for file path and flags (see [Agent compatibility](#agent-compatibility) when it is empty).
+2. If no file path or text is provided, use AskUserQuestion to get the target file or text.
 3. Read the target file. If the input is raw text (not a file path), store it for processing.
 4. Determine the text's intended tone and audience from context (technical docs, blog post, PR description, commit message, etc.).
 
 ### Phase 2: Pattern scan (spawned agent)
 
-Spawn a `general-purpose` agent to isolate the 280+ line pattern catalog from the main context. The agent reads the full catalog, scans the input, and returns only compact results.
+Spawn a `general-purpose` agent to isolate the 280+ line pattern catalog from the main context. The agent reads the full catalog, scans the input, and returns only compact results. Without a subagent tool, follow the same prompt yourself inline and produce the same hit list.
 
-1. Use `TaskCreate` to spawn the agent with this prompt:
+1. Use the Agent tool (`subagent_type: general-purpose`) to spawn the agent with this prompt:
 
    ```
    You are a pattern-detection agent. Your job: scan the provided text against
@@ -86,7 +103,7 @@ Spawn a `general-purpose` agent to isolate the 280+ line pattern catalog from th
 
    Set the agent description to `"humanize: pattern scan"`.
 
-2. Poll the agent with `TaskGet` until it completes.
+2. Wait for the agent to finish.
 3. Parse the JSON array from the agent's output. This is the **hit list** - store it for Phase 4.
 4. If `--score-only`, skip to Phase 6 (Report) using the hit list directly.
 
@@ -170,7 +187,7 @@ If `--score-only`, stop here.
 ### Phase 7: Output
 
 1. If `--dry-run`: output the rewritten text to chat.
-2. Otherwise: apply edits to the file in-place. Use the Edit tool for targeted fixes. Use the Write tool to replace the file when the majority of its content changed.
+2. Otherwise: apply edits to the file in-place. Use targeted edits (the Edit tool in Claude Code) for local fixes. Replace the whole file (the Write tool) when the majority of its content changed. On other agents, use their file-edit tool (`apply_patch` in Codex).
 3. Append the pattern report after the output.
 
 ## Example

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "humanize",
+  "version": "2.5.1",
+  "description": "Make text sound natural by removing AI writing patterns. For commit messages, PR descriptions, review comments, docs, changelogs, and any text that sounds robotic or AI-generated.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/humanize",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["writing", "ai-detection", "de-slop", "text", "style", "natural-language", "pattern-removal"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Humanize",
+        "shortDescription": "Rewrite text to sound natural and direct",
+        "longDescription": "Finds the 24 common signs of AI writing in a draft and rewrites it with plain composition rules, keeping the meaning and facts intact.",
+        "developerName": "SAI",
+        "category": "Writing",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/humanize",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $humanize to rewrite this draft so it sounds natural.",
+          "Use $humanize to score this file for AI writing patterns without rewriting it.",
+          "Use $humanize to preview a rewrite of CHANGELOG.md without editing it."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}
