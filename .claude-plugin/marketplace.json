@@ -184,6 +184,17 @@
       "tags": ["resume", "staff-engineer", "career", "coaching", "job-search", "tailoring", "ats"]
     },
     {
+      "name": "technical-debt-manager",
+      "source": "./plugins/technical-debt-manager",
+      "description": "Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["technical-debt", "code-quality", "github-issues"]
+    },
+    {
       "name": "test-writer",
       "source": "./claude/test-writer",
       "description": "Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.",

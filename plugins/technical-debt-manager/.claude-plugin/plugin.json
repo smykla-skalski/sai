@@ -1,0 +1,12 @@
+{
+  "name": "technical-debt-manager",
+  "description": "Audit a repo for technical debt, research version-specific best practices, and file an umbrella GitHub tracker issue with one rated, actionable sub-issue per finding. Re-runs reuse the umbrella and dedupe against its sub-issues.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/technical-debt-manager",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["technical-debt", "code-quality", "audit", "github-issues", "sub-issues", "refactoring"]
+}
