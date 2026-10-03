@@ -152,7 +152,7 @@
     },
     {
       "name": "review-claude-md",
-      "source": "./claude/review-claude-md",
+      "source": "./plugins/review-claude-md",
       "description": "Audit and fix CLAUDE.md files using tiered binary checklist",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -248,6 +248,17 @@
       "license": "MIT",
       "category": "productivity",
       "tags": ["testing", "manual-testing", "adversarial", "qa", "subagents"]
+    },
+    {
+      "name": "youtube-summary",
+      "source": "./plugins/youtube-summary",
+      "description": "Summarize a YouTube video from its transcript into a concise Markdown note, saved to a folder you configure or printed in chat.",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["youtube", "summary", "transcript", "notes", "obsidian"]
     }
   ]
 }

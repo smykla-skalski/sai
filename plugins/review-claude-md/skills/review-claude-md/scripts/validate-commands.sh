@@ -48,7 +48,7 @@ else
 fi
 
 # --- Check: has-test ---
-TEST_MATCH=$(grep -inE "npm test|pytest|cargo test|go test|jest|vitest|make test|yarn test|bun test" "$CLAUDE_MD" | head -1 || true)
+TEST_MATCH=$(grep -inE "\b(npm test|pytest|cargo test|go test|jest|vitest|make test|yarn test|bun test)\b" "$CLAUDE_MD" | head -1 || true)
 if [[ -n "$TEST_MATCH" ]]; then
   LINE_NUM=$(echo "$TEST_MATCH" | cut -d: -f1)
   echo "{\"check\": \"has-test\", \"pass\": true, \"detail\": \"Test command found on line ${LINE_NUM}\"}"
@@ -57,7 +57,7 @@ else
 fi
 
 # --- Check: has-lint ---
-LINT_MATCH=$(grep -inE "eslint|biome|ruff|golangci-lint|clippy|prettier|make lint|yarn lint|npm run lint" "$CLAUDE_MD" | head -1 || true)
+LINT_MATCH=$(grep -inE "\b(eslint|biome|ruff|golangci-lint|clippy|prettier|make lint|yarn lint|npm run lint)\b" "$CLAUDE_MD" | head -1 || true)
 if [[ -n "$LINT_MATCH" ]]; then
   LINE_NUM=$(echo "$LINT_MATCH" | cut -d: -f1)
   echo "{\"check\": \"has-lint\", \"pass\": true, \"detail\": \"Lint command found on line ${LINE_NUM}\"}"
