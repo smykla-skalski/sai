@@ -55,7 +55,7 @@ In Claude Code and Copilot CLI use `/adversarial-test`, in Codex `$adversarial-t
 | Agent | Subagent |
 | :-- | :-- |
 | Claude Code | Named agent `adversarial-test:test-adversary` from `agents/`; `general-purpose` with the mandate prepended as fallback |
-| Copilot CLI | `general-purpose` with the mandate prepended (Copilot does not register the named agent) |
+| Copilot CLI | Same named agent `adversarial-test:test-adversary`; `general-purpose` fallback |
 | Codex | One `spawn_agent` call with the mandate prepended, closed after the pass |
 | opencode | `task` tool with an installed `test-adversary` agent or the built-in `general` subagent |
 
@@ -63,7 +63,8 @@ Every agent falls back to an inline pass when subagents are unavailable. Only on
 
 ## Files
 
-- `agents/test-adversary.md` - Claude Code agent definition
+- `agents/test-adversary.md` - Claude Code and Copilot CLI agent definition
+- `plugin.json` - root manifest for Codex and Copilot CLI. It has no `$schema` key on purpose: with `$schema` set, Copilot CLI stops registering the plugin's `agents/`
 - `skills/adversarial-test/references/test-adversary.md` - the same mandate for the generic-subagent and inline paths. The agent body and the reference file must stay identical; `tests/test_adversarial_test_mandate.py` enforces it
 
 ## License

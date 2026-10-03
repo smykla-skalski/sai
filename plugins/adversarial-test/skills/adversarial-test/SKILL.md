@@ -29,7 +29,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 | :-- | :-- |
 | Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the PR URL and flags from the user's request |
 | AskUserQuestion | Not used; the skill never stops for input |
-| Named agent `adversarial-test:test-adversary` | Claude Code registers it from the plugin's `agents/` directory. Copilot CLI, Codex and opencode do not; there, or whenever the type is unknown, spawn a generic subagent with the full mandate from [references/test-adversary.md](references/test-adversary.md) prepended (see Phase 2) |
+| Named agent `adversarial-test:test-adversary` | Claude Code and Copilot CLI register it from the plugin's `agents/` directory. Codex and opencode do not; there, or whenever the type is unknown, spawn a generic subagent with the full mandate from [references/test-adversary.md](references/test-adversary.md) prepended (see Phase 2) |
 | Subagent tool (Agent) | Codex: one `spawn_agent` call, waited on and closed before Phase 3. opencode: the `task` tool. No subagent tool, or both spawn attempts fail: run the pass inline yourself (see Fallback) |
 | `context: fork` | Not used |
 
@@ -76,7 +76,7 @@ The instruction for the subagent is: *"Prove this change does not satisfy the ta
 **Claude Code and Copilot CLI.**
 
 1. Try `subagent_type: "adversarial-test:test-adversary"`; its system prompt is the mandate.
-2. If the type is unknown (Copilot CLI, or a plugin loaded without agent registration), use `subagent_type: "general-purpose"` with the mandate prepended.
+2. If the type is unknown (plugin loaded without agent registration), use `subagent_type: "general-purpose"` with the mandate prepended.
 
 **Codex.** Use the native agent tools only (`spawn_agent` / `wait_agent` / `close_agent`); never nested `codex exec` or shell-based agent probing.
 
