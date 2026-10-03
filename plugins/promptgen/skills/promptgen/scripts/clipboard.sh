@@ -20,7 +20,7 @@ case "$(uname -s)" in
 esac
 
 has_non_ascii() {
-  printf '%s' "${input}" | LC_ALL=C grep -q '[^[:print:][:space:]]'
+  LC_ALL=C grep -q '[^[:print:][:space:]]' <<<"${input}"
 }
 
 # Windows clip decodes stdin with the ANSI codepage unless it starts with a

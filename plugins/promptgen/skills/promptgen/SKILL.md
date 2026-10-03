@@ -238,7 +238,7 @@ PROMPTGEN_EOF
 
 4. Report clipboard status:
    - Success: "Copied to clipboard."
-   - Failure (no clipboard tool, or the sandbox blocked it): "Clipboard not available - the prompt is printed above. Install pbcopy (macOS), wl-copy, xclip or xsel (Linux) to enable copying." The prompt from step 1 is the fallback output; never skip printing it.
+   - Failure (no clipboard tool, or the sandbox blocked it): "Clipboard not available - the prompt is printed above. Install pbcopy (macOS), wl-copy, xclip or xsel (Linux), or iconv for non-ASCII text with clip (Windows, WSL) to enable copying." The prompt from step 1 is the fallback output; never skip printing it.
    - `--no-copy`: skip clipboard entirely.
 
 ## Example invocations
