@@ -7,17 +7,17 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `service-mesh-debug`, `ship-issue` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `council`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `service-mesh-debug`, `ship-issue` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
-- `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
-- Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
+- `codex/` contains legacy Codex/Codex Desktop skills.
+- Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/refactor-council/`.
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **adversarial-review**  | Fast two-pass adversarial code review: Code Adversary subagent hunts the bug, clean-context Findings Adversary subagent refutes false positives | `plugins/adversarial-review/` |
 | **adversarial-test**    | Adversarial manual testing: clean-context Test Adversary subagent runs the real product surface and tries to break it; reproductions are rerun before they count | `plugins/adversarial-test/`   |
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
-| **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
+| **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `plugins/council/`            |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `plugins/service-mesh-debug/` |
 | **generate-claude-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-claude-md) | `plugins/generate-claude-md/` |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `plugins/gh-review-comments/`  |
@@ -41,7 +41,7 @@ Codex skills:
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
 | **adversarial-review** | Two-pass adversarial code review in sequential clean-context subagents (same portable package as Claude Code) | `plugins/adversarial-review/skills/adversarial-review/` |
 | **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent (same portable package as Claude Code) | `plugins/adversarial-test/skills/adversarial-test/` |
-| **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
+| **council**            | Persona reviewer councils run one reviewer at a time on Codex, with strict bounded-input and output rules (same portable package as Claude Code) | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
 | **generate-claude-md** | Generate a lean CLAUDE.md from codebase analysis (same portable package as Claude Code) | `plugins/generate-claude-md/skills/generate-claude-md/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts (same portable package as Claude Code) | `plugins/gh-review-comments/skills/gh-review-comments/` |
@@ -77,8 +77,6 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install ai-daily-digest@sai
 /plugin install council@sai
 /plugin install service-mesh-debug@sai
-
-# (Codex marketplace also provides /plugin install council@sai for Codex sessions)
 /plugin install generate-claude-md@sai
 /plugin install gh-review-comments@sai
 /plugin install git-clean-gone@sai
@@ -108,7 +106,7 @@ git clone git@github.com:smykla-skalski/sai.git
 claude --plugin-dir /path/to/sai/plugins/adversarial-review
 claude --plugin-dir /path/to/sai/plugins/adversarial-test
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
-claude --plugin-dir /path/to/sai/claude/council
+claude --plugin-dir /path/to/sai/plugins/council
 claude --plugin-dir /path/to/sai/plugins/service-mesh-debug
 claude --plugin-dir /path/to/sai/plugins/generate-claude-md
 claude --plugin-dir /path/to/sai/plugins/gh-review-comments
@@ -131,7 +129,6 @@ copilot --plugin-dir /path/to/sai/claude/staff-code-review
 
 # Skills with agent fan-out also have dedicated multi-surface bundles
 # that ship native Copilot reviewer agents (sequential delegation by default).
-copilot --plugin-dir /path/to/sai/plugins/council
 copilot --plugin-dir /path/to/sai/plugins/refactor-council
 copilot --plugin-dir /path/to/sai/plugins/staff-code-review
 copilot --plugin-dir /path/to/sai/plugins/plan-critic
@@ -146,6 +143,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 ```bash
 ln -s /path/to/sai/plugins/adversarial-review/skills/adversarial-review ~/.config/opencode/skills/adversarial-review
 ln -s /path/to/sai/plugins/adversarial-test/skills/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/council/skills/council ~/.config/opencode/skills/council
 ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
 ln -s /path/to/sai/plugins/gh-review-comments/skills/gh-review-comments ~/.config/opencode/skills/gh-review-comments
 ln -s /path/to/sai/plugins/git-clean-gone/skills/git-clean-gone ~/.config/opencode/skills/git-clean-gone
@@ -190,11 +188,9 @@ Run a council review when explicitly requested, through 27 sourced engineering a
 
 **Usage**: `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`
 
-Codex usage is `$council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`. `core` remains the default; fixed `core-*` modes always run all 6 selected reviewers, while `auto` is explicit and selects exactly 6 best-fit reviewers. Codex Council spawns native reviewer agents directly from installed Codex agent definitions at high reasoning effort, passes the same complete bounded review bundle to every reviewer, validates each finished report, strips transport markers, and synthesizes disagreement with the mandatory Council headings even when reviewers agree. Reviewers may read only directly connected exact files named in the assignment; they must not wander the repo, read memory/prior sessions/persona dossiers, or run tests/builds. Runs broader than 6 reviewers require explicit current-run approval; if approval is unavailable, Codex Council stops with exactly `Council not run: broad council approval not granted.` While reviewers are active, the Codex orchestrator stays alive, performs per-reviewer health checks at least once per minute, nudges drifting or stalled reviewers with `followup_task`, and may emit sparse `Council progress:` updates without raw reviewer payloads.
+One package for Claude Code, Codex (`$council`), Copilot CLI and opencode. `core` remains the default; fixed `core-*` modes always run all 6 selected reviewers, while `auto` selects exactly 6 best-fit reviewers. Claude Code and Copilot CLI spawn the 27 bundled persona agents (`council:<slug>`) in parallel; Copilot supervises them about once a minute and nudges drifting reviewers. Codex and opencode spawn generic reviewers one at a time, each given its persona mandate from `skills/council/references/agents/`, and Codex keeps its strict rules: bounded input, stale-agent cleanup before spawning, `Council progress:` lines only, and no raw reviewer payloads. On Copilot, Codex and opencode, runs broader than 6 reviewers need explicit current-run approval; without it the council stops with exactly `Council not run: broad council approval not granted.` Council is opt-in review work, not a commit or approval gate; follow-up challenges come back as synthesized council output.
 
-Copilot CLI usage should normally start with `/council [core|auto|core-eng|core-ux|core-mix|all|debate] <problem-description|@file>`, which keeps you in your current working session and makes the current session agent act as the council orchestrator for the bundled reviewer agents. Council is opt-in review work: do not use it as a generic commit, pre-commit, or approval gate unless the user explicitly asked for council. Runs broader than 6 reviewers must receive explicit AskUserQuestion approval in the current run; if that approval is unavailable, `/council` stops instead of silently shrinking itself. While reviewers are running, the orchestrator checks reviewer state on roughly a one-minute cadence, nudges reviewers that drift broad, stall, or circle without progress, and may emit sparse `Council progress:` updates so the run does not look stuck. Follow-up council challenges and blocker checks stay inside the same skill flow and must come back as synthesized council output, not raw reviewer blocks. The Copilot plugin bundles `plugins/council/copilot-skills/council/SKILL.md` and 27 reviewer `.agent.md` profiles, so the reviewer personas are native custom-agent definitions rather than being rebuilt inside the parent prompt. Those reviewer profiles appear as namespaced custom agents such as `council:antirez-simplicity-reviewer`; that visibility is intentional so the current session agent can invoke them directly.
-
-[Claude documentation ->](./claude/council/README.md) · [Codex skill ->](./plugins/council/skills/council/SKILL.md)
+[Full documentation ->](./plugins/council/README.md)
 
 ### service-mesh-debug
 

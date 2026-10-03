@@ -1,0 +1,22 @@
+{
+  "name": "council",
+  "description": "Council of 27 sourced engineering and UX persona reviewers that review code, design docs, architecture, refactors, UI surfaces, dashboards, and strategy through opinionated lenses, then synthesize convergence, disagreement, and concrete next moves.",
+  "version": "2.0.108",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/council",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": [
+    "review",
+    "personas",
+    "code-review",
+    "council",
+    "design-review",
+    "architecture",
+    "ux-review",
+    "debate",
+    "reviewer-agents"
+  ]
+}
