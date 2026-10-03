@@ -53,7 +53,7 @@
     },
     {
       "name": "git-clean-gone",
-      "source": "./claude/git-clean-gone",
+      "source": "./plugins/git-clean-gone",
       "description": "Clean up local branches with deleted remote tracking and their worktrees",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -75,7 +75,7 @@
     },
     {
       "name": "go-code-review",
-      "source": "./claude/go-code-review",
+      "source": "./plugins/go-code-review",
       "description": "Auto-review Go code for 100+ common mistakes from 100go.co. Checks error handling, concurrency, interfaces, performance, testing, and stdlib usage.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -218,7 +218,7 @@
     },
     {
       "name": "adversarial-review",
-      "source": "./claude/adversarial-review",
+      "source": "./plugins/adversarial-review",
       "description": "Fast two-pass adversarial code review: a Code Adversary subagent hunts the concrete bug, then a clean-context Findings Adversary subagent refutes false positives.",
       "author": {
         "name": "Smykla Skalski Labs"
@@ -229,7 +229,7 @@
     },
     {
       "name": "adversarial-test",
-      "source": "./claude/adversarial-test",
+      "source": "./plugins/adversarial-test",
       "description": "Adversarial manual testing: a clean-context Test Adversary subagent runs the real product surface in isolated state and tries to break it; every reproduction is rerun before it counts.",
       "author": {
         "name": "Smykla Skalski Labs"

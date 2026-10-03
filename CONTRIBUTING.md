@@ -35,7 +35,7 @@ One directory serves Claude Code, Codex, Copilot CLI and opencode. Copy `plugins
 
 ```text
 plugins/{name}/
-├── plugin.json                 # Agent Plugins manifest: $schema, extensions."com.openai".interface (Codex UI)
+├── plugin.json                 # Agent Plugins manifest: $schema (omit if agents/ exists), extensions."com.openai".interface (Codex UI)
 ├── .claude-plugin/plugin.json  # Claude Code and Copilot CLI manifest: same name, version, description
 ├── README.md
 └── skills/{skill}/
@@ -45,6 +45,7 @@ plugins/{name}/
     └── scripts/                # called by paths relative to the skill directory
 ```
 
+- Plugins that ship Claude persona agents in `agents/` omit `$schema` from the root `plugin.json`: with it, Copilot CLI stops registering `agents/`. Keep each agent body identical to a copy in `skills/{skill}/references/` for agents without named subagents (see `plugins/adversarial-review/`)
 - List the plugin in both marketplaces, each pointing at `./plugins/{name}`: `.claude-plugin/marketplace.json` (`source`) and `.agents/plugins/marketplace.json` (`source.path`). Do not add `.codex-plugin/`; Codex reads the root `plugin.json`
 - SKILL.md frontmatter uses the [Agent Skills](https://agentskills.io/specification) fields (`name`, `description`, `license`, `compatibility`, `metadata`, space-separated `allowed-tools`). Claude-only keys (`argument-hint`, `user-invocable`, `context`, `agent`, `disable-model-invocation`) may stay: other agents ignore them, and they are the only errors `skills-ref validate` may report
 - Every Claude-only feature the workflow uses (`$ARGUMENTS`, `${CLAUDE_SKILL_DIR}`, AskUserQuestion, subagents, `context: fork`) needs a fallback written in SKILL.md, like the "Agent compatibility" table in `plugins/humanize/skills/humanize/SKILL.md`
