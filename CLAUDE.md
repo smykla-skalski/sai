@@ -9,6 +9,8 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - Test plugin locally: `claude --plugin-dir claude/{plugin-name}/`
 - Test specific skill: `claude --plugin-dir claude/{plugin-name}/ -p "/{skill-name} test args"`
 - No build step (pure markdown + scripts)
+- One-time setup per clone: `git config core.hooksPath .githooks` (enables the version bump hook)
+- Test the version bump hook: `python3 -m unittest discover -s tests`
 
 ## Validation
 
@@ -23,7 +25,7 @@ check, or plugin install/run flow for the files you touched.
 - Test modified plugins with `claude --plugin-dir claude/{plugin-name}/`
 - Update root README.md if adding/removing plugins
 - Follow conventional commits: `type(scope): description` — see `CONTRIBUTING.md:93`
-- **Bump plugin version** in `plugin.json` for any functional change (SKILL.md, scripts, references) — include the bump in the same commit. Skip only for pure doc changes (README, comments, typos)
+- Plugin versions are bumped by the pre-commit hook (`.githooks/pre-commit` runs `scripts/bump_plugin_versions.py`): patch bump for every plugin with staged changes, all manifests of a plugin kept on one version. Set a minor/major bump by hand in the same commit and the hook leaves it alone. README-only changes skip the bump. Use `git add` + `git commit`; `git commit <paths>` is rejected when a bump is needed
 
 ## Linter suppression policy
 

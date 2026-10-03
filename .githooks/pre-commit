@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""Git pre-commit hook: bump versions of plugins with staged changes.
+
+Enable once per clone with: git config core.hooksPath .githooks
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
+
+from __future__ import annotations
+
+import runpy
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "bump_plugin_versions.py"
+runpy.run_path(str(SCRIPT), run_name="__main__")
