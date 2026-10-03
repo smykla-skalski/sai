@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gh-review-comments",
+  "version": "1.10.1",
+  "description": "List, reply to, resolve, and create GitHub PR review comment threads",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/gh-review-comments",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["github", "pull-request", "code-review", "comments", "pr-threads", "resolve", "gh-cli", "graphql"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "GitHub Review Comments",
+        "shortDescription": "Manage GitHub PR review threads with gh",
+        "longDescription": "Lists, replies to, resolves, and reopens GitHub pull request review threads, and creates reviews with line-level comments, through bundled gh CLI scripts.",
+        "developerName": "SAI",
+        "category": "Productivity",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/gh-review-comments",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $gh-review-comments to list unresolved review threads on this PR.",
+          "Use $gh-review-comments to reply to and resolve the review threads I fixed.",
+          "Use $gh-review-comments to create a review with inline comments on this PR."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}
