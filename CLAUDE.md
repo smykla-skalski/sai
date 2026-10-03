@@ -44,10 +44,11 @@ This applies to all linters: ruff, mypy, shellcheck, and any future linters. Fix
 - Target layout: one portable package per plugin in `plugins/{plugin-name}/`, loaded by Claude Code, Codex, Copilot CLI and opencode. Spec and migration steps: `CONTRIBUTING.md` → "Portable plugin layout". Examples: `plugins/humanize/`, `plugins/kup/`
 - `plugins/{plugin-name}/plugin.json` — Agent Plugins manifest (`$schema`, Codex UI under `extensions."com.openai"`); `plugins/{plugin-name}/.claude-plugin/plugin.json` — Claude Code/Copilot manifest, same name/version
 - `plugins/{plugin-name}/skills/{skill-name}/SKILL.md` — skill definition; `references/` and `scripts/` sit next to it
+- Claude persona agents: `plugins/{plugin-name}/agents/*.md`; keep identical bodies in `skills/{skill-name}/references/` so other agents can prepend them to a generic subagent (example: `plugins/adversarial-review/`)
 - Both marketplaces list the plugin: `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json`
 - Legacy layout, still used by plugins not yet migrated: Claude package in `claude/{plugin-name}/`, Codex wrapper in `codex/{plugin-name}/` plus `plugins/{plugin-name}/.codex-plugin/plugin.json`
 - Persistent state: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/{plugin-name}/` — survives plugin cache updates
-- Plugins: `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `council`, `generate-claude-md` (portable), `gh-review-comments` (portable), `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize` (portable), `kubecon-cfp` (portable), `kup` (portable), `plan-critic`, `promptgen`, `review-claude-md`, `service-mesh-debug`, `staff-code-review`, `staff-resume`, `test-writer`
+- Plugins: `adversarial-review` (portable), `adversarial-test` (portable), `ai-daily-digest`, `council`, `generate-claude-md` (portable), `gh-review-comments` (portable), `git-clean-gone` (portable), `git-stage-hunk` (portable), `go-code-review` (portable), `humanize` (portable), `kubecon-cfp` (portable), `kup` (portable), `plan-critic`, `promptgen` (portable), `review-claude-md`, `service-mesh-debug` (portable), `staff-code-review`, `staff-resume`, `test-writer`
 - Full directory tree: see `README.md` (do not duplicate here)
 
 ## Creating New Plugins
@@ -94,5 +95,5 @@ Never remove, overwrite, or move any file (rm, mv, Write over an existing file, 
 
 The `git-stage-hunk` SAI plugin stages partial file changes without a TTY. Use `/git-stage-hunk` when only some changes in a file belong in the current commit, multiple sessions modified the same file, or `git add -p` is unavailable.
 
-Install: `claude --plugin-dir ~/Projects/github.com/smykla-skalski/sai/claude/git-stage-hunk/`
+Install: `claude --plugin-dir ~/Projects/github.com/smykla-skalski/sai/plugins/git-stage-hunk/`
 Modes: `--list`, `--hunk H1,H2`, `--pattern REGEX`, `--file PATH`, `--range FILE:S-E`, `--verify`, `--dry-run`
