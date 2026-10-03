@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "generate-claude-md",
+  "version": "0.1.1",
+  "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-claude-md's critical checks.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/generate-claude-md",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["claude-md", "generate", "scaffold", "init", "best-practices", "configuration", "codebase-analysis"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Generate CLAUDE.md",
+        "shortDescription": "Generate a lean CLAUDE.md for a repo",
+        "longDescription": "Scans a repository's manifests, CI and config, verifies its build, test and lint commands, and writes a short, project-specific CLAUDE.md that a bundled validator checks against review-claude-md's critical rules.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/generate-claude-md",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $generate-claude-md to write a lean CLAUDE.md for this repository.",
+          "Use $generate-claude-md to preview a CLAUDE.md for this repo without writing it.",
+          "Use $generate-claude-md to refresh the existing CLAUDE.md, keeping my custom sections."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

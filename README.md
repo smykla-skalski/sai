@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `generate-claude-md`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -19,7 +19,7 @@ Repository layout:
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `claude/ai-daily-digest/`     |
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `claude/council/`             |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `claude/service-mesh-debug/`  |
-| **generate-claude-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-claude-md) | `claude/generate-claude-md/`  |
+| **generate-claude-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-claude-md) | `plugins/generate-claude-md/` |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `claude/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `claude/git-clean-gone/`      |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `claude/git-stage-hunk/`      |
@@ -43,6 +43,7 @@ Codex skills:
 | **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent; also runs on OpenCode | `codex/adversarial-test/` |
 | **council**            | Run native Codex reviewer-agent councils and synthesize concrete next moves | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution | `codex/refactor-council/` |
+| **generate-claude-md** | Generate a lean CLAUDE.md from codebase analysis (same portable package as Claude Code) | `plugins/generate-claude-md/skills/generate-claude-md/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts                      | `codex/gh-review-comments/`  |
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
@@ -103,7 +104,7 @@ claude --plugin-dir /path/to/sai/claude/adversarial-test
 claude --plugin-dir /path/to/sai/claude/ai-daily-digest
 claude --plugin-dir /path/to/sai/claude/council
 claude --plugin-dir /path/to/sai/claude/service-mesh-debug
-claude --plugin-dir /path/to/sai/claude/generate-claude-md
+claude --plugin-dir /path/to/sai/plugins/generate-claude-md
 claude --plugin-dir /path/to/sai/claude/gh-review-comments
 claude --plugin-dir /path/to/sai/claude/git-clean-gone
 claude --plugin-dir /path/to/sai/claude/git-stage-hunk
@@ -139,6 +140,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 ```bash
 ln -s /path/to/sai/codex/adversarial-review ~/.config/opencode/skills/adversarial-review
 ln -s /path/to/sai/codex/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
 ```
 
@@ -264,9 +266,9 @@ Refactoring review through seven sourced refactoring-and-architecture persona ag
 
 Generate a lean, high-signal CLAUDE.md from codebase analysis. The generator counterpart to `review-claude-md` — it targets the same best-practices rubric the reviewer audits against, with a bundled validator that enforces the reviewer's Critical checks, so output is built to pass that audit. Produces exact commands, an architecture map, and real gotchas while avoiding README duplication, directory trees, and generic advice. Non-destructive: never overwrites an existing CLAUDE.md without `--force`.
 
-**Usage**: `/generate-claude-md [path/to/repo] [--update] [--force] [--rules] [--dry-run]`
+**Usage**: `/generate-claude-md [path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]` (Codex: `$generate-claude-md`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/generate-claude-md/README.md)
+[Full documentation ->](./plugins/generate-claude-md/README.md)
 
 ### review-claude-md
 

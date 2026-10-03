@@ -141,7 +141,7 @@
     },
     {
       "name": "generate-claude-md",
-      "source": "./claude/generate-claude-md",
+      "source": "./plugins/generate-claude-md",
       "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis; built to pass review-claude-md",
       "author": {
         "name": "Smykla Skalski Labs"

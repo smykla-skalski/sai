@@ -14,20 +14,38 @@ already knows.
 
 ## Installation
 
-### Quick install
+The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one
+[Agent Skill](https://agentskills.io), so the same package works in Claude Code,
+Codex, Copilot CLI and opencode.
+
+Claude Code (Copilot CLI is the same with `copilot` in place of `claude`):
 
 ```bash
 claude plugin marketplace add smykla-skalski/sai
-claude plugin install generate-claude-md@smykla-skalski-sai
+claude plugin install generate-claude-md@sai
 ```
 
-### Manual
+Codex:
 
 ```bash
-claude --plugin-dir /path/to/sai/claude/generate-claude-md
+codex plugin marketplace add smykla-skalski/sai
+codex plugin add generate-claude-md@sai
 ```
 
+opencode, or any agent that reads Agent Skills, loads `skills/generate-claude-md/` directly:
+
+```bash
+ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
+```
+
+Local checkout: `claude --plugin-dir /path/to/sai/plugins/generate-claude-md/`
+
 ## Usage
+
+In Claude Code and Copilot CLI use `/generate-claude-md`, in Codex
+`$generate-claude-md`, or ask in plain words ("write a CLAUDE.md for this repo").
+Where the agent has no subagent tool, the codebase scan runs inline instead of in
+a subagent; the output is the same.
 
 ```
 /generate-claude-md [path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]
