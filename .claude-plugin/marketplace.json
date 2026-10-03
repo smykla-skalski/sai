@@ -64,7 +64,7 @@
     },
     {
       "name": "git-stage-hunk",
-      "source": "./claude/git-stage-hunk",
+      "source": "./plugins/git-stage-hunk",
       "description": "Non-interactive hunk staging for selective git add without TTY",
       "author": {
         "name": "Smykla Skalski Labs"

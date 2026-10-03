@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "git-stage-hunk",
+  "version": "2.1.2",
+  "description": "Non-interactive hunk staging for selective git add without TTY. Stage only part of a file, specific hunks, or pattern-matched changes when git add -p is unavailable.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/git-stage-hunk",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["git", "staging", "hunk", "partial-commit", "diff", "selective-add", "patchutils", "non-interactive"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Git Stage Hunk",
+        "shortDescription": "Stage selected git hunks without a TTY",
+        "longDescription": "Lists unstaged hunks with stable IDs and stages only the ones you pick, by ID, sub-hunk, line range, file, or regex, so a commit holds just this session's changes.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/git-stage-hunk",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $git-stage-hunk to list the unstaged hunks in this repository.",
+          "Use $git-stage-hunk to stage only the hunks I changed in this session.",
+          "Use $git-stage-hunk to show what is staged versus unstaged."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

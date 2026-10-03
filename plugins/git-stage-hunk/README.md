@@ -1,25 +1,36 @@
 # git-stage-hunk
 
-A Claude Code plugin for non-interactive hunk staging. Stage only your changes when a file has edits from multiple sessions or agents. Commit part of a file without `git add -p`. Works without a TTY.
+Non-interactive hunk staging. Stage only your changes when a file has edits from multiple sessions or agents. Commit part of a file without `git add -p`. Works without a TTY.
+
+The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
 
 ## Installation
 
-### Quick install
+Claude Code (Copilot CLI is the same with `copilot` in place of `claude`):
 
 ```bash
 claude plugin marketplace add smykla-skalski/sai
-claude plugin install git-stage-hunk@smykla-skalski-sai
+claude plugin install git-stage-hunk@sai
 ```
 
-### From GitHub Marketplace
-
-Install from the [SAI plugin collection](https://github.com/smykla-skalski/sai).
-
-### Manual
+Codex:
 
 ```bash
-claude --plugin-dir /path/to/sai/claude/git-stage-hunk/
+codex plugin marketplace add smykla-skalski/sai
+codex plugin add git-stage-hunk@sai
 ```
+
+opencode, or any agent that reads Agent Skills, loads `skills/git-stage-hunk/` directly:
+
+```bash
+ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
+```
+
+Local checkout: `claude --plugin-dir /path/to/sai/plugins/git-stage-hunk/`
+
+## Usage
+
+In Claude Code and Copilot CLI use `/git-stage-hunk`, in Codex `$git-stage-hunk`. Codex only runs it when you name it, because it writes the git index. The script runs from the skill's `scripts/` directory against the repository in your current working directory.
 
 ## Skills
 
@@ -66,7 +77,7 @@ Non-interactive hunk staging for selective `git add`. Lists hunks with stable ID
 - git, python3 (required)
 - patchutils (optional, enables `--pattern` and `--range` modes)
 
-Install patchutils: `brew install patchutils` (macOS) or `apt install patchutils` (Debian/Ubuntu). The plugin works without it using a pure-bash fallback for `--list`, `--hunk`, and `--file` modes.
+Install patchutils: `brew install patchutils` (macOS) or `apt install patchutils` (Debian/Ubuntu). The plugin works without it using a pure-Python fallback for `--list`, `--hunk`, and `--file` modes.
 
 ## License
 
