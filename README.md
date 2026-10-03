@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `humanize` and `kup`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `humanize`, `kup` and `ship-issue`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -32,7 +32,7 @@ Repository layout:
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `claude/review-claude-md/`    |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
-| **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `claude/ship-issue/` |
+| **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `plugins/ship-issue/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `claude/test-writer/`         |
 
 Codex skills:
@@ -50,7 +50,7 @@ Codex skills:
 | **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**           | Turn rough instructions into stronger prompts using the Claude promptgen source workflow | `codex/promptgen/`            |
-| **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge | `codex/ship-issue/` |
+| **ship-issue**          | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-issue/skills/ship-issue/` |
 
 ## Installation
 
@@ -119,7 +119,7 @@ claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/claude/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
 claude --plugin-dir /path/to/sai/claude/staff-resume
-claude --plugin-dir /path/to/sai/claude/ship-issue
+claude --plugin-dir /path/to/sai/plugins/ship-issue
 claude --plugin-dir /path/to/sai/claude/test-writer
 
 # Copilot CLI can load the same self-contained plugin directories directly.
@@ -147,6 +147,7 @@ ln -s /path/to/sai/plugins/gh-review-comments/skills/gh-review-comments ~/.confi
 ln -s /path/to/sai/plugins/git-clean-gone/skills/git-clean-gone ~/.config/opencode/skills/git-clean-gone
 ln -s /path/to/sai/plugins/git-stage-hunk/skills/git-stage-hunk ~/.config/opencode/skills/git-stage-hunk
 ln -s /path/to/sai/plugins/humanize/skills/humanize ~/.config/opencode/skills/humanize
+ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skills/ship-issue
 ```
 
 ## Plugins
@@ -282,6 +283,14 @@ Audit and fix CLAUDE.md files using tiered binary checklist based on Anthropic b
 **Usage**: `/review-claude-md [path/to/CLAUDE.md]`
 
 [Full documentation ->](./claude/review-claude-md/README.md)
+
+### ship-issue
+
+Take a GitHub issue, or a task description that becomes one, to a merged PR: implement, pass the `adversarial-review` and `adversarial-test` gates, open a PR, wait for green CI and a Copilot review, fix feedback, merge, and close the issue.
+
+**Usage**: `/ship-issue <github-issue-url | task description>` (Codex: `$ship-issue`, explicit invocation only). One package for Claude Code, Codex, Copilot CLI and opencode.
+
+[Full documentation ->](./plugins/ship-issue/README.md)
 
 ### staff-code-review
 

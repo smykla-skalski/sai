@@ -196,7 +196,7 @@
     },
     {
       "name": "ship-issue",
-      "source": "./claude/ship-issue",
+      "source": "./plugins/ship-issue",
       "description": "Take a GitHub issue from implementation through adversarial review and testing, PR, CI and Copilot review, merge, and closure.",
       "author": {
         "name": "Smykla Skalski Labs"
