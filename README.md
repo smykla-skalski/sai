@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `review-claude-md`, `service-mesh-debug`, `ship-issue` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `review-claude-md`, `service-mesh-debug`, `ship-issue`, `staff-resume`, `technical-debt-manager` and `test-writer`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 - `claude/` contains the legacy self-contained plugin packages used by Claude Code and Copilot CLI marketplace installs.
 - `codex/` contains legacy Codex/Codex Desktop skills and shared native agent definitions.
 - Other `plugins/` directories are Codex-compatible wrappers and special multi-surface bundles such as `plugins/council/`.
@@ -31,8 +31,9 @@ Repository layout:
 | **refactor-council**    | Refactoring review through 7 sourced refactoring personas (Fowler, Uncle Bob, Feathers, Beck, Metz, Ousterhout, Tornhill): scans smells + git hotspots, synthesizes a safety-first plan, then an adversary red-teams it | `claude/refactor-council/`    |
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `plugins/review-claude-md/`   |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `claude/staff-code-review/`   |
-| **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `claude/staff-resume/`        |
+| **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `plugins/staff-resume/`       |
 | **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `plugins/ship-issue/` |
+| **technical-debt-manager** | Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding | `plugins/technical-debt-manager/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `plugins/test-writer/`        |
 
 Codex skills:
@@ -54,8 +55,10 @@ Codex skills:
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **promptgen**          | Turn rough instructions into stronger prompts; clipboard copy with print fallback (same portable package as Claude Code) | `plugins/promptgen/skills/promptgen/` |
 | **service-mesh-debug** | Diagnose flaky service-mesh e2e tests and connectivity issues with read-only Envoy diagnostic scripts (same portable package as Claude Code) | `plugins/service-mesh-debug/skills/service-mesh-debug/` |
+| **staff-resume**       | Coach and tailor staff-level engineering resumes (same portable package as Claude Code) | `plugins/staff-resume/skills/staff-resume/` |
 | **ship-issue**         | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-issue/skills/ship-issue/` |
 | **test-writer**        | Write or review behavior-first tests with table-driven patterns and minimal mocking (same portable package as Claude Code) | `plugins/test-writer/skills/test-writer/` |
+| **technical-debt-manager** | Audit tech debt into an umbrella GitHub issue with one sub-issue per finding (same portable package as Claude Code) | `plugins/technical-debt-manager/skills/technical-debt-manager/` |
 
 ## Installation
 
@@ -94,6 +97,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install staff-code-review@sai
 /plugin install staff-resume@sai
 /plugin install ship-issue@sai
+/plugin install technical-debt-manager@sai
 /plugin install test-writer@sai
 ```
 
@@ -123,8 +127,9 @@ claude --plugin-dir /path/to/sai/plugins/promptgen
 claude --plugin-dir /path/to/sai/claude/refactor-council
 claude --plugin-dir /path/to/sai/plugins/review-claude-md
 claude --plugin-dir /path/to/sai/claude/staff-code-review
-claude --plugin-dir /path/to/sai/claude/staff-resume
+claude --plugin-dir /path/to/sai/plugins/staff-resume
 claude --plugin-dir /path/to/sai/plugins/ship-issue
+claude --plugin-dir /path/to/sai/plugins/technical-debt-manager
 claude --plugin-dir /path/to/sai/plugins/test-writer
 
 # Copilot CLI can load the same self-contained plugin directories directly.
@@ -157,6 +162,8 @@ ln -s /path/to/sai/plugins/kubecon-cfp/skills/kubecon-cfp ~/.config/opencode/ski
 ln -s /path/to/sai/plugins/review-claude-md/skills/review-claude-md ~/.config/opencode/skills/review-claude-md
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
 ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skills/ship-issue
+ln -s /path/to/sai/plugins/staff-resume/skills/staff-resume ~/.config/opencode/skills/staff-resume
+ln -s /path/to/sai/plugins/technical-debt-manager/skills/technical-debt-manager ~/.config/opencode/skills/technical-debt-manager
 ln -s /path/to/sai/plugins/test-writer/skills/test-writer ~/.config/opencode/skills/test-writer
 ```
 
@@ -314,9 +321,17 @@ Staff-engineer-level code review that goes beyond correctness to evaluate archit
 
 Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.
 
-**Usage**: `/staff-resume <resume-path> [--job-url URL] [--mode coach|tailor|full]`
+**Usage**: `/staff-resume <resume-path> [--job-url URL] [--mode coach|tailor|full]` (Codex: `$staff-resume` with the path and flags in plain words). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./claude/staff-resume/README.md)
+[Full documentation ->](./plugins/staff-resume/README.md)
+
+### technical-debt-manager
+
+Audit a repository for technical debt, research best practices for the detected language and framework versions, and file one ☂️ umbrella tracker issue plus one sub-issue per finding, each rated on impact, effort, contagion and business alignment with a concrete fix. Re-runs reuse the umbrella and dedupe against its sub-issues. Needs an authenticated `gh` (2.94+ links sub-issues natively; older versions fall back to GraphQL).
+
+**Usage**: `/technical-debt-manager [--focus area] [--label label-name]` (Codex: `$technical-debt-manager`). One package for Claude Code, Codex, Copilot CLI and opencode.
+
+[Full documentation ->](./plugins/technical-debt-manager/README.md)
 
 ### test-writer
 
