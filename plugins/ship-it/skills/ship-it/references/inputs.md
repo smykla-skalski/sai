@@ -11,6 +11,8 @@ If the first token is `--issue`, strip it and remember the flag. An `--issue` an
 | Input | Source | Example |
 | :-- | :-- | :-- |
 | Empty | Stop and ask for a task description, a GitHub issue URL, or a Jira URL | |
+| Explicitly approved complex plan | Orchestration: preserve its approved scope and acceptance criteria; resolve or create its umbrella and implementation subissues | Approved plan in the conversation or a supplied plan file |
+| GitHub umbrella issue with implementation subissues | Orchestration: read native subissues and their dependencies; reuse the umbrella | `https://github.com/owner/repo/issues/123` |
 | GitHub issue URL (github.com or a GitHub Enterprise host `gh` is authenticated for), `owner/repo#N`, or `#N` in the current repository | GitHub issue | `https://github.com/owner/repo/issues/123` |
 | Jira issue URL | Jira ticket | `https://<site>.atlassian.net/browse/KEY-123`, or any `atlassian.net` or Jira URL whose path ends in a `KEY-123` segment (`.../projects/KEY/issues/KEY-123`, service-desk queue links) or that has `selectedIssue=KEY-123` |
 | A lone URL or reference that matches neither (GitHub PR, commit, discussion, a host that is neither GitHub nor Jira) | Unrecognized: stop | `https://github.com/owner/repo/pull/7` |
@@ -18,7 +20,8 @@ If the first token is `--issue`, strip it and remember the flag. An `--issue` an
 
 Edge cases:
 
-- A task description that embeds a GitHub issue URL, an `owner/repo#N` reference, or a Jira issue URL uses that source and treats the rest as extra context.
+- A task description that embeds a GitHub issue URL, an `owner/repo#N` reference, or a Jira issue URL uses that source and treats the rest as extra context. An explicitly approved complex plan takes precedence; its issue links identify the umbrella or children.
+- A plan must be explicitly approved. A draft, proposed, or merely pasted plan is not an approved plan. A GitHub issue is an umbrella only when it contains native implementation subissues or explicitly describes itself as the parent of an approved plan. A lone implementation issue stays on the single-change path, even if its title mentions orchestration.
 - A bare `#N` inside free text ("make #333 the default color") is a GitHub issue only when the text calls it one ("fixes #42", "issue #42") **and** either the text is little more than that reference ("fix #42") or the issue's title matches the task. Otherwise it stays part of the description, so merging never closes an unrelated issue.
 - Every stop while resolving the input names what was received and what the skill accepts, then ends the turn.
 
@@ -36,7 +39,7 @@ With `--issue`:
 
 ## GitHub issue
 
-Parse the owner, repository, and issue number, then inspect the issue with `gh issue view` including title, body, labels, assignees, milestone, state, and comments. If `gh` cannot find or read it, stop and report the error. Stop and report if it is closed, or actively owned by someone else. Extract scope hints from labels and linked PRs from comments.
+Parse the owner, repository, and issue number, then inspect the issue with `gh issue view` including title, body, labels, assignees, milestone, state, comments, and subissues. If this `gh` version cannot return subissues, query `repository.issue.subIssues` through `gh api graphql -H "GraphQL-Features: sub_issues"`; paginate until all children are known. If neither read works, stop rather than assume the issue is a leaf. If `gh` cannot find or read the issue, stop and report the error. Stop if it is closed. Extract scope hints from labels and linked PRs from comments. Route an umbrella to orchestration even if assigned to its maintainer; assess each child's ownership and PR before dispatch. Route an implementation issue to the single-change lifecycle, but stop if it is actively owned by someone else.
 
 ## Jira ticket
 

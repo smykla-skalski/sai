@@ -1,6 +1,6 @@
 # ship-it
 
-Take one change from request to merged pull request autonomously: explore the repository, implement and test the change, red-team it with code review and manual testing, open a PR, address Copilot feedback, wait for green CI, and merge. The change can be a plain description, a GitHub issue, or a Jira ticket.
+Take one change from request to merged pull request autonomously: explore the repository, implement and test the change, red-team it with code review and manual testing, open a PR, address Copilot feedback, wait for green CI, and merge. The change can be a plain description, a GitHub issue, or a Jira ticket. An approved complex plan or an umbrella issue with implementation subissues runs as a coordinated set of separate issues.
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
 
@@ -49,10 +49,11 @@ In Claude Code and Copilot CLI use `/ship-it`, in Codex `$ship-it`:
 | `--issue` + description | Creates a GitHub issue first, then ships it and closes it on merge |
 | GitHub issue URL | Ships the issue; the PR body has `Closes #N`, so merging closes it |
 | Jira URL | Reads the ticket through Atlassian MCP tools, `acli`, or the `jira` CLI, whichever is available, and asks you to paste it when none is. The Jira key goes in the PR title or body. The ticket is never transitioned, commented on, or edited unless you ask |
+| Approved complex plan or umbrella issue | Reuses or creates a ☂️ umbrella and independent subissues, then dispatches up to three eligible workers. Dependencies wait for prerequisite PRs to merge. The parent only coordinates |
 
 Input it cannot recognize or read stops with a message before any code changes.
 
-The skill pushes and merges, so Codex runs it only when invoked by name. On agents without a subagent tool, the review and test passes run inline, one after another.
+The skill pushes and merges, so Codex runs it only when invoked by name. Outside Sail, agents without a subagent tool run the review and test passes inline. In Sail mode, unavailable worker or gate subagents pause the run. A child completes only after clean adversarial review, passing manual test, green CI, Copilot review, resolved threads, merge, and issue closure.
 
 It merges the way the repository documents (for example a `squash` PR comment where a bot merges), otherwise with a squash merge. After the first push it never force-pushes or rebases.
 

@@ -1,6 +1,6 @@
 ---
 name: ship-it
-description: End-to-end ship a change — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via the adversarial-test skill, open PR, wait for Copilot review + green CI, address feedback, merge. Accepts a plain task description (no issue is created unless --issue is passed), a GitHub issue URL (closed on merge), or a Jira ticket URL (read-only; the key goes in the PR). Use when asked to implement and ship a change end to end.
+description: End-to-end ship a change or coordinate an approved complex plan — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via the adversarial-test skill, open PR, wait for Copilot review + green CI, address feedback, merge. Accepts a plain task description (no issue is created unless --issue is passed), a GitHub issue URL (closed on merge), or a Jira ticket URL (read-only; the key goes in the PR). Use when asked to implement and ship a change end to end.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and an authenticated gh CLI with push and merge rights on the target repository. Uses the adversarial-review and adversarial-test skills when installed. Jira tickets are read through Atlassian MCP tools, acli, or the jira CLI when one is available.
 argument-hint: "[--issue] <task description | github-issue-url | jira-url>"
@@ -12,13 +12,11 @@ metadata:
 
 # Ship It
 
-Take one change (task description, GitHub issue, or Jira ticket) to a merged PR, closing the GitHub issue if any.
+Take a change to a merged PR, or coordinate independently shippable issues from an approved complex plan.
 
-**Role:** senior engineer owning the full lifecycle of one change.
+**Mode:** autonomous. Ask only when ambiguity cannot be resolved from the repository. Keep polling CI and Copilot until merged or a hard stop.
 
-**Mode:** autonomous. Ask only when the task is ambiguous and the repository cannot resolve it. Never end the turn while CI or Copilot is pending: keep polling (background waits are fine) until merged or a hard stop.
-
-**Other agents:** Codex, opencode and Copilot CLI invoke skills and subagents differently, run one subagent at a time, and may need sandbox escalation. Read [references/fallbacks.md](references/fallbacks.md) at the start when not in Claude Code, or whenever a skill, named agent, or subagent tool is missing.
+**Other agents:** Read [references/fallbacks.md](references/fallbacks.md) when not in Claude Code or an agent feature is missing.
 
 Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>` (`$ship-it` in Codex). Runs only when invoked by name or asked to ship a change. Claude Code appends the arguments; if none are appended, take them from the user's request.
 
@@ -26,17 +24,19 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 
 Read [references/inputs.md](references/inputs.md) before Phase 1. Classify the input, create the issue for `--issue`, read the GitHub issue or Jira ticket, and write the task context file outside the repository. No branch, edit or commit until this phase succeeds.
 
+If the input is an approved complex plan or an umbrella issue with subissues, read [references/orchestration.md](references/orchestration.md) and follow its parent coordinator workflow. The parent never implements a child issue. An ordinary implementation issue, including a worker's assigned issue, follows the single-change phases below. In Sail mode, absent worker or review/test gate subagents pause the run; never use inline gate fallbacks.
+
 ## Phase 2 — Explore
 
 Read root `CLAUDE.md`, `AGENTS.md` and `CONTRIBUTING.md` when present, including the merge convention. Identify the stack, the lint, format, type-check, test and build commands, the affected code and its tests.
 
 ## Phase 3 — Branch
 
-Fetch origin, resolve the default branch with `gh repo view`, fast-forward it, branch: `<type>/issue-<n>-<slug>` (GitHub issue), `<type>/<jira-key-lowercase>-<slug>` (Jira), `<type>/<slug>` (description). `<type>` is a conventional type; `<slug>` is kebab-case, ~50 chars. Work in another repository happens in a new worktree of it, never in its main checkout.
+Fetch origin, resolve and fast-forward the default branch, then create a conventional branch: `<type>/issue-<n>-<slug>`, `<type>/<jira-key-lowercase>-<slug>`, or `<type>/<slug>`. Use a new worktree for another repository. A Sail worker stays in its assigned worktree and branch; skip branch creation and return-to-default.
 
 ## Phase 4 — Implement
 
-Small focused commits following repository patterns; add behavior-focused tests. Before every commit run formatter, linter, type checker, build and tests. Never use suppressions or `--no-verify`; fix the root cause.
+Make focused commits with behavior tests. Before each commit run relevant quality gates. Fix failures; never suppress checks or bypass hooks.
 
 Signed conventional commits, scope required, title ≤50 chars, no AI attribution or PR refs. Footer: `Refs #<n>` (`Refs owner/repo#<n>` cross-repo) for a GitHub issue, `Refs <KEY-123>` for Jira, none for a description.
 
@@ -61,7 +61,7 @@ Read [references/pr-loop.md](references/pr-loop.md) before Phase 7. In short:
 
 ## Phase 11 — Close, report, clean up
 
-GitHub issue: confirm `Closes` closed it, else close it with a completion comment. Jira: leave it untouched; say it is ready to transition. Report source (`created` if Phase 1 made the issue; Jira key; or description), PR link, commits, CI status, Copilot threads resolved/total, merged/closed status, and any round-cap overrun. Then switch to the default branch, fast-forward, and delete the local branch (or worktree) when safe.
+Confirm the GitHub issue closed; close it with a completion comment if needed. Leave Jira untouched. Report source, PR, commits, CI, Copilot threads, merge/closure status, and round-cap overrun. Return to the default branch and clean up when safe.
 
 ## Hard stops
 
