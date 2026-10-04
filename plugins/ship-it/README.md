@@ -54,6 +54,8 @@ Input it cannot recognize or read stops with a message before any code changes.
 
 The skill pushes and merges, so Codex runs it only when invoked by name. On agents without a subagent tool, the review and test passes run inline, one after another.
 
+It merges the way the repository documents (for example a `squash` PR comment where a bot merges), otherwise with a squash merge. After the first push it never force-pushes or rebases.
+
 The skill owns the full lifecycle and stops only for genuine ambiguity, branch-protection requirements, persistent review/test failures, or product decisions that the request and repository cannot answer.
 
 ## License
