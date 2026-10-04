@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `council`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-claude-md`, `service-mesh-debug`, `ship-issue`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `council`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-claude-md`, `service-mesh-debug`, `ship-it`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
@@ -30,7 +30,7 @@ Repository layout:
 | **review-claude-md**    | Audit and fix CLAUDE.md files using tiered binary checklist                             | `plugins/review-claude-md/`   |
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `plugins/staff-code-review/`  |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `plugins/staff-resume/`       |
-| **ship-issue**          | Ship a GitHub issue through implementation, adversarial review/testing, PR, CI, Copilot review, merge, and closure | `plugins/ship-issue/` |
+| **ship-it**             | Ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review/testing, PR, CI, Copilot review, and merge | `plugins/ship-it/` |
 | **technical-debt-manager** | Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding | `plugins/technical-debt-manager/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `plugins/test-writer/`        |
 | **youtube-summary**     | Summarize a YouTube video from its transcript into a concise note saved to a configured folder | `plugins/youtube-summary/`    |
@@ -57,7 +57,7 @@ Codex skills:
 | **promptgen**          | Turn rough instructions into stronger prompts; clipboard copy with print fallback (same portable package as Claude Code) | `plugins/promptgen/skills/promptgen/` |
 | **service-mesh-debug** | Diagnose flaky service-mesh e2e tests and connectivity issues with read-only Envoy diagnostic scripts (same portable package as Claude Code) | `plugins/service-mesh-debug/skills/service-mesh-debug/` |
 | **staff-resume**       | Coach and tailor staff-level engineering resumes (same portable package as Claude Code) | `plugins/staff-resume/skills/staff-resume/` |
-| **ship-issue**         | Ship a GitHub issue through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-issue/skills/ship-issue/` |
+| **ship-it**            | Ship a task description, GitHub issue, or Jira ticket through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-it/skills/ship-it/` |
 | **staff-code-review**  | Staff-level code review across seven dimensions plus two adversaries; sequential on Codex (same portable package as Claude Code) | `plugins/staff-code-review/skills/staff-code-review/` |
 | **test-writer**        | Write or review behavior-first tests with table-driven patterns and minimal mocking (same portable package as Claude Code) | `plugins/test-writer/skills/test-writer/` |
 | **technical-debt-manager** | Audit tech debt into an umbrella GitHub issue with one sub-issue per finding (same portable package as Claude Code) | `plugins/technical-debt-manager/skills/technical-debt-manager/` |
@@ -98,7 +98,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install review-claude-md@sai
 /plugin install staff-code-review@sai
 /plugin install staff-resume@sai
-/plugin install ship-issue@sai
+/plugin install ship-it@sai
 /plugin install technical-debt-manager@sai
 /plugin install test-writer@sai
 /plugin install youtube-summary@sai
@@ -132,7 +132,7 @@ claude --plugin-dir /path/to/sai/plugins/refactor-council
 claude --plugin-dir /path/to/sai/plugins/review-claude-md
 claude --plugin-dir /path/to/sai/plugins/staff-code-review
 claude --plugin-dir /path/to/sai/plugins/staff-resume
-claude --plugin-dir /path/to/sai/plugins/ship-issue
+claude --plugin-dir /path/to/sai/plugins/ship-it
 claude --plugin-dir /path/to/sai/plugins/technical-debt-manager
 claude --plugin-dir /path/to/sai/plugins/test-writer
 claude --plugin-dir /path/to/sai/plugins/youtube-summary
@@ -162,7 +162,7 @@ ln -s /path/to/sai/plugins/plan-critic/skills/plan-critic ~/.config/opencode/ski
 ln -s /path/to/sai/plugins/refactor-council/skills/refactor-council ~/.config/opencode/skills/refactor-council
 ln -s /path/to/sai/plugins/review-claude-md/skills/review-claude-md ~/.config/opencode/skills/review-claude-md
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
-ln -s /path/to/sai/plugins/ship-issue/skills/ship-issue ~/.config/opencode/skills/ship-issue
+ln -s /path/to/sai/plugins/ship-it/skills/ship-it ~/.config/opencode/skills/ship-it
 ln -s /path/to/sai/plugins/staff-code-review/skills/staff-code-review ~/.config/opencode/skills/staff-code-review
 ln -s /path/to/sai/plugins/staff-resume/skills/staff-resume ~/.config/opencode/skills/staff-resume
 ln -s /path/to/sai/plugins/technical-debt-manager/skills/technical-debt-manager ~/.config/opencode/skills/technical-debt-manager
@@ -174,7 +174,7 @@ ln -s /path/to/sai/plugins/youtube-summary/skills/youtube-summary ~/.config/open
 
 ### adversarial-review
 
-Fast two-pass adversarial code review. A Code Adversary subagent assumes the change is broken and proves each bug with a failing input; a fresh Findings Adversary subagent sees only those findings and tries to refute them against the source. Leads with `Review Verdict: CLEAN|NEEDS_FIXES`. Runs on Claude Code, Codex, Copilot CLI, and OpenCode from one package; `ship-issue` uses it as its review gate.
+Fast two-pass adversarial code review. A Code Adversary subagent assumes the change is broken and proves each bug with a failing input; a fresh Findings Adversary subagent sees only those findings and tries to refute them against the source. Leads with `Review Verdict: CLEAN|NEEDS_FIXES`. Runs on Claude Code, Codex, Copilot CLI, and OpenCode from one package; `ship-it` uses it as its review gate.
 
 **Usage**: `/adversarial-review [<pr-url> | <diff-file> | --base <ref>] [--context <file|text>]`
 
@@ -182,7 +182,7 @@ Fast two-pass adversarial code review. A Code Adversary subagent assumes the cha
 
 ### adversarial-test
 
-Adversarial manual testing. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) against isolated temp state, and attacks boundaries, malformed input, repetition, and adjacent flows. Every reproduction is rerun before it counts; a PASS backed only by unit tests or lint is rejected. Leads with `Test Verdict: PASS|FAIL|BLOCKED`. One package for Claude Code, Codex, Copilot CLI and opencode (Codex: `$adversarial-test`); `ship-issue` uses it as its testing gate.
+Adversarial manual testing. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) against isolated temp state, and attacks boundaries, malformed input, repetition, and adjacent flows. Every reproduction is rerun before it counts; a PASS backed only by unit tests or lint is rejected. Leads with `Test Verdict: PASS|FAIL|BLOCKED`. One package for Claude Code, Codex, Copilot CLI and opencode (Codex: `$adversarial-test`); `ship-it` uses it as its testing gate.
 
 **Usage**: `/adversarial-test [<pr-url> | --base <ref>] [--context <file|text>]`
 
@@ -310,13 +310,13 @@ Audit and fix CLAUDE.md files using tiered binary checklist based on Anthropic b
 
 [Full documentation ->](./plugins/review-claude-md/README.md)
 
-### ship-issue
+### ship-it
 
-Take a GitHub issue, or a task description that becomes one, to a merged PR: implement, pass the `adversarial-review` and `adversarial-test` gates, open a PR, wait for green CI and a Copilot review, fix feedback, merge, and close the issue.
+Take a task description, GitHub issue, or Jira ticket to a merged PR: implement, pass the `adversarial-review` and `adversarial-test` gates, open a PR, wait for green CI and a Copilot review, fix feedback, and merge. A description ships without an issue unless `--issue` is passed; a GitHub issue closes on merge; a Jira ticket is read-only and its key goes in the PR. Replaces `ship-issue`.
 
-**Usage**: `/ship-issue <github-issue-url | task description>` (Codex: `$ship-issue`, explicit invocation only). One package for Claude Code, Codex, Copilot CLI and opencode.
+**Usage**: `/ship-it [--issue] <task description | github-issue-url | jira-url>` (Codex: `$ship-it`, explicit invocation only). One package for Claude Code, Codex, Copilot CLI and opencode.
 
-[Full documentation ->](./plugins/ship-issue/README.md)
+[Full documentation ->](./plugins/ship-it/README.md)
 
 ### staff-code-review
 

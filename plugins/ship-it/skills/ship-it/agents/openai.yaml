@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ship It"
+  short_description: "Ship a change, issue, or Jira ticket to merge"
+  default_prompt: "Use $ship-it on this change: implement it, pass $adversarial-review and $adversarial-test, open a PR, wait for green CI and a Copilot review, fix feedback, and merge."
+policy:
+  allow_implicit_invocation: false

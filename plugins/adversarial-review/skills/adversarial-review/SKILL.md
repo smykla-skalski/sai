@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Fast two-pass adversarial code review. A Code Adversary subagent red-teams a diff or PR to find the concrete bug, then a separate Findings Adversary subagent with a clean context tries to refute every finding to cut false positives. Use for routine changes where a full staff review is overkill, or as the review gate inside ship-issue.
+description: Fast two-pass adversarial code review. A Code Adversary subagent red-teams a diff or PR to find the concrete bug, then a separate Findings Adversary subagent with a clean context tries to refute every finding to cut false positives. Use for routine changes where a full staff review is overkill, or as the review gate inside ship-it.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git; the gh CLI for PR reviews.
 argument-hint: "[<pr-url> | <diff-file> | --base <ref>] [--context <file|text>]"

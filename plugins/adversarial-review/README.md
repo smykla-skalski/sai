@@ -5,7 +5,7 @@ Fast two-pass adversarial code review. It answers one question - is this change 
 1. **Code Adversary** assumes the change is broken and hunts the concrete bug. Every finding needs a failing input or sequence.
 2. **Findings Adversary** is spawned fresh, gets only the numbered findings (never the first agent's reasoning), and tries to refute each one against the source: removes false positives, right-sizes severity, fixes bad locations, merges duplicates.
 
-Output leads with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`, so callers such as `ship-issue` can gate on the first line.
+Output leads with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`, so callers such as `ship-it` can gate on the first line.
 
 For architecture, conventions, and cross-team impact, use `staff-code-review` instead.
 
@@ -53,7 +53,7 @@ In Claude Code and Copilot CLI use `/adversarial-review`, in Codex `$adversarial
 
 | Agent | Subagents |
 | :-- | :-- |
-| Claude Code | Named agents `adversarial-review:code-adversary` and `adversarial-review:findings-adversary` (also used by `ship-issue`); `general-purpose` with the mandate prepended when they are not registered |
+| Claude Code | Named agents `adversarial-review:code-adversary` and `adversarial-review:findings-adversary` (also used by `ship-it`); `general-purpose` with the mandate prepended when they are not registered |
 | Codex | `spawn_agent` with the mandate prepended, sequential, closed after each pass |
 | opencode | `task` tool with the installed named agents or the built-in `general` subagent |
 | Copilot CLI | The same named agents through its subagent tool; a generic subagent with the mandate prepended otherwise |

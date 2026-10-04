@@ -1,6 +1,6 @@
 ---
 name: adversarial-test
-description: Adversarial manual testing of a change. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) in isolated state, and attacks boundaries, malformed input, repetition, and adjacent flows; every reproduction is then rerun to drop hallucinated failures. Use to prove a branch or PR actually works before merging, or as the testing gate inside ship-issue.
+description: Adversarial manual testing of a change. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) in isolated state, and attacks boundaries, malformed input, repetition, and adjacent flows; every reproduction is then rerun to drop hallucinated failures. Use to prove a branch or PR actually works before merging, or as the testing gate inside ship-it.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git, a shell that can run the product under test, and gh for PR targets.
 argument-hint: "[<pr-url> | --base <ref>] [--context <file|text>]"

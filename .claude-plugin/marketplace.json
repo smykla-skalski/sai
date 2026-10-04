@@ -206,15 +206,15 @@
       "tags": ["testing", "table-driven", "behavior-testing", "tdd", "mocking", "test-quality"]
     },
     {
-      "name": "ship-issue",
-      "source": "./plugins/ship-issue",
-      "description": "Take a GitHub issue from implementation through adversarial review and testing, PR, CI and Copilot review, merge, and closure.",
+      "name": "ship-it",
+      "source": "./plugins/ship-it",
+      "description": "Ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review and testing, PR, CI and Copilot review, and merge.",
       "author": {
         "name": "Smykla Skalski Labs"
       },
       "license": "MIT",
       "category": "productivity",
-      "tags": ["github", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
+      "tags": ["github", "jira", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
     },
     {
       "name": "kup",
