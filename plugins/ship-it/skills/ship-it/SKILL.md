@@ -80,7 +80,7 @@ Parse the owner, repository, and issue number, then inspect the issue with `gh i
 
 ### Jira ticket
 
-Extract the key (`[A-Z][A-Z0-9_]+-[0-9]+`) and the site (the URL's host). Use only sources that target that site: the same key can exist on another site, so a source logged into a different site would read the wrong ticket. Read the ticket with the first site-matching source that works, moving to the next on a missing tool, an auth error, or a not-found answer (Jira returns the same not-found for a ticket the account cannot see):
+Extract the key case-insensitively (`[A-Za-z][A-Za-z0-9_]+-[0-9]+`; Jira accepts `/browse/proj-123`), uppercase it (`PROJ-123`), and take the site (the URL's host). Use only sources that target that site: the same key can exist on another site, so a source logged into a different site would read the wrong ticket. Read the ticket with the first site-matching source that works, moving to the next on a missing tool, an auth error, or a not-found answer (Jira returns the same not-found for a ticket the account cannot see):
 
 1. Atlassian MCP tools. In Claude Code load them with ToolSearch (query `atlassian jira`). Skip them when the site is not among the sites they can reach (for example `getAccessibleAtlassianResources`); otherwise use the issue-read tool (for example `getJiraIssue`) with the key and that site.
 2. `acli jira workitem view <KEY>` when `command -v acli` succeeds and `acli jira auth status` shows the URL's site.

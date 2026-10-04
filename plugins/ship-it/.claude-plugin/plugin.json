@@ -1,7 +1,7 @@
 {
   "name": "ship-it",
   "description": "Autonomously ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review and testing, PR, CI and Copilot review, and merge.",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "author": {
     "name": "Smykla Skalski Labs"
   },
