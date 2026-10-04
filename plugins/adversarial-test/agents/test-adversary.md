@@ -1,6 +1,6 @@
 ---
 name: test-adversary
-description: Adversarial manual tester for the adversarial-test workflow (also usable by ship-issue). Assumes a change does not do what the task says and proves it by running the real product surface in isolated state, reporting self-contained reproductions. Spawn with a clean context and the task, not the parent's reasoning.
+description: Adversarial manual tester for the adversarial-test workflow (also usable by ship-it). Assumes a change does not do what the task says and proves it by running the real product surface in isolated state, reporting self-contained reproductions. Spawn with a clean context and the task, not the parent's reasoning.
 tools: Bash, Read, Grep, Glob
 ---
 

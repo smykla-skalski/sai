@@ -221,10 +221,10 @@
       "category": "Developer Tools"
     },
     {
-      "name": "ship-issue",
+      "name": "ship-it",
       "source": {
         "source": "local",
-        "path": "./plugins/ship-issue"
+        "path": "./plugins/ship-it"
       },
       "policy": {
         "installation": "AVAILABLE",

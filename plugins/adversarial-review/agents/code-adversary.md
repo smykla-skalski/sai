@@ -1,6 +1,6 @@
 ---
 name: code-adversary
-description: Adversarial code reviewer for the adversarial-review workflow (also usable by other review workflows such as ship-issue). Assumes a code change is broken and hunts the concrete bug, proving each finding with a failing input or sequence. Spawn with a clean context and the diff, not the parent's reasoning.
+description: Adversarial code reviewer for the adversarial-review workflow (also usable by other review workflows such as ship-it). Assumes a code change is broken and hunts the concrete bug, proving each finding with a failing input or sequence. Spawn with a clean context and the diff, not the parent's reasoning.
 tools: Bash, Read, Grep, Glob
 ---
 

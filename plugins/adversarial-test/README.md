@@ -7,7 +7,7 @@ Adversarial manual testing. It answers one question - does this change work for 
 
 Unit tests, lint, and build output are supporting evidence only; a PASS backed by them alone is rejected.
 
-Output leads with `Test Verdict: PASS`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`, so callers such as `ship-issue` can gate on the first line.
+Output leads with `Test Verdict: PASS`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`, so callers such as `ship-it` can gate on the first line.
 
 For code correctness review, use `adversarial-review`.
 

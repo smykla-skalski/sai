@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "ship-it",
+  "version": "1.4.0",
+  "description": "Autonomously ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review and testing, PR, CI and Copilot review, and merge.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/ship-it",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["github", "jira", "issues", "pull-request", "ci", "copilot", "automation", "shipping"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Ship It",
+        "shortDescription": "Ship a change, issue, or Jira ticket to merge",
+        "longDescription": "Implements a task description, GitHub issue, or Jira ticket, gates it on adversarial code review and adversarial manual testing, opens a PR, waits for green CI and a Copilot review, fixes feedback, and merges. Closes the GitHub issue when there is one and never edits a Jira ticket unless asked. Runs only when invoked by name.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/ship-it",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $ship-it to implement and ship this change.",
+          "Use $ship-it to ship this GitHub issue.",
+          "Use $ship-it to ship this Jira ticket."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}
