@@ -61,7 +61,7 @@ Read [references/pr-loop.md](references/pr-loop.md) before Phase 7. In short:
 
 ## Phase 11 — Close, report, clean up
 
-Confirm the GitHub issue closed; close it with a completion comment if needed. Leave Jira untouched. Report source, PR, commits, CI, Copilot threads, merge/closure status, and round-cap overrun. Return to the default branch and clean up when safe.
+Confirm the GitHub issue closed; close it with a completion comment if needed. Leave Jira untouched. Report source, PR, commits, CI, Copilot threads, merge/closure status, and round-cap overrun. Worker reports also include review/test verdicts and gated PR head SHA. Return to the default branch and clean up when safe.
 
 ## Hard stops
 
