@@ -208,7 +208,7 @@
     {
       "name": "ship-it",
       "source": "./plugins/ship-it",
-      "description": "Ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review and testing, PR, CI and Copilot review, and merge.",
+      "description": "Ship a change or coordinate an approved plan through independent issues, adversarial gates, PRs, CI, Copilot review, and merge.",
       "author": {
         "name": "Smykla Skalski Labs"
       },
