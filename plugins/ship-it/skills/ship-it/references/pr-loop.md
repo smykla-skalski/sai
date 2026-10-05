@@ -69,6 +69,7 @@ Then return to waiting. Stop for a human decision if the same thread loops more 
 
 Merge only when all of these hold:
 
+- The current PR head has `Review Verdict: CLEAN` and `Test Verdict: PASS`. Record its `headRefOid`; after every code-changing CI/Copilot fix or merge from the default branch, rerun both gates on the new committed tip. Check `headRefOid` again just before merge and restart the gates if it changed. The squash merge commit will have a different SHA; compare the PR head SHA.
 - Every CI check succeeded.
 - Copilot submitted at least one review (a no-comments review counts). Do not wait for Copilot to re-review fix commits.
 - Every Copilot comment is fixed or answered, and its thread is resolved.

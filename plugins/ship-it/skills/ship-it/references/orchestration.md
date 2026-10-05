@@ -1,0 +1,29 @@
+# Orchestrating an approved plan
+
+Use this workflow when Ship It receives an explicitly approved complex plan or a GitHub umbrella issue with native implementation subissues. A single implementation issue remains one worker's change. Plan approval is required to derive or create an issue graph from a plan; an existing umbrella supplies its own graph. A draft plan does not authorize issue creation or implementation. In Sail mode, the parent coordinates workers and never edits, commits, reviews, tests, or merges a child's implementation itself.
+
+## Build or reuse the issue graph
+
+1. Read the complete approved plan and its acceptance criteria, or the existing umbrella and native subissues. Resolve the target repository and search open issues for the same umbrella before creating one. Prefer an explicitly supplied umbrella; reuse a matching existing umbrella and its subissues. Do not adopt an unrelated issue based on a similar title.
+2. Split the plan into the smallest independently shippable changes. Each child must have a concrete outcome, acceptance criteria, scope, and links to prerequisite children. Put shared contracts or migrations before consumers. If a child cannot merge independently, combine it with its prerequisite or define a compatible intermediate state.
+3. Present the proposed issue graph and unresolved product decisions. Stop for a decision if the plan does not establish a safe split or dependency order. Do not reinterpret approval of a plan as approval of an incompatible design.
+4. Create one `☂️` umbrella only when none exists. Add or update a short checklist of children and note which can run in parallel. Search existing children before creating any: a retry must reuse issues already created. Create missing children with `gh issue create --parent <umbrella>` when supported. Link an existing child with `gh issue edit <umbrella> --add-sub-issue <child>`. On older `gh`, use `addSubIssue` with `GraphQL-Features: sub_issues`. Record actual issue numbers and dependency links in each child; a task-list mention alone is not a native subissue link. Confirm the parent reports every child as a subissue.
+5. For an existing child, verify its issue and PR state before scheduling. An active owner or PR means in progress: adopt its PR into monitoring, do not assign another implementation worker, and obtain review/test gate verdicts from its worker or run fresh gate subagents against that PR. If gate evidence cannot be obtained, pause that child. Never create duplicate implementation workers for one issue.
+
+## Dispatch and supervise
+
+Use a bounded pool of at most three active implementation workers, or a lower user or runtime limit. Reserve at least one free agent slot for fresh review/test subagents after counting the parent and workers; in a four-slot runtime, run at most two workers. If no worker plus gate slot fits, pause. Start every eligible child in its own worker and worktree, from the repository's freshly fetched default branch. In Sail, use Sail-managed worktrees and worker sessions; do not edit the main checkout. Give each worker only its child issue URL, repository and worktree, branch, dependency contracts, and the instruction to run the full Ship It single-issue lifecycle. Tell it to skip branch creation and return-to-default when Sail already assigned its worktree and branch. Require fresh subagents for adversarial review and manual test.
+
+Start children with no unmet prerequisites together up to the cap. A dependent child becomes eligible only after every prerequisite PR is merged and its issue is closed. Recompute eligibility whenever a worker finishes; keep filling free slots. Dependency cycles or missing prerequisite issues are blockers, not invitations to guess. Never make the parent a spare implementation worker, even when a slot is free.
+
+Track each child's issue, worker or existing owner, branch/worktree, prerequisites, review verdict, manual-test verdict, gated PR head SHA, PR, CI, Copilot threads, merge state, and issue state. A message that code is done is progress, not completion. Accept completion only after `Review Verdict: CLEAN` and `Test Verdict: PASS` for the final PR head SHA, successful CI, a submitted Copilot review, all review threads resolved, merged PR, and closed child issue have been verified from gate reports and GitHub. Compare the reported gate SHA with the PR head SHA recorded immediately before merge, not the squash merge commit SHA. For an already merged child, collect the same evidence before releasing dependents; missing evidence pauses that child. Follow the repository's documented merge method for each PR. If a worker fails, preserve its issue/worktree and report the blocker. Resume from recorded GitHub and worker state rather than recreating issues or repeating finished work.
+
+## Agent availability and pause
+
+Check that a worker can launch before dispatch. In Sail, check that fresh review and manual-test subagents can launch before treating a worker as runnable. If any required agent tool or session is unavailable, pause the run and report the exact unavailable capability and affected issues. Do not implement a child in the parent, run either gate inline, or treat automated tests as a manual-test substitute. Resume only when the required agent is available; keep completed children recorded.
+
+The review's Code and Findings Adversaries remain sequential. The manual-test adversary starts after a clean review. This gate ordering applies within each worker; independent workers may run concurrently up to the pool limit.
+
+## Finish
+
+After all children are verified complete, close the umbrella with a completion comment if GitHub has not closed it. Report its link, each child issue and PR, gate verdicts, CI, merge/closure status, and any remaining blocker. A partly merged umbrella is in progress, never complete.
