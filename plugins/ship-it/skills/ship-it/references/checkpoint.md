@@ -64,6 +64,9 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "requiredGates": [],
     "overrideAuthorization": "exact user authorization or null"
   },
+  "ciTriage": {
+    "failures": []
+  },
   "orchestration": null,
   "outcome": null,
   "createdAt": "RFC 3339 UTC timestamp",
@@ -77,6 +80,8 @@ For a single change, a delivered `outcome` is an object with `result: merged`, `
 
 `claim` is null for Jira and description sources. For a GitHub implementation issue it repeats the claim comment's `commentId`, `commentUrl`, `holder`, `status`, `acquiredAt`, `renewedAt`, `expiresAt`, `releasedAt`, `releaseReason` and `takeover`. Before the first comment, `status` may be `pending`, with a generated holder and null comment and lease fields; resume uses that holder for the acquisition attempt. Once a comment exists, the issue comment is authoritative and status is `active` or `released`. An umbrella coordinator keeps its own claim null and stores each worker's claim fields in that child's orchestration entry.
 
+`ciTriage.failures` preserves CI observations that conform to `ci-triage.schema.json`. Failure IDs are unique. A failed CI result names its observations; resolution and recurrence remain recorded after a rerun, provider recovery or source-changing fix. Unknown fields in a triage record are preserved for forward compatibility.
+
 Validate these invariants in addition to field presence and types:
 
 - `checkpointId` equals the filename and the digest of `task.canonicalSource`; `acceptanceCriteria` is non-empty.
@@ -86,6 +91,7 @@ Validate these invariants in addition to field presence and types:
 - Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
 - An active GitHub implementation checkpoint has exactly one claim comment for its holder. Repository or GitHub writes require `status: active`, an unexpired `expiresAt`, and values reconciled with the authoritative issue comment. A completed checkpoint with a claim has released it with reason `merged`; a completed legacy checkpoint with `claim: null` remains valid after delivery verification.
 - Before validation, risk has a level, policy source and unique required gates. A lower level than an earlier revision, matching rule or resumed checkpoint requires non-null explicit override authorization.
+- Every CI triage failure has a unique identity derived from revision, workflow, job and attempt. A resolved failure has a resolution; an open failure does not. Rerun authorization never exceeds its recorded limit.
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. A completed child has `evidenceStatus: complete`, and its evidence revision equals its gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
 
@@ -97,7 +103,7 @@ Validate the complete next document before replacing state. Write it to a same-d
 
 On a fresh task, create the checkpoint with `phase: resolve`, `status: active`, no revision, and task resolution as `nextAction`. Then advance to `explore` only after the source and acceptance criteria are complete.
 
-When the file exists, migrate only the known legacy shape before validating current required fields. A schema v1 checkpoint that has every previously required field but no `risk` or `claim` came from an earlier ship-it version: validate that legacy document, add a null claim when absent, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates` when absent, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk or invents ownership. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
+When the file exists, migrate only the known legacy shapes before validating current required fields. A schema v1 checkpoint that has every previously required field may lack any subset of `risk`, `claim` and `ciTriage`, including only `ciTriage`, because they were added in successive ship-it versions. Validate that legacy document, add a null claim when absent, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates` when absent, add `ciTriage: {"failures": []}` when absent, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk, invents ownership or invents a CI observation. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
 
 1. Recompute the ID from `task.canonicalSource`; it must match both `checkpointId` and the filename.
 2. Compare the resolved task source and repository identity with the checkpoint. They must match exactly after normalization.

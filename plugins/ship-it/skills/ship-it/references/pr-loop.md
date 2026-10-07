@@ -54,7 +54,7 @@ Poll every 5–10 minutes; do not busy-loop. On each poll inspect:
 - Reviews when `copilot-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` (Copilot's author login contains `copilot`).
 - Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments).
 
-If selected CI fails, read the failed run logs (`gh run view <id> --log-failed`), fix, push, and keep waiting. If selected Copilot review has neither completed nor remained requested after roughly 30 minutes, stop and ask whether to authorize a policy override; never silently skip it.
+If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. Never rerun CI without the repository policy or explicit approval required there. If selected Copilot review has neither completed nor remained requested after roughly 30 minutes, stop and ask whether to authorize a policy override; never silently skip it.
 
 Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in evidence.
 

@@ -108,7 +108,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
             '"outcome": null',
             "Reconcile Git before edits",
             "known legacy shape",
-            "no `risk`",
+            "may lack any subset of `risk`, `claim` and `ciTriage`",
             "Invalid JSON",
             "Different canonical source or repository identity",
             "status: completed",

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Final
 
 
-SCHEMA_VERSION: Final[int] = 1
+SCHEMA_VERSION: Final[int] = 2
 LOCK_TIMEOUT_SECONDS: Final[float] = 2.0
 ROLES: Final[tuple[str, ...]] = (
     "primary",
@@ -61,6 +61,9 @@ COUNTERS: Final[tuple[str, ...]] = (
     "human_interventions",
     "failed_commands",
     "approval_wait_ms",
+    "ci_failures",
+    "ci_recurrences",
+    "ci_resolutions",
 )
 SAFE_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$")
 SAFE_TASK_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")

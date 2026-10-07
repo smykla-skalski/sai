@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smykla-skalski/sai/ship-it/ci-triage/v1",
+  "title": "ship-it CI failure triage record",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "failureId",
+    "key",
+    "recurrenceKey",
+    "recurrenceOf",
+    "recurrenceCount",
+    "rerunGroupId",
+    "rerunsUsed",
+    "rerunRequest",
+    "classification",
+    "status",
+    "supportingEvidence",
+    "logSections",
+    "failedAcceptanceEvidence",
+    "rerunAuthorization",
+    "resolution",
+    "nextAction",
+    "firstObservedAt",
+    "lastObservedAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "failureId": {"type": "string", "pattern": "^cif_[0-9a-f]{64}$"},
+    "key": {
+      "type": "object",
+      "required": ["revision", "workflow", "job", "attempt"],
+      "properties": {
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+        "workflow": {"$ref": "#/$defs/boundedText"},
+        "job": {"$ref": "#/$defs/boundedText"},
+        "attempt": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "recurrenceKey": {"type": ["string", "null"], "pattern": "^cir_[0-9a-f]{64}$"},
+    "recurrenceOf": {"type": ["string", "null"], "pattern": "^cif_[0-9a-f]{64}$"},
+    "recurrenceCount": {"type": "integer", "minimum": 0},
+    "rerunGroupId": {"type": "string", "pattern": "^cig_[0-9a-f]{64}$"},
+    "rerunsUsed": {"type": "integer", "minimum": 0},
+    "rerunRequest": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["requestedAttempt", "recordedAt"],
+          "properties": {
+            "requestedAttempt": {"type": "integer", "minimum": 1},
+            "recordedAt": {"type": "string", "format": "date-time"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "classification": {"enum": ["code", "flaky", "infrastructure", "unknown"]},
+    "status": {"enum": ["open", "resolved"]},
+    "supportingEvidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/evidenceText"}
+    },
+    "logSections": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["label", "lines"],
+        "properties": {
+          "label": {"$ref": "#/$defs/boundedText"},
+          "lines": {
+            "type": "array",
+            "maxItems": 40,
+            "items": {"type": "string", "maxLength": 125}
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "failedAcceptanceEvidence": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/evidenceText"}
+    },
+    "rerunAuthorization": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["source", "reference", "maxAttempts", "authorizedAt"],
+          "properties": {
+            "source": {"enum": ["repository-policy", "explicit-approval"]},
+            "reference": {"$ref": "#/$defs/evidenceText"},
+            "maxAttempts": {"type": "integer", "minimum": 1},
+            "authorizedAt": {"type": "string", "format": "date-time"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "resolution": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["kind", "evidence", "resolvedAt"],
+          "properties": {
+            "kind": {"enum": ["rerun-passed", "provider-recovered", "superseded-by-revision"]},
+            "evidence": {"$ref": "#/$defs/evidenceText"},
+            "resolvedAt": {"type": "string", "format": "date-time"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "nextAction": {"$ref": "#/$defs/evidenceText"},
+    "firstObservedAt": {"type": "string", "format": "date-time"},
+    "lastObservedAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "boundedText": {"type": "string", "minLength": 1, "maxLength": 200},
+    "evidenceText": {"type": "string", "minLength": 1, "maxLength": 512}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"classification": {"const": "code"}}},
+      "then": {
+        "properties": {"failedAcceptanceEvidence": {"minItems": 1}}
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "resolved"}}},
+      "then": {"properties": {"resolution": {"type": "object"}}},
+      "else": {"properties": {"resolution": {"type": "null"}}}
+    }
+  ],
+  "additionalProperties": true
+}
