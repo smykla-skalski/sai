@@ -1,9 +1,9 @@
 ---
 name: ship-it
-description: End-to-end ship a change or coordinate an approved complex plan — implement, two-pass adversarial code review via the adversarial-review skill, adversarial manual testing via the adversarial-test skill, open PR, wait for Copilot review + green CI, address feedback, merge. Accepts a plain task description (no issue is created unless --issue is passed), a GitHub issue URL (closed on merge), or a Jira ticket URL (read-only; the key goes in the PR). Use when asked to implement and ship a change end to end.
+description: End-to-end ship a change or coordinate an approved complex plan — implement, run risk-selected validation gates, open PR, address feedback, and merge. Accepts a plain task description, a GitHub issue URL, or a Jira ticket URL. Use when asked to implement and ship a change end to end.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and an authenticated gh CLI with push and merge rights on the target repository. Uses the adversarial-review and adversarial-test skills when installed. Jira tickets are read through Atlassian MCP tools, acli, or the jira CLI when one is available.
-argument-hint: "[--issue] <task description | github-issue-url | jira-url>"
+argument-hint: "[--issue] [--risk low|medium|high] <task description | github-issue-url | jira-url>"
 allowed-tools: Agent Bash Edit Glob Grep Read Skill ToolSearch Write
 user-invocable: true
 metadata:
@@ -14,11 +14,11 @@ metadata:
 
 Take a change to a merged PR, or coordinate independently shippable issues from an approved complex plan.
 
-**Mode:** autonomous. Ask only when ambiguity cannot be resolved from the repository. Keep polling CI and Copilot until merged or a hard stop.
+**Mode:** autonomous. Ask only when ambiguity cannot be resolved from the repository. Keep polling selected hosted gates until merged or a hard stop.
 
 **Other agents:** Read [references/fallbacks.md](references/fallbacks.md) when not in Claude Code or an agent feature is missing.
 
-Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>` (`$ship-it` in Codex). Runs only when invoked by name or asked to ship a change. Claude Code appends the arguments; if none are appended, take them from the user's request.
+Invocation: `/ship-it [--issue] [--risk low|medium|high] <task description | github-issue-url | jira-url>` (`$ship-it` in Codex). Runs only when invoked by name or asked to ship a change. Claude Code appends the arguments; if none are appended, take them from the user's request.
 
 ## Workflow contract
 
@@ -28,6 +28,7 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 - Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
 - After checkpoint reconciliation, read [references/telemetry.md](references/telemetry.md) and record the run through completion.
 - Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
+- Read [references/risk.md](references/risk.md) after exploration. Select and report the revision's risk, policy source and required gates before validation.
 - Repository instructions override generic branch, review, release and merge defaults.
 - Every source change invalidates completion evidence from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
@@ -64,17 +65,17 @@ Start from the current default branch in an isolated conventional branch or assi
 
 Implement the smallest complete change, add behavior tests, run relevant gates and create signed conventional commits.
 
-## Phase 5 — Adversarial review
+## Phase 5 — Review
 
-Obtain `Review Verdict: CLEAN` for the current committed revision before testing.
+Run the selected review gates for the current committed revision.
 
-## Phase 6 — Adversarial test
+## Phase 6 — Test
 
-Obtain `Test Verdict: PASS` for the review-clean committed revision before opening a PR.
+Run the selected test gates for the review-clean committed revision.
 
 ## Phases 7–10 — PR, wait, fix, merge
 
-Push and open the PR, wait for CI and Copilot, resolve every thread, revalidate changed revisions, then merge through the repository's documented convention.
+Push and open the PR, wait for selected hosted gates, resolve every required thread, revalidate changed revisions, then merge through the repository's documented convention.
 
 ## Phase 11 — Close, report, clean up
 
@@ -82,4 +83,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; Copilot neither reviewed nor has a pending request after ~30 min (ask whether to merge without it); a Copilot thread loops more than 3 times; a test requires disabling a check; `adversarial-test` returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
+Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; a selected hosted reviewer neither reviewed nor has a pending request after ~30 min; a required review thread loops more than 3 times; a test requires disabling a check; a selected test gate returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.

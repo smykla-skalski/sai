@@ -16,7 +16,7 @@ Do not infer permission from a tool being visible. A harness without native prof
 
 `filesystem.transient-write` permits ignored build products and isolated test data, never product-source edits. A test that cannot isolate its data needs explicit permission before it runs.
 
-Contract conditions use boolean runtime facts: `github_source`, `jira_source`, `create_issue`, `coordinator`, `inspect_remote_work`, `sail`, `code_changed`, `github_issue_tracking`, and `owns_cleanup`. Facts default to false and must come from resolved task or harness state, never a guess. An `all` condition requires every nested condition. Re-run preflight whenever a fact changes.
+Contract conditions use boolean runtime facts: `github_source`, `jira_source`, `create_issue`, `coordinator`, `inspect_remote_work`, `sail`, `code_changed`, `review_gate_required`, `test_gate_required`, `github_issue_tracking`, and `owns_cleanup`. Gate-required facts come from the selected risk policy; other facts come from resolved task or harness state. Facts default to false, never a guess. An `all` condition requires every nested condition. Re-run preflight whenever a fact changes.
 
 ## Portable fallbacks
 

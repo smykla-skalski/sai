@@ -8,8 +8,8 @@ Report:
 
 - task source and PR URL
 - commits and merge commit
-- CI result and Copilot thread status
-- review and test verdicts with the gated PR head SHA
+- selected hosted-gate results and required thread status
+- selected review and test verdicts with the gated PR head SHA
 - completion evidence path and status
 - GitHub issue closure or unchanged Jira status
 - any review or test round-cap overrun

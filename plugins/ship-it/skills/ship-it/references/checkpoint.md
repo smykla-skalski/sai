@@ -56,6 +56,13 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "status": "missing|collecting|complete|failed|blocked|stale",
     "updatedAt": "RFC 3339 UTC timestamp or null"
   },
+  "risk": {
+    "level": "low|medium|high|null",
+    "policySource": "repository-relative path|bundled default|null",
+    "matchedRules": [],
+    "requiredGates": [],
+    "overrideAuthorization": "exact user authorization or null"
+  },
   "orchestration": null,
   "outcome": null,
   "createdAt": "RFC 3339 UTC timestamp",
@@ -74,6 +81,7 @@ Validate these invariants in addition to field presence and types:
 - `status: completed`, `phase: complete` and a non-null `outcome` occur together; all other states have a null outcome.
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
 - Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
+- Before validation, risk has a level, policy source and unique required gates. A lower level than an earlier revision, matching rule or resumed checkpoint requires non-null explicit override authorization.
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. A completed child has `evidenceStatus: complete`, and its evidence revision equals its gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
 

@@ -103,7 +103,7 @@ An output reference has kind `inline`, `command`, `path` or `url`; a non-empty U
 
 ## Required result set
 
-Create one stable result ID for each resolved acceptance criterion and each required local check discovered during exploration. Require those results, the adversarial review result and the adversarial manual-test result by PR creation. Require one result for every required CI check by merge. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
+Create one stable result ID for each resolved acceptance criterion and each gate required by the revision's selected risk policy. Expand `local-checks` into the checks discovered during exploration. Review and manual-test gates are due by PR creation; CI and hosted-review gates are due by merge. A policy-declared fallback keeps the required gate ID in `name`, keeps `provider` as the actual harness or service, and records both gate IDs in its bounded output reference. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
 
 A gate passes only when every required result due at that gate has `status: passed` for the exact record revision. Missing, pending, failed, blocked or stale due evidence blocks that gate. CI results that are not available before PR creation remain pending with `requiredBy: merge`.
 
@@ -111,8 +111,8 @@ A record becomes complete at the merge gate only when all of these are true:
 
 - It contains every required result and no duplicate result ID.
 - Every required result has `status: passed` and the exact record revision.
-- The review reference records `Review Verdict: CLEAN`.
-- The manual-test reference records `Test Verdict: PASS`.
+- Every selected review reference records its required passing verdict.
+- Every selected manual-test reference records its required passing verdict.
 - Every required CI result names the final successful job URL.
 - The record revision equals committed `HEAD` and, after PR creation, the current PR head.
 
