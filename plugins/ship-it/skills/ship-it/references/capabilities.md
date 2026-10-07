@@ -14,6 +14,8 @@ Before a phase's first declared side effect:
 
 Do not infer permission from a tool being visible. A harness without native profile enforcement must still restrict its own actions to the selected profile. Re-run preflight when a fix returns the workflow to an earlier phase or the harness changes.
 
+Capability availability does not authorize a role route. The role-routing independence policy may reject `inline.review` even though the review profile permits it for an explicitly degraded run.
+
 `filesystem.transient-write` permits ignored build products and isolated test data, never product-source edits. A test that cannot isolate its data needs explicit permission before it runs.
 
 Contract conditions use boolean runtime facts: `github_source`, `jira_source`, `create_issue`, `coordinator`, `inspect_remote_work`, `sail`, `code_changed`, `review_gate_required`, `test_gate_required`, `github_issue_tracking`, and `owns_cleanup`. Gate-required facts come from the selected risk policy; other facts come from resolved task or harness state. Facts default to false, never a guess. An `all` condition requires every nested condition. Re-run preflight whenever a fact changes.
@@ -21,8 +23,8 @@ Contract conditions use boolean runtime facts: `github_source`, `jira_source`, `
 ## Portable fallbacks
 
 - `request-ticket-paste`: ask for the Jira summary, description and acceptance criteria as plain text; do not read or mutate another Jira site.
-- `portable-review-fallback`: prefer the installed adversarial-review skill, then a fresh generic subagent. Outside Sail only, the active agent may run the two passes inline in order. Sail requires a review subagent and pauses without one.
-- `portable-test-fallback`: prefer the installed adversarial-test skill, then a fresh generic subagent. Outside Sail only, the active agent may run the mandate inline. Sail requires a test subagent and pauses without one.
+- `portable-review-fallback`: prefer an adversarial-review skill with independent workers, then a fresh generic subagent. Strict independence blocks when neither is available. A repository policy may authorize degraded inline passes outside Sail; Sail always requires a review subagent.
+- `portable-test-fallback`: prefer a route-aware adversarial-test skill, then a fresh generic subagent. Without either, block by default. A repository policy may authorize degraded inline testing outside Sail; Sail always requires a test subagent.
 
 A fallback satisfies the same workflow gate. It does not remove, rename or weaken the gate.
 

@@ -2,6 +2,8 @@
 
 Follow repository patterns and implement the smallest complete behavior. Add or extend behavior-focused tests; avoid tests that only mirror implementation details.
 
+Resolve and record the implementation role before the first source edit. Its actual route and execution identity are the baseline for later independence checks.
+
 For GitHub work, verify the checkpoint's claim before the first source edit and renew it at least every 10 minutes while implementing. A failed renewal stops further edits and commits until claim reconciliation succeeds.
 
 Before every commit, run the relevant formatter, linter, type checker, build and tests discovered during exploration. Fix root causes. Never add a lint or type suppression, bypass hooks, or use `--no-verify`.

@@ -14,9 +14,13 @@ GitHub issues also use a visible 30-minute work claim in an issue comment. The c
 
 Each run writes privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/telemetry/events.ndjson`. The versioned NDJSON contract uses stable harness, provider, model, role and phase fields; unavailable counters stay `null`, and prompt or source content is never recorded. Sail and local analysis tools can consume the same stream.
 
+Portable releases can replay the shared redacted [`environment-as-code` workflow failure corpus](https://github.com/Automaat/environment-as-code/tree/main/evals/agent-workflows) through available Claude Code, Codex, OpenCode, Copilot CLI, and Sail adapters. The [replay contract](skills/ship-it/references/replay.md) normalizes phase and observation traces, treats unavailable harnesses as skipped, blocks on supported-harness regressions, and compares accepted-task cost without storing task or source content.
+
 Each committed task revision also has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Acceptance criteria, local checks, adversarial review, manual testing and CI carry their source revision, provider, model, status, timestamp and bounded output reference. Any source change makes the previous record stale. PR-due evidence for the current revision permits PR creation; a complete record with passing CI for the current PR head permits merge.
 
 Failed CI is triaged before escalation. The workflow deduplicates revision/workflow/job/attempt observations, exposes only bounded redacted failure sections, classifies failures with evidence, routes code faults back to their implementation owner, and preserves recurrence and resolution in checkpoint, evidence and privacy-safe telemetry. CI reruns need an explicit repository policy or user approval.
+
+Portable role routing gives exploration, implementation, review, testing and CI triage the same meaning across harnesses. Every role records requested and actual provider, model and variant. Strict review rejects the implementation model, unresolved aliases and reused or inline context; policy-permitted degradation stays explicit in revision evidence.
 
 Validation gates come from a portable risk policy. Repositories can add `.sai/ship-it-risk.json` with low, medium and high policies plus deterministic changed-path rules. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Without a repository policy every level retains the full existing local-check, adversarial-review, adversarial-test, CI and Copilot sequence.
 
