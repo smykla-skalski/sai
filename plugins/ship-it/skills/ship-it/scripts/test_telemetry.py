@@ -58,6 +58,7 @@ def test_lifecycle() -> None:
         event_path = root / "sai" / "ship-it" / "telemetry" / "events.ndjson"
         events = [json.loads(line) for line in event_path.read_text(encoding="utf-8").splitlines()]
         assert [event["event"] for event in events] == ["run_started", "phase_completed", "run_finished"]
+        assert all(event["schema_version"] == 2 for event in events)
         assert events[0]["task_id"] == "github-159"
         assert events[1]["role"] == "validator" and events[1]["metrics"]["tool_calls"] == 4
         assert events[2]["outcome"] == "accepted" and events[2]["metrics"]["input_tokens"] is None
@@ -65,7 +66,8 @@ def test_lifecycle() -> None:
             "turns", "tool_calls", "permission_decisions", "compactions",
             "input_tokens", "output_tokens", "elapsed_ms", "retries",
             "findings", "checks", "human_interventions", "failed_commands",
-            "approval_wait_ms",
+            "approval_wait_ms", "ci_failures", "ci_recurrences",
+            "ci_resolutions",
         }
         assert event_path.stat().st_mode & 0o777 == 0o600
         assert event_path.parent.stat().st_mode & 0o777 == 0o700

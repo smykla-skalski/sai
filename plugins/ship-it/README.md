@@ -16,6 +16,8 @@ Each run writes privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/s
 
 Each committed task revision also has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Acceptance criteria, local checks, adversarial review, manual testing and CI carry their source revision, provider, model, status, timestamp and bounded output reference. Any source change makes the previous record stale. PR-due evidence for the current revision permits PR creation; a complete record with passing CI for the current PR head permits merge.
 
+Failed CI is triaged before escalation. The workflow deduplicates revision/workflow/job/attempt observations, exposes only bounded redacted failure sections, classifies failures with evidence, routes code faults back to their implementation owner, and preserves recurrence and resolution in checkpoint, evidence and privacy-safe telemetry. CI reruns need an explicit repository policy or user approval.
+
 Validation gates come from a portable risk policy. Repositories can add `.sai/ship-it-risk.json` with low, medium and high policies plus deterministic changed-path rules. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Without a repository policy every level retains the full existing local-check, adversarial-review, adversarial-test, CI and Copilot sequence.
 
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.

@@ -6,6 +6,8 @@ Select gates from the committed revision before validation. The portable default
 
 The document has `schema_version: sai.ship-it.risk-policy/v1`, `risk_order: [low, medium, high]`, one `default_risk`, policies for all three levels, and ordered path `rules`. Each policy has unique non-empty `required_gates` and a `fallbacks` object mapping an unavailable gate to a non-empty ordered list of compatible fallback mechanisms. IDs use lowercase letters, digits and hyphens.
 
+An optional root `ci_reruns` object authorizes reruns only for its unique `allowed_classifications` (`flaky`, `infrastructure` or `unknown`) and positive `max_reruns_per_job`. The limit applies to a revision/workflow/job group across all attempts. It never permits a `code` rerun instead of a source fix. Absence authorizes no reruns; the bundled policy intentionally omits it. Invalid values reject the repository policy.
+
 A rule is `{"risk":"high","paths":["infra/**","**/auth/**"]}`. Paths are repository-relative POSIX globs: `*` and `?` stay within one component; `**` crosses components. Match against every tracked, staged, untracked or deleted path changed from the merge-base with the current default branch. Reject an invalid policy; never partially apply it.
 
 The supported gate IDs are `local-checks` (implementation, due before PR), `adversarial-review` (review, due before PR), `adversarial-test` (test, due before PR), `ci` (PR loop, due before merge), and `copilot-review` (PR loop, due before merge). Reject unknown IDs.

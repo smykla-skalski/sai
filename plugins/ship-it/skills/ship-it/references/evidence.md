@@ -90,7 +90,8 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
       "provider": "github-actions",
       "model": null,
       "timestamp": "RFC 3339 UTC timestamp",
-      "outputReference": {"kind": "url", "value": "CI job URL", "sha256": null}
+      "outputReference": {"kind": "url", "value": "CI job URL", "sha256": null},
+      "ciTriage": {"failureIds": [], "resolution": null}
     }
   ],
   "createdAt": "RFC 3339 UTC timestamp",
@@ -99,6 +100,8 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
 ```
 
 `status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
+
+A CI result also has `ciTriage` with unique `failureIds` from the checkpoint and a bounded `resolution` or null. On failure, keep the result failed and attach every observation for that job and revision. On a passing authorized rerun or provider recovery, set the result passed and record the matching resolution. After a source-changing fix, mark each old observation `superseded-by-revision`; the replacement revision starts with pending CI and no copied pass. This preserves failure, recurrence and resolution history without embedding logs in evidence.
 
 `claim` is null for Jira and description tasks. For a GitHub implementation issue it contains the current claim's `issueUrl`, `commentUrl`, `holderId`, `acquiredAt` and latest verified `renewedAt`. Create or update evidence only while that claim is active, unexpired and matches the checkpoint. Claim renewal changes `renewedAt` in the current record without invalidating revision-bound results. Another holder, comment or acquisition time blocks ordinary evidence writes; an audited takeover follows the claim contract's rebind procedure and reruns every required result. Releasing the same claim after verified merge preserves the completed delivery evidence.
 
@@ -136,5 +139,7 @@ Validate a complete next document before replacing a record. Write to a same-dir
 ## Resume and recovery
 
 On resume, validate the current record and compare it with the checkpoint, Git and GitHub before any mutation. Preserve historical revision files.
+
+A schema-v1 legacy record whose CI results have every previously required field but no `ciTriage` may be migrated for the same revision. Add `ciTriage: {"failureIds": [], "resolution": null}` to each such result and write the record atomically. A passed or pending result keeps its status. A failed or blocked result remains non-complete and returns to CI triage; never invent historical failure IDs or a resolution. Missing any other required field remains invalid.
 
 Stop and report one recovery action when JSON is invalid; required fields, results or enums are missing; identities or revisions disagree; an output reference is unbounded; or a supposedly complete record contains non-passing evidence. Restore its `.bak` after inspection, or rerun the missing evidence for the current revision. Never rewrite an old record to claim it proves a newer revision.
