@@ -10,12 +10,14 @@ import os
 import re
 import secrets
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Final
 
 
 SCHEMA_VERSION: Final[int] = 1
+LOCK_TIMEOUT_SECONDS: Final[float] = 2.0
 ROLES: Final[tuple[str, ...]] = (
     "primary",
     "subagent",
@@ -141,7 +143,15 @@ def append_event(path: Path, encoded: bytes) -> None:
     descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
     try:
         os.fchmod(descriptor, 0o600)
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        deadline = time.monotonic() + LOCK_TIMEOUT_SECONDS
+        while True:
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise OSError("event log lock timed out") from None
+                time.sleep(0.02)
         start = os.lseek(descriptor, 0, os.SEEK_END)
         remaining = memoryview(encoded)
         try:
