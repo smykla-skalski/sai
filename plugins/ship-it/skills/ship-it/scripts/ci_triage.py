@@ -141,6 +141,13 @@ def validate_rerun_request(
         request.get("requestedAttempt") != reruns_used + 1
     ):
         errors.append("rerunRequest must reserve rerunsUsed plus one")
+    if isinstance(authorization, dict):
+        limit = authorization.get("maxAttempts")
+        requested_attempt = request.get("requestedAttempt")
+        if isinstance(limit, int) and isinstance(requested_attempt, int) and (
+            requested_attempt > limit
+        ):
+            errors.append("rerunRequest exceeds the authorized maximum")
     return errors
 
 
@@ -288,6 +295,9 @@ def validate_recurrence_target(
         errors.append(f"failures[{index}]: recurrence target identity differs")
     if failure.get("recurrenceKey") != target.get("recurrenceKey"):
         errors.append(f"failures[{index}]: recurrence target key differs")
+    expected_target = most_recent_recurrence_target(failure, records)
+    if expected_target is not None and recurrence_of != expected_target:
+        errors.append(f"failures[{index}]: recurrence target is not most recent")
     attempt = key.get("attempt")
     target_attempt = target_key.get("attempt")
     if (
@@ -302,6 +312,34 @@ def validate_recurrence_target(
     ):
         errors.append(f"failures[{index}]: recurrenceCount is not sequential")
     return errors
+
+
+def most_recent_recurrence_target(
+    failure: dict[str, Any],
+    records: dict[object, dict[str, Any]],
+) -> object | None:
+    """Return the latest earlier record with the same recurrence identity."""
+    key = failure.get("key")
+    if not isinstance(key, dict) or not isinstance(key.get("attempt"), int):
+        return None
+    identity = ("revision", "workflow", "job")
+    candidates: list[tuple[int, object]] = []
+    for failure_id, candidate in records.items():
+        candidate_key = candidate.get("key")
+        if not isinstance(candidate_key, dict):
+            continue
+        candidate_attempt = candidate_key.get("attempt")
+        if (
+            not isinstance(candidate_attempt, int)
+            or candidate_attempt >= key["attempt"]
+        ):
+            continue
+        if any(candidate_key.get(name) != key.get(name) for name in identity):
+            continue
+        if candidate.get("recurrenceKey") != failure.get("recurrenceKey"):
+            continue
+        candidates.append((candidate_attempt, failure_id))
+    return max(candidates)[1] if candidates else None
 
 
 def validate(document: object) -> list[str]:

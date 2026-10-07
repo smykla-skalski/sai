@@ -179,6 +179,13 @@ class ShipItCiTriageValidatorTest(unittest.TestCase):
             " ".join(VALIDATOR.validate({"failures": [first, second]})),
         )
 
+        first["rerunsUsed"] = 1
+        first["rerunRequest"]["requestedAttempt"] = 2
+        self.assertIn(
+            "rerunRequest exceeds the authorized maximum",
+            VALIDATOR.validate_record(first),
+        )
+
     def test_recurrence_target_must_be_same_identity_and_sequential(self) -> None:
         first = record()
         first["classification"] = "unknown"
@@ -202,6 +209,25 @@ class ShipItCiTriageValidatorTest(unittest.TestCase):
         self.assertIn(
             "recurrence target key differs",
             " ".join(VALIDATOR.validate({"failures": [first, second]})),
+        )
+
+    def test_recurrence_targets_most_recent_matching_attempt(self) -> None:
+        first = record()
+        first["classification"] = "unknown"
+        first["failedAcceptanceEvidence"] = []
+        first["recurrenceKey"] = "cir_" + "c" * 64
+        second = json.loads(json.dumps(first))
+        second["key"]["attempt"] = 2
+        second["failureId"] = VALIDATOR.digest("cif_", second["key"])
+        second["recurrenceOf"] = first["failureId"]
+        second["recurrenceCount"] = 1
+        third = json.loads(json.dumps(second))
+        third["key"]["attempt"] = 3
+        third["failureId"] = VALIDATOR.digest("cif_", third["key"])
+        third["recurrenceOf"] = first["failureId"]
+        self.assertIn(
+            "recurrence target is not most recent",
+            " ".join(VALIDATOR.validate({"failures": [first, second, third]})),
         )
 
     def test_surrogate_is_reported_without_crashing(self) -> None:
