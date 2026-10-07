@@ -14,7 +14,6 @@ OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/generate-claude-md/skills/generate-claude-md/SKILL.md",
     "plugins/gh-review-comments/skills/gh-review-comments/SKILL.md",
     "plugins/git-stage-hunk/skills/git-stage-hunk/SKILL.md",
-    "plugins/humanize/skills/humanize/SKILL.md",
     "plugins/kubecon-cfp/skills/kubecon-cfp/SKILL.md",
     "plugins/kup/skills/kup/SKILL.md",
     "plugins/plan-critic/skills/plan-critic/SKILL.md",
