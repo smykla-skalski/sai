@@ -21,7 +21,6 @@ OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/promptgen/skills/promptgen/SKILL.md",
     "plugins/refactor-council/skills/refactor-council/SKILL.md",
     "plugins/review-claude-md/skills/review-claude-md/SKILL.md",
-    "plugins/service-mesh-debug/skills/service-mesh-debug/SKILL.md",
     "plugins/staff-resume/skills/staff-resume/SKILL.md",
     "plugins/technical-debt-manager/skills/technical-debt-manager/SKILL.md",
     "plugins/test-writer/skills/test-writer/SKILL.md",
