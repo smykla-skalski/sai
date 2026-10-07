@@ -57,6 +57,13 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "updatedAt": "RFC 3339 UTC timestamp or null"
   },
   "claim": null,
+  "risk": {
+    "level": "low|medium|high|null",
+    "policySource": "repository-relative path|bundled default|null",
+    "matchedRules": [],
+    "requiredGates": [],
+    "overrideAuthorization": "exact user authorization or null"
+  },
   "orchestration": null,
   "outcome": null,
   "createdAt": "RFC 3339 UTC timestamp",
@@ -78,6 +85,7 @@ Validate these invariants in addition to field presence and types:
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
 - Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
 - An active GitHub implementation checkpoint has exactly one claim comment for its holder. Repository or GitHub writes require `status: active`, an unexpired `expiresAt`, and values reconciled with the authoritative issue comment. A completed checkpoint with a claim has released it with reason `merged`; a completed legacy checkpoint with `claim: null` remains valid after delivery verification.
+- Before validation, risk has a level, policy source and unique required gates. A lower level than an earlier revision, matching rule or resumed checkpoint requires non-null explicit override authorization.
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. A completed child has `evidenceStatus: complete`, and its evidence revision equals its gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
 
@@ -89,7 +97,7 @@ Validate the complete next document before replacing state. Write it to a same-d
 
 On a fresh task, create the checkpoint with `phase: resolve`, `status: active`, no revision, and task resolution as `nextAction`. Then advance to `explore` only after the source and acceptance criteria are complete.
 
-When the file exists, validate every required field and enum before using it. Do not silently repair or replace invalid state.
+When the file exists, migrate only the known legacy shape before validating current required fields. A schema v1 checkpoint that has every previously required field but no `risk` or `claim` came from an earlier ship-it version: validate that legacy document, add a null claim when absent, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates` when absent, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk or invents ownership. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
 
 1. Recompute the ID from `task.canonicalSource`; it must match both `checkpointId` and the filename.
 2. Compare the resolved task source and repository identity with the checkpoint. They must match exactly after normalization.

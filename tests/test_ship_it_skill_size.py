@@ -107,6 +107,8 @@ class ShipItSkillSizeTest(unittest.TestCase):
             '"orchestration": null',
             '"outcome": null',
             "Reconcile Git before edits",
+            "known legacy shape",
+            "no `risk`",
             "Invalid JSON",
             "Different canonical source or repository identity",
             "status: completed",
@@ -227,12 +229,14 @@ class ShipItSkillSizeTest(unittest.TestCase):
 
         self.assertIn('"evidence": {', checkpoint)
         self.assertIn('"recordPath"', checkpoint)
+        self.assertIn('"risk": {', checkpoint)
+        self.assertIn('"requiredGates"', checkpoint)
 
     def test_evidence_gates_every_revision_sensitive_phase(self) -> None:
         expectations = {
             "implementation.md": (
                 "mark the previous record stale",
-                "run every required local check against the committed revision",
+                "run every selected local gate against the committed revision",
             ),
             "review.md": (
                 "provider, model, timestamp and bounded output reference",
