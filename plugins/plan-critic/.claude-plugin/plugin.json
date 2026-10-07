@@ -1,7 +1,7 @@
 {
   "name": "plan-critic",
   "description": "Critique an implementation plan before approving execution. Persona reviewers (Skeptic, Architect, Verifier) evaluate the plan against the codebase and return an Approve/Reject/Refine verdict.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": {
     "name": "Smykla Skalski Labs"
   },
