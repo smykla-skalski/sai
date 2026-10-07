@@ -45,7 +45,9 @@ CONDITION_FACTS: Final[set[str]] = {
     "inspect_remote_work",
     "jira_source",
     "owns_cleanup",
+    "review_gate_required",
     "sail",
+    "test_gate_required",
 }
 
 
@@ -151,7 +153,14 @@ class ShipItCapabilityContractTest(unittest.TestCase):
 
         self.assertIn("filesystem.write", required("branch"))
         self.assertIn("state.write", required("review"))
-        self.assertIn("filesystem.transient-write", required("test"))
+        test_conditional = {
+            capability
+            for requirement in phases["test"]["requirements"]
+            if requirement.get("when")
+            == {"fact": "test_gate_required", "equals": True}
+            for capability in requirement.get("all_of", ())
+        }
+        self.assertIn("filesystem.transient-write", test_conditional)
         self.assertIn("merge.execute", required("pr-loop"))
         for phase in EXPECTED_PHASES:
             with self.subTest(checkpoint_phase=phase):

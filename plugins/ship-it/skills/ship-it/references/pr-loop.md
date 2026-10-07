@@ -1,10 +1,10 @@
 # ship-it PR loop: open, wait, fix, merge
 
-From a reviewed and tested branch to a merged PR. Never end the turn while CI or Copilot is pending: keep polling (background waits are fine) until the PR is merged or a hard stop is reached.
+From a revision with every selected PR-due gate passed to a merged PR. Never end the turn while a selected hosted gate is pending: keep polling until the PR is merged or a hard stop is reached.
 
 ## Before the first push
 
-Do not rewrite history after review begins. If the unpublished branch still needs a version-bump squash or any other rewrite, return to implementation, rewrite it with hooks enabled, run repository gates, and repeat adversarial review and testing on the new `HEAD` before pushing or opening the PR.
+Do not rewrite history after validation begins. If the unpublished branch still needs a version-bump squash or any other rewrite, return to implementation, rewrite it with hooks enabled, recompute risk, and repeat every selected gate on the new `HEAD` before pushing or opening the PR.
 
 ## History rules after the first push
 
@@ -29,6 +29,8 @@ Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to 
 
 ## Request Copilot
 
+Run this section only when `copilot-review` is selected. Otherwise record no hosted-review evidence and continue to CI.
+
 ```bash
 gh pr edit <n> --add-reviewer copilot-pull-request-reviewer
 ```
@@ -42,21 +44,21 @@ gh api -X POST repos/<owner>/<repo>/pulls/<n>/requested_reviewers \
 
 A failure to request Copilot never fails PR creation; note it and keep waiting, since many repositories request Copilot automatically.
 
-## Wait for CI and Copilot
+## Wait for hosted gates
 
 Poll every 5–10 minutes; do not busy-loop. On each poll inspect:
 
-- `gh pr checks <n>`.
-- Reviews: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` (Copilot's author login contains `copilot`).
-- Unresolved, non-outdated review threads, via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments).
+- `gh pr checks <n>` when `ci` is selected.
+- Reviews when `copilot-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` (Copilot's author login contains `copilot`).
+- Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments).
 
-If CI fails, read the failed run logs (`gh run view <id> --log-failed`), fix, push, and keep waiting. If after roughly 30 minutes Copilot has neither reviewed nor has a pending review request, stop and ask whether to merge without it; never silently skip the Copilot wait.
+If selected CI fails, read the failed run logs (`gh run view <id> --log-failed`), fix, push, and keep waiting. If selected Copilot review has neither completed nor remained requested after roughly 30 minutes, stop and ask whether to authorize a policy override; never silently skip it.
 
-Record every required CI check against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with every result pending; rerun local checks, review and manual testing before returning to the PR loop.
+Record every selected hosted gate against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with every selected result pending; recompute risk and rerun every selected gate before returning to the PR loop.
 
 ## Address Copilot feedback
 
-For every unresolved Copilot thread:
+When `copilot-review` is selected, handle every unresolved Copilot thread:
 
 - Valid, actionable: fix it, commit (signed, conventional), push, reply with what changed, resolve the thread.
 - Questionable: use the codebase to decide; ask only when necessary.
@@ -76,10 +78,10 @@ Then return to waiting. Stop for a human decision if the same thread loops more 
 Merge only when all of these hold:
 
 - The current evidence record is `complete`; every result with `requiredBy: merge` passed on its exact revision; and that revision equals both local `HEAD` and the PR `headRefOid`.
-- The current PR head has `Review Verdict: CLEAN` and `Test Verdict: PASS`. Record its `headRefOid`; after every code-changing CI/Copilot fix or merge from the default branch, rerun both gates on the new committed tip. Check `headRefOid` again just before merge and restart the gates if it changed. The squash merge commit will have a different SHA; compare the PR head SHA.
-- Every CI check succeeded.
-- Copilot submitted at least one review (a no-comments review counts). Do not wait for Copilot to re-review fix commits.
-- Every Copilot comment is fixed or answered, and its thread is resolved.
+- The current PR head has passing evidence for every selected gate. Record its `headRefOid`; after every code-changing fix or default-branch merge, recompute risk and rerun all selected gates on the new committed tip. Check `headRefOid` again just before merge and restart the gates if it changed. The squash merge commit will have a different SHA; compare the PR head SHA.
+- When `ci` is selected, every required CI check succeeded.
+- When `copilot-review` is selected, Copilot submitted at least one review (a no-comments review counts). Do not wait for Copilot to re-review fix commits.
+- When `copilot-review` is selected, every Copilot comment is fixed or answered, and its thread is resolved.
 
 How to merge, in order:
 

@@ -1,6 +1,6 @@
 # Adversarial code review gate
 
-Run `adversarial-review:adversarial-review` against the committed branch with `--base origin/<default> --context <checkpoint-file>`. The reply must start with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`.
+When `adversarial-review` is selected, run `adversarial-review:adversarial-review` against the committed branch with `--base origin/<default> --context <checkpoint-file>`. The reply must start with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`. Run every other selected review gate according to its contract. If no review gate is selected, create no review evidence and atomically advance the checkpoint to `phase: test` with the selected test gate as `nextAction`, or to `phase: pr` with PR creation as `nextAction` when no test gate is selected.
 
 The review uses two clean-context passes: a Code Adversary hunts concrete failures and unmet acceptance criteria, then a fresh Findings Adversary tries to refute every finding.
 
