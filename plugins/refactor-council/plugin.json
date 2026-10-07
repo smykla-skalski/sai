@@ -1,6 +1,6 @@
 {
   "name": "refactor-council",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Refactoring council of 7 sourced craft-and-architecture persona agents (Martin Fowler, Robert C. Martin, Michael Feathers, Kent Beck, Sandi Metz, John Ousterhout, Adam Tornhill) that scan a target for smells and git hotspots, review it through opposed refactoring lenses, synthesize a safety-first sequenced refactoring plan, then adversarially review that plan before returning it.",
   "author": {
     "name": "Smykla Skalski Labs"
