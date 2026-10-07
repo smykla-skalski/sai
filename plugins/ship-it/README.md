@@ -4,6 +4,8 @@ Take one change from request to merged pull request autonomously: explore the re
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
 
+Its initial workflow contract stays below Codex's 8 KB prompt limit. Detailed instructions load from bundled references only when each workflow phase begins.
+
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.
 
 ## Installation

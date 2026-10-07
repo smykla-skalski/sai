@@ -20,48 +20,61 @@ Take a change to a merged PR, or coordinate independently shippable issues from 
 
 Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>` (`$ship-it` in Codex). Runs only when invoked by name or asked to ship a change. Claude Code appends the arguments; if none are appended, take them from the user's request.
 
+## Workflow contract
+
+- Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
+- Load each phase reference immediately before that phase, not during initial skill discovery.
+- Repository instructions override generic branch, review, release and merge defaults.
+- Every code-changing fix invalidates review and test verdicts from the previous revision.
+- Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
+- In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
+
+## Phase reference index
+
+| Phase | Read immediately before starting |
+| :-- | :-- |
+| 1 — Resolve | [references/inputs.md](references/inputs.md) |
+| 2 — Explore | [references/explore.md](references/explore.md) |
+| 3 — Branch | [references/branch.md](references/branch.md) |
+| 4 — Implement | [references/implementation.md](references/implementation.md) |
+| 5 — Review | [references/review.md](references/review.md) |
+| 6 — Test | [references/test.md](references/test.md) |
+| 7–10 — PR loop | [references/pr-loop.md](references/pr-loop.md) |
+| 11 — Complete | [references/completion.md](references/completion.md) |
+
 ## Phase 1 — Resolve the task
 
-Read [references/inputs.md](references/inputs.md) before Phase 1. Classify the input, create the issue for `--issue`, read the GitHub issue or Jira ticket, and write the task context file outside the repository. No branch, edit or commit until this phase succeeds.
+Classify the input, resolve its source and acceptance criteria, and write the task context outside the repository. No branch, edit or commit until this phase succeeds.
 
 If the input is an approved complex plan or an umbrella issue with subissues, read [references/orchestration.md](references/orchestration.md) and follow its parent coordinator workflow. The parent never implements a child issue. An ordinary implementation issue, including a worker's assigned issue, follows the single-change phases below. In Sail mode, absent worker or review/test gate subagents pause the run; never use inline gate fallbacks.
 
 ## Phase 2 — Explore
 
-Read root `CLAUDE.md`, `AGENTS.md` and `CONTRIBUTING.md` when present, including the merge convention. Identify the stack, the lint, format, type-check, test and build commands, the affected code and its tests.
+Discover repository instructions, affected code and required quality gates before editing.
 
 ## Phase 3 — Branch
 
-Fetch origin, resolve and fast-forward the default branch, then create a conventional branch: `<type>/issue-<n>-<slug>`, `<type>/<jira-key-lowercase>-<slug>`, or `<type>/<slug>`. Use a new worktree for another repository. A Sail worker stays in its assigned worktree and branch; skip branch creation and return-to-default.
+Start from the current default branch in an isolated conventional branch or assigned Sail worktree.
 
 ## Phase 4 — Implement
 
-Make focused commits with behavior tests. Before each commit run relevant quality gates. Fix failures; never suppress checks or bypass hooks.
-
-Signed conventional commits, scope required, title ≤50 chars, no AI attribution or PR refs. Footer: `Refs #<n>` (`Refs owner/repo#<n>` cross-repo) for a GitHub issue, `Refs <KEY-123>` for Jira, none for a description.
+Implement the smallest complete change, add behavior tests, run relevant gates and create signed conventional commits.
 
 ## Phase 5 — Adversarial review
 
-Run `adversarial-review:adversarial-review` with `--base origin/<default> --context <task-context-file>`. Reply starts `Review Verdict: CLEAN` or `NEEDS_FIXES`. On NEEDS_FIXES fix every surviving `blocking:` and `issue:`, rerun gates and the review on the new tip. Unsettled `question:` findings go in the PR body. Phase 6 only after CLEAN.
+Obtain `Review Verdict: CLEAN` for the current committed revision before testing.
 
 ## Phase 6 — Adversarial test
 
-From the Phase 5 tip run `adversarial-test:adversarial-test` with the same args. Reply starts `Test Verdict: PASS`, `FAIL` or `BLOCKED`. On FAIL each surviving reproduction is a blocker: fix, add a regression test, rerun gates and the skill. BLOCKED is a hard stop. PR only after PASS.
-
-**Round cap (Phases 5–6):** after 3 failing rounds (or more than 3 failed fixes of one reproduction), stop and ask. If the user cannot be asked, continue only while each round finds smaller concrete issues, and say so in the report.
+Obtain `Test Verdict: PASS` for the review-clean committed revision before opening a PR.
 
 ## Phases 7–10 — PR, wait, fix, merge
 
-Read [references/pr-loop.md](references/pr-loop.md) before Phase 7. In short:
-
-7. Squash repeated version-bump commits, push, open the PR, request Copilot.
-8. Poll CI and Copilot every 5–10 min; fix CI failures.
-9. Fix or answer every Copilot thread, then resolve it.
-10. Merge when CI is green, Copilot reviewed once, all threads resolved, via the repo's documented convention (e.g. a `squash` comment). Never force-push or rebase after the first push; use a signed `git merge origin/<default>`.
+Push and open the PR, wait for CI and Copilot, resolve every thread, revalidate changed revisions, then merge through the repository's documented convention.
 
 ## Phase 11 — Close, report, clean up
 
-Confirm the GitHub issue closed; close it with a completion comment if needed. Leave Jira untouched. Report source, PR, commits, CI, Copilot threads, merge/closure status, and round-cap overrun. Worker reports also include review/test verdicts and gated PR head SHA. Return to the default branch and clean up when safe.
+Verify delivery, close only the GitHub issue, report evidence and clean up when safe.
 
 ## Hard stops
 
