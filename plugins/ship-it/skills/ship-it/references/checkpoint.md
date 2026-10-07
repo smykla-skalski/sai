@@ -65,7 +65,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
 
 For a single change, `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
 
-`orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, review verdict, test verdict, gated head, PR URL, CI status, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
+`orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, gated head, PR URL, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
 
 Validate these invariants in addition to field presence and types:
 
@@ -74,7 +74,7 @@ Validate these invariants in addition to field presence and types:
 - `status: completed`, `phase: complete` and a non-null `outcome` occur together; all other states have a null outcome.
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
 - Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
-- An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child.
+- An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. A completed child has `evidenceStatus: complete`, and its evidence revision equals its gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
 
 ## Safe writes

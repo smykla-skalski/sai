@@ -6,7 +6,7 @@ Keep one portable evidence record per committed task revision. Claude Code, Code
 
 Store records under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/<checkpoint-id>/`. Create directories and files with owner-only permissions. A record is named `<revision>.json`, where `revision` is the full hexadecimal commit SHA it proves. Never put evidence in the repository, plugin cache or system temporary directory.
 
-The record's `checkpointId` must match its directory and the task checkpoint. Its `revision` must match its filename, every result's `sourceRevision`, the checkpoint's `workflow.revision`, and the current committed `HEAD`. After a PR exists, it must also match the PR's `headRefOid`.
+Every record's `checkpointId` must match its directory and the task checkpoint. Its `revision` must match its filename and every result's `sourceRevision`. The checkpoint-selected, non-stale current record must also match the checkpoint's `workflow.revision`, the current committed `HEAD`, and, after a PR exists, its `headRefOid`. Retained stale records describe only their historical revision and must not match live Git or checkpoint state.
 
 ## Format
 

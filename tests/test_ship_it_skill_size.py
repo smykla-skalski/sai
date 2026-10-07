@@ -159,7 +159,8 @@ class ShipItSkillSizeTest(unittest.TestCase):
             "manual-test",
             '"ci"',
             "Missing, pending, failed, blocked or stale required evidence",
-            "PR's `headRefOid`",
+            "non-stale current record",
+            "its `headRefOid`",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, evidence)
@@ -190,19 +191,36 @@ class ShipItSkillSizeTest(unittest.TestCase):
         self.assertIn('"recordPath"', checkpoint)
 
     def test_evidence_gates_every_revision_sensitive_phase(self) -> None:
-        for reference in (
-            "implementation.md",
-            "review.md",
-            "test.md",
-            "pr-loop.md",
-            "completion.md",
-            "orchestration.md",
-        ):
+        expectations = {
+            "implementation.md": (
+                "mark the previous record stale",
+                "run every required local check against the committed revision",
+            ),
+            "review.md": (
+                "provider, model, timestamp and bounded output reference",
+                "any later source change marks the entire record stale",
+            ),
+            "test.md": (
+                "provider, model, timestamp and bounded output reference",
+                "reproduced failure marks the evidence failed",
+            ),
+            "pr-loop.md": (
+                "requiredby: pr",
+                "requiredby: merge",
+                "local `head` and the pr `headrefoid`",
+            ),
+            "completion.md": ("complete record for the gated pr head",),
+            "orchestration.md": (
+                "evidence record is complete for the final pr head",
+            ),
+        }
+        for reference, required_text in expectations.items():
             with self.subTest(reference=reference):
                 content = (SKILL_DIR / "references" / reference).read_text(
                     encoding="utf-8"
-                )
-                self.assertIn("evidence", content.lower())
+                ).lower()
+                for expected in required_text:
+                    self.assertIn(expected, content)
 
 
 if __name__ == "__main__":
