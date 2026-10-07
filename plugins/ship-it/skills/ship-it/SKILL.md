@@ -25,6 +25,7 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 - Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
 - Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
+- After checkpoint reconciliation, read [references/telemetry.md](references/telemetry.md), start the run with the checkpoint ID as its task ID, and emit every phase and final event. Omit unavailable counters so they stay explicit `null` values. Telemetry failure never blocks delivery.
 - Repository instructions override generic branch, review, release and merge defaults.
 - Every code-changing fix invalidates review and test verdicts from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
