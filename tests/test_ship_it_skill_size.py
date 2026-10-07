@@ -23,15 +23,21 @@ CODEX_MAX_SKILL_PROMPT_BYTES: Final[int] = 8000
 SKILL_BUDGET_BYTES: Final[int] = 6000
 REFERENCE_LINK: Final[re.Pattern[str]] = re.compile(r"\]\((references/[^)]+\.md)\)")
 CROSS_REF: Final[re.Pattern[str]] = re.compile(r"SKILL\.md|Phase \d")
-PHASE_REFERENCES: Final[tuple[str, ...]] = (
-    "inputs.md",
-    "explore.md",
-    "branch.md",
-    "implementation.md",
-    "review.md",
-    "test.md",
-    "pr-loop.md",
-    "completion.md",
+PHASE_REFERENCE_ROWS: Final[tuple[tuple[str, str], ...]] = (
+    ("1 — Resolve", "inputs.md"),
+    ("2 — Explore", "explore.md"),
+    ("3 — Branch", "branch.md"),
+    ("4 — Implement", "implementation.md"),
+    ("5 — Review", "review.md"),
+    ("6 — Test", "test.md"),
+    ("7–10 — PR loop", "pr-loop.md"),
+    ("11 — Complete", "completion.md"),
+)
+PHASE_REFERENCE_ROW: Final[re.Pattern[str]] = re.compile(
+    r"^\| (?P<phase>[^|]+?) \| "
+    r"\[references/(?P<reference>[^]]+\.md)\]"
+    r"\(references/(?P=reference)\) \|$",
+    re.MULTILINE,
 )
 
 
@@ -63,7 +69,14 @@ class ShipItSkillSizeTest(unittest.TestCase):
 
     def test_every_phase_loads_its_guidance_on_demand(self) -> None:
         skill = SKILL_FILE.read_text(encoding="utf-8")
-        for reference in PHASE_REFERENCES:
+        phase_index = skill.split("## Phase reference index", 1)[1].split("\n## ", 1)[0]
+        actual_rows = tuple(
+            (match["phase"], match["reference"])
+            for match in PHASE_REFERENCE_ROW.finditer(phase_index)
+        )
+        self.assertEqual(actual_rows, PHASE_REFERENCE_ROWS)
+
+        for _, reference in PHASE_REFERENCE_ROWS:
             with self.subTest(reference=reference):
                 link = f"[references/{reference}](references/{reference})"
                 self.assertEqual(
