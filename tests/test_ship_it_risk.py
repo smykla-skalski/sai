@@ -22,6 +22,11 @@ FULL_GATES: Final[set[str]] = {
     "ci",
     "copilot-review",
 }
+FALLBACKS: Final[dict[str, set[str]]] = {
+    "adversarial-review": {"portable-review-fallback"},
+    "adversarial-test": {"portable-test-fallback"},
+    "copilot-review": {"human-review"},
+}
 GATE_ID: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
@@ -45,7 +50,13 @@ class ShipItRiskContractTest(unittest.TestCase):
                 gates = policy["required_gates"]
                 self.assertEqual(set(gates), FULL_GATES)
                 self.assertEqual(len(gates), len(set(gates)))
-                self.assertEqual(policy["fallbacks"], {})
+                self.assertEqual(
+                    policy["fallbacks"],
+                    {
+                        "adversarial-review": ["portable-review-fallback"],
+                        "adversarial-test": ["portable-test-fallback"],
+                    },
+                )
 
     def test_policy_gate_and_fallback_ids_are_portable(self) -> None:
         for policy in self.policy["policies"].values():
@@ -54,11 +65,25 @@ class ShipItRiskContractTest(unittest.TestCase):
                 self.assertIn(gate, FULL_GATES)
             for gate, fallbacks in policy["fallbacks"].items():
                 self.assertIn(gate, policy["required_gates"])
+                self.assertIn(gate, FALLBACKS)
                 self.assertTrue(fallbacks)
                 self.assertEqual(len(fallbacks), len(set(fallbacks)))
                 for fallback in fallbacks:
                     self.assertIsNotNone(GATE_ID.fullmatch(fallback))
-                    self.assertIn(fallback, FULL_GATES)
+                    self.assertIn(fallback, FALLBACKS[gate])
+
+    def test_rejects_incompatible_fallback_fixture(self) -> None:
+        fixture = {
+            "required_gates": ["adversarial-review"],
+            "fallbacks": {"adversarial-review": ["ci"]},
+        }
+        invalid = [
+            fallback
+            for gate, fallbacks in fixture["fallbacks"].items()
+            for fallback in fallbacks
+            if fallback not in FALLBACKS.get(gate, set())
+        ]
+        self.assertEqual(invalid, ["ci"])
 
     def test_selection_is_deterministic_and_monotonic(self) -> None:
         for expected in (
@@ -77,7 +102,7 @@ class ShipItRiskContractTest(unittest.TestCase):
         for expected in (
             "Create one required evidence result for each selected gate.",
             "each result must pass before its declared PR or merge boundary",
-            "Without an available declared fallback",
+            "Without one, set the required gate's evidence to blocked",
             "never silently drop a gate",
         ):
             self.assertIn(expected.lower(), self.guidance.lower())

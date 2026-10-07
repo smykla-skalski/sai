@@ -1,6 +1,6 @@
 # Adversarial manual test gate
 
-When `adversarial-test` is selected, run it from the review-clean committed tip with `--base origin/<default> --context <checkpoint-file>`. In the Sybra repository, invoke `sybra-test` instead. The reply must start with `Test Verdict: PASS`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`. Run every other selected test gate according to its contract. If no test gate is selected, record the phase as not required in the checkpoint and continue without creating test evidence.
+When `adversarial-test` is selected, run it from the review-clean committed tip with `--base origin/<default> --context <checkpoint-file>`. In the Sybra repository, invoke `sybra-test` instead. The reply must start with `Test Verdict: PASS`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`. Run every other selected test gate according to its contract. If no test gate is selected, create no test evidence and atomically advance the checkpoint to `phase: pr` with PR-due evidence validation and PR creation as `nextAction`.
 
 The tester derives acceptance criteria from the task, runs the real changed product surface in isolated state, attacks happy paths, boundaries, malformed input, repeated or concurrent use and adjacent flows, then reruns every reproduction. Automated tests, lint, build and source inspection are supporting evidence, not manual testing.
 

@@ -93,7 +93,7 @@ Validate the complete next document before replacing state. Write it to a same-d
 
 On a fresh task, create the checkpoint with `phase: resolve`, `status: active`, no revision, and task resolution as `nextAction`. Then advance to `explore` only after the source and acceptance criteria are complete.
 
-When the file exists, validate every required field and enum before using it. Do not silently repair or replace invalid state.
+When the file exists, migrate only the known legacy shape before validating current required fields. A schema v1 checkpoint that has every previously required field but no `risk` came from ship-it 1.4.12 or earlier: validate that legacy document, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates`, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
 
 1. Recompute the ID from `task.canonicalSource`; it must match both `checkpointId` and the filename.
 2. Compare the resolved task source and repository identity with the checkpoint. They must match exactly after normalization.

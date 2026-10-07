@@ -103,7 +103,7 @@ An output reference has kind `inline`, `command`, `path` or `url`; a non-empty U
 
 ## Required result set
 
-Create one stable result ID for each resolved acceptance criterion and each gate required by the revision's selected risk policy. Expand `local-checks` into the checks discovered during exploration. Review and manual-test gates are due by PR creation; CI and hosted-review gates are due by merge. A policy-declared fallback keeps the required gate ID in `name`, keeps `provider` as the actual harness or service, and records both gate IDs in its bounded output reference. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
+Create one stable result ID for each resolved acceptance criterion and each gate required by the revision's selected risk policy. Use `gate-<gate-id>` for a one-result gate. Expand `local-checks` into one result per discovered command and expand `ci` into one result per required check, each with the final job URL. Review and manual-test gates are due by PR creation; CI and hosted-review gates are due by merge. A policy-declared fallback retains the original required gate result ID, keeps `provider` as the actual harness or service, and records the gate and fallback mechanism IDs in its bounded output reference. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
 
 A gate passes only when every required result due at that gate has `status: passed` for the exact record revision. Missing, pending, failed, blocked or stale due evidence blocks that gate. CI results that are not available before PR creation remain pending with `requiredBy: merge`.
 

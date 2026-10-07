@@ -42,7 +42,7 @@ ln -s /path/to/sai/plugins/ship-it/skills/ship-it ~/.config/opencode/skills/ship
 
 Local checkout: `claude --plugin-dir /path/to/sai/plugins/ship-it/`
 
-Install [adversarial-review](../adversarial-review/) and [adversarial-test](../adversarial-test/) too: ship-it uses them when selected. When unavailable, it uses only a policy-approved fallback or stops.
+Install [adversarial-review](../adversarial-review/) and [adversarial-test](../adversarial-test/) too: ship-it uses them when selected. Their default policy approves the equivalent portable capability fallbacks; any other unavailable required gate stops unless its policy names a compatible fallback.
 
 ## Usage
 
