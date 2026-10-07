@@ -2,6 +2,8 @@
 
 From a revision with every selected PR-due gate passed to a merged PR. Never end the turn while a selected hosted gate is pending: keep polling until the PR is merged or a hard stop is reached.
 
+For GitHub work, verify the issue claim before the first push and renew it at least every 10 minutes throughout the loop. Renew before each GitHub write when due. A conflicting, expired or unverifiable claim pauses pushes, PR changes, review replies and merge until reconciliation succeeds.
+
 ## Before the first push
 
 Do not rewrite history after validation begins. If the unpublished branch still needs a version-bump squash or any other rewrite, return to implementation, rewrite it with hooks enabled, recompute risk, and repeat every selected gate on the new `HEAD` before pushing or opening the PR.

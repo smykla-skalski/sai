@@ -25,8 +25,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task description | git
 - Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
 - Before each phase, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), select its profile and satisfy the machine-readable preflight before any side effect.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
-- Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
-- After checkpoint reconciliation, read [references/telemetry.md](references/telemetry.md) and record the run through completion.
+- After resolving, maintain [references/checkpoint.md](references/checkpoint.md) before repository changes, GitHub [references/claims.md](references/claims.md) before branch or source changes, and [references/telemetry.md](references/telemetry.md) through completion.
 - Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
 - Read [references/risk.md](references/risk.md) after exploration. Select and report the revision's risk, policy source and required gates before validation.
 - Repository instructions override generic branch, review, release and merge defaults.
@@ -83,4 +82,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; a selected hosted reviewer neither reviewed nor has a pending request after ~30 min; a required review thread loops more than 3 times; a test requires disabling a check; a selected test gate returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
+Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or its claim conflicts; the Jira ticket is finished; branch protection needs approvals or admin action; a selected hosted reviewer neither reviewed nor has a pending request after ~30 min; a required review thread loops more than 3 times; a test requires disabling a check; a selected test gate returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.

@@ -39,7 +39,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
   },
   "workflow": {
     "phase": "resolve|orchestrate|explore|branch|implement|review|test|pr|complete",
-    "status": "active|blocked|completed",
+    "status": "active|blocked|completed|cancelled|failed",
     "revision": "full commit SHA or null",
     "blocker": "specific blocker or null",
     "unresolvedQuestions": [],
@@ -56,6 +56,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "status": "missing|collecting|complete|failed|blocked|stale",
     "updatedAt": "RFC 3339 UTC timestamp or null"
   },
+  "claim": null,
   "risk": {
     "level": "low|medium|high|null",
     "policySource": "repository-relative path|bundled default|null",
@@ -70,17 +71,20 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
 }
 ```
 
-For a single change, `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
+For a single change, a delivered `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. A terminal undelivered outcome has `result: cancelled|failed`, null delivery fields, the unchanged source state, a non-empty `reason` and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
 
 `orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, gated head, PR URL, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
+
+`claim` is null for Jira and description sources. For a GitHub implementation issue it repeats the claim comment's `commentId`, `commentUrl`, `holder`, `status`, `acquiredAt`, `renewedAt`, `expiresAt`, `releasedAt`, `releaseReason` and `takeover`. Before the first comment, `status` may be `pending`, with a generated holder and null comment and lease fields; resume uses that holder for the acquisition attempt. Once a comment exists, the issue comment is authoritative and status is `active` or `released`. An umbrella coordinator keeps its own claim null and stores each worker's claim fields in that child's orchestration entry.
 
 Validate these invariants in addition to field presence and types:
 
 - `checkpointId` equals the filename and the digest of `task.canonicalSource`; `acceptanceCriteria` is non-empty.
 - `status: blocked` has a non-empty `blocker` and actionable `nextAction`; other statuses have a null blocker.
-- `status: completed`, `phase: complete` and a non-null `outcome` occur together; all other states have a null outcome.
+- `phase: complete` and a non-null `outcome` occur together with `status: completed|cancelled|failed`; active and blocked states have a null outcome. Completed means delivered, cancelled means explicitly cancelled, and failed means a terminal failure ended the run.
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
 - Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
+- An active GitHub implementation checkpoint has exactly one claim comment for its holder. Repository or GitHub writes require `status: active`, an unexpired `expiresAt`, and values reconciled with the authoritative issue comment. A completed checkpoint with a claim has released it with reason `merged`; a completed legacy checkpoint with `claim: null` remains valid after delivery verification.
 - Before validation, risk has a level, policy source and unique required gates. A lower level than an earlier revision, matching rule or resumed checkpoint requires non-null explicit override authorization.
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. A completed child has `evidenceStatus: complete`, and its evidence revision equals its gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
@@ -93,12 +97,12 @@ Validate the complete next document before replacing state. Write it to a same-d
 
 On a fresh task, create the checkpoint with `phase: resolve`, `status: active`, no revision, and task resolution as `nextAction`. Then advance to `explore` only after the source and acceptance criteria are complete.
 
-When the file exists, migrate only the known legacy shape before validating current required fields. A schema v1 checkpoint that has every previously required field but no `risk` came from ship-it 1.4.12 or earlier: validate that legacy document, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates`, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
+When the file exists, migrate only the known legacy shape before validating current required fields. A schema v1 checkpoint that has every previously required field but no `risk` or `claim` came from an earlier ship-it version: validate that legacy document, add a null claim when absent, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates` when absent, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk or invents ownership. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
 
 1. Recompute the ID from `task.canonicalSource`; it must match both `checkpointId` and the filename.
 2. Compare the resolved task source and repository identity with the checkpoint. They must match exactly after normalization.
 3. Reconcile Git before edits: current repository identity, default branch, task branch, `HEAD`, dirty files and ancestry.
-4. For GitHub work, reread the issue, linked PR and PR head. For Jira, reread its status without mutating it. Reconcile delivery fields with that external state.
+4. For GitHub work, reread the issue, claim comment, linked PR and PR head. For Jira, reread its status without mutating it. Reconcile claim and delivery fields with that external state.
 5. Update stale but unambiguous facts atomically, then continue from `workflow.nextAction` rather than replaying completed phases.
 
 Safe reconciliation cases:
@@ -117,9 +121,11 @@ Stop before repository changes and report the checkpoint path plus exactly one r
 - Different canonical source or repository identity: open the task in the matching repository, or explicitly start a distinct task; never rewrite identity in place.
 - Recorded revision descends from the current `HEAD`, histories diverge, unrelated dirty files overlap, or intervening commits cannot be attributed: switch to the recorded task branch/worktree or reconcile the Git history manually.
 - Open PR branch or head conflicts with the checkpoint: inspect the PR and choose the authoritative branch before resuming.
+- Missing, expired, conflicting or mismatched GitHub claim: follow the claim contract's reconciliation or audited takeover flow; never rewrite ownership in the checkpoint alone.
 - Missing, invalid or mismatched evidence: restore its `.bak` after inspection, or rerun the required evidence for the current revision; never advance with an older record.
 - Closed issue without a verifiable merged PR, or merged PR that does not contain the recorded revision: inspect the external state and correct it before completion.
 - `status: blocked`: perform the named `nextAction`; resume only after verifying the blocker is gone.
 - `status: completed`: report the recorded outcome after checking it still matches GitHub. If the PR, merge or issue state no longer matches, stop and inspect that external state; do not reopen or overwrite the task.
+- `status: cancelled|failed`: report the recorded reason and released claim, then stop. Resume only on an explicit restart instruction; atomically clear the terminal outcome, set status active, and follow audited claim takeover before any repository or GitHub write.
 
 Never infer success from an advanced phase name. Revision, PR, issue and merge facts must agree before advancing or finalizing.
