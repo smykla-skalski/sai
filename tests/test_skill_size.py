@@ -12,7 +12,6 @@ OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/git-stage-hunk/skills/git-stage-hunk/SKILL.md",
     "plugins/kubecon-cfp/skills/kubecon-cfp/SKILL.md",
     "plugins/review-claude-md/skills/review-claude-md/SKILL.md",
-    "plugins/staff-resume/skills/staff-resume/SKILL.md",
     "plugins/test-writer/skills/test-writer/SKILL.md",
 }
 
