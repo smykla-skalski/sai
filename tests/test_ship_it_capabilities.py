@@ -153,6 +153,9 @@ class ShipItCapabilityContractTest(unittest.TestCase):
         self.assertIn("state.write", required("review"))
         self.assertIn("filesystem.transient-write", required("test"))
         self.assertIn("merge.execute", required("pr-loop"))
+        for phase in EXPECTED_PHASES:
+            with self.subTest(checkpoint_phase=phase):
+                self.assertIn("state.write", required(phase))
 
         def conditional(phase: str, fact: str) -> set[str]:
             return {
