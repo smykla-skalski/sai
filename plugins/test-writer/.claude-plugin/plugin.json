@@ -1,7 +1,7 @@
 {
   "name": "test-writer",
   "description": "Write tests that verify behavior (not implementation), use table-driven/parameterized patterns, and minimize mocking. Supports Go, Python, TypeScript, Java, and Rust.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "Smykla Skalski Labs"
   },
