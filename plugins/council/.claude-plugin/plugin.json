@@ -1,7 +1,7 @@
 {
   "name": "council",
   "description": "Council of 27 sourced engineering and UX persona reviewers that review code, design docs, architecture, refactors, UI surfaces, dashboards, and strategy through opinionated lenses, then synthesize convergence, disagreement, and concrete next moves.",
-  "version": "2.0.109",
+  "version": "2.0.110",
   "author": {
     "name": "Smykla Skalski Labs"
   },
