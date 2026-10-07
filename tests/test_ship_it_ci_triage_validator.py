@@ -60,6 +60,7 @@ def record() -> dict[str, Any]:
         "recurrenceCount": 0,
         "rerunGroupId": VALIDATOR.digest("cig_", group),
         "rerunsUsed": 0,
+        "rerunRequest": None,
         "classification": "code",
         "status": "open",
         "supportingEvidence": ["test failed"],
@@ -150,6 +151,56 @@ class ShipItCiTriageValidatorTest(unittest.TestCase):
         second["rerunAuthorization"] = None
         self.assertIn(
             "inconsistent rerunsUsed",
+            " ".join(VALIDATOR.validate({"failures": [first, second]})),
+        )
+
+    def test_pending_rerun_is_durable_and_group_consistent(self) -> None:
+        first = record()
+        first["classification"] = "infrastructure"
+        first["failedAcceptanceEvidence"] = []
+        first["rerunAuthorization"] = {
+            "source": "explicit-approval",
+            "reference": "approved once",
+            "maxAttempts": 1,
+            "authorizedAt": "2026-10-07T09:00:00Z",
+        }
+        first["rerunRequest"] = {
+            "requestedAttempt": 1,
+            "recordedAt": "2026-10-07T09:01:00Z",
+        }
+        self.assertEqual(VALIDATOR.validate({"failures": [first]}), [])
+
+        second = json.loads(json.dumps(first))
+        second["key"]["attempt"] = 2
+        second["failureId"] = VALIDATOR.digest("cif_", second["key"])
+        second["rerunRequest"] = None
+        self.assertIn(
+            "inconsistent rerunRequest",
+            " ".join(VALIDATOR.validate({"failures": [first, second]})),
+        )
+
+    def test_recurrence_target_must_be_same_identity_and_sequential(self) -> None:
+        first = record()
+        first["classification"] = "unknown"
+        first["failedAcceptanceEvidence"] = []
+        first["recurrenceKey"] = "cir_" + "c" * 64
+        second = json.loads(json.dumps(first))
+        second["key"]["attempt"] = 2
+        second["failureId"] = VALIDATOR.digest("cif_", second["key"])
+        second["recurrenceOf"] = first["failureId"]
+        second["recurrenceCount"] = 1
+        self.assertEqual(VALIDATOR.validate({"failures": [first, second]}), [])
+
+        second["recurrenceCount"] = 3
+        self.assertIn(
+            "recurrenceCount is not sequential",
+            " ".join(VALIDATOR.validate({"failures": [first, second]})),
+        )
+
+        second["recurrenceCount"] = 1
+        second["recurrenceKey"] = "cir_" + "d" * 64
+        self.assertIn(
+            "recurrence target key differs",
             " ".join(VALIDATOR.validate({"failures": [first, second]})),
         )
 

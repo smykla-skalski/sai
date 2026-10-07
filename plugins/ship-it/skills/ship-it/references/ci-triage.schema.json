@@ -12,6 +12,7 @@
     "recurrenceCount",
     "rerunGroupId",
     "rerunsUsed",
+    "rerunRequest",
     "classification",
     "status",
     "supportingEvidence",
@@ -42,6 +43,20 @@
     "recurrenceCount": {"type": "integer", "minimum": 0},
     "rerunGroupId": {"type": "string", "pattern": "^cig_[0-9a-f]{64}$"},
     "rerunsUsed": {"type": "integer", "minimum": 0},
+    "rerunRequest": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["requestedAttempt", "recordedAt"],
+          "properties": {
+            "requestedAttempt": {"type": "integer", "minimum": 1},
+            "recordedAt": {"type": "string", "format": "date-time"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "classification": {"enum": ["code", "flaky", "infrastructure", "unknown"]},
     "status": {"enum": ["open", "resolved"]},
     "supportingEvidence": {

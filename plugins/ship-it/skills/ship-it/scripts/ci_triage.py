@@ -114,6 +114,33 @@ def validate_reruns(record: dict[str, Any]) -> list[str]:
             errors.append("rerunAuthorization maxAttempts must be positive")
         elif reruns_used > limit:
             errors.append("rerunsUsed exceeds the authorized maximum")
+    errors.extend(
+        validate_rerun_request(
+            reruns_used,
+            authorization,
+            record.get("rerunRequest"),
+        ),
+    )
+    return errors
+
+
+def validate_rerun_request(
+    reruns_used: object,
+    authorization: object,
+    request: object,
+) -> list[str]:
+    """Validate one durable provider-request intent."""
+    if request is None:
+        return []
+    errors: list[str] = []
+    if authorization is None:
+        errors.append("rerunRequest requires rerunAuthorization")
+    if not isinstance(request, dict):
+        return [*errors, "rerunRequest must be an object or null"]
+    if isinstance(reruns_used, int) and not isinstance(reruns_used, bool) and (
+        request.get("requestedAttempt") != reruns_used + 1
+    ):
+        errors.append("rerunRequest must reserve rerunsUsed plus one")
     return errors
 
 
@@ -211,6 +238,12 @@ def validate_groups(groups: dict[str, list[dict[str, Any]]]) -> list[str]:
         usage = {record.get("rerunsUsed") for record in records}
         if len(usage) > 1:
             errors.append(f"rerun group {group_id} has inconsistent rerunsUsed")
+        requests = {
+            json.dumps(record.get("rerunRequest"), sort_keys=True)
+            for record in records
+        }
+        if len(requests) > 1:
+            errors.append(f"rerun group {group_id} has inconsistent rerunRequest")
     return errors
 
 
@@ -218,13 +251,56 @@ def validate_recurrence_targets(
     failures: list[object], failure_ids: set[str],
 ) -> list[str]:
     """Validate recurrence references against the complete failure set."""
+    records = {
+        failure.get("failureId"): failure
+        for failure in failures
+        if isinstance(failure, dict) and isinstance(failure.get("failureId"), str)
+    }
     errors: list[str] = []
     for index, failure in enumerate(failures):
-        if not isinstance(failure, dict):
-            continue
-        recurrence_of = failure.get("recurrenceOf")
-        if recurrence_of is not None and recurrence_of not in failure_ids:
-            errors.append(f"failures[{index}]: recurrenceOf is not in this checkpoint")
+        errors.extend(
+            validate_recurrence_target(index, failure, records, failure_ids),
+        )
+    return errors
+
+
+def validate_recurrence_target(
+    index: int,
+    failure: object,
+    records: dict[object, dict[str, Any]],
+    failure_ids: set[str],
+) -> list[str]:
+    """Validate one recurrence link against its target record."""
+    if not isinstance(failure, dict) or failure.get("recurrenceOf") is None:
+        return []
+    recurrence_of = failure["recurrenceOf"]
+    if recurrence_of not in failure_ids:
+        return [f"failures[{index}]: recurrenceOf is not in this checkpoint"]
+    target = records[recurrence_of]
+    key = failure.get("key")
+    target_key = target.get("key")
+    if not isinstance(key, dict) or not isinstance(target_key, dict):
+        return []
+
+    errors: list[str] = []
+    identity = ("revision", "workflow", "job")
+    if any(key.get(name) != target_key.get(name) for name in identity):
+        errors.append(f"failures[{index}]: recurrence target identity differs")
+    if failure.get("recurrenceKey") != target.get("recurrenceKey"):
+        errors.append(f"failures[{index}]: recurrence target key differs")
+    attempt = key.get("attempt")
+    target_attempt = target_key.get("attempt")
+    if (
+        isinstance(attempt, int)
+        and isinstance(target_attempt, int)
+        and target_attempt >= attempt
+    ):
+        errors.append(f"failures[{index}]: recurrence target is not earlier")
+    target_count = target.get("recurrenceCount")
+    if isinstance(target_count, int) and (
+        failure.get("recurrenceCount") != target_count + 1
+    ):
+        errors.append(f"failures[{index}]: recurrenceCount is not sequential")
     return errors
 
 
