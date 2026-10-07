@@ -20,8 +20,9 @@ FULL_GATES: Final[set[str]] = {
     "adversarial-review",
     "adversarial-test",
     "ci",
-    "copilot-review",
+    "hosted-review",
 }
+SUPPORTED_GATES: Final[set[str]] = FULL_GATES | {"copilot-review"}
 FALLBACKS: Final[dict[str, set[str]]] = {
     "adversarial-review": {"portable-review-fallback"},
     "adversarial-test": {"portable-test-fallback"},
@@ -59,11 +60,31 @@ class ShipItRiskContractTest(unittest.TestCase):
                     },
                 )
 
+    def test_hosted_review_is_resolved_by_release_policy(self) -> None:
+        self.assertIn(
+            "The hosted-review gate satisfies the reviewers resolved by repository release policy",
+            self.guidance,
+        )
+        self.assertIn("it never implies Copilot", self.guidance)
+        self.assertIn("cannot be replaced by another reviewer", self.guidance)
+
+    def test_legacy_copilot_gate_has_deterministic_migration(self) -> None:
+        for expected in (
+            "Legacy v1 repository policies may also use `copilot-review`",
+            "replace that gate with `hosted-review`",
+            "copilot-pull-request-reviewer[bot]",
+            "When that gate declares `human-review`",
+            "any-authorized-reviewer",
+            "deterministic compatibility migration",
+            "Preserve the repository policy file and schema version",
+        ):
+            self.assertIn(expected, self.guidance)
+
     def test_policy_gate_and_fallback_ids_are_portable(self) -> None:
         for policy in self.policy["policies"].values():
             for gate in policy["required_gates"]:
                 self.assertIsNotNone(GATE_ID.fullmatch(gate))
-                self.assertIn(gate, FULL_GATES)
+                self.assertIn(gate, SUPPORTED_GATES)
             for gate, fallbacks in policy["fallbacks"].items():
                 self.assertIn(gate, policy["required_gates"])
                 self.assertIn(gate, FALLBACKS)

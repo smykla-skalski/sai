@@ -22,7 +22,9 @@ Failed CI is triaged before escalation. The workflow deduplicates revision/workf
 
 Portable role routing gives exploration, implementation, review, testing and CI triage the same meaning across harnesses. Every role records requested and actual provider, model and variant. Strict review rejects the implementation model, unresolved aliases and reused or inline context; policy-permitted degradation stays explicit in revision evidence.
 
-Validation gates come from a portable risk policy. Repositories can add `.sai/ship-it-risk.json` with low, medium and high policies plus deterministic changed-path rules. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Without a repository policy every level retains the full existing local-check, adversarial-review, adversarial-test, CI and Copilot sequence.
+Validation gates come from a portable risk policy. Repositories can add `.sai/ship-it-risk.json` with low, medium and high policies plus deterministic changed-path rules. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Without a repository policy every level retains the full local-check, adversarial-review, adversarial-test, CI and hosted-review sequence.
+
+Release controls come from `.sai/ship-it-release.json`, repository instructions, live GitHub rules and a conservative bundled default. The normalized policy is stored in the task checkpoint and names required human or automated reviewers, checks, merge mechanism and strategy, issue closure and branch cleanup. Repositories can require Copilot, another reviewer, human approval or no hosted review without changing the workflow.
 
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.
 
@@ -75,9 +77,9 @@ In Claude Code and Copilot CLI use `/ship-it`, in Codex `$ship-it`:
 
 Input it cannot recognize or read stops with a message before any code changes.
 
-The skill pushes and merges, so Codex runs it only when invoked by name. Outside Sail, agents may use declared inline fallbacks. In Sail mode, unavailable required worker or gate subagents pause the run. A child completes only after all risk-selected gates pass, required threads resolve, its PR merges, and its issue closes.
+The skill pushes and merges, so Codex runs it only when invoked by name. Its `allow_implicit_invocation: false` policy intentionally omits it from Codex's default model-visible skill list; `$ship-it` loads it explicitly. Outside Sail, agents may use declared inline fallbacks. In Sail mode, unavailable required worker or gate subagents pause the run. A child completes only after all risk-selected gates pass, required threads resolve, its PR merges, and its issue closes.
 
-It merges the way the repository documents (for example a `squash` PR comment where a bot merges), otherwise with a squash merge. After the first push it never force-pushes or rebases.
+It merges through the resolved repository mechanism (including exact bot comments and protected-branch flows), never substitutes another reviewer or bypasses a control, and uses a squash merge only as the documented default. After the first push it never force-pushes or rebases.
 
 The skill owns the full lifecycle and stops only for genuine ambiguity, branch-protection requirements, persistent review/test failures, or product decisions that the request and repository cannot answer.
 

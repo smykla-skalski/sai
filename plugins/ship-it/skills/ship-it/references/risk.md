@@ -10,9 +10,11 @@ An optional root `ci_reruns` object authorizes reruns only for its unique `allow
 
 A rule is `{"risk":"high","paths":["infra/**","**/auth/**"]}`. Paths are repository-relative POSIX globs: `*` and `?` stay within one component; `**` crosses components. Match against every tracked, staged, untracked or deleted path changed from the merge-base with the current default branch. Reject an invalid policy; never partially apply it.
 
-The supported gate IDs are `local-checks` (implementation, due before PR), `adversarial-review` (review, due before PR), `adversarial-test` (test, due before PR), `ci` (PR loop, due before merge), and `copilot-review` (PR loop, due before merge). Reject unknown IDs.
+The supported gate IDs are `local-checks` (implementation, due before PR), `adversarial-review` (review, due before PR), `adversarial-test` (test, due before PR), `ci` (PR loop, due before merge), and `hosted-review` (PR loop, due before merge). The hosted-review gate satisfies the reviewers resolved by repository release policy; it never implies Copilot. Legacy v1 repository policies may also use `copilot-review`; normalize it as described below. Reject every other ID.
 
-Fallback mechanisms are boundary-compatible, not substitute gates. `portable-review-fallback` is valid only for `adversarial-review`; `portable-test-fallback` only for `adversarial-test`; and `human-review` only for `copilot-review`. No fallback is defined for `local-checks` or `ci`. Reject every other mapping. Run the first available declared mechanism and record both IDs. Without one, set the required gate's evidence to blocked and stop. Never silently drop a gate or move its evidence boundary.
+Fallback mechanisms are boundary-compatible, not substitute gates. `portable-review-fallback` is valid only for `adversarial-review`, `portable-test-fallback` only for `adversarial-test`, and legacy `human-review` only for legacy `copilot-review`. No fallback is defined for `local-checks`, `ci` or `hosted-review`; release policy names the actual required reviewer and cannot be replaced by another reviewer. Reject every other mapping. Run the first available declared mechanism and record both IDs. Without one, set the required gate's evidence to blocked and stop. Never silently drop a gate or move its evidence boundary.
+
+For a valid v1 repository policy containing `copilot-review`, replace that gate with `hosted-review` in the selected checkpoint gates and add a normalized required reviewer for actor `copilot-pull-request-reviewer[bot]`, request target `copilot-pull-request-reviewer` and requirement `review`. When that gate declares `human-review` and Copilot is unavailable, replace the Copilot entry with `any-authorized-reviewer`, requirement `approval` and request `automatic`; record `human-review` as the fallback mechanism in evidence. This is a deterministic compatibility migration, not a policy override. Preserve the repository policy file and schema version. New policies use `hosted-review` and the release-policy file instead.
 
 Example repository policy:
 
@@ -35,7 +37,7 @@ Example repository policy:
       }
     },
     "high": {
-      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "copilot-review"],
+      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "hosted-review"],
       "fallbacks": {
         "adversarial-review": ["portable-review-fallback"],
         "adversarial-test": ["portable-test-fallback"]

@@ -20,6 +20,8 @@ SKILL_DIR: Final[Path] = (
     Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
 )
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
+OPENAI_AGENT_FILE: Final[Path] = SKILL_DIR / "agents" / "openai.yaml"
+PLUGIN_README: Final[Path] = SKILL_DIR.parent.parent / "README.md"
 CHECKPOINT_REFERENCE: Final[Path] = SKILL_DIR / "references" / "checkpoint.md"
 EVIDENCE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "evidence.md"
 CLAIMS_REFERENCE: Final[Path] = SKILL_DIR / "references" / "claims.md"
@@ -46,6 +48,14 @@ PHASE_REFERENCE_ROW: Final[re.Pattern[str]] = re.compile(
 
 
 class ShipItSkillSizeTest(unittest.TestCase):
+    def test_codex_skill_is_explicit_only_not_undiscoverable(self) -> None:
+        agent = OPENAI_AGENT_FILE.read_text(encoding="utf-8")
+        readme = PLUGIN_README.read_text(encoding="utf-8")
+        self.assertIn("allow_implicit_invocation: false", agent)
+        self.assertIn("$ship-it", agent)
+        self.assertIn("intentionally omits it", readme)
+        self.assertIn("`$ship-it` loads it explicitly", readme)
+
     def test_skill_fits_codex_prompt_limit(self) -> None:
         size = len(SKILL_FILE.read_bytes())
         self.assertLessEqual(

@@ -2,6 +2,8 @@
 
 From a revision with every selected PR-due gate passed to a merged PR. Never end the turn while a selected hosted gate is pending: keep polling until the PR is merged or a hard stop is reached.
 
+Load the resolved release policy from the checkpoint and reconcile it with live GitHub policy before the first push and immediately before merge. A missing, stale, ambiguous or unsatisfied release policy blocks this loop with the exact required human action.
+
 For GitHub work, verify the issue claim before the first push and renew it at least every 10 minutes throughout the loop. Renew before each GitHub write when due. A conflicting, expired or unverifiable claim pauses pushes, PR changes, review replies and merge until reconciliation succeeds.
 
 ## Before the first push
@@ -21,7 +23,7 @@ Push the branch and create a PR against the default branch. Title: the conventio
 
 | Source | PR title or body must contain |
 | :-- | :-- |
-| GitHub issue | `Closes #<number>` (`Closes owner/repo#<number>` when the issue lives in another repository) |
+| GitHub issue | With `pull-request-keyword`, `Closes #<number>` (`Closes owner/repo#<number>` cross-repository). With `manual-after-merge` or `unchanged`, use non-closing `Refs #<number>` instead. |
 | Jira ticket | The Jira key, as a link to the ticket, in the body (and in the title when the repository's convention puts it there). Never `Closes` |
 | Task description | No issue reference |
 
@@ -29,40 +31,35 @@ Follow the repository's own PR template or conventions when it documents them. C
 
 Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to `pr`, and keep `nextAction` aligned with the current wait, fix or merge action. Reconcile these fields with GitHub before every resumed PR loop.
 
-## Request Copilot
+## Request hosted reviewers
 
-Run this section only when `copilot-review` is selected. Otherwise record no hosted-review evidence and continue to CI.
-
-```bash
-gh pr edit <n> --add-reviewer copilot-pull-request-reviewer
-```
-
-If that fails, fall back to the REST API:
+Run this section only when `hosted-review` is selected. Request every resolved reviewer whose request mode is `reviewer` or `team-reviewer`; reviewers with `automatic` are requested by repository policy. An empty reviewer list satisfies the gate without a request.
 
 ```bash
-gh api -X POST repos/<owner>/<repo>/pulls/<n>/requested_reviewers \
-  -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
+gh pr edit <n> --add-reviewer <request-target>
 ```
 
-A failure to request Copilot never fails PR creation; note it and keep waiting, since many repositories request Copilot automatically.
+If that fails, use the matching GitHub REST reviewer or team-reviewer field. A failed request does not fail PR creation, but it leaves that reviewer unsatisfied and the release blocked until the request succeeds or repository policy changes. Do not request Copilot unless the resolved policy names it. Do not replace a named automated or human reviewer with another actor.
 
 ## Wait for hosted gates
 
 Poll every 5–10 minutes; do not busy-loop. On each poll inspect:
 
 - `gh pr checks <n>` when `ci` is selected.
-- Reviews when `copilot-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` (Copilot's author login contains `copilot`).
-- Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments).
+- Reviews and outstanding requests when `hosted-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` plus the PR's requested reviewers and teams.
+- Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments), filtered by the resolved release policy.
+- Every named policy or platform-required check on the exact PR head when `ci` is selected.
 
-If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. Never rerun CI without the repository policy or explicit approval required there. If selected Copilot review has neither completed nor remained requested after roughly 30 minutes, stop and ask whether to authorize a policy override; never silently skip it.
+If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. Never rerun CI without the repository policy or explicit approval required there.
+If any selected reviewer or check remains unsatisfied for roughly 30 minutes, including a continuously requested reviewer or pending check, block with that exact requirement and the human action that satisfies it; never silently skip it.
 
 Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in evidence.
 
 Record every selected hosted gate against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with every selected result pending; recompute risk and rerun every selected gate before returning to the PR loop.
 
-## Address Copilot feedback
+## Address required reviewer feedback
 
-When `copilot-review` is selected, handle every unresolved Copilot thread:
+When `hosted-review` is selected, handle every unresolved thread from a required reviewer:
 
 - Valid, actionable: fix it, commit (signed, conventional), push, reply with what changed, resolve the thread.
 - Questionable: use the codebase to decide; ask only when necessary.
@@ -84,14 +81,11 @@ Merge only when all of these hold:
 - The current evidence record is `complete`; every result with `requiredBy: merge` passed on its exact revision; and that revision equals both local `HEAD` and the PR `headRefOid`.
 - The current PR head has passing evidence for every selected gate. Record its `headRefOid`; after every code-changing fix or default-branch merge, recompute risk and rerun all selected gates on the new committed tip. Check `headRefOid` again just before merge and restart the gates if it changed. The squash merge commit will have a different SHA; compare the PR head SHA.
 - When `ci` is selected, every required CI check succeeded.
-- When `copilot-review` is selected, Copilot submitted at least one review (a no-comments review counts). Do not wait for Copilot to re-review fix commits.
-- When `copilot-review` is selected, every Copilot comment is fixed or answered, and its thread is resolved.
+- When `hosted-review` is selected, every resolved reviewer requirement is satisfied for the current policy. A `review` accepts a submitted no-comment review; an `approval` requires an effective approval.
+- When `hosted-review` is selected, every required reviewer's blocking comment is fixed or answered, and its thread is resolved.
 
-How to merge, in order:
+Merge only through the checkpoint's resolved mechanism. For `bot-comment`, post its exact inert comment and wait for the bot; do not fall back to `gh pr merge`. For `github`, pass the resolved `merge|squash|rebase` strategy to `gh pr merge` and request remote-branch deletion only when policy says `delete`. If either mechanism reports that the default branch moved, merge `origin/<default>` (signed), push, rerun every selected gate and retry the same mechanism.
 
-1. The repository's documented convention (`CLAUDE.md`, `AGENTS.md`, `CONTRIBUTING.md`). If it merges through a bot comment, post exactly that comment instead of merging yourself. Example: smykla-skalski repositories merge when a PR comment with the exact body `squash` is posted (`gh pr comment <n> --body squash`); the smyklot bot then merges. If the bot bounces the merge because the default branch moved, merge `origin/<default>` (signed), push, wait for CI again, and post the comment again.
-2. Otherwise `gh pr merge <n> --squash --delete-branch`.
-
-Never force-merge or use admin overrides. If branch protection requires extra approvals or admin action, report the state and stop. Confirm the PR shows as merged before reporting. If the remote branch still exists after the merge, delete it with `git push origin --delete <branch>`.
+Never force-merge or use admin overrides. If branch protection requires extra approvals or admin action, report the exact required action and stop. Confirm the PR shows as merged before reporting. Delete a still-present remote branch only when resolved cleanup policy is `delete`; preserve it when policy says `preserve`.
 
 After GitHub confirms the merge, record the PR head and merge commit but leave the checkpoint active until completion verifies the source issue and final repository state.

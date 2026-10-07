@@ -1,6 +1,6 @@
 interface:
   display_name: "Ship It"
   short_description: "Ship a change or coordinate an approved plan"
-  default_prompt: "Use $ship-it to ship this change or coordinate this approved plan through independent issues, adversarial review and manual testing, green CI, Copilot review, and merge."
+  default_prompt: "Use $ship-it to ship this change or coordinate this approved plan through independent issues, adversarial review and manual testing, green CI, repository-required review, and merge."
 policy:
   allow_implicit_invocation: false
