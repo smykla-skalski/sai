@@ -1,6 +1,6 @@
 {
   "name": "adversarial-test",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Adversarial manual testing: a clean-context Test Adversary subagent runs the real product surface in isolated state and tries to break it; every reproduction is rerun before it counts.",
   "author": {
     "name": "Smykla Skalski Labs"
