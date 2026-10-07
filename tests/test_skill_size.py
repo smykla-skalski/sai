@@ -9,7 +9,6 @@ MAX_SKILL_BYTES = 8_000
 OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/adversarial-test/skills/adversarial-test/SKILL.md",
     "plugins/review-claude-md/skills/review-claude-md/SKILL.md",
-    "plugins/test-writer/skills/test-writer/SKILL.md",
 }
 
 
