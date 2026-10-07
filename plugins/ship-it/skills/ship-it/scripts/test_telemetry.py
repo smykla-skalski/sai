@@ -12,6 +12,9 @@ from pathlib import Path
 
 
 SCRIPT = Path(__file__).with_name("telemetry.py")
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(SCRIPT.parent))
+import telemetry
 
 
 def run(data_home: Path, *arguments: str, success: bool = True) -> subprocess.CompletedProcess[str]:
@@ -87,6 +90,8 @@ def test_unknown_values_and_validation() -> None:
             ("record", "--run-id", started["run_id"], "--phase", "test", "--turns", "-1"),
             ("begin", "--task-id", "prompt text is unsafe", "--harness", "codex", "--provider", "openai", "--model", "gpt", "--role", "primary"),
             ("begin", "--task-id", "https://private/repo", "--harness", "codex", "--provider", "openai", "--model", "gpt", "--role", "primary"),
+            ("begin", "--task-id", "eval-43", "--harness", "codex", "--provider", "https://user:secret@private.example", "--model", "gpt", "--role", "primary"),
+            ("record", "--run-id", started["run_id"], "--phase", "test", "--model", "https://user:secret@private.example/model"),
             ("finish", "--run-id", "missing", "--outcome", "accepted"),
             ("finish", "--run-id", "run_a/../../private", "--outcome", "accepted"),
         ):
@@ -98,9 +103,33 @@ def test_unknown_values_and_validation() -> None:
         result = run(root, "record", "--run-id", started["run_id"], "--phase", "test", success=False)
         assert result.returncode == 2 and "invalid run state" in result.stderr
 
+        state_path.write_bytes(b"\xff")
+        result = run(root, "record", "--run-id", started["run_id"], "--phase", "test", success=False)
+        assert result.returncode == 2 and "cannot read run state" in result.stderr
+
+
+def test_short_append_completes_record() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        path = Path(temporary) / "events.ndjson"
+        real_write = telemetry.os.write
+
+        def short_write(descriptor: int, data: bytes | memoryview) -> int:
+            size = max(1, len(data) // 2)
+            return real_write(descriptor, data[:size])
+
+        telemetry.os.write = short_write
+        try:
+            telemetry.append_event(path, b'{"event":"one"}\n')
+            telemetry.append_event(path, b'{"event":"two"}\n')
+        finally:
+            telemetry.os.write = real_write
+        assert [json.loads(line)["event"] for line in path.read_text().splitlines()] == ["one", "two"]
+
 
 if __name__ == "__main__":
     test_lifecycle()
     print("ok test_lifecycle")
     test_unknown_values_and_validation()
     print("ok test_unknown_values_and_validation")
+    test_short_append_completes_record()
+    print("ok test_short_append_completes_record")

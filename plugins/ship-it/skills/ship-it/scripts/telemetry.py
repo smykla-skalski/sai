@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -59,7 +60,7 @@ COUNTERS: Final[tuple[str, ...]] = (
     "failed_commands",
     "approval_wait_ms",
 )
-SAFE_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,127}$")
+SAFE_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$")
 SAFE_TASK_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
 RUN_ID: Final[re.Pattern[str]] = re.compile(r"^run_[0-9a-f]{24}$")
 
@@ -74,7 +75,7 @@ def data_dir() -> Path:
 
 
 def validate_identifier(label: str, value: str) -> str:
-    if not SAFE_ID.fullmatch(value):
+    if not SAFE_ID.fullmatch(value) or "://" in value:
         raise UsageError(f"{label} must be 1-128 safe identifier characters")
     return value
 
@@ -110,7 +111,7 @@ def load_run(run_id: str) -> dict:
         value = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         raise UsageError(f"unknown run id {run_id!r}") from None
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         raise UsageError(f"cannot read run state for {run_id!r}") from None
     if not isinstance(value, dict) or value.get("run_id") != run_id:
         raise UsageError(f"invalid run state for {run_id!r}")
@@ -136,6 +137,26 @@ def metric_values(args: argparse.Namespace) -> dict[str, int | None]:
     return values
 
 
+def append_event(path: Path, encoded: bytes) -> None:
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
+    try:
+        os.fchmod(descriptor, 0o600)
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        start = os.lseek(descriptor, 0, os.SEEK_END)
+        remaining = memoryview(encoded)
+        try:
+            while remaining:
+                written = os.write(descriptor, remaining)
+                if written <= 0:
+                    raise OSError("event append made no progress")
+                remaining = remaining[written:]
+        except OSError:
+            os.ftruncate(descriptor, start)
+            raise
+    finally:
+        os.close(descriptor)
+
+
 def emit(state: dict, args: argparse.Namespace, event: str, outcome: str | None) -> dict:
     root = data_dir()
     private_directory(root)
@@ -156,12 +177,7 @@ def emit(state: dict, args: argparse.Namespace, event: str, outcome: str | None)
         "outcome": outcome,
     }
     encoded = (json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n").encode()
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
-    try:
-        os.fchmod(descriptor, 0o600)
-        os.write(descriptor, encoded)
-    finally:
-        os.close(descriptor)
+    append_event(path, encoded)
     return {"event": record, "path": str(path)}
 
 
@@ -237,6 +253,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except UsageError as error:
         print(f"telemetry: {error}", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"telemetry: cannot persist event: {error}", file=sys.stderr)
         return 2
 
 
