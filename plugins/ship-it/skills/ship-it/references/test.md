@@ -1,6 +1,6 @@
 # Adversarial manual test gate
 
-From the review-clean committed tip, run `adversarial-test:adversarial-test` with `--base origin/<default> --context <task-context-file>`. In the Sybra repository, invoke `sybra-test` instead. The reply must start with `Test Verdict: PASS`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`.
+From the review-clean committed tip, run `adversarial-test:adversarial-test` with `--base origin/<default> --context <checkpoint-file>`. In the Sybra repository, invoke `sybra-test` instead. The reply must start with `Test Verdict: PASS`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`.
 
 The tester derives acceptance criteria from the task, runs the real changed product surface in isolated state, attacks happy paths, boundaries, malformed input, repeated or concurrent use and adjacent flows, then reruns every reproduction. Automated tests, lint, build and source inspection are supporting evidence, not manual testing.
 
@@ -11,3 +11,5 @@ On `FAIL`, rerun each reproduction before acting. Fix every surviving failure, a
 After three combined failing review or test rounds, stop and ask when the user is reachable. Otherwise continue only while each round finds smaller concrete issues, and report the overrun.
 
 `BLOCKED` is a hard stop: report the exact human action required. Open a PR only after `PASS` on the same revision that received `Review Verdict: CLEAN`.
+
+Record the verdict against its exact committed `HEAD`. A passing verdict advances the checkpoint to `phase: pr`; a reproduced failure returns it to `phase: implement`. For `BLOCKED`, set `status: blocked`, preserve the tested revision, and put the exact human action in both `blocker` and `nextAction`.

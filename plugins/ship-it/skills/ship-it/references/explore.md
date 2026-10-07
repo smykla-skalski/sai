@@ -10,3 +10,5 @@ Build the implementation map before editing anything.
 - Inspect recent related changes and open work when they can reveal ownership or duplication.
 
 Do not turn exploration into implementation. Finish with a concise map of files, behavior, gates and unresolved product questions.
+
+Update the durable checkpoint only after exploration succeeds: set `phase` to `branch`, replace `unresolvedQuestions` with the questions still open, and set `nextAction` to branch preparation. If an unresolved product question blocks implementation, set `status` to `blocked`, describe it in `blocker`, and name the required human answer in `nextAction`.

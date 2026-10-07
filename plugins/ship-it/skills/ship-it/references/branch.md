@@ -13,3 +13,5 @@ Use a conventional type (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `te
 When the target is another repository, create a new worktree rather than editing its main checkout. A Sail worker stays in its assigned worktree and branch: verify both, then skip branch creation and the eventual return to the default branch.
 
 Stop if unrelated local changes overlap the task or the branch cannot be based safely on the current default revision.
+
+After the branch or assigned worktree is verified, record its name, current `HEAD`, default branch and repository identity in the durable checkpoint. Set `phase` to `implement` and name the first implementation action in `nextAction`. A repository, source, branch or revision conflict discovered here is a mismatch: stop without rewriting the checkpoint.

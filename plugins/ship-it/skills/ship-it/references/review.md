@@ -1,6 +1,6 @@
 # Adversarial code review gate
 
-Run `adversarial-review:adversarial-review` against the committed branch with `--base origin/<default> --context <task-context-file>`. The reply must start with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`.
+Run `adversarial-review:adversarial-review` against the committed branch with `--base origin/<default> --context <checkpoint-file>`. The reply must start with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`.
 
 The review uses two clean-context passes: a Code Adversary hunts concrete failures and unmet acceptance criteria, then a fresh Findings Adversary tries to refute every finding.
 
@@ -19,5 +19,7 @@ On `NEEDS_FIXES`:
 4. Review the new committed tip again.
 
 Put unresolved `question:` findings in the PR body when the repository cannot settle them. Do not start manual testing until the verdict is `CLEAN`.
+
+Record each verdict against its exact committed `HEAD`. A clean verdict advances the checkpoint to `phase: test`; a surviving finding returns it to `phase: implement` with the finding as `nextAction`. Any later code change makes the recorded review revision stale.
 
 After three failing rounds, stop and ask when the user is reachable. Otherwise continue only while each round finds smaller concrete issues, and report the overrun.
