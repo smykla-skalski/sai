@@ -16,7 +16,6 @@ OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/git-stage-hunk/skills/git-stage-hunk/SKILL.md",
     "plugins/humanize/skills/humanize/SKILL.md",
     "plugins/kubecon-cfp/skills/kubecon-cfp/SKILL.md",
-    "plugins/kup/skills/kup/SKILL.md",
     "plugins/plan-critic/skills/plan-critic/SKILL.md",
     "plugins/promptgen/skills/promptgen/SKILL.md",
     "plugins/refactor-council/skills/refactor-council/SKILL.md",
