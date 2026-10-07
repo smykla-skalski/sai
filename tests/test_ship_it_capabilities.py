@@ -180,6 +180,17 @@ class ShipItCapabilityContractTest(unittest.TestCase):
             {"github.read", "issue.read", "network.read"}
             <= conditional("resolve", "create_issue")
         )
+        self.assertTrue(
+            {
+                "github.read",
+                "github.write",
+                "issue.read",
+                "issue.write",
+                "network.read",
+                "network.write",
+            }
+            <= conditional("resolve", "github_source")
+        )
         self.assertNotIn("issue.read", required("complete"))
         self.assertTrue(
             {"github.write", "issue.read", "issue.write", "network.write"}
@@ -193,6 +204,38 @@ class ShipItCapabilityContractTest(unittest.TestCase):
         for risk in PROTECTED_RISKS:
             with self.subTest(risk=risk):
                 self.assertIn(risk, interactive)
+
+    def test_github_phases_can_maintain_the_work_claim(self) -> None:
+        phases = {phase["id"]: phase for phase in self.contract["phases"]}
+        claim_capabilities = {
+            "github.read",
+            "github.write",
+            "issue.read",
+            "issue.write",
+            "network.read",
+            "network.write",
+        }
+
+        for phase_id in ("resolve", "explore", "branch", "implement", "review", "test"):
+            with self.subTest(phase=phase_id):
+                phase = phases[phase_id]
+                overrides = {
+                    override["profile"]
+                    for override in phase.get("profile_overrides", ())
+                    if override.get("when") == {
+                        "fact": "github_source",
+                        "equals": True,
+                    }
+                }
+                self.assertEqual(overrides, {"release"})
+                required = {
+                    capability
+                    for requirement in phase["requirements"]
+                    if requirement.get("when")
+                    == {"fact": "github_source", "equals": True}
+                    for capability in requirement.get("all_of", ())
+                }
+                self.assertTrue(claim_capabilities <= required)
 
     def test_skill_progressively_loads_capability_guidance(self) -> None:
         skill = SKILL_FILE.read_text(encoding="utf-8")

@@ -22,6 +22,7 @@ SKILL_DIR: Final[Path] = (
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
 CHECKPOINT_REFERENCE: Final[Path] = SKILL_DIR / "references" / "checkpoint.md"
 EVIDENCE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "evidence.md"
+CLAIMS_REFERENCE: Final[Path] = SKILL_DIR / "references" / "claims.md"
 CODEX_MAX_SKILL_PROMPT_BYTES: Final[int] = 8000
 SKILL_BUDGET_BYTES: Final[int] = 6000
 REFERENCE_LINK: Final[re.Pattern[str]] = re.compile(r"\]\((references/[^)]+\.md)\)")
@@ -135,6 +136,40 @@ class ShipItSkillSizeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
                 self.assertIn("checkpoint", content.lower())
+
+    def test_github_claim_contract_is_visible_expiring_and_auditable(self) -> None:
+        skill = SKILL_FILE.read_text(encoding="utf-8")
+        claims = CLAIMS_REFERENCE.read_text(encoding="utf-8")
+        checkpoint = CHECKPOINT_REFERENCE.read_text(encoding="utf-8")
+        evidence = EVIDENCE_REFERENCE.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            skill.count("[references/claims.md](references/claims.md)"),
+            1,
+        )
+        for expected in (
+            "<!-- sai:ship-it-claim:v1 -->",
+            '"holder"',
+            '"acquiredAt"',
+            '"renewedAt"',
+            '"expiresAt"',
+            "30-minute lease",
+            "lowest numeric GitHub comment database ID",
+            "status: pending",
+            "release its own duplicates",
+            "previousCommentUrl",
+            "openPullRequestsChecked",
+            "recentMergesChecked",
+            "lost acquisition race",
+            "terminal failure",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, claims)
+
+        self.assertIn('"claim": null', checkpoint)
+        self.assertIn('"claim": null', evidence)
+        self.assertIn("authoritative issue comment", checkpoint)
+        self.assertIn("active, unexpired", evidence)
 
     def test_completion_evidence_is_revision_bound_and_portable(self) -> None:
         skill = SKILL_FILE.read_text(encoding="utf-8")

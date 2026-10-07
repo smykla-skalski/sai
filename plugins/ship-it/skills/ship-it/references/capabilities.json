@@ -52,6 +52,7 @@
       "description": "Publish, review, merge, and close already validated work.",
       "allows": [
         "filesystem.read",
+        "filesystem.transient-write",
         "filesystem.write",
         "git.read",
         "git.write",
@@ -82,62 +83,83 @@
       "id": "resolve",
       "profile": "explore",
       "profile_overrides": [
+        {"profile": "release", "when": {"fact": "github_source", "equals": true}},
         {"profile": "release", "when": {"fact": "create_issue", "equals": true}},
         {"profile": "release", "when": {"fact": "coordinator", "equals": true}}
       ],
       "requirements": [
         {"all_of": ["filesystem.read", "process.read", "state.write"]},
-        {"all_of": ["github.read", "issue.read", "network.read"], "when": {"fact": "github_source", "equals": true}},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "create_issue", "equals": true}},
         {"all_of": ["filesystem.write", "git.read", "git.write", "github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write", "process.execute", "subagent.worker", "subagent.review", "subagent.test"], "when": {"fact": "coordinator", "equals": true}},
         {"any_of": ["mcp.jira.read", "process.jira.read"], "when": {"fact": "jira_source", "equals": true}, "fallback": "request-ticket-paste"}
       ],
-      "side_effects": ["create a requested GitHub issue", "create or update the task checkpoint", "coordinate an issue graph and launch isolated workers"]
+      "side_effects": ["create a requested GitHub issue", "create, renew or reconcile a GitHub work claim", "create or update the task checkpoint", "coordinate an issue graph and launch isolated workers"]
     },
     {
       "id": "explore",
       "profile": "explore",
+      "profile_overrides": [
+        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
+      ],
       "requirements": [
         {"all_of": ["filesystem.read", "git.read", "process.read", "state.write"]},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
         {"all_of": ["github.read", "network.read"], "when": {"fact": "inspect_remote_work", "equals": true}}
       ],
-      "side_effects": ["update the task checkpoint"]
+      "side_effects": ["renew or reconcile a GitHub work claim", "update the task checkpoint"]
     },
     {
       "id": "branch",
       "profile": "build",
-      "requirements": [
-        {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "network.read", "process.execute", "state.write"]}
+      "profile_overrides": [
+        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
       ],
-      "side_effects": ["fetch remote refs", "create a branch or worktree", "update the task checkpoint"]
+      "requirements": [
+        {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "network.read", "process.execute", "state.write"]},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}}
+      ],
+      "side_effects": ["renew or reconcile a GitHub work claim", "fetch remote refs", "create a branch or worktree", "update the task checkpoint"]
     },
     {
       "id": "implement",
       "profile": "build",
-      "requirements": [
-        {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "process.execute", "state.write"]}
+      "profile_overrides": [
+        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
       ],
-      "side_effects": ["edit repository files", "run repository commands", "create signed commits", "update the task checkpoint"]
+      "requirements": [
+        {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "process.execute", "state.write"]},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}}
+      ],
+      "side_effects": ["renew or reconcile a GitHub work claim", "edit repository files", "run repository commands", "create signed commits", "update the task checkpoint"]
     },
     {
       "id": "review",
       "profile": "review",
+      "profile_overrides": [
+        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
+      ],
       "requirements": [
         {"all_of": ["filesystem.read", "git.read", "process.read", "state.write"]},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
         {"any_of": ["skill.review", "subagent.review", "inline.review"], "fallback": "portable-review-fallback"},
         {"all_of": ["subagent.review"], "when": {"fact": "sail", "equals": true}}
       ],
-      "side_effects": ["write bounded review state outside the repository", "update the task checkpoint"]
+      "side_effects": ["renew or reconcile a GitHub work claim", "write bounded review state outside the repository", "update the task checkpoint"]
     },
     {
       "id": "test",
       "profile": "review",
+      "profile_overrides": [
+        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
+      ],
       "requirements": [
         {"all_of": ["filesystem.read", "filesystem.transient-write", "git.read", "process.execute", "state.write"]},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
         {"any_of": ["skill.test", "subagent.test", "inline.test"], "fallback": "portable-test-fallback"},
         {"all_of": ["subagent.test"], "when": {"fact": "sail", "equals": true}}
       ],
-      "side_effects": ["run the product in isolated state", "write temporary test state outside the repository", "update the task checkpoint"]
+      "side_effects": ["renew or reconcile a GitHub work claim", "run the product in isolated state", "write temporary test state outside the repository", "update the task checkpoint"]
     },
     {
       "id": "pr-loop",

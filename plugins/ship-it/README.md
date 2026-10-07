@@ -10,6 +10,8 @@ Every phase also has a versioned machine-readable capability contract. It select
 
 Every task has a portable JSON checkpoint under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/checkpoints/`. Claude Code, Codex, Copilot CLI, opencode and Sail use the same task identity, phase, revision, blocker and outcome fields, so another harness can safely reconcile Git and GitHub before resuming.
 
+GitHub issues also use a visible 30-minute work claim in an issue comment. The claim names its holder and checkpoint, renews during active work, resolves concurrent acquisition deterministically, records audited takeovers after checking open and recent equivalent pull requests, and releases on merge, cancellation or terminal failure.
+
 Each committed task revision also has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Acceptance criteria, local checks, adversarial review, manual testing and CI carry their source revision, provider, model, status, timestamp and bounded output reference. Any source change makes the previous record stale. PR-due evidence for the current revision permits PR creation; a complete record with passing CI for the current PR head permits merge.
 
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.

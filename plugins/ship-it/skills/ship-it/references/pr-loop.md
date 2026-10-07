@@ -2,6 +2,8 @@
 
 From a reviewed and tested branch to a merged PR. Never end the turn while CI or Copilot is pending: keep polling (background waits are fine) until the PR is merged or a hard stop is reached.
 
+For GitHub work, verify the issue claim before the first push and renew it at least every 10 minutes throughout the loop. Renew before each GitHub write when due. A conflicting, expired or unverifiable claim pauses pushes, PR changes, review replies and merge until reconciliation succeeds.
+
 ## Before the first push
 
 Do not rewrite history after review begins. If the unpublished branch still needs a version-bump squash or any other rewrite, return to implementation, rewrite it with hooks enabled, run repository gates, and repeat adversarial review and testing on the new `HEAD` before pushing or opening the PR.

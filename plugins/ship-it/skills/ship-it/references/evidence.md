@@ -18,6 +18,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
   "checkpointId": "64 lowercase hexadecimal characters",
   "repository": "normalized repository identity",
   "revision": "full hexadecimal commit SHA",
+  "claim": null,
   "status": "complete",
   "invalidatedAt": null,
   "invalidatedByRevision": null,
@@ -99,6 +100,8 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
 
 `status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
 
+`claim` is null for Jira and description tasks. For a GitHub implementation issue it contains the current claim's `issueUrl`, `commentUrl`, `holderId`, `acquiredAt` and latest verified `renewedAt`. Create or update evidence only while that claim is active, unexpired and matches the checkpoint. Claim renewal changes `renewedAt` in the current record without invalidating revision-bound results; another holder, comment or acquisition time is an identity mismatch and blocks evidence writes. Releasing the same claim after verified merge preserves the completed delivery evidence.
+
 An output reference has kind `inline`, `command`, `path` or `url`; a non-empty UTF-8 `value` of at most 2048 bytes; and `sha256`, which is null or the lowercase digest of a referenced immutable artifact. Store only a concise verdict or summary inline. Keep secrets and unbounded logs out of the record.
 
 ## Required result set
@@ -115,6 +118,7 @@ A record becomes complete at the merge gate only when all of these are true:
 - The manual-test reference records `Test Verdict: PASS`.
 - Every required CI result names the final successful job URL.
 - The record revision equals committed `HEAD` and, after PR creation, the current PR head.
+- At a GitHub PR or merge gate, the record's claim matches the checkpoint and its authoritative issue comment is active and unexpired.
 
 Missing, pending, failed, blocked or stale required evidence makes the record non-complete and blocks the gate where it is due. Never infer a pass from a workflow phase, old verdict, successful sibling check or checkpoint status.
 
