@@ -8,7 +8,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MAX_SKILL_BYTES = 8_000
 OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/adversarial-test/skills/adversarial-test/SKILL.md",
-    "plugins/git-stage-hunk/skills/git-stage-hunk/SKILL.md",
     "plugins/kubecon-cfp/skills/kubecon-cfp/SKILL.md",
     "plugins/review-claude-md/skills/review-claude-md/SKILL.md",
     "plugins/test-writer/skills/test-writer/SKILL.md",
