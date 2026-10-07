@@ -60,15 +60,18 @@
         "issue.read",
         "issue.write",
         "merge.execute",
+        "mcp.jira.read",
         "network.read",
         "network.write",
         "process.execute",
+        "process.jira.read",
         "process.read",
         "inline.review",
         "inline.test",
         "skill.review",
         "skill.test",
         "state.write",
+        "subagent.worker",
         "subagent.review",
         "subagent.test"
       ]
@@ -79,15 +82,17 @@
       "id": "resolve",
       "profile": "explore",
       "profile_overrides": [
-        {"profile": "release", "when": {"fact": "create_issue", "equals": true}}
+        {"profile": "release", "when": {"fact": "create_issue", "equals": true}},
+        {"profile": "release", "when": {"fact": "coordinator", "equals": true}}
       ],
       "requirements": [
         {"all_of": ["filesystem.read", "process.read", "state.write"]},
         {"all_of": ["github.read", "issue.read", "network.read"], "when": {"fact": "github_source", "equals": true}},
-        {"all_of": ["github.write", "issue.write", "network.write"], "when": {"fact": "create_issue", "equals": true}},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "create_issue", "equals": true}},
+        {"all_of": ["filesystem.write", "git.read", "git.write", "github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write", "process.execute", "subagent.worker", "subagent.review", "subagent.test"], "when": {"fact": "coordinator", "equals": true}},
         {"any_of": ["mcp.jira.read", "process.jira.read"], "when": {"fact": "jira_source", "equals": true}, "fallback": "request-ticket-paste"}
       ],
-      "side_effects": ["create a requested GitHub issue", "write task context outside the repository"]
+      "side_effects": ["create a requested GitHub issue", "write task context outside the repository", "coordinate an issue graph and launch isolated workers"]
     },
     {
       "id": "explore",
@@ -138,11 +143,10 @@
       "id": "pr-loop",
       "profile": "release",
       "requirements": [
-        {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "github.read", "github.write", "network.read", "network.write", "process.execute"]},
+        {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "github.read", "github.write", "merge.execute", "network.read", "network.write", "process.execute"]},
         {"any_of": ["skill.review", "subagent.review", "inline.review"], "when": {"fact": "code_changed", "equals": true}, "fallback": "portable-review-fallback"},
         {"any_of": ["skill.test", "subagent.test", "inline.test"], "when": {"fact": "code_changed", "equals": true}, "fallback": "portable-test-fallback"},
         {"all_of": ["subagent.review", "subagent.test"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "sail", "equals": true}]}},
-        {"all_of": ["merge.execute"], "when": {"fact": "release_gates_passed", "equals": true}},
         {"all_of": ["issue.write"], "when": {"fact": "github_issue_tracking", "equals": true}}
       ],
       "side_effects": ["push commits", "create or update a pull request", "request review", "merge", "update a GitHub issue"]
@@ -151,10 +155,11 @@
       "id": "complete",
       "profile": "release",
       "requirements": [
-        {"all_of": ["filesystem.read", "git.read", "github.read", "issue.read", "network.read", "process.read"]},
+        {"all_of": ["filesystem.read", "git.read", "github.read", "network.read", "process.read"]},
+        {"all_of": ["github.write", "issue.read", "issue.write", "network.write"], "when": {"fact": "github_issue_tracking", "equals": true}},
         {"all_of": ["filesystem.write", "git.write", "process.execute"], "when": {"fact": "owns_cleanup", "equals": true}}
       ],
-      "side_effects": ["remove the task worktree when owned and safe"]
+      "side_effects": ["comment on and close a tracked GitHub issue when automatic closure failed", "remove the task worktree when owned and safe"]
     }
   ],
   "protected_actions": {

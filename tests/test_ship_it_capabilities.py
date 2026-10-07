@@ -8,6 +8,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 from __future__ import annotations
 
 import json
+import itertools
 import unittest
 from pathlib import Path
 from typing import Any, Final
@@ -37,13 +38,13 @@ PROTECTED_RISKS: Final[tuple[str, ...]] = (
 )
 CONDITION_FACTS: Final[set[str]] = {
     "code_changed",
+    "coordinator",
     "create_issue",
     "github_issue_tracking",
     "github_source",
     "inspect_remote_work",
     "jira_source",
     "owns_cleanup",
-    "release_gates_passed",
     "sail",
 }
 
@@ -66,28 +67,43 @@ class ShipItCapabilityContractTest(unittest.TestCase):
 
     def test_phase_requirements_fit_selected_profile(self) -> None:
         profiles = self.contract["profiles"]
+
+        def matches(condition: dict[str, Any], facts: dict[str, bool]) -> bool:
+            if "all" in condition:
+                return all(matches(child, facts) for child in condition["all"])
+            return facts[condition["fact"]] is condition["equals"]
+
         for phase in self.contract["phases"]:
-            with self.subTest(phase=phase["id"]):
-                selected_profiles = {phase["profile"]} | {
+            self.assertTrue(phase["requirements"])
+            self.assertIn("side_effects", phase)
+            for values in itertools.product((False, True), repeat=len(CONDITION_FACTS)):
+                facts = dict(zip(sorted(CONDITION_FACTS), values, strict=True))
+                matching_overrides = {
                     override["profile"]
                     for override in phase.get("profile_overrides", ())
+                    if matches(override["when"], facts)
                 }
-                allowed = {
-                    capability
-                    for profile in selected_profiles
-                    for capability in profiles[profile]["allows"]
-                }
-                self.assertTrue(phase["requirements"])
-                self.assertIn("side_effects", phase)
+                self.assertLessEqual(
+                    len(matching_overrides),
+                    1,
+                    f"{phase['id']} selects conflicting profile overrides",
+                )
+                selected_profile = next(iter(matching_overrides), phase["profile"])
+                allowed = set(profiles[selected_profile]["allows"])
                 for requirement in phase["requirements"]:
+                    if "when" in requirement and not matches(requirement["when"], facts):
+                        continue
                     declared = set(requirement.get("all_of", ())) | set(
                         requirement.get("any_of", ())
                     )
-                    self.assertTrue(
-                        declared <= allowed,
-                        f"{phase['id']} requires capabilities outside "
-                        f"{phase['profile']}: {sorted(declared - allowed)}",
-                    )
+                    with self.subTest(
+                        phase=phase["id"], profile=selected_profile, facts=facts
+                    ):
+                        self.assertTrue(
+                            declared <= allowed,
+                            f"{phase['id']} requires capabilities outside "
+                            f"{selected_profile}: {sorted(declared - allowed)}",
+                        )
 
     def test_conditions_are_machine_readable(self) -> None:
         def assert_condition(condition: dict[str, Any]) -> None:
