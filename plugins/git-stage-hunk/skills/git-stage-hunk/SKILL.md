@@ -10,7 +10,6 @@ metadata:
   short-description: Stage selected diff hunks safely
 ---
 
-<!-- justify: CF-side-effect Stages hunks via git apply --cached which is additive and reversible - safe to auto-invoke -->
 
 # git-stage-hunk
 
@@ -24,204 +23,29 @@ The heavy lifting happens in the Python script. Your first action MUST be Bash -
 "<skill-dir>/scripts/git-stage-hunk.py" --list --table
 ```
 
-## Quick workflow
+## Required guidance
 
-1. List hunks:
+Before taking any action, read [references/workflow.md](references/workflow.md) completely. It is the authoritative procedure and preserves every platform fallback, decision rule, template, command, validation step, and output contract. Follow its sections in order and load the deeper references it names only at their stated gates.
 
-   ```
-   "<skill-dir>/scripts/git-stage-hunk.py" --list --table
-   ```
+Paths in the workflow are relative to this skill directory. If argument substitution is unavailable or unresolved, take the input and flags from the user's request. When a named tool, agent, or interaction primitive is unavailable, use the workflow's compatibility fallback; never silently skip the behavior.
 
-2. Stage the ones you want:
+## Core flow
 
-   ```
-   "<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --table
-   ```
+1. Quick workflow
+2. Agent compatibility
+3. Preprocessed context
+4. Arguments
+5. Workflow
+6. Hunk ID scheme
+7. Error handling
+8. Dependencies
+9. Example invocations
 
-3. Commit, then re-list to see what remains.
+## Execution contract
 
-**WARNING: Hunk IDs shift after staging or committing.** Always re-list before using IDs from a previous run.
-
-Filter the listing to one file:
-
-```
-"<skill-dir>/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
-```
-
-## Agent compatibility
-
-The workflow is written for Claude Code; on other agents, or when a Claude feature is missing, use these fallbacks:
-
-| Claude Code feature | Fallback |
-| :-- | :-- |
-| Skill directory substitution | If the Claude Code path in the paragraph above is not absolute, use the directory that holds this SKILL.md as `<skill-dir>` |
-| Argument substitution | If the "Parse from" line under Arguments shows no flags or an unreplaced placeholder, take the mode and flags from the user's request; with none, default to `--list` |
-| Shell preprocessing (Preprocessed context) | If the OS line below shows a command instead of a value, run `uname -s` yourself before Phase 2 |
-| AskUserQuestion | Ask the question in plain text and wait for the answer |
-| Subagents, `context: fork` | Not used; the skill runs in the main agent loop |
-
-In Codex the skill is explicit-invocation only (`agents/openai.yaml` sets `allow_implicit_invocation: false`) because it writes the git index. If the sandbox blocks the script from writing `.git/index`, rerun it with escalation and a short reason. Prefer `--list` or `--dry-run` first unless the user clearly asked to stage.
-
-## Preprocessed context
-
-- OS: !`uname -s`
-
-## Arguments
-
-Parse from `$ARGUMENTS`:
-
-| Flag | Default | Purpose |
-| :-- | :-- | :-- |
-| `--list` | - | List all unstaged hunks with IDs and previews |
-| `--list --file PATH` | - | List hunks filtered to file(s), comma-separated |
-| `--list --split` | - | List all hunks with sub-hunk breakdown |
-| `--split H3` | - | Show sub-hunks for one specific hunk |
-| `--hunk H1,H2,...` | - | Stage specific hunks by sequential ID |
-| `--hunk H3.1,H3.2` | - | Stage sub-hunks by dot-notation ID |
-| `--hunk H3:5-10` | - | Stage hunk-relative lines 5-10 of H3 |
-| `--pattern REGEX` | - | Stage hunks matching regex content |
-| `--file PATH` | - | Stage all hunks for file(s), comma-separated |
-| `--range FILE:S-E` | - | Stage hunks overlapping line range |
-| `--table` | off | Output as markdown table (default is NDJSON) |
-| `--dry-run` | off | Preview without applying |
-| `--verify` | - | Show staged vs unstaged summary |
-
-Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes (`--pattern`, `--file`, `--range`) are alternatives for bulk selection.
-
-`--file` has dual behavior: with `--list` it filters the listing, without `--list` it stages all hunks for that file. If no mode flag is provided, default to `--list`.
-
-## Workflow
-
-### Phase 1: Setup
-
-1. Parse `$ARGUMENTS` for mode flags and options.
-
-### Phase 2: Dependency check
-
-1. Run the script with `--check-deps`:
-
-   ```
-   "<skill-dir>/scripts/git-stage-hunk.py" --check-deps
-   ```
-
-2. Parse the NDJSON output. Each line is a dependency status.
-3. If the script exits with code 3 (patchutils missing), use AskUserQuestion:
-   - Question: "patchutils is not installed. Install it now?"
-   - Option 1: "Yes, install" - "Full hunk filtering with grepdiff/filterdiff. Most reliable."
-   - Option 2: "No, use fallback" - "Pure-Python parsing. --pattern and --range modes unavailable."
-4. If user chooses install, use the OS value from Preprocessed context:
-   - Darwin: `brew install patchutils`
-   - Linux: `sudo apt-get install -y patchutils`
-5. If user chooses fallback, pass `--fallback` to all subsequent script calls.
-6. Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils command reference before advising on installation.
-7. If git or python3 are missing, report and stop.
-
-### Phase 3: Execute mode
-
-Run the script with the user's requested mode. Always pass `--table` for human-readable output:
-
-```
-"<skill-dir>/scripts/git-stage-hunk.py" --list --table
-"<skill-dir>/scripts/git-stage-hunk.py" --list --file src/auth.ts --table
-"<skill-dir>/scripts/git-stage-hunk.py" --list --split --table
-"<skill-dir>/scripts/git-stage-hunk.py" --split H3
-"<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --dry-run --table
-"<skill-dir>/scripts/git-stage-hunk.py" --hunk H1,H3 --table
-"<skill-dir>/scripts/git-stage-hunk.py" --hunk H3.1,H3.2 --table
-"<skill-dir>/scripts/git-stage-hunk.py" --hunk H3:5-10 --table
-"<skill-dir>/scripts/git-stage-hunk.py" --pattern 'handleAuth' --table
-"<skill-dir>/scripts/git-stage-hunk.py" --file src/auth.ts --table
-"<skill-dir>/scripts/git-stage-hunk.py" --range src/auth.ts:45-60 --table
-"<skill-dir>/scripts/git-stage-hunk.py" --verify --table
-```
-
-Add `--fallback` if the user declined patchutils in Phase 2.
-
-Mixed hunk IDs are supported in a single `--hunk` call: plain IDs (H1), sub-hunk IDs (H3.2), and line-select IDs (H5:10-15) are processed in separate batches internally.
-
-### Phase 4: Present results
-
-With `--table`, output is already formatted as a markdown table. Present directly.
-
-For NDJSON output (no `--table`), read [references/output-format.md](references/output-format.md) for the schema of each mode.
-
-If the summary includes `"fallback":true`, note that `--pattern` and `--range` modes are unavailable without patchutils.
-
-### Phase 5: Verify (optional)
-
-After staging, optionally run `--verify` to show what ended up staged vs unstaged:
-
-```
-"<skill-dir>/scripts/git-stage-hunk.py" --verify --table
-```
-
-## Hunk ID scheme
-
-Sequential IDs: H1, H2, H3, ... assigned by alphabetical file order, then position within each file. Stable within a single diff snapshot but shift after staging (see warning in Quick workflow).
-
-### Sub-hunk IDs
-
-Format: `H{parent}.{sub}` where parent is the global hunk number and sub is 1-indexed within the parent. Example: H3.1, H3.2, H3.3.
-
-Sub-hunks are derived by re-running the diff with `--inter-hunk-context=0 --unified=0` to produce the finest possible hunks, then mapping fine hunks back to their parent's line range.
-
-Sub-hunks are terminal - no recursive splitting. Use line-select (`H3:5-10`) for finer control within any hunk.
-
-### Line-select IDs
-
-Format: `H{id}:{start}-{end}` where start and end are 1-based line numbers relative to the hunk body (line 1 = first line after the @@ header). Example: H3:5-10.
-
-Read [references/split-hunk-guide.md](references/split-hunk-guide.md) for splitting mechanics, header recalculation, and edge cases.
-
-## Error handling
-
-- Empty diff: script outputs `{"error":"no_unstaged_changes"}` and exits 0.
-- Invalid hunk IDs: script warns about bad IDs, stages valid ones.
-- Apply conflicts: script tries bulk apply first, falls back to per-file, then per-hunk. Each result reported individually.
-- Index lock: script detects "index.lock" in git apply stderr and emits `{"error":"index_locked"}`.
-- Binary files: silently skipped during hunk indexing.
-- Not splittable: `--split H3` returns `{"splittable":false}` with suggestion to use line-select. Not an error.
-
-## Dependencies
-
-- git (required)
-- python3 (required, for `scripts/git-stage-hunk.py` and `scripts/split_hunk.py`)
-- patchutils (optional, provides lsdiff/filterdiff/grepdiff)
-
-Read [references/patchutils-guide.md](references/patchutils-guide.md) for patchutils usage details.
-
-## Example invocations
-
-<example>
-List and inspect hunks:
-
-```
-/git-stage-hunk --list --table
-/git-stage-hunk --list --file src/auth.ts --table
-/git-stage-hunk --list --split --table
-/git-stage-hunk --split H3
-```
-</example>
-
-<example>
-Stage by hunk ID (plain, sub-hunk, line-select, mixed):
-
-```
-/git-stage-hunk --hunk H1,H3 --table
-/git-stage-hunk --hunk H2 --dry-run --table
-/git-stage-hunk --hunk H3.1,H3.2 --table
-/git-stage-hunk --hunk H3:5-10 --table
-/git-stage-hunk --hunk H1,H3.2,H5:10-15 --table
-```
-</example>
-
-<example>
-Bulk selection and verification:
-
-```
-/git-stage-hunk --pattern 'TODO|FIXME' --table
-/git-stage-hunk --file src/auth.ts,src/db.ts --table
-/git-stage-hunk --range src/auth.ts:45-60 --table
-/git-stage-hunk --verify --table
-```
-</example>
+- Resolve the target and flags before side effects.
+- Execute every applicable workflow section in the listed order; headings are an index, not a replacement for the detailed instructions.
+- Preserve explicit read gates: load each supporting reference immediately before the phase that needs it.
+- Follow repository instructions and the user's authorized scope.
+- Preserve validation, state-update, deduplication, adversarial-check, and output requirements exactly as defined in the workflow.
+- Stop at every hard stop named by the workflow and state the required next action.
