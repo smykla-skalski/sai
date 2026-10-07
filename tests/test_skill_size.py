@@ -18,7 +18,6 @@ OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/kubecon-cfp/skills/kubecon-cfp/SKILL.md",
     "plugins/kup/skills/kup/SKILL.md",
     "plugins/plan-critic/skills/plan-critic/SKILL.md",
-    "plugins/promptgen/skills/promptgen/SKILL.md",
     "plugins/refactor-council/skills/refactor-council/SKILL.md",
     "plugins/review-claude-md/skills/review-claude-md/SKILL.md",
     "plugins/service-mesh-debug/skills/service-mesh-debug/SKILL.md",
