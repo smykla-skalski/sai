@@ -17,7 +17,6 @@ OVERSIZED_SKILL_ALLOWLIST = {
     "plugins/plan-critic/skills/plan-critic/SKILL.md",
     "plugins/refactor-council/skills/refactor-council/SKILL.md",
     "plugins/review-claude-md/skills/review-claude-md/SKILL.md",
-    "plugins/service-mesh-debug/skills/service-mesh-debug/SKILL.md",
     "plugins/staff-resume/skills/staff-resume/SKILL.md",
     "plugins/test-writer/skills/test-writer/SKILL.md",
 }
