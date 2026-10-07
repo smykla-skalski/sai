@@ -22,6 +22,21 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
   "status": "complete",
   "invalidatedAt": null,
   "invalidatedByRevision": null,
+  "roleRoutes": [
+    {
+      "role": "implementation",
+      "requested": {"provider": "default", "model": "default", "variant": "default"},
+      "actual": {"provider": "codex", "model": "resolved-model", "variant": "resolved-variant"},
+      "sourceRevision": "full hexadecimal commit SHA",
+      "mechanism": "inline",
+      "executionId": "opaque execution identifier",
+      "modelResolution": "resolved",
+      "independence": "not-applicable",
+      "degradationReasons": [],
+      "timestamp": "RFC 3339 UTC timestamp"
+    }
+  ],
+  "routeDiagnostics": [],
   "results": [
     {
       "id": "ac-1",
@@ -100,6 +115,10 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
 
 `status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
 
+`roleRoutes` follows the portable role contract. It records requested and actual provider, model and variant, source revision, mechanism, execution identity, resolution and independence for every role invocation. Every route in a record has `sourceRevision` equal to the record revision. A result produced by a routed role references its route's `executionId` in `outputReference`. Preserve repeated role records for retries. Strict review evidence is invalid when the review route violates any independent-review rule. Policy-permitted degraded execution requires `independence: degraded`, non-empty `degradationReasons` and the authorization in the result output reference.
+
+`routeDiagnostics` records rejected route candidates and does not satisfy or block a gate. Pre-dispatch diagnostics have no execution metadata; post-dispatch diagnostics preserve returned route metadata for outputs rejected by independence checks. Only accepted dispatched executions belong in `roleRoutes`; therefore a later valid fallback can complete strict review while preserving all rejection history.
+
 `claim` is null for Jira and description tasks. For a GitHub implementation issue it contains the current claim's `issueUrl`, `commentUrl`, `holderId`, `acquiredAt` and latest verified `renewedAt`. Create or update evidence only while that claim is active, unexpired and matches the checkpoint. Claim renewal changes `renewedAt` in the current record without invalidating revision-bound results. Another holder, comment or acquisition time blocks ordinary evidence writes; an audited takeover follows the claim contract's rebind procedure and reruns every required result. Releasing the same claim after verified merge preserves the completed delivery evidence.
 
 An output reference has kind `inline`, `command`, `path` or `url`; a non-empty UTF-8 `value` of at most 2048 bytes; and `sha256`, which is null or the lowercase digest of a referenced immutable artifact. Store only a concise verdict or summary inline. Keep secrets and unbounded logs out of the record.
@@ -113,6 +132,8 @@ A gate passes only when every required result due at that gate has `status: pass
 A record becomes complete at the merge gate only when all of these are true:
 
 - It contains every required result and no duplicate result ID.
+- It contains valid role routes for every invoked exploration, implementation, review, testing and CI-triage role.
+- Every strict review route is resolved, fresh, non-inline and uses a different actual provider-and-model pair from implementation.
 - Every required result has `status: passed` and the exact record revision.
 - Every selected review reference records its required passing verdict.
 - Every selected manual-test reference records its required passing verdict.
@@ -127,7 +148,7 @@ Missing, pending, failed, blocked or stale required evidence makes the record no
 After each successful commit, history rewrite, merge from the default branch or code-changing review/CI fix:
 
 1. Atomically mark the previous current record `stale`, set `invalidatedAt`, and set `invalidatedByRevision` to the new full SHA.
-2. Create the new revision's record with `status: collecting`; copy the required result identities, but set their statuses to `pending` and replace their source revisions, timestamps and output references.
+2. Create the new revision's record with `status: collecting`; copy the required result identities, but set their statuses to `pending` and replace their source revisions, timestamps and output references. Carry still-active exploration and implementation routes with `sourceRevision` rebound to the new revision. Drop old review, testing and CI-triage routes; record fresh routes when those gates rerun.
 3. Point the task checkpoint's evidence fields at the new record only after that record is valid and durable.
 4. Rerun every required result against the new revision. Do not copy a pass from the stale record.
 

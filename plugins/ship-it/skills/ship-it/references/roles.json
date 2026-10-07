@@ -1,0 +1,87 @@
+{
+  "schema_version": "sai.ship-it.roles/v1",
+  "roles": [
+    {"id": "exploration", "phase": "explore", "dispatch": "current-execution"},
+    {"id": "implementation", "phase": "implement", "dispatch": "current-execution"},
+    {"id": "review", "phase": "review", "dispatch": "routed-worker"},
+    {"id": "testing", "phase": "test", "dispatch": "routed-worker"},
+    {"id": "ci-triage", "phase": "pr", "dispatch": "routed-worker"}
+  ],
+  "route_record": {
+    "required_fields": [
+      "role",
+      "requested",
+      "actual",
+      "sourceRevision",
+      "mechanism",
+      "executionId",
+      "modelResolution",
+      "independence",
+      "degradationReasons",
+      "timestamp"
+    ],
+    "selector_fields": ["provider", "model", "variant"],
+    "mechanisms": ["native-subagent", "generic-subagent", "skill", "inline", "service", "process"],
+    "model_resolutions": ["resolved", "unresolved"],
+    "independence_values": ["independent", "degraded", "not-applicable"]
+  },
+  "route_diagnostic": {
+    "required_fields": ["role", "requested", "stage", "reason", "timestamp"],
+    "optional_fields": ["actual", "executionId", "modelResolution"],
+    "stages": ["pre-dispatch", "post-dispatch"],
+    "reasons": [
+      "unsupported-selector",
+      "unavailable-mechanism",
+      "metadata-unavailable",
+      "strict-same-model",
+      "strict-context-reuse",
+      "strict-inline-execution"
+    ]
+  },
+  "independent_review": {
+    "default": "strict",
+    "strict_rejections": [
+      "same-provider-and-model-as-implementation",
+      "unresolved-model-alias",
+      "implementation-execution-reuse",
+      "inline-execution"
+    ],
+    "degraded_mode_requires": [
+      "explicit-policy-authorization",
+      "degraded-independence-value",
+      "non-empty-degradation-reasons"
+    ]
+  },
+  "adapters": {
+    "claude-code": {
+      "subagents": ["native-subagent", "generic-subagent"],
+      "fallback": "inline",
+      "selectors": {"provider": "session-provider", "model": "agent-model", "variant": "unsupported"},
+      "unsupported_selector": "reject-before-dispatch"
+    },
+    "codex": {
+      "subagents": ["generic-subagent"],
+      "fallback": "inline",
+      "selectors": {"provider": "session-provider", "model": "spawn-agent-model", "variant": "spawn-agent-reasoning-effort"},
+      "unsupported_selector": "reject-before-dispatch"
+    },
+    "opencode": {
+      "subagents": ["generic-subagent"],
+      "fallback": "inline",
+      "selectors": {"provider": "task-model-provider", "model": "task-model-id", "variant": "task-model-variant"},
+      "unsupported_selector": "reject-before-dispatch"
+    },
+    "copilot-cli": {
+      "subagents": ["native-subagent", "generic-subagent"],
+      "fallback": "inline",
+      "selectors": {"provider": "session-provider", "model": "agent-model", "variant": "unsupported"},
+      "unsupported_selector": "reject-before-dispatch"
+    },
+    "sail": {
+      "subagents": ["native-subagent"],
+      "fallback": null,
+      "selectors": {"provider": "worker-provider", "model": "worker-model", "variant": "worker-variant"},
+      "unsupported_selector": "reject-before-dispatch"
+    }
+  }
+}

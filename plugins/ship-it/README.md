@@ -18,6 +18,8 @@ Portable releases can replay the shared redacted [`environment-as-code` workflow
 
 Each committed task revision also has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Acceptance criteria, local checks, adversarial review, manual testing and CI carry their source revision, provider, model, status, timestamp and bounded output reference. Any source change makes the previous record stale. PR-due evidence for the current revision permits PR creation; a complete record with passing CI for the current PR head permits merge.
 
+Portable role routing gives exploration, implementation, review, testing and CI triage the same meaning across harnesses. Every role records requested and actual provider, model and variant. Strict review rejects the implementation model, unresolved aliases and reused or inline context; policy-permitted degradation stays explicit in revision evidence.
+
 Validation gates come from a portable risk policy. Repositories can add `.sai/ship-it-risk.json` with low, medium and high policies plus deterministic changed-path rules. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Without a repository policy every level retains the full existing local-check, adversarial-review, adversarial-test, CI and Copilot sequence.
 
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.
