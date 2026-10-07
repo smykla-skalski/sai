@@ -58,6 +58,8 @@ Capture the key, summary, description, status, and acceptance criteria.
 - Done: if the ticket is finished, stop and report it. Finished means its status category is Done (`statusCategory.key` is `done`), or, when the source shows only a status name, the name is Done, Closed, Resolved, or Won't Do.
 - Read-only: never transition, assign, comment on, or edit the ticket unless the user asks.
 
-## Task context file
+## Durable task checkpoint
 
-Write the task title, body or description, acceptance criteria, and source (with the issue URL or Jira key) to a context file outside the repository (for example under the system temp directory). The review and test gates receive it as `--context <file>`.
+After resolving the task source, read the checkpoint contract linked by the skill. Derive its canonical task key, then create or resume the corresponding checkpoint before exploring or changing the repository. The checkpoint replaces the temporary task context file and is the `--context <file>` passed to review and test gates.
+
+Do not overwrite an existing checkpoint during resolution. Validate it, verify its task source and repository identity, and reconcile it with Git and GitHub as the contract requires. A completed checkpoint is a delivered task, not a fresh run. Invalid, mismatched or irreconcilable state is a hard stop with the recovery action from the contract.

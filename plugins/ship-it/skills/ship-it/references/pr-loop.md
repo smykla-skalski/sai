@@ -4,7 +4,7 @@ From a reviewed and tested branch to a merged PR. Never end the turn while CI or
 
 ## Before the first push
 
-If a version-bump hook bumped the version on several local commits, squash the local commits so the branch carries a single bump (`git reset --soft "$(git merge-base HEAD origin/<default>)"` then one signed commit, with the hooks enabled). This is the last time history may be rewritten.
+Do not rewrite history after review begins. If the unpublished branch still needs a version-bump squash or any other rewrite, return to implementation, rewrite it with hooks enabled, run repository gates, and repeat adversarial review and testing on the new `HEAD` before pushing or opening the PR.
 
 ## History rules after the first push
 
@@ -22,6 +22,8 @@ Push the branch and create a PR against the default branch. Title: the conventio
 | Task description | No issue reference |
 
 Follow the repository's own PR template or conventions when it documents them. Capture the PR number.
+
+Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to `pr`, and keep `nextAction` aligned with the current wait, fix or merge action. Reconcile these fields with GitHub before every resumed PR loop.
 
 ## Request Copilot
 
@@ -80,3 +82,5 @@ How to merge, in order:
 2. Otherwise `gh pr merge <n> --squash --delete-branch`.
 
 Never force-merge or use admin overrides. If branch protection requires extra approvals or admin action, report the state and stop. Confirm the PR shows as merged before reporting. If the remote branch still exists after the merge, delete it with `git push origin --delete <branch>`.
+
+After GitHub confirms the merge, record the PR head and merge commit but leave the checkpoint active until completion verifies the source issue and final repository state.

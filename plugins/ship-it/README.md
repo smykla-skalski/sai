@@ -8,6 +8,8 @@ Its initial workflow contract stays below Codex's 8 KB prompt limit. Detailed in
 
 Every phase also has a versioned machine-readable capability contract. It selects one of four portable profiles (`explore`, `build`, `review`, or `release`), verifies requirements before side effects, preserves equivalent fallbacks across harnesses, and keeps destructive, secret-bearing, deployment, out-of-workspace, and unknown actions interactive.
 
+Every task has a portable JSON checkpoint under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/checkpoints/`. Claude Code, Codex, Copilot CLI, opencode and Sail use the same task identity, phase, revision, blocker and outcome fields, so another harness can safely reconcile Git and GitHub before resuming.
+
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.
 
 ## Installation

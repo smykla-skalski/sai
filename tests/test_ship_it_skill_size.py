@@ -10,6 +10,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import json
 import re
 import unittest
 from pathlib import Path
@@ -19,6 +20,7 @@ SKILL_DIR: Final[Path] = (
     Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
 )
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
+CHECKPOINT_REFERENCE: Final[Path] = SKILL_DIR / "references" / "checkpoint.md"
 CODEX_MAX_SKILL_PROMPT_BYTES: Final[int] = 8000
 SKILL_BUDGET_BYTES: Final[int] = 6000
 REFERENCE_LINK: Final[re.Pattern[str]] = re.compile(r"\]\((references/[^)]+\.md)\)")
@@ -84,6 +86,54 @@ class ShipItSkillSizeTest(unittest.TestCase):
                     1,
                     f"{reference} must appear once in the phase reference index",
                 )
+
+    def test_checkpoint_contract_is_portable_and_recoverable(self) -> None:
+        skill = SKILL_FILE.read_text(encoding="utf-8")
+        checkpoint = CHECKPOINT_REFERENCE.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            skill.count("[references/checkpoint.md](references/checkpoint.md)"),
+            1,
+        )
+        for expected in (
+            "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/checkpoints/",
+            '"schemaVersion": 1',
+            '"acceptanceCriteria"',
+            '"unresolvedQuestions"',
+            '"nextAction"',
+            '"pullRequestHead"',
+            '"orchestration": null',
+            '"outcome": null',
+            "Reconcile Git before edits",
+            "Invalid JSON",
+            "Different canonical source or repository identity",
+            "status: completed",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, checkpoint)
+
+        example_match = re.search(r"```json\n(?P<document>.*?)\n```", checkpoint, re.DOTALL)
+        self.assertIsNotNone(example_match)
+        example = json.loads(example_match["document"])
+        self.assertEqual(example["schemaVersion"], 1)
+        self.assertEqual(example["workflow"]["phase"].split("|")[-1], "complete")
+
+    def test_every_execution_phase_updates_the_checkpoint(self) -> None:
+        for reference in (
+            "explore.md",
+            "branch.md",
+            "implementation.md",
+            "review.md",
+            "test.md",
+            "pr-loop.md",
+            "completion.md",
+            "orchestration.md",
+        ):
+            with self.subTest(reference=reference):
+                content = (SKILL_DIR / "references" / reference).read_text(
+                    encoding="utf-8"
+                )
+                self.assertIn("checkpoint", content.lower())
 
 
 if __name__ == "__main__":

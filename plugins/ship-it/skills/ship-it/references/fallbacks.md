@@ -14,6 +14,7 @@ ship-it is written for Claude Code. On Codex, opencode or Copilot CLI, or when a
 | AskUserQuestion | Not used; a hard-stop question or a request to paste a Jira ticket goes to the user as plain text, then end the turn |
 | `context: fork` | Not used |
 | Explicit invocation | ship-it pushes, merges and closes issues, so it runs only when the user invokes it by name. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`). On other agents, start only when the user asked to ship a change or invoked `/ship-it` or `$ship-it` |
+| Durable checkpoint | Every harness reads and writes the same JSON contract under the XDG data directory. Do not translate it into harness session state, conversation memory or a temporary file |
 
 ## Sandboxed agents
 
