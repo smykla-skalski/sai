@@ -12,6 +12,8 @@ Every task has a portable JSON checkpoint under `${XDG_DATA_HOME:-$HOME/.local/s
 
 Each run writes privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/telemetry/events.ndjson`. The versioned NDJSON contract uses stable harness, provider, model, role and phase fields; unavailable counters stay `null`, and prompt or source content is never recorded. Sail and local analysis tools can consume the same stream.
 
+Portable releases can replay the shared redacted [`environment-as-code` workflow failure corpus](https://github.com/Automaat/environment-as-code/tree/main/evals/agent-workflows) through available Claude Code, Codex, OpenCode, Copilot CLI, and Sail adapters. The [replay contract](skills/ship-it/references/replay.md) normalizes phase and observation traces, treats unavailable harnesses as skipped, blocks on supported-harness regressions, and compares accepted-task cost without storing task or source content.
+
 Each committed task revision also has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Acceptance criteria, local checks, adversarial review, manual testing and CI carry their source revision, provider, model, status, timestamp and bounded output reference. Any source change makes the previous record stale. PR-due evidence for the current revision permits PR creation; a complete record with passing CI for the current PR head permits merge.
 
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.
