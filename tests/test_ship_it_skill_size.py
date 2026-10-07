@@ -102,6 +102,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
             '"unresolvedQuestions"',
             '"nextAction"',
             '"pullRequestHead"',
+            '"orchestration": null',
             '"outcome": null',
             "Reconcile Git before edits",
             "Invalid JSON",
@@ -126,6 +127,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
             "test.md",
             "pr-loop.md",
             "completion.md",
+            "orchestration.md",
         ):
             with self.subTest(reference=reference):
                 content = (SKILL_DIR / "references" / reference).read_text(

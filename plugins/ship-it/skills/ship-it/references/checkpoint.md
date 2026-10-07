@@ -6,7 +6,7 @@ Use one portable JSON checkpoint as the source of truth for a task across Claude
 
 Resolve the data root once as `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/checkpoints/`. Create it with owner-only permissions. Never store checkpoints in a repository, plugin cache or system temporary directory.
 
-Normalize a repository identity from `remote.origin.url`: convert SCP-style SSH to its URL host/path form, lowercase the host and case-insensitive forge path, and remove credentials, query, fragment, trailing slash and `.git`. When no remote exists, use the physical absolute repository path. A worktree and its main checkout therefore share an identity.
+Normalize a repository identity from `remote.origin.url`: convert SCP-style SSH to its URL host/path form, lowercase the host and case-insensitive forge path, and remove credentials, query, fragment, trailing slash and `.git`. When no remote exists, resolve `git rev-parse --git-common-dir` against the repository, then use its physical absolute path. Linked worktrees therefore share an identity; independent no-remote clones cannot share a checkpoint automatically.
 
 Canonicalize the task source before deriving its key:
 
@@ -38,7 +38,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "branch": "current task branch or null"
   },
   "workflow": {
-    "phase": "resolve|explore|branch|implement|review|test|pr|complete",
+    "phase": "resolve|orchestrate|explore|branch|implement|review|test|pr|complete",
     "status": "active|blocked|completed",
     "revision": "full commit SHA or null",
     "blocker": "specific blocker or null",
@@ -50,20 +50,24 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "pullRequestHead": "full commit SHA or null",
     "mergeCommit": "full commit SHA or null"
   },
+  "orchestration": null,
   "outcome": null,
   "createdAt": "RFC 3339 UTC timestamp",
   "updatedAt": "RFC 3339 UTC timestamp"
 }
 ```
 
-`outcome`, when completed, is an object with `result` (`merged`), `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
+For a single change, `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
+
+`orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, review verdict, test verdict, gated head, PR URL, CI status, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
 
 Validate these invariants in addition to field presence and types:
 
 - `checkpointId` equals the filename and the digest of `task.canonicalSource`; `acceptanceCriteria` is non-empty.
 - `status: blocked` has a non-empty `blocker` and actionable `nextAction`; other statuses have a null blocker.
 - `status: completed`, `phase: complete` and a non-null `outcome` occur together; all other states have a null outcome.
-- A merge commit requires a PR URL and PR head. A completed outcome repeats the matching delivery values.
+- A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
+- An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child.
 - `createdAt` never changes and is not later than `updatedAt`.
 
 ## Safe writes

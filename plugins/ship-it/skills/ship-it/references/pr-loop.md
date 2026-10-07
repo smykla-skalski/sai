@@ -4,7 +4,7 @@ From a reviewed and tested branch to a merged PR. Never end the turn while CI or
 
 ## Before the first push
 
-If a version-bump hook bumped the version on several local commits, squash the local commits so the branch carries a single bump (`git reset --soft "$(git merge-base HEAD origin/<default>)"` then one signed commit, with the hooks enabled). This is the last time history may be rewritten.
+Do not rewrite history after review begins. If the unpublished branch still needs a version-bump squash or any other rewrite, return to implementation, rewrite it with hooks enabled, run repository gates, and repeat adversarial review and testing on the new `HEAD` before pushing or opening the PR.
 
 ## History rules after the first push
 

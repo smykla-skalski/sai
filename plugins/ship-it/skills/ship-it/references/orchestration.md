@@ -2,6 +2,8 @@
 
 Use this workflow when Ship It receives an explicitly approved complex plan or a GitHub umbrella issue with native implementation subissues. A single implementation issue remains one worker's change. Plan approval is required to derive or create an issue graph from a plan; an existing umbrella supplies its own graph. A draft plan does not authorize issue creation or implementation. In Sail mode, the parent coordinates workers and never edits, commits, reviews, tests, or merges a child's implementation itself.
 
+Create or resume the umbrella's durable checkpoint before building or dispatching its graph. Set `phase` to `orchestrate`, set `orchestration` to an object, and keep one child record per native subissue. Reconcile every recorded child with GitHub and its worker or worktree before resuming; never recreate a worker or repeat a completed gate from checkpoint state alone.
+
 ## Build or reuse the issue graph
 
 1. Read the complete approved plan and its acceptance criteria, or the existing umbrella and native subissues. Resolve the target repository and search open issues for the same umbrella before creating one. Prefer an explicitly supplied umbrella; reuse a matching existing umbrella and its subissues. Do not adopt an unrelated issue based on a similar title.
@@ -17,6 +19,8 @@ Use a bounded pool of at most three active implementation workers, or a lower us
 Start children with no unmet prerequisites together up to the cap. A dependent child becomes eligible only after every prerequisite PR is merged and its issue is closed. Recompute eligibility whenever a worker finishes; keep filling free slots. Dependency cycles or missing prerequisite issues are blockers, not invitations to guess. Never make the parent a spare implementation worker, even when a slot is free.
 
 Track each child's issue, worker or existing owner, branch/worktree, prerequisites, review verdict, manual-test verdict, gated PR head SHA, PR, CI, Copilot threads, merge state, and issue state. A message that code is done is progress, not completion. Accept completion only after `Review Verdict: CLEAN` and `Test Verdict: PASS` for the final PR head SHA, successful CI, a submitted Copilot review, all review threads resolved, merged PR, and closed child issue have been verified from gate reports and GitHub. Compare the reported gate SHA with the PR head SHA recorded immediately before merge, not the squash merge commit SHA. For an already merged child, collect the same evidence before releasing dependents; missing evidence pauses that child. Follow the repository's documented merge method for each PR. If a worker fails, preserve its issue/worktree and report the blocker. Resume from recorded GitHub and worker state rather than recreating issues or repeating finished work.
+
+After every graph mutation, dispatch, worker update, gate result, PR change, CI result, review-thread change, merge or issue-state change, atomically update the matching child and the parent's `nextAction`. Mark the parent blocked with the exact child and recovery action when coordination cannot continue. Complete the parent checkpoint only after every child and the umbrella are verified closed; its outcome records the umbrella URL and the children's final PR heads and merge commits.
 
 ## Agent availability and pause
 
