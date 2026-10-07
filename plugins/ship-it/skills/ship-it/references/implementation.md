@@ -16,3 +16,5 @@ Add the source footer when applicable:
 | Task description | no footer |
 
 Comply with every commit hook. If a hook changes files, inspect and stage the intended result before committing again.
+
+After every successful commit, atomically update the durable checkpoint with the new `HEAD`, current branch and next action. After implementation gates pass, set `phase` to `review` and `nextAction` to adversarial review. On a hard stop, preserve the last verified revision and record the blocker; never claim an uncommitted or failed revision as verified checkpoint state.

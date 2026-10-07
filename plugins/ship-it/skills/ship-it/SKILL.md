@@ -24,6 +24,7 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 
 - Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
+- Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
 - Repository instructions override generic branch, review, release and merge defaults.
 - Every code-changing fix invalidates review and test verdicts from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
@@ -44,7 +45,7 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 
 ## Phase 1 — Resolve the task
 
-Classify the input, resolve its source and acceptance criteria, and write the task context outside the repository. No branch, edit or commit until this phase succeeds.
+Classify the input, resolve its source and acceptance criteria, and create or resume its durable checkpoint outside the repository. No branch, edit or commit until resolution and checkpoint reconciliation succeed.
 
 If the input is an approved complex plan or an umbrella issue with subissues, read [references/orchestration.md](references/orchestration.md) and follow its parent coordinator workflow. The parent never implements a child issue. An ordinary implementation issue, including a worker's assigned issue, follows the single-change phases below. In Sail mode, absent worker or review/test gate subagents pause the run; never use inline gate fallbacks.
 

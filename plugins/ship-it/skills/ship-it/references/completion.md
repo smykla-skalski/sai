@@ -2,6 +2,8 @@
 
 Confirm the PR is merged and record its merge commit. For a GitHub source, confirm the issue closed; when automatic closure failed, add a concise completion comment and close it. Leave Jira unchanged unless the user explicitly requested otherwise.
 
+Finalize the durable checkpoint only after those checks succeed. Set `phase` to `complete`, `status` to `completed`, clear `blocker` and `unresolvedQuestions`, set `nextAction` to `none`, and write an `outcome` containing the final result, PR URL, gated PR head, merge commit, source state and completion time. Preserve the completed checkpoint as the cross-harness delivery record.
+
 Report:
 
 - task source and PR URL

@@ -23,6 +23,8 @@ Push the branch and create a PR against the default branch. Title: the conventio
 
 Follow the repository's own PR template or conventions when it documents them. Capture the PR number.
 
+Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to `pr`, and keep `nextAction` aligned with the current wait, fix or merge action. Reconcile these fields with GitHub before every resumed PR loop.
+
 ## Request Copilot
 
 ```bash
@@ -80,3 +82,5 @@ How to merge, in order:
 2. Otherwise `gh pr merge <n> --squash --delete-branch`.
 
 Never force-merge or use admin overrides. If branch protection requires extra approvals or admin action, report the state and stop. Confirm the PR shows as merged before reporting. If the remote branch still exists after the merge, delete it with `git push origin --delete <branch>`.
+
+After GitHub confirms the merge, record the PR head and merge commit but leave the checkpoint active until completion verifies the source issue and final repository state.
