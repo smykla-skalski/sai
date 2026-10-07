@@ -24,7 +24,7 @@ Contract conditions use boolean runtime facts: `github_source`, `jira_source`, `
 
 - `request-ticket-paste`: ask for the Jira summary, description and acceptance criteria as plain text; do not read or mutate another Jira site.
 - `portable-review-fallback`: prefer an adversarial-review skill with independent workers, then a fresh generic subagent. Strict independence blocks when neither is available. A repository policy may authorize degraded inline passes outside Sail; Sail always requires a review subagent.
-- `portable-test-fallback`: prefer the installed adversarial-test skill, then a fresh generic subagent. Outside Sail only, the active agent may run the mandate inline. Sail requires a test subagent and pauses without one.
+- `portable-test-fallback`: prefer a route-aware adversarial-test skill, then a fresh generic subagent. Without either, block by default. A repository policy may authorize degraded inline testing outside Sail; Sail always requires a test subagent.
 
 A fallback satisfies the same workflow gate. It does not remove, rename or weaken the gate.
 

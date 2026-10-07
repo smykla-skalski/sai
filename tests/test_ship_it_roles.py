@@ -84,6 +84,11 @@ class ShipItRolesTest(unittest.TestCase):
         test = (SKILL_DIR / "references" / "test.md").read_text()
         self.assertIn("route record for every Code and Findings worker", review)
         self.assertIn("route record for every tester execution and retry", test)
+        self.assertIn("With no subagent capability, block by default", test)
+        self.assertIn("authorize inline testing outside Sail only", test)
+        capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
+        self.assertIn("block by default", capabilities)
+        self.assertIn("degraded inline testing", capabilities)
 
     def test_portable_fallback_order_is_deterministic(self) -> None:
         skill_position = self.guidance.index("An installed skill")
