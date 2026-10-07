@@ -23,6 +23,7 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 ## Workflow contract
 
 - Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
+- Before each phase, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), select its profile and satisfy the machine-readable preflight before any side effect.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
 - Repository instructions override generic branch, review, release and merge defaults.
 - Every code-changing fix invalidates review and test verdicts from the previous revision.
@@ -78,4 +79,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; Copilot neither reviewed nor has a pending request after ~30 min (ask whether to merge without it); a Copilot thread loops more than 3 times; a test requires disabling a check; `adversarial-test` returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
+Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; Copilot neither reviewed nor has a pending request after ~30 min (ask whether to merge without it); a Copilot thread loops more than 3 times; a test requires disabling a check; `adversarial-test` returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
