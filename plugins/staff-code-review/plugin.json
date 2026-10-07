@@ -1,6 +1,6 @@
 {
   "name": "staff-code-review",
-  "version": "1.9.2",
+  "version": "1.9.3",
   "description": "Staff-engineer-level code review evaluating architectural alignment, system-level implications, failure modes, performance, scalability, observability, security, and cross-team impact.",
   "author": {
     "name": "Smykla Skalski Labs"
