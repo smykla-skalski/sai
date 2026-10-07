@@ -1,11 +1,11 @@
 {
   "schema_version": "sai.ship-it.roles/v1",
   "roles": [
-    {"id": "exploration", "phase": "explore"},
-    {"id": "implementation", "phase": "implement"},
-    {"id": "review", "phase": "review"},
-    {"id": "testing", "phase": "test"},
-    {"id": "ci-triage", "phase": "pr"}
+    {"id": "exploration", "phase": "explore", "dispatch": "current-execution"},
+    {"id": "implementation", "phase": "implement", "dispatch": "current-execution"},
+    {"id": "review", "phase": "review", "dispatch": "routed-worker"},
+    {"id": "testing", "phase": "test", "dispatch": "routed-worker"},
+    {"id": "ci-triage", "phase": "pr", "dispatch": "routed-worker"}
   ],
   "route_record": {
     "required_fields": [
@@ -24,6 +24,10 @@
     "mechanisms": ["native-subagent", "generic-subagent", "skill", "inline", "service", "process"],
     "model_resolutions": ["resolved", "unresolved"],
     "independence_values": ["independent", "degraded", "not-applicable"]
+  },
+  "route_diagnostic": {
+    "required_fields": ["role", "requested", "reason", "timestamp"],
+    "reasons": ["unsupported-selector", "unavailable-mechanism", "metadata-unavailable"]
   },
   "independent_review": {
     "default": "strict",

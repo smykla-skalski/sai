@@ -16,12 +16,12 @@ The review role covers each Code or Findings Adversary invocation. Create a rout
 
 ## Select and resolve a route
 
-For each role, capture the requested selector before choosing a worker. Each of `provider`, `model` and `variant` is a string; use `default` when the requester gave no preference. Preserve aliases only in `requested`. Resolve the selected worker and record its concrete, non-secret identifiers in `actual`; use `none` only when the producer is a deterministic process or service with no model or variant.
+For each role, capture the requested selector before choosing a worker. Each requested `provider`, `model` and `variant` is a string; use `default` when the requester gave no preference. Preserve aliases only in `requested`. Every `actual` selector key remains present and is either a concrete, non-secret string or JSON `null` when worker metadata is unavailable. Use `none` only when a deterministic process or service has no model or variant. Any null actual selector requires `modelResolution: unresolved`.
 
-Choose the first available harness mechanism in this order:
+Exploration and implementation record the already-running execution because their active capability profiles do not authorize worker dispatch. Other roles choose the first mechanism that both satisfies the selected profile and can honor and expose the requested selectors:
 
 1. A configured native role worker.
-2. An installed skill that provides the same gate and exposes its actual worker route.
+2. An installed skill that accepts the selectors and exposes every actual worker route, including retries.
 3. A fresh generic subagent with the role mandate prepended.
 4. Outside Sail, inline execution only when the active independence policy permits it.
 
@@ -35,13 +35,13 @@ Harness adapters map the portable selector, not role names, to their available p
 | Copilot CLI | Active session provider / agent model / unsupported | Registered agent, then fresh generic worker |
 | Sail | ACP worker provider / model / variant | Assigned worker or fresh gate worker; no inline fallback |
 
-For each non-default request, pass the selector through its mapped control and compare returned worker metadata with the request before accepting the route. Never silently ignore, substitute or normalize an unsupported selector. Reject it before dispatch, record the requested values with `modelResolution: unresolved`, try the next mechanism, and block with the exact unsupported selector when none can satisfy it.
+For each non-default request, pass the selector through its mapped control and compare returned worker metadata with the request before accepting the route. Never silently ignore, substitute or normalize an unsupported selector. Reject it before dispatch, append the request and reason to non-gating `routeDiagnostics`, try the next mechanism, and block with the exact unsupported selector when none can satisfy it. Rejected candidates never enter `roleRoutes`.
 
 Never invent an actual selector. If the harness cannot expose the concrete provider, model and variant, set `modelResolution: unresolved`. A strict independent review then stops before dispatch. Other roles may proceed only under a policy that permits degraded execution and must expose the degradation in evidence.
 
 ## Route evidence
 
-Every committed revision's evidence record has `roleRoutes`, an append-only array. Record a route before relying on its output:
+Every committed revision's evidence record has `roleRoutes`, an append-only array of dispatched executions, plus append-only `routeDiagnostics` for rejected candidates. Record a route before relying on its output:
 
 ```json
 {
@@ -61,6 +61,8 @@ Every committed revision's evidence record has `roleRoutes`, an append-only arra
 `sourceRevision` is the committed revision whose work or verdict the route supports. Bind pre-commit exploration and implementation routes to the resulting first commit. After a source-changing fix, carry those still-active route selections into the new revision record with the new `sourceRevision`; the old evidence record preserves their prior binding. Never carry a review, testing or CI-triage route forward because its output must be rerun for the new revision.
 
 Identifiers must not contain prompts, URLs, repository paths, credentials or conversation content. Preserve old route records when a role is retried for one revision. The result produced by a role names the matching `executionId` in its bounded output reference.
+
+A diagnostic contains `role`, the full requested selector, `reason: unsupported-selector|unavailable-mechanism|metadata-unavailable`, and `timestamp`. Diagnostics explain fallback selection but never participate in independence or completion checks because no worker executed.
 
 ## Independent review policy
 

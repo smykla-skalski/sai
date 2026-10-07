@@ -36,6 +36,10 @@ class ShipItRolesTest(unittest.TestCase):
             self.contract["route_record"]["selector_fields"],
             SELECTOR_FIELDS,
         )
+        dispatch = {role["id"]: role["dispatch"] for role in self.contract["roles"]}
+        self.assertEqual(dispatch["exploration"], "current-execution")
+        self.assertEqual(dispatch["implementation"], "current-execution")
+        self.assertEqual(dispatch["review"], "routed-worker")
 
     def test_every_harness_has_a_portable_adapter(self) -> None:
         self.assertEqual(
@@ -60,6 +64,25 @@ class ShipItRolesTest(unittest.TestCase):
         self.assertEqual(adapters["sail"]["selectors"]["provider"], "worker-provider")
         self.assertIn("Never silently ignore", self.guidance)
         self.assertIn("block with the exact unsupported selector", self.guidance)
+        self.assertIn("Rejected candidates never enter `roleRoutes`", self.guidance)
+
+    def test_unknown_actual_selectors_are_explicit_nulls(self) -> None:
+        self.assertIn("JSON `null`", self.guidance)
+        self.assertIn("Any null actual selector requires", self.guidance)
+
+    def test_rejected_routes_are_non_gating_diagnostics(self) -> None:
+        diagnostics = self.contract["route_diagnostic"]
+        self.assertEqual(
+            set(diagnostics["reasons"]),
+            {"unsupported-selector", "unavailable-mechanism", "metadata-unavailable"},
+        )
+        self.assertIn("does not satisfy or block a gate", self.evidence)
+
+    def test_skill_dispatch_requires_actual_worker_routes(self) -> None:
+        review = (SKILL_DIR / "references" / "review.md").read_text()
+        test = (SKILL_DIR / "references" / "test.md").read_text()
+        self.assertIn("route record for every Code and Findings worker", review)
+        self.assertIn("route record for every tester execution and retry", test)
 
     def test_portable_fallback_order_is_deterministic(self) -> None:
         skill_position = self.guidance.index("An installed skill")
@@ -94,7 +117,7 @@ class ShipItRolesTest(unittest.TestCase):
         capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
         fallbacks = (SKILL_DIR / "references" / "fallbacks.md").read_text()
         self.assertIn("block under strict independence", review)
-        self.assertIn("fell back inline", review)
+        self.assertIn("falls back inline", review)
         self.assertIn("Strict independence blocks", capabilities)
         self.assertIn("does not authorize a role route", capabilities)
         self.assertIn("Strict review blocks without a subagent", fallbacks)

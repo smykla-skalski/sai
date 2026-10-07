@@ -1,6 +1,6 @@
 # Adversarial manual test gate
 
-When `adversarial-test` is selected, run it from the review-clean committed tip with `--base origin/<default> --context <checkpoint-file>`. In the Sybra repository, invoke `sybra-test` instead. The reply must start with `Test Verdict: PASS`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`. Run every other selected test gate according to its contract. If no test gate is selected, create no test evidence and atomically advance the checkpoint to `phase: pr` with PR-due evidence validation and PR creation as `nextAction`.
+When `adversarial-test` is selected, use the installed skill only when it accepts the resolved selectors and returns a route record for every tester execution and retry. Otherwise treat it as unavailable and dispatch the routed generic tester below. In the Sybra repository, invoke `sybra-test` only when it meets the same route contract. The reply must start with `Test Verdict: PASS`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`. Run every other selected test gate according to its contract. If no test gate is selected, create no test evidence and atomically advance the checkpoint to `phase: pr` with PR-due evidence validation and PR creation as `nextAction`.
 
 For GitHub work, verify and renew the claim when due before writing manual-test evidence. A verdict from another holder or after expiry does not satisfy the gate until ownership is reconciled.
 

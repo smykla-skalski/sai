@@ -36,6 +36,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
       "timestamp": "RFC 3339 UTC timestamp"
     }
   ],
+  "routeDiagnostics": [],
   "results": [
     {
       "id": "ac-1",
@@ -115,6 +116,8 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
 `status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
 
 `roleRoutes` follows the portable role contract. It records requested and actual provider, model and variant, source revision, mechanism, execution identity, resolution and independence for every role invocation. Every route in a record has `sourceRevision` equal to the record revision. A result produced by a routed role references its route's `executionId` in `outputReference`. Preserve repeated role records for retries. Strict review evidence is invalid when the review route violates any independent-review rule. Policy-permitted degraded execution requires `independence: degraded`, non-empty `degradationReasons` and the authorization in the result output reference.
+
+`routeDiagnostics` records rejected route candidates and does not satisfy or block a gate. Only dispatched executions belong in `roleRoutes`; therefore a later valid fallback can complete strict review while preserving rejected-selector history.
 
 `claim` is null for Jira and description tasks. For a GitHub implementation issue it contains the current claim's `issueUrl`, `commentUrl`, `holderId`, `acquiredAt` and latest verified `renewedAt`. Create or update evidence only while that claim is active, unexpired and matches the checkpoint. Claim renewal changes `renewedAt` in the current record without invalidating revision-bound results. Another holder, comment or acquisition time blocks ordinary evidence writes; an audited takeover follows the claim contract's rebind procedure and reruns every required result. Releasing the same claim after verified merge preserves the completed delivery evidence.
 
