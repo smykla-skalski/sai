@@ -12,4 +12,4 @@ After three combined failing review or test rounds, stop and ask when the user i
 
 `BLOCKED` is a hard stop: report the exact human action required. Open a PR only after `PASS` on the same revision that received `Review Verdict: CLEAN`.
 
-Record the verdict against its exact committed `HEAD`. A passing verdict advances the checkpoint to `phase: pr`; a reproduced failure returns it to `phase: implement`. For `BLOCKED`, set `status: blocked`, preserve the tested revision, and put the exact human action in both `blocker` and `nextAction`.
+Record the verdict in the current revision's evidence record with the provider, model, timestamp and bounded output reference. A passing verdict advances the checkpoint to `phase: pr`; a reproduced failure marks the evidence failed and returns it to `phase: implement`. For `BLOCKED`, mark the evidence and checkpoint blocked, preserve the tested revision, and put the exact human action in both `blocker` and `nextAction`.

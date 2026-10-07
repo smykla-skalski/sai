@@ -26,8 +26,9 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 - Before each phase, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), select its profile and satisfy the machine-readable preflight before any side effect.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
 - Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
+- Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
 - Repository instructions override generic branch, review, release and merge defaults.
-- Every code-changing fix invalidates review and test verdicts from the previous revision.
+- Every source change invalidates completion evidence from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
 

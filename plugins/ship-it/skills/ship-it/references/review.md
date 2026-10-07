@@ -20,6 +20,6 @@ On `NEEDS_FIXES`:
 
 Put unresolved `question:` findings in the PR body when the repository cannot settle them. Do not start manual testing until the verdict is `CLEAN`.
 
-Record each verdict against its exact committed `HEAD`. A clean verdict advances the checkpoint to `phase: test`; a surviving finding returns it to `phase: implement` with the finding as `nextAction`. Any later code change makes the recorded review revision stale.
+Record each verdict in the current revision's evidence record with the provider, model, timestamp and bounded output reference. A clean verdict advances the checkpoint to `phase: test`; a surviving finding marks the evidence failed and returns it to `phase: implement` with the finding as `nextAction`. Any later source change marks the entire record stale.
 
 After three failing rounds, stop and ask when the user is reachable. Otherwise continue only while each round finds smaller concrete issues, and report the overrun.
