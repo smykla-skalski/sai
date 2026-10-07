@@ -81,8 +81,10 @@ class PersonaMandateSyncTest(unittest.TestCase):
                     self.assertTrue((SKILL_DIR / "references" / match["file"]).is_file())
 
     def test_template_heading_matches_display_name(self) -> None:
-        skill = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        display_names = dict(DISPLAY_NAME_ENTRY.findall(skill))
+        workflow = (SKILL_DIR / "references" / "workflow.md").read_text(
+            encoding="utf-8"
+        )
+        display_names = dict(DISPLAY_NAME_ENTRY.findall(workflow))
         self.assertEqual(set(display_names), {path.stem for path in agent_files()})
         for agent in agent_files():
             with self.subTest(agent=agent.name):
