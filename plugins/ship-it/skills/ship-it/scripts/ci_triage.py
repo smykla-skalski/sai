@@ -85,6 +85,9 @@ def validate_recurrence(record: dict[str, Any]) -> list[str]:
         if recurrence_count != 0:
             errors.append("a first observation must have recurrenceCount 0")
     else:
+        if not isinstance(recurrence_of, str):
+            errors.append("recurrenceOf must be a string or null")
+            return errors
         if recurrence_of == failure_id:
             errors.append("recurrenceOf cannot refer to the same failureId")
         if recurrence_key is None:
@@ -137,15 +140,28 @@ def validate_rerun_request(
         errors.append("rerunRequest requires rerunAuthorization")
     if not isinstance(request, dict):
         return [*errors, "rerunRequest must be an object or null"]
+    requested_attempt = request.get("requestedAttempt")
+    if (
+        not isinstance(requested_attempt, int)
+        or isinstance(requested_attempt, bool)
+        or requested_attempt < 1
+    ):
+        errors.append("rerunRequest requestedAttempt must be a positive integer")
+    recorded_at = request.get("recordedAt")
+    if not isinstance(recorded_at, str) or not is_scalar_text(recorded_at):
+        errors.append("rerunRequest recordedAt must be scalar text")
     if isinstance(reruns_used, int) and not isinstance(reruns_used, bool) and (
-        request.get("requestedAttempt") != reruns_used + 1
+        requested_attempt != reruns_used + 1
     ):
         errors.append("rerunRequest must reserve rerunsUsed plus one")
     if isinstance(authorization, dict):
         limit = authorization.get("maxAttempts")
-        requested_attempt = request.get("requestedAttempt")
-        if isinstance(limit, int) and isinstance(requested_attempt, int) and (
-            requested_attempt > limit
+        if (
+            isinstance(limit, int)
+            and not isinstance(limit, bool)
+            and isinstance(requested_attempt, int)
+            and not isinstance(requested_attempt, bool)
+            and requested_attempt > limit
         ):
             errors.append("rerunRequest exceeds the authorized maximum")
     return errors
@@ -242,7 +258,10 @@ def validate_groups(groups: dict[str, list[dict[str, Any]]]) -> list[str]:
     """Validate state shared by every record in a rerun group."""
     errors: list[str] = []
     for group_id, records in sorted(groups.items()):
-        usage = {record.get("rerunsUsed") for record in records}
+        usage = {
+            json.dumps(record.get("rerunsUsed"), sort_keys=True)
+            for record in records
+        }
         if len(usage) > 1:
             errors.append(f"rerun group {group_id} has inconsistent rerunsUsed")
         requests = {
@@ -281,6 +300,8 @@ def validate_recurrence_target(
     if not isinstance(failure, dict) or failure.get("recurrenceOf") is None:
         return []
     recurrence_of = failure["recurrenceOf"]
+    if not isinstance(recurrence_of, str):
+        return [f"failures[{index}]: recurrenceOf must be a string or null"]
     if recurrence_of not in failure_ids:
         return [f"failures[{index}]: recurrenceOf is not in this checkpoint"]
     target = records[recurrence_of]

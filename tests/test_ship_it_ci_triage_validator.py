@@ -125,6 +125,12 @@ class ShipItCiTriageValidatorTest(unittest.TestCase):
             VALIDATOR.validate_record(value),
         )
 
+        value["recurrenceOf"] = {}
+        self.assertIn(
+            "recurrenceOf must be a string or null",
+            " ".join(VALIDATOR.validate({"failures": [value]})),
+        )
+
     def test_utf8_byte_limit_is_enforced(self) -> None:
         value = record()
         value["logSections"] = [{"label": "error", "lines": ["😀" * 126]}]
@@ -184,6 +190,32 @@ class ShipItCiTriageValidatorTest(unittest.TestCase):
         self.assertIn(
             "rerunRequest exceeds the authorized maximum",
             VALIDATOR.validate_record(first),
+        )
+
+        first["rerunsUsed"] = 0
+        first["rerunRequest"] = {"requestedAttempt": True}
+        errors = VALIDATOR.validate_record(first)
+        self.assertIn(
+            "rerunRequest requestedAttempt must be a positive integer",
+            errors,
+        )
+        self.assertIn("rerunRequest recordedAt must be scalar text", errors)
+
+        first["rerunRequest"] = {
+            "requestedAttempt": 1,
+            "recordedAt": "bad\ud800",
+        }
+        self.assertIn(
+            "rerunRequest recordedAt must be scalar text",
+            VALIDATOR.validate_record(first),
+        )
+
+    def test_malformed_group_value_returns_an_error(self) -> None:
+        value = record()
+        value["rerunsUsed"] = []
+        self.assertIn(
+            "rerunsUsed must be an integer",
+            " ".join(VALIDATOR.validate({"failures": [value]})),
         )
 
     def test_recurrence_target_must_be_same_identity_and_sequential(self) -> None:
