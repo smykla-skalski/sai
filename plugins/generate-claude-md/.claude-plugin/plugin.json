@@ -1,7 +1,7 @@
 {
   "name": "generate-claude-md",
   "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-claude-md's critical checks.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "Smykla Skalski Labs"
   },
