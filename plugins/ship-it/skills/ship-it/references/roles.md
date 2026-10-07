@@ -62,7 +62,7 @@ Every committed revision's evidence record has `roleRoutes`, an append-only arra
 
 Identifiers must not contain prompts, URLs, repository paths, credentials or conversation content. Preserve old route records when a role is retried for one revision. The result produced by a role names the matching `executionId` in its bounded output reference.
 
-A diagnostic contains `role`, the full requested selector, `reason: unsupported-selector|unavailable-mechanism|metadata-unavailable`, and `timestamp`. Diagnostics explain fallback selection but never participate in independence or completion checks because no worker executed.
+A diagnostic contains `role`, the full requested selector, `stage: pre-dispatch|post-dispatch`, a contract reason and `timestamp`. A post-dispatch diagnostic also records the returned `actual`, `executionId` and `modelResolution` when available. Reasons cover unsupported selectors, unavailable mechanisms or metadata, and strict rejection for the implementation model, reused context or inline execution. Diagnostics explain fallback selection but never participate in independence or completion checks because the candidate output was not accepted for the gate.
 
 ## Independent review policy
 

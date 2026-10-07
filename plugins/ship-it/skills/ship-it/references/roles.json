@@ -26,8 +26,17 @@
     "independence_values": ["independent", "degraded", "not-applicable"]
   },
   "route_diagnostic": {
-    "required_fields": ["role", "requested", "reason", "timestamp"],
-    "reasons": ["unsupported-selector", "unavailable-mechanism", "metadata-unavailable"]
+    "required_fields": ["role", "requested", "stage", "reason", "timestamp"],
+    "optional_fields": ["actual", "executionId", "modelResolution"],
+    "stages": ["pre-dispatch", "post-dispatch"],
+    "reasons": [
+      "unsupported-selector",
+      "unavailable-mechanism",
+      "metadata-unavailable",
+      "strict-same-model",
+      "strict-context-reuse",
+      "strict-inline-execution"
+    ]
   },
   "independent_review": {
     "default": "strict",

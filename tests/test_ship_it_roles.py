@@ -72,11 +72,12 @@ class ShipItRolesTest(unittest.TestCase):
 
     def test_rejected_routes_are_non_gating_diagnostics(self) -> None:
         diagnostics = self.contract["route_diagnostic"]
-        self.assertEqual(
-            set(diagnostics["reasons"]),
-            {"unsupported-selector", "unavailable-mechanism", "metadata-unavailable"},
-        )
+        self.assertEqual(set(diagnostics["stages"]), {"pre-dispatch", "post-dispatch"})
+        self.assertIn("strict-same-model", diagnostics["reasons"])
+        self.assertIn("strict-context-reuse", diagnostics["reasons"])
+        self.assertIn("actual", diagnostics["optional_fields"])
         self.assertIn("does not satisfy or block a gate", self.evidence)
+        self.assertIn("post-dispatch diagnostics preserve", self.evidence)
 
     def test_skill_dispatch_requires_actual_worker_routes(self) -> None:
         review = (SKILL_DIR / "references" / "review.md").read_text()

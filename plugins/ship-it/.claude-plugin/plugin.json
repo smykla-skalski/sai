@@ -1,7 +1,7 @@
 {
   "name": "ship-it",
   "description": "Ship a change or coordinate an approved plan through independent issues, adversarial gates, PRs, CI, Copilot review, and merge.",
-  "version": "1.4.16",
+  "version": "1.4.17",
   "author": {
     "name": "Smykla Skalski Labs"
   },
