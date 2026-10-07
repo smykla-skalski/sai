@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "technical-debt-manager",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Audit a repo for technical debt, research version-specific best practices, and file an umbrella GitHub tracker issue with one rated, actionable sub-issue per finding. Re-runs reuse the umbrella and dedupe against its sub-issues.",
   "author": {
     "name": "Smykla Skalski Labs"
