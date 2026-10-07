@@ -50,6 +50,12 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "pullRequestHead": "full commit SHA or null",
     "mergeCommit": "full commit SHA or null"
   },
+  "evidence": {
+    "revision": "full commit SHA or null",
+    "recordPath": "absolute evidence record path or null",
+    "status": "missing|collecting|complete|failed|blocked|stale",
+    "updatedAt": "RFC 3339 UTC timestamp or null"
+  },
   "orchestration": null,
   "outcome": null,
   "createdAt": "RFC 3339 UTC timestamp",
@@ -67,6 +73,7 @@ Validate these invariants in addition to field presence and types:
 - `status: blocked` has a non-empty `blocker` and actionable `nextAction`; other statuses have a null blocker.
 - `status: completed`, `phase: complete` and a non-null `outcome` occur together; all other states have a null outcome.
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
+- Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child.
 - `createdAt` never changes and is not later than `updatedAt`.
 
@@ -90,6 +97,7 @@ Safe reconciliation cases:
 
 - `HEAD` equals the recorded revision: continue after external-state checks.
 - `HEAD` descends from the recorded revision and every intervening commit belongs to this task: inspect it, update the revision, and invalidate review or test evidence from the older revision.
+- The current evidence record matches `HEAD`: validate it and continue collecting only the results still pending for that revision.
 - GitHub already shows the recorded PR merged: advance to completion verification using its actual head and merge commit.
 - The issue is closed and its linked PR is merged: finalize only after verifying the merge contains the task revision.
 
@@ -101,6 +109,7 @@ Stop before repository changes and report the checkpoint path plus exactly one r
 - Different canonical source or repository identity: open the task in the matching repository, or explicitly start a distinct task; never rewrite identity in place.
 - Recorded revision descends from the current `HEAD`, histories diverge, unrelated dirty files overlap, or intervening commits cannot be attributed: switch to the recorded task branch/worktree or reconcile the Git history manually.
 - Open PR branch or head conflicts with the checkpoint: inspect the PR and choose the authoritative branch before resuming.
+- Missing, invalid or mismatched evidence: restore its `.bak` after inspection, or rerun the required evidence for the current revision; never advance with an older record.
 - Closed issue without a verifiable merged PR, or merged PR that does not contain the recorded revision: inspect the external state and correct it before completion.
 - `status: blocked`: perform the named `nextAction`; resume only after verifying the blocker is gone.
 - `status: completed`: report the recorded outcome after checking it still matches GitHub. If the PR, merge or issue state no longer matches, stop and inspect that external state; do not reopen or overwrite the task.
