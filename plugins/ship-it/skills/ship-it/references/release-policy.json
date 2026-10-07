@@ -1,0 +1,12 @@
+{
+  "schema_version": "sai.ship-it.release-policy/v1",
+  "required_reviewers": [],
+  "required_checks": [],
+  "merge": {
+    "method": "github",
+    "strategy": "squash",
+    "bot_comment": null
+  },
+  "issue_closure": "pull-request-keyword",
+  "branch_cleanup": "delete"
+}

@@ -5,21 +5,21 @@
   "independent_review": "strict",
   "policies": {
     "low": {
-      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "copilot-review"],
+      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "hosted-review"],
       "fallbacks": {
         "adversarial-review": ["portable-review-fallback"],
         "adversarial-test": ["portable-test-fallback"]
       }
     },
     "medium": {
-      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "copilot-review"],
+      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "hosted-review"],
       "fallbacks": {
         "adversarial-review": ["portable-review-fallback"],
         "adversarial-test": ["portable-test-fallback"]
       }
     },
     "high": {
-      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "copilot-review"],
+      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "hosted-review"],
       "fallbacks": {
         "adversarial-review": ["portable-review-fallback"],
         "adversarial-test": ["portable-test-fallback"]

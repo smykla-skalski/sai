@@ -1,8 +1,8 @@
 ---
 name: ship-it
-description: End-to-end ship a change or coordinate an approved complex plan — implement, run risk-selected validation gates, open PR, address feedback, and merge. Accepts a plain task description, a GitHub issue URL, or a Jira ticket URL. Use when asked to implement and ship a change end to end.
+description: Ship a change or coordinate an approved complex plan through risk-selected gates, PR feedback and merge. Accepts a task description, GitHub issue or Jira ticket. Use for end-to-end shipping.
 license: MIT
-compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and an authenticated gh CLI with push and merge rights on the target repository. Uses the adversarial-review and adversarial-test skills when installed. Jira tickets are read through Atlassian MCP tools, acli, or the jira CLI when one is available.
+compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and authenticated gh. Uses adversarial-review and adversarial-test when installed.
 argument-hint: "[--issue] [--risk low|medium|high] <task description | github-issue-url | jira-url>"
 allowed-tools: Agent Bash Edit Glob Grep Read Skill ToolSearch Write
 user-invocable: true
@@ -29,7 +29,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task description | git
 - After resolving, maintain [references/checkpoint.md](references/checkpoint.md) before repository changes, GitHub [references/claims.md](references/claims.md) before branch or source changes, and [references/telemetry.md](references/telemetry.md) through completion.
 - Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
 - Read [references/risk.md](references/risk.md) after exploration. Select and report the revision's risk, policy source and required gates before validation.
-- Repository instructions override generic branch, review, release and merge defaults.
+- Read [references/release.md](references/release.md) after exploration. Resolve repository, GitHub and default release policy into the checkpoint before validation.
 - Every source change invalidates completion evidence from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
@@ -55,7 +55,7 @@ If the input is an approved complex plan or an umbrella issue with subissues, re
 
 ## Phase 2 — Explore
 
-Discover repository instructions, affected code and required quality gates before editing.
+Discover repository instructions, affected code and required quality gates. Resolve and checkpoint release policy before editing.
 
 ## Phase 3 — Branch
 
@@ -83,4 +83,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or its claim conflicts; the Jira ticket is finished; branch protection needs approvals or admin action; a selected hosted reviewer neither reviewed nor has a pending request after ~30 min; a required review thread loops more than 3 times; a test requires disabling a check; a selected test gate returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
+Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or its claim conflicts; the Jira ticket is finished; branch protection needs approvals or admin action; a hosted requirement remains unsatisfied after ~30 min; a required review thread loops more than 3 times; a test requires disabling a check; a selected test gate returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
