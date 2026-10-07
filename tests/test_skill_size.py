@@ -7,7 +7,6 @@ import unittest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MAX_SKILL_BYTES = 8_000
 OVERSIZED_SKILL_ALLOWLIST = {
-    "plugins/adversarial-review/skills/adversarial-review/SKILL.md",
     "plugins/adversarial-test/skills/adversarial-test/SKILL.md",
     "plugins/ai-daily-digest/skills/ai-daily-digest/SKILL.md",
     "plugins/generate-claude-md/skills/generate-claude-md/SKILL.md",
