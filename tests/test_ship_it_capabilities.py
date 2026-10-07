@@ -145,12 +145,43 @@ class ShipItCapabilityContractTest(unittest.TestCase):
             return {
                 capability
                 for requirement in phases[phase]["requirements"]
+                if "when" not in requirement
                 for capability in requirement.get("all_of", ())
             }
 
         self.assertIn("filesystem.write", required("branch"))
         self.assertIn("state.write", required("review"))
         self.assertIn("filesystem.transient-write", required("test"))
+        self.assertIn("merge.execute", required("pr-loop"))
+
+        def conditional(phase: str, fact: str) -> set[str]:
+            return {
+                capability
+                for requirement in phases[phase]["requirements"]
+                if requirement.get("when") == {"fact": fact, "equals": True}
+                for capability in requirement.get("all_of", ())
+            }
+
+        self.assertTrue(
+            {
+                "filesystem.write",
+                "github.write",
+                "issue.write",
+                "subagent.worker",
+                "subagent.review",
+                "subagent.test",
+            }
+            <= conditional("resolve", "coordinator")
+        )
+        self.assertTrue(
+            {"github.read", "issue.read", "network.read"}
+            <= conditional("resolve", "create_issue")
+        )
+        self.assertNotIn("issue.read", required("complete"))
+        self.assertTrue(
+            {"github.write", "issue.read", "issue.write", "network.write"}
+            <= conditional("complete", "github_issue_tracking")
+        )
 
     def test_high_risk_actions_remain_interactive(self) -> None:
         interactive = " ".join(
