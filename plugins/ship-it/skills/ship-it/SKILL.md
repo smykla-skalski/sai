@@ -25,8 +25,7 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 - Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
 - Before each phase, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), select its profile and satisfy the machine-readable preflight before any side effect.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
-- Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
-- For GitHub issues, reconcile [references/claims.md](references/claims.md) before branch or source changes.
+- After resolving, maintain [references/checkpoint.md](references/checkpoint.md) before repository changes, GitHub [references/claims.md](references/claims.md) before branch or source changes, and [references/telemetry.md](references/telemetry.md) through completion.
 - Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
 - Repository instructions override generic branch, review, release and merge defaults.
 - Every source change invalidates completion evidence from the previous revision.
