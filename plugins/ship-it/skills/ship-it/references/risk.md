@@ -4,7 +4,7 @@ Select gates from the committed revision before validation. The portable default
 
 ## Policy format
 
-The document has `schema_version: sai.ship-it.risk-policy/v1`, `risk_order: [low, medium, high]`, one `default_risk`, policies for all three levels, and ordered path `rules`. Each policy has unique non-empty `required_gates` and a `fallbacks` object mapping an unavailable gate to a non-empty ordered list of compatible fallback mechanisms. IDs use lowercase letters, digits and hyphens.
+The document has `schema_version: sai.ship-it.risk-policy/v1`, `risk_order: [low, medium, high]`, one `default_risk`, `independent_review: strict|degraded`, policies for all three levels, and ordered path `rules`. Each policy has unique non-empty `required_gates` and a `fallbacks` object mapping an unavailable gate to a non-empty ordered list of compatible fallback mechanisms. IDs use lowercase letters, digits and hyphens. Missing `independent_review` in a legacy v1 policy means `strict`; reject every other value.
 
 A rule is `{"risk":"high","paths":["infra/**","**/auth/**"]}`. Paths are repository-relative POSIX globs: `*` and `?` stay within one component; `**` crosses components. Match against every tracked, staged, untracked or deleted path changed from the merge-base with the current default branch. Reject an invalid policy; never partially apply it.
 
@@ -19,6 +19,7 @@ Example repository policy:
   "schema_version": "sai.ship-it.risk-policy/v1",
   "risk_order": ["low", "medium", "high"],
   "default_risk": "low",
+  "independent_review": "strict",
   "policies": {
     "low": {
       "required_gates": ["local-checks", "adversarial-review", "ci"],
@@ -53,6 +54,8 @@ Example repository policy:
 3. Treat `--risk <level>` from the original user request as another floor. An agent may raise this result for an identified risk and record its reason.
 4. Never lower the selected risk from the checkpoint, a matching rule or an earlier revision. Lower it only when the user explicitly authorizes overriding the named source and level; record that authorization in the checkpoint.
 5. Recompute after every source change or default-branch merge. A higher result invalidates the revision's gate evidence. A lower recomputation keeps the prior floor unless the user authorized the reduction.
+
+The policy's `independent_review` field authorizes role routing. `strict` enforces an independently resolved review route. `degraded` explicitly authorizes a weaker route only when its evidence records every degradation reason and the repository policy path. A command-line risk floor never changes this field.
 
 Before the first validation command, report exactly:
 

@@ -43,6 +43,7 @@ class ShipItRiskContractTest(unittest.TestCase):
         )
         self.assertEqual(tuple(self.policy["risk_order"]), RISKS)
         self.assertIn(self.policy["default_risk"], RISKS)
+        self.assertEqual(self.policy["independent_review"], "strict")
         self.assertEqual(set(self.policy["policies"]), set(RISKS))
         self.assertEqual(self.policy["rules"], [])
         for risk, policy in self.policy["policies"].items():
@@ -71,6 +72,15 @@ class ShipItRiskContractTest(unittest.TestCase):
                 for fallback in fallbacks:
                     self.assertIsNotNone(GATE_ID.fullmatch(fallback))
                     self.assertIn(fallback, FALLBACKS[gate])
+
+    def test_independent_review_policy_is_explicit_and_safe_by_default(self) -> None:
+        self.assertIn(self.policy["independent_review"], {"strict", "degraded"})
+        for expected in (
+            "Missing `independent_review` in a legacy v1 policy means `strict`",
+            "`degraded` explicitly authorizes a weaker route",
+            "repository policy path",
+        ):
+            self.assertIn(expected, self.guidance)
 
     def test_rejects_incompatible_fallback_fixture(self) -> None:
         fixture = {

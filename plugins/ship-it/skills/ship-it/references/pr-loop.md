@@ -56,6 +56,8 @@ Poll every 5–10 minutes; do not busy-loop. On each poll inspect:
 
 If selected CI fails, read the failed run logs (`gh run view <id> --log-failed`), fix, push, and keep waiting. If selected Copilot review has neither completed nor remained requested after roughly 30 minutes, stop and ask whether to authorize a policy override; never silently skip it.
 
+Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in evidence.
+
 Record every selected hosted gate against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with every selected result pending; recompute risk and rerun every selected gate before returning to the PR loop.
 
 ## Address Copilot feedback

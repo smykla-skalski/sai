@@ -2,6 +2,8 @@
 
 Build the implementation map before editing anything.
 
+Resolve and record the exploration role before starting discovery.
+
 - Read root `CLAUDE.md`, `AGENTS.md` and `CONTRIBUTING.md` when present. Follow nested instructions for files in their scope.
 - Identify the default branch and repository-specific review, release and merge conventions.
 - Identify the primary stack from manifests and lockfiles.
