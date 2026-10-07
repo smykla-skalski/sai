@@ -4,7 +4,7 @@ How ship-it turns its arguments into a task source. Make no repository changes (
 
 ## Flags
 
-If the first token is `--issue`, strip it and remember the flag. An `--issue` anywhere else is part of the description ("add support for --issue"). `--issue` applies only to task descriptions; with a URL or reference, say it is ignored and continue.
+Parse leading `--issue` and `--risk low|medium|high` flags in either order, strip them, and remember their values. Reject a missing or unknown risk value. The same tokens after task text begins are part of the description. `--issue` applies only to task descriptions; with a URL or reference, say it is ignored and continue. Risk applies to every source as a validation floor and is reconciled with repository rules after exploration.
 
 ## Classification
 
