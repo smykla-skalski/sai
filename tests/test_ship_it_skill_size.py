@@ -21,6 +21,7 @@ SKILL_DIR: Final[Path] = (
 )
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
 CHECKPOINT_REFERENCE: Final[Path] = SKILL_DIR / "references" / "checkpoint.md"
+EVIDENCE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "evidence.md"
 CODEX_MAX_SKILL_PROMPT_BYTES: Final[int] = 8000
 SKILL_BUDGET_BYTES: Final[int] = 6000
 REFERENCE_LINK: Final[re.Pattern[str]] = re.compile(r"\]\((references/[^)]+\.md)\)")
@@ -134,6 +135,92 @@ class ShipItSkillSizeTest(unittest.TestCase):
                     encoding="utf-8"
                 )
                 self.assertIn("checkpoint", content.lower())
+
+    def test_completion_evidence_is_revision_bound_and_portable(self) -> None:
+        skill = SKILL_FILE.read_text(encoding="utf-8")
+        evidence = EVIDENCE_REFERENCE.read_text(encoding="utf-8")
+        checkpoint = CHECKPOINT_REFERENCE.read_text(encoding="utf-8")
+
+        self.assertEqual(
+            skill.count("[references/evidence.md](references/evidence.md)"),
+            1,
+        )
+        for expected in (
+            "${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/<checkpoint-id>/",
+            '"sourceRevision"',
+            '"provider"',
+            '"model"',
+            '"requiredBy"',
+            '"timestamp"',
+            '"outputReference"',
+            "acceptance-criterion",
+            "local-check",
+            '"review"',
+            "manual-test",
+            '"ci"',
+            "Missing, pending, failed, blocked or stale required evidence",
+            "non-stale current record",
+            "its `headRefOid`",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, evidence)
+
+        example_match = re.search(r"```json\n(?P<document>.*?)\n```", evidence, re.DOTALL)
+        self.assertIsNotNone(example_match)
+        example = json.loads(example_match["document"])
+        self.assertEqual(example["schemaVersion"], 1)
+        self.assertEqual(example["status"], "complete")
+        self.assertEqual(
+            {result["category"] for result in example["results"]},
+            {"acceptance-criterion", "local-check", "review", "manual-test", "ci"},
+        )
+        for result in example["results"]:
+            self.assertTrue(result["required"])
+            self.assertEqual(result["status"], "passed")
+            self.assertIn(result["requiredBy"], {"pr", "merge"})
+            for field in (
+                "sourceRevision",
+                "provider",
+                "model",
+                "timestamp",
+                "outputReference",
+            ):
+                self.assertIn(field, result)
+
+        self.assertIn('"evidence": {', checkpoint)
+        self.assertIn('"recordPath"', checkpoint)
+
+    def test_evidence_gates_every_revision_sensitive_phase(self) -> None:
+        expectations = {
+            "implementation.md": (
+                "mark the previous record stale",
+                "run every required local check against the committed revision",
+            ),
+            "review.md": (
+                "provider, model, timestamp and bounded output reference",
+                "any later source change marks the entire record stale",
+            ),
+            "test.md": (
+                "provider, model, timestamp and bounded output reference",
+                "reproduced failure marks the evidence failed",
+            ),
+            "pr-loop.md": (
+                "requiredby: pr",
+                "requiredby: merge",
+                "local `head` and the pr `headrefoid`",
+            ),
+            "completion.md": ("complete record for the gated pr head",),
+            "orchestration.md": (
+                "evidence record is complete for the final pr head",
+            ),
+        }
+        for reference, required_text in expectations.items():
+            with self.subTest(reference=reference):
+                content = (SKILL_DIR / "references" / reference).read_text(
+                    encoding="utf-8"
+                ).lower()
+                for expected in required_text:
+                    self.assertIn(expected, content)
 
 
 if __name__ == "__main__":

@@ -23,11 +23,13 @@ Invocation: `/ship-it [--issue] <task description | github-issue-url | jira-url>
 ## Workflow contract
 
 - Run the phases below in order; do not skip a gate because a harness lacks a preferred tool.
+- Before each phase, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), select its profile and satisfy the machine-readable preflight before any side effect.
 - Load each phase reference immediately before that phase, not during initial skill discovery.
 - Read [references/checkpoint.md](references/checkpoint.md) after resolving the task source. Create or resume its durable checkpoint before repository changes, then keep it current through completion.
 - After checkpoint reconciliation, read [references/telemetry.md](references/telemetry.md), start the run with the checkpoint ID as its task ID, and emit every phase and final event. Omit unavailable counters so they stay explicit `null` values. Telemetry failure never blocks delivery.
+- Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
 - Repository instructions override generic branch, review, release and merge defaults.
-- Every code-changing fix invalidates review and test verdicts from the previous revision.
+- Every source change invalidates completion evidence from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
 
@@ -80,4 +82,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; Copilot neither reviewed nor has a pending request after ~30 min (ask whether to merge without it); a Copilot thread loops more than 3 times; a test requires disabling a check; `adversarial-test` returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
+Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or actively owned; the Jira ticket is finished; branch protection needs approvals or admin action; Copilot neither reviewed nor has a pending request after ~30 min (ask whether to merge without it); a Copilot thread loops more than 3 times; a test requires disabling a check; `adversarial-test` returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.

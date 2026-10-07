@@ -13,6 +13,8 @@ Do not rewrite history after review begins. If the unpublished branch still need
 
 ## Open the PR
 
+Before pushing, validate that every result with `requiredBy: pr` passed in the current revision's evidence record. Missing, pending, failed, blocked or stale due evidence stops PR creation. CI results remain pending with `requiredBy: merge` until the PR exists.
+
 Push the branch and create a PR against the default branch. Title: the conventional lead-commit title. Body: `## Motivation`, `## Implementation information`, a changelog line (`> Changelog: type(scope): desc` or `> Changelog: skip`), any unsettled review `question:` findings, plus the source link:
 
 | Source | PR title or body must contain |
@@ -50,6 +52,8 @@ Poll every 5–10 minutes; do not busy-loop. On each poll inspect:
 
 If CI fails, read the failed run logs (`gh run view <id> --log-failed`), fix, push, and keep waiting. If after roughly 30 minutes Copilot has neither reviewed nor has a pending review request, stop and ask whether to merge without it; never silently skip the Copilot wait.
 
+Record every required CI check against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with every result pending; rerun local checks, review and manual testing before returning to the PR loop.
+
 ## Address Copilot feedback
 
 For every unresolved Copilot thread:
@@ -71,6 +75,7 @@ Then return to waiting. Stop for a human decision if the same thread loops more 
 
 Merge only when all of these hold:
 
+- The current evidence record is `complete`; every result with `requiredBy: merge` passed on its exact revision; and that revision equals both local `HEAD` and the PR `headRefOid`.
 - The current PR head has `Review Verdict: CLEAN` and `Test Verdict: PASS`. Record its `headRefOid`; after every code-changing CI/Copilot fix or merge from the default branch, rerun both gates on the new committed tip. Check `headRefOid` again just before merge and restart the gates if it changed. The squash merge commit will have a different SHA; compare the PR head SHA.
 - Every CI check succeeded.
 - Copilot submitted at least one review (a no-comments review counts). Do not wait for Copilot to re-review fix commits.
