@@ -2,14 +2,17 @@
   "schema_version": "sai.ship-it.capabilities/v1",
   "profiles": {
     "explore": {
-      "description": "Resolve and inspect without changing repository or remote state.",
+      "description": "Resolve and inspect without changing repository state; maintain a GitHub claim only when required.",
       "allows": [
         "filesystem.read",
         "git.read",
         "github.read",
+        "github.write",
         "issue.read",
+        "issue.write",
         "mcp.jira.read",
         "network.read",
+        "network.write",
         "process.jira.read",
         "process.read",
         "state.write"
@@ -23,7 +26,11 @@
         "git.read",
         "git.write",
         "github.read",
+        "github.write",
+        "issue.read",
+        "issue.write",
         "network.read",
+        "network.write",
         "process.execute",
         "process.read",
         "state.write"
@@ -36,7 +43,11 @@
         "filesystem.transient-write",
         "git.read",
         "github.read",
+        "github.write",
+        "issue.read",
+        "issue.write",
         "network.read",
+        "network.write",
         "process.execute",
         "process.read",
         "inline.review",
@@ -83,7 +94,6 @@
       "id": "resolve",
       "profile": "explore",
       "profile_overrides": [
-        {"profile": "release", "when": {"fact": "github_source", "equals": true}},
         {"profile": "release", "when": {"fact": "create_issue", "equals": true}},
         {"profile": "release", "when": {"fact": "coordinator", "equals": true}}
       ],
@@ -99,9 +109,6 @@
     {
       "id": "explore",
       "profile": "explore",
-      "profile_overrides": [
-        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
-      ],
       "requirements": [
         {"all_of": ["filesystem.read", "git.read", "process.read", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
@@ -112,9 +119,6 @@
     {
       "id": "branch",
       "profile": "build",
-      "profile_overrides": [
-        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
-      ],
       "requirements": [
         {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "network.read", "process.execute", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}}
@@ -124,9 +128,6 @@
     {
       "id": "implement",
       "profile": "build",
-      "profile_overrides": [
-        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
-      ],
       "requirements": [
         {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "process.execute", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}}
@@ -136,9 +137,6 @@
     {
       "id": "review",
       "profile": "review",
-      "profile_overrides": [
-        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
-      ],
       "requirements": [
         {"all_of": ["filesystem.read", "git.read", "process.read", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
@@ -150,9 +148,6 @@
     {
       "id": "test",
       "profile": "review",
-      "profile_overrides": [
-        {"profile": "release", "when": {"fact": "github_source", "equals": true}}
-      ],
       "requirements": [
         {"all_of": ["filesystem.read", "filesystem.transient-write", "git.read", "process.execute", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
@@ -166,6 +161,7 @@
       "profile": "release",
       "requirements": [
         {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "github.read", "github.write", "merge.execute", "network.read", "network.write", "process.execute", "state.write"]},
+        {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
         {"any_of": ["skill.review", "subagent.review", "inline.review"], "when": {"fact": "code_changed", "equals": true}, "fallback": "portable-review-fallback"},
         {"any_of": ["skill.test", "subagent.test", "inline.test"], "when": {"fact": "code_changed", "equals": true}, "fallback": "portable-test-fallback"},
         {"all_of": ["subagent.review", "subagent.test"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "sail", "equals": true}]}},

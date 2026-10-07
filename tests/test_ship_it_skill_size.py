@@ -162,6 +162,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
             "recentMergesChecked",
             "lost acquisition race",
             "terminal failure",
+            "pending after claim takeover",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, claims)
@@ -169,6 +170,8 @@ class ShipItSkillSizeTest(unittest.TestCase):
         self.assertIn('"claim": null', checkpoint)
         self.assertIn('"claim": null', evidence)
         self.assertIn("authoritative issue comment", checkpoint)
+        self.assertIn('"status": "active|blocked|completed|cancelled|failed"', checkpoint)
+        self.assertIn("explicit restart instruction", checkpoint)
         self.assertIn("active, unexpired", evidence)
 
     def test_completion_evidence_is_revision_bound_and_portable(self) -> None:

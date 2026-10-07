@@ -55,11 +55,13 @@ Before replacing an expired claim, treat the matching expired comment with the g
 
 1. Record the expired comment URL, previous holder, expiry and the UTC audit time.
 2. Inspect the issue's linked pull requests and cross-references, then search the repository's open pull requests for the issue number, canonical task, matching title and recorded task branch.
-3. Inspect pull requests merged in the previous 30 days with the same issue reference or equivalent title. If equivalent work is open, adopt and reconcile that PR instead of taking over implementation. If equivalent work merged, verify delivery and complete the task. Stop when equivalence is ambiguous.
+3. Inspect pull requests merged in the previous 30 days with the same issue reference or equivalent title. If equivalent work is open, adopt and reconcile that PR instead of taking over implementation. If equivalent work merged, verify delivery and mark this as a terminal delivery takeover; finish steps 4-5, release the new claim with reason `merged`, then complete without implementation. Stop when equivalence is ambiguous.
 4. Create a new claim comment whose `takeover` object records `previousCommentUrl`, `previousHolder`, `previousExpiry`, `auditedAt`, `openPullRequestsChecked` and `recentMergesChecked`. Each check is a bounded list of inspected URLs, or an empty list.
 5. Run the normal five-second acquisition-race check. Store the new claim only after it wins.
 
 Never edit the expired holder's comment. The old and new comments form the takeover audit trail.
+
+When takeover adopts an existing committed revision, atomically rebind its evidence record to the new claim before advancing: preserve the result IDs and source revision, replace the claim binding, set record status to `collecting`, and reset every required result to `pending` with provider `claim-takeover`, null model, the takeover timestamp and a bounded `pending after claim takeover` output reference. Rerun every required result. The issue comments and new claim's `takeover` object preserve the prior ownership audit.
 
 ## Release
 

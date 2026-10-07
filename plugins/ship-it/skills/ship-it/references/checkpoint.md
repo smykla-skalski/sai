@@ -39,7 +39,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
   },
   "workflow": {
     "phase": "resolve|orchestrate|explore|branch|implement|review|test|pr|complete",
-    "status": "active|blocked|completed",
+    "status": "active|blocked|completed|cancelled|failed",
     "revision": "full commit SHA or null",
     "blocker": "specific blocker or null",
     "unresolvedQuestions": [],
@@ -64,7 +64,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
 }
 ```
 
-For a single change, `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
+For a single change, a delivered `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`) and `completedAt`. A terminal undelivered outcome has `result: cancelled|failed`, null delivery fields, the unchanged source state, a non-empty `reason` and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
 
 `orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, gated head, PR URL, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
 
@@ -74,7 +74,7 @@ Validate these invariants in addition to field presence and types:
 
 - `checkpointId` equals the filename and the digest of `task.canonicalSource`; `acceptanceCriteria` is non-empty.
 - `status: blocked` has a non-empty `blocker` and actionable `nextAction`; other statuses have a null blocker.
-- `status: completed`, `phase: complete` and a non-null `outcome` occur together; all other states have a null outcome.
+- `phase: complete` and a non-null `outcome` occur together with `status: completed|cancelled|failed`; active and blocked states have a null outcome. Completed means delivered, cancelled means explicitly cancelled, and failed means a terminal failure ended the run.
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
 - Evidence is `missing` before the first task commit. Otherwise its revision and record path identify the current revision's valid evidence record; `complete` requires the exact workflow revision.
 - An active GitHub implementation checkpoint has exactly one claim comment for its holder. Repository or GitHub writes require `status: active`, an unexpired `expiresAt`, and values reconciled with the authoritative issue comment. A completed checkpoint with a claim has released it with reason `merged`; a completed legacy checkpoint with `claim: null` remains valid after delivery verification.
@@ -118,5 +118,6 @@ Stop before repository changes and report the checkpoint path plus exactly one r
 - Closed issue without a verifiable merged PR, or merged PR that does not contain the recorded revision: inspect the external state and correct it before completion.
 - `status: blocked`: perform the named `nextAction`; resume only after verifying the blocker is gone.
 - `status: completed`: report the recorded outcome after checking it still matches GitHub. If the PR, merge or issue state no longer matches, stop and inspect that external state; do not reopen or overwrite the task.
+- `status: cancelled|failed`: report the recorded reason and released claim, then stop. Resume only on an explicit restart instruction; atomically clear the terminal outcome, set status active, and follow audited claim takeover before any repository or GitHub write.
 
 Never infer success from an advanced phase name. Revision, PR, issue and merge facts must agree before advancing or finalizing.

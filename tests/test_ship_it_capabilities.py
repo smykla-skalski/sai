@@ -216,18 +216,17 @@ class ShipItCapabilityContractTest(unittest.TestCase):
             "network.write",
         }
 
-        for phase_id in ("resolve", "explore", "branch", "implement", "review", "test"):
+        for phase_id in (
+            "resolve",
+            "explore",
+            "branch",
+            "implement",
+            "review",
+            "test",
+            "pr-loop",
+        ):
             with self.subTest(phase=phase_id):
                 phase = phases[phase_id]
-                overrides = {
-                    override["profile"]
-                    for override in phase.get("profile_overrides", ())
-                    if override.get("when") == {
-                        "fact": "github_source",
-                        "equals": True,
-                    }
-                }
-                self.assertEqual(overrides, {"release"})
                 required = {
                     capability
                     for requirement in phase["requirements"]
@@ -236,6 +235,20 @@ class ShipItCapabilityContractTest(unittest.TestCase):
                     for capability in requirement.get("all_of", ())
                 }
                 self.assertTrue(claim_capabilities <= required)
+                profile = self.contract["profiles"][phase["profile"]]
+                self.assertTrue(claim_capabilities <= set(profile["allows"]))
+
+        for phase_id in ("resolve", "explore", "branch", "implement", "review", "test"):
+            with self.subTest(no_release_override=phase_id):
+                phase = phases[phase_id]
+                self.assertFalse(
+                    any(
+                        override["profile"] == "release"
+                        and override.get("when")
+                        == {"fact": "github_source", "equals": True}
+                        for override in phase.get("profile_overrides", ())
+                    )
+                )
 
     def test_skill_progressively_loads_capability_guidance(self) -> None:
         skill = SKILL_FILE.read_text(encoding="utf-8")
