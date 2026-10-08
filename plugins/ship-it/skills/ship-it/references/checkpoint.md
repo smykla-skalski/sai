@@ -65,6 +65,15 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "overrideAuthorization": "exact user authorization or null"
   },
   "releasePolicy": null,
+  "convergence": {
+    "mode": "bounded",
+    "authorizedBy": null,
+    "startedAt": null,
+    "reviewCycles": 0,
+    "fixPasses": 0,
+    "fullQualityGateRuns": 0,
+    "followUpIssues": []
+  },
   "ciTriage": {
     "failures": []
   },
@@ -83,6 +92,8 @@ For a single change, a delivered `outcome` is an object with `result: merged`, `
 
 `ciTriage.failures` preserves CI observations that conform to `ci-triage.schema.json`. Failure IDs are unique. A failed CI result names its observations; resolution and recurrence remain recorded after a rerun, provider recovery or source-changing fix. Unknown fields in a triage record are preserved for forward compatibility.
 
+`convergence` is the shared cross-harness budget state. In bounded mode, `authorizedBy` is null, `startedAt` is set when the first review worker starts, counters are monotonic, and follow-up issue URLs are unique. Exhaustive mode requires the exact current-request authorization in `authorizedBy`; no repository risk level or harness may infer it.
+
 Validate these invariants in addition to field presence and types:
 
 - `checkpointId` equals the filename and the digest of `task.canonicalSource`; `acceptanceCriteria` is non-empty.
@@ -93,6 +104,7 @@ Validate these invariants in addition to field presence and types:
 - An active GitHub implementation checkpoint has exactly one claim comment for its holder. Repository or GitHub writes require `status: active`, an unexpired `expiresAt`, and values reconciled with the authoritative issue comment. A completed checkpoint with a claim has released it with reason `merged`; a completed legacy checkpoint with `claim: null` remains valid after delivery verification.
 - Before validation, risk has a level, policy source and unique required gates. A lower level than an earlier revision, matching rule or resumed checkpoint requires non-null explicit override authorization.
 - Before validation, `releasePolicy` is non-null, normalized from repository instructions and live forge policy, and has a successful reconciliation timestamp. A material policy change invalidates hosted-review and CI evidence.
+- Before validation, convergence mode and counters conform to `convergence-policy.json`. Review, test, CI and hosted feedback update the same counters; bounded mode never exceeds two review cycles, one fix pass, one full local quality gate or 90 elapsed minutes.
 - Every CI triage failure has a unique identity derived from revision, workflow, job and attempt. A resolved failure has a resolution; an open failure does not. Rerun authorization never exceeds its recorded limit.
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. A completed child has `evidenceStatus: complete`, and its evidence revision equals its gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
@@ -105,7 +117,7 @@ Validate the complete next document before replacing state. Write it to a same-d
 
 On a fresh task, create the checkpoint with `phase: resolve`, `status: active`, no revision, and task resolution as `nextAction`. Then advance to `explore` only after the source and acceptance criteria are complete.
 
-When the file exists, migrate only the known legacy shapes before validating current required fields. A schema v1 checkpoint that has every previously required field may lack any subset of `risk`, `claim` and `ciTriage`, including only `ciTriage`, and may also lack `releasePolicy` because they were added in successive ship-it versions. A previously valid terminal single-change outcome may lack `branchCleanup`; add `branchCleanup: not-applicable` so its recorded delivery remains reportable without inventing cleanup. Validate that legacy document, add a null claim or release policy when absent, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates` when absent, add `ciTriage: {"failures": []}` when absent, preserve every other field, then write it atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk, invents ownership, invents a CI observation or invents release requirements. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
+When the file exists, migrate only the known legacy shapes before validating current required fields. A schema v1 checkpoint that has every previously required field may lack any subset of `risk`, `claim`, `ciTriage` and `convergence`, including only one of those fields, and may also lack `releasePolicy` because they were added in successive ship-it versions. This preserves the older migration case including only `ciTriage` among the newer optional fields. A previously valid terminal single-change outcome may lack `branchCleanup`; add `branchCleanup: not-applicable` so its recorded delivery remains reportable without inventing cleanup. Validate that legacy document, add a null claim or release policy when absent, add the risk object with `level` and `policySource` null and empty `matchedRules` and `requiredGates` when absent, add `ciTriage: {"failures": []}` when absent, and add bounded convergence with null start and zero counters when absent. Preserve every other field, then write atomically with `overrideAuthorization` null. This migration adds unknown state; it never selects or lowers risk, invents ownership, invents a CI observation, spends validation budget or invents release requirements. Missing any other required field remains invalid. Do not silently repair or replace invalid state.
 
 1. Recompute the ID from `task.canonicalSource`; it must match both `checkpointId` and the filename.
 2. Compare the resolved task source and repository identity with the checkpoint. They must match exactly after normalization.

@@ -10,9 +10,9 @@ Resolve and record a fresh testing role before each adversarial-test dispatch.
 
 When the skill is unavailable outside Sail, give `adversarial-test:test-adversary`, or a fresh generic subagent, the repository path, `git diff origin/<default>...HEAD`, changed files and task context. Tell it to prove the change does not satisfy the task by exercising the real surface in isolated temporary state and to report self-contained reproductions. Rerun every reproduction yourself. The fallback verdict is `FAIL` when a reproduction survives, `BLOCKED` when testing needs a named human action, otherwise `PASS`. With no subagent capability, block by default. A repository policy with `independent_review: degraded` may authorize inline testing outside Sail only; record inline execution, degraded independence and its reasons. Sail always pauses instead of testing inline.
 
-On `FAIL`, rerun each reproduction before acting. Fix every surviving failure, add regression coverage, run quality gates, commit, then repeat both adversarial review and manual testing on the new tip. More than three failed fixes of one reproduction is a hard stop when the user is reachable.
+On `FAIL`, rerun each reproduction before acting. A surviving reproduction is an unresolved acceptance failure under the shared convergence policy. Use the remaining single fix pass, add regression coverage, run focused verification and commit. Re-attest the fixed revision from the reproduced case; start the second and final adversarial review cycle only because unresolved acceptance is an allowed trigger. Do not repeat the broad manual-test pass.
 
-After three combined failing review or test rounds, stop and ask when the user is reachable. Otherwise continue only while each round finds smaller concrete issues, and report the overrun.
+Review and test share the same fix, cycle and 90-minute counters. When they are exhausted, stop with the surviving reproduction and exact human action. Exhaustive review changes the budget only after explicit user opt-in.
 
 `BLOCKED` is a hard stop: report the exact human action required. Open a PR only after every selected PR-due review and test gate passes on the same revision.
 

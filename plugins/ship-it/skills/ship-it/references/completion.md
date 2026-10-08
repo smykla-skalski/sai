@@ -18,4 +18,6 @@ Report:
 - GitHub issue closure or unchanged Jira status
 - any review or test round-cap overrun
 
+Judge completion by the merged pull request and resolved source issue. Review-cycle counts are diagnostic only and never justify extending a delivery whose required controls already passed.
+
 Return to the default branch and remove the task worktree only when safe and when the current harness owns that cleanup. A Sail worker reports completion and leaves its assigned worktree lifecycle to Sail.

@@ -118,7 +118,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
             '"outcome": null',
             "Reconcile Git before edits",
             "known legacy shape",
-            "may lack any subset of `risk`, `claim` and `ciTriage`",
+            "may lack any subset of `risk`, `claim`, `ciTriage` and `convergence`",
             "Invalid JSON",
             "Different canonical source or repository identity",
             "status: completed",
@@ -241,12 +241,13 @@ class ShipItSkillSizeTest(unittest.TestCase):
         self.assertIn('"recordPath"', checkpoint)
         self.assertIn('"risk": {', checkpoint)
         self.assertIn('"requiredGates"', checkpoint)
+        self.assertIn('"convergence": {', checkpoint)
 
     def test_evidence_gates_every_revision_sensitive_phase(self) -> None:
         expectations = {
             "implementation.md": (
                 "mark the previous record stale",
-                "run every selected local gate against the committed revision",
+                "run local gates according to the shared convergence budget",
             ),
             "review.md": (
                 "provider, model, timestamp and bounded output reference",

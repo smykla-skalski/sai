@@ -153,7 +153,9 @@ After each successful commit, history rewrite, merge from the default branch or 
 1. Atomically mark the previous current record `stale`, set `invalidatedAt`, and set `invalidatedByRevision` to the new full SHA.
 2. Create the new revision's record with `status: collecting`; copy the required result identities, but set their statuses to `pending` and replace their source revisions, timestamps and output references. Carry still-active exploration and implementation routes with `sourceRevision` rebound to the new revision. Drop old review, testing and CI-triage routes; record fresh routes when those gates rerun.
 3. Point the task checkpoint's evidence fields at the new record only after that record is valid and durable.
-4. Rerun every required result against the new revision. Do not copy a pass from the stale record.
+4. Validate every required result against the new revision under the convergence contract. Do not copy a pass from the stale record.
+
+After the bounded mode's single routine fix pass, do not dispatch another broad adversarial review or manual-test run. Re-attest their pending results against the new revision only after the fix matches the independently challenged findings, focused reproductions pass and the final full quality gate passes. Use provider `ship-it-convergence`, model null, and a bounded output reference that names the prior evidence revision plus the focused commands. This is fresh evidence for the fixed revision, not a copied verdict. Security, data-loss, destructive-concurrency or unresolved-acceptance triggers instead require the second and final review cycle. Required CI and hosted-review results always come from their actual current-head providers.
 
 Validate a complete next document before replacing a record. Write to a same-directory owner-only temporary file, flush and sync it, preserve the current valid record as `<revision>.json.bak`, then atomically rename the temporary file. A failed write leaves the previous record authoritative.
 

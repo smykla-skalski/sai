@@ -14,7 +14,7 @@ metadata:
 
 Take a change to a merged PR, or coordinate independently shippable issues from an approved complex plan.
 
-**Mode:** autonomous. Ask only when ambiguity cannot be resolved from the repository. Keep polling selected hosted gates until merged or a hard stop.
+**Mode:** autonomous. Ask only for unresolved material ambiguity. Poll selected hosted gates until merged or a hard stop.
 
 **Other agents:** Read [references/fallbacks.md](references/fallbacks.md) when not in Claude Code or an agent feature is missing.
 
@@ -30,6 +30,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task description | git
 - Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
 - Read [references/risk.md](references/risk.md) after exploration. Select and report the revision's risk, policy source and required gates before validation.
 - Read [references/release.md](references/release.md) after exploration. Resolve repository, GitHub and default release policy into the checkpoint before validation.
+- Before validation, read [references/convergence.md](references/convergence.md) and [references/convergence-policy.json](references/convergence-policy.json); use its shared cross-harness budget.
 - Every source change invalidates completion evidence from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
@@ -83,4 +84,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: a phase capability preflight fails; input is empty, unrecognized or unreachable; the GitHub issue is closed or its claim conflicts; the Jira ticket is finished; branch protection needs approvals or admin action; a hosted requirement remains unsatisfied after ~30 min; a required review thread loops more than 3 times; a test requires disabling a check; a selected test gate returns BLOCKED; the review/test round cap is hit and the user can be asked; or the task needs a product/design decision the repository cannot answer.
+Stop and name the exact next human action when: a capability preflight fails; the source is invalid or ownership conflicts; a required control cannot pass; a hosted requirement exceeds its deadline; validation exceeds the convergence budget; a selected test is BLOCKED; or the repository cannot answer a required product decision.
