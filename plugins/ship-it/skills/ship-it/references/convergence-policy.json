@@ -1,0 +1,48 @@
+{
+  "schema_version": "sai.ship-it.convergence-policy/v1",
+  "default_mode": "bounded",
+  "modes": {
+    "bounded": {
+      "activation": "default",
+      "max_elapsed_minutes": 90,
+      "review": {
+        "code_adversary_passes": 1,
+        "findings_challenge_passes": 1,
+        "max_cycles": 2,
+        "rereview_triggers": [
+          "security",
+          "data-loss",
+          "destructive-concurrency",
+          "unresolved-acceptance"
+        ]
+      },
+      "fixes": {
+        "max_passes": 1,
+        "validation": "focused-tests"
+      },
+      "full_quality_gate_runs": 1,
+      "later_non_blocking_findings": "follow-up-issue"
+    },
+    "exhaustive": {
+      "activation": "explicit-user-request",
+      "limits": "user-directed"
+    }
+  },
+  "copilot": {
+    "wait": false,
+    "required_policy": "activate-configured-fallback-or-hard-stop"
+  },
+  "mandatory_controls": [
+    "repository-required-checks",
+    "permissions",
+    "signatures",
+    "mandatory-human-review"
+  ],
+  "completion_metrics": [
+    "merged-pull-request",
+    "closed-issue"
+  ],
+  "diagnostic_metrics": [
+    "review-iterations"
+  ]
+}

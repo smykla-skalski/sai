@@ -50,12 +50,12 @@ Poll every 5–10 minutes; do not busy-loop. On each poll inspect:
 - Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments), filtered by the resolved release policy.
 - Every named policy or platform-required check on the exact PR head when `ci` is selected.
 
-If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. Never rerun CI without the repository policy or explicit approval required there.
+If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. A code failure is an unresolved acceptance failure under the shared convergence policy and consumes its remaining fix/cycle budget. Never rerun CI without the repository policy or explicit approval required there.
 If any selected reviewer or check remains unsatisfied for roughly 30 minutes, including a continuously requested reviewer or pending check, block with that exact requirement and the human action that satisfies it; never silently skip it.
 
 Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in evidence.
 
-Record every selected hosted gate against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with every selected result pending; recompute risk and rerun every selected gate before returning to the PR loop.
+Record every selected hosted gate against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with selected results pending; recompute risk and validate the revision according to the shared convergence policy before returning to the PR loop. Never reset its counters for CI or hosted feedback.
 
 ## Address required reviewer feedback
 
@@ -72,14 +72,14 @@ gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThr
 gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -f id=<thread-id>
 ```
 
-Then return to waiting. Stop for a human decision if the same thread loops more than three times.
+Then return to waiting. After the single fix pass, turn later non-blocking suggestions into follow-up issues. Required feedback that cannot be resolved inside the remaining cycle or time budget is a hard stop.
 
 ## Merge
 
 Merge only when all of these hold:
 
 - The current evidence record is `complete`; every result with `requiredBy: merge` passed on its exact revision; and that revision equals both local `HEAD` and the PR `headRefOid`.
-- The current PR head has passing evidence for every selected gate. Record its `headRefOid`; after every code-changing fix or default-branch merge, recompute risk and rerun all selected gates on the new committed tip. Check `headRefOid` again just before merge and restart the gates if it changed. The squash merge commit will have a different SHA; compare the PR head SHA.
+- The current PR head has passing evidence for every selected gate. Record its `headRefOid`; after a code-changing fix or default-branch merge, recompute risk and validate the new tip under the shared convergence policy. Check `headRefOid` again just before merge. The squash merge commit will have a different SHA; compare the PR head SHA.
 - When `ci` is selected, every required CI check succeeded.
 - When `hosted-review` is selected, every resolved reviewer requirement is satisfied for the current policy. A `review` accepts a submitted no-comment review; an `approval` requires an effective approval.
 - When `hosted-review` is selected, every required reviewer's blocking comment is fixed or answered, and its thread is resolved.
