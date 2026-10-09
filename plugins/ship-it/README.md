@@ -1,6 +1,6 @@
 # ship-it
 
-Take one change from request to merged pull request autonomously: explore the repository, implement the change, run risk-selected gates, open a PR, address required feedback, and merge. The change can be a plain description, a GitHub issue, or a Jira ticket. An approved complex plan or an umbrella issue with implementation subissues runs as a coordinated set of separate issues.
+Take one change from request to merged pull request autonomously: explore the repository, implement the change, open a draft PR after local checks, run risk-selected gates alongside CI, address required feedback, and merge. The change can be a plain description, a GitHub issue, or a Jira ticket. An approved complex plan or an umbrella issue with implementation subissues runs as a coordinated set of separate issues.
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
 
@@ -10,13 +10,13 @@ Every phase also has a versioned machine-readable capability contract. It select
 
 Every task has a portable JSON checkpoint under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/checkpoints/`. Claude Code, Codex, Copilot CLI, opencode and Sail use the same task identity, phase, revision, blocker and outcome fields, so another harness can safely reconcile Git and GitHub before resuming.
 
-GitHub issues also use a visible 30-minute work claim in an issue comment. The claim names its holder and checkpoint, renews during active work, resolves concurrent acquisition deterministically, records audited takeovers after checking open and recent equivalent pull requests, and releases on merge, cancellation or terminal failure.
+GitHub work claims, revision evidence and telemetry are optional bookkeeping features configured by `.sai/ship-it-bookkeeping.json` or the current user request; single-user runs default them off. The durable checkpoint always remains enabled. When claims are on, renewal happens only before a GitHub write, never on a timer.
 
-Each run writes privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/telemetry/events.ndjson`. The versioned NDJSON contract uses stable harness, provider, model, role and phase fields; unavailable counters stay `null`, and prompt or source content is never recorded. Sail and local analysis tools can consume the same stream.
+With telemetry enabled, runs write privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/telemetry/events.ndjson`. The versioned NDJSON contract uses stable harness, provider, model, role and phase fields; unavailable counters stay `null`, and prompt or source content is never recorded.
 
 Portable releases can replay the shared redacted [`environment-as-code` workflow failure corpus](https://github.com/Automaat/environment-as-code/tree/main/evals/agent-workflows) through available Claude Code, Codex, OpenCode, Copilot CLI, and Sail adapters. The [replay contract](skills/ship-it/references/replay.md) normalizes phase and observation traces, treats unavailable harnesses as skipped, blocks on supported-harness regressions, and compares accepted-task cost without storing task or source content.
 
-Each committed task revision also has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Acceptance criteria, local checks, adversarial review, manual testing and CI carry their source revision, provider, model, status, timestamp and bounded output reference. Any source change makes the previous record stale. PR-due evidence for the current revision permits PR creation; a complete record with passing CI for the current PR head permits merge.
+With revision evidence enabled, each committed task revision has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Local checks permit draft PR creation; review and the single broad manual-test pass permit ready-for-review; passing CI for the same head permits merge.
 
 Failed CI is triaged before escalation. The workflow deduplicates revision/workflow/job/attempt observations, exposes only bounded redacted failure sections, classifies failures with evidence, routes code faults back to their implementation owner, and preserves recurrence and resolution in checkpoint, evidence and privacy-safe telemetry. CI reruns need an explicit repository policy or user approval.
 
@@ -91,7 +91,7 @@ The skill pushes and merges, so Codex runs it only when invoked by name. Its `al
 
 It merges through the resolved repository mechanism (including exact bot comments and protected-branch flows), never substitutes another reviewer or bypasses a control, and uses a squash merge only as the documented default. After the first push it never force-pushes or rebases.
 
-The skill owns the full lifecycle and stops only for genuine ambiguity, branch-protection requirements, persistent review/test failures, or product decisions that the request and repository cannot answer.
+The skill owns the full lifecycle and stops only for genuine ambiguity, branch-protection requirements, persistent review/test failures, or product decisions that the request and repository cannot answer. It waits through blocking background waiters instead of polling, reads each phase reference once, and keeps coordinators out of child implementation.
 
 ## License
 

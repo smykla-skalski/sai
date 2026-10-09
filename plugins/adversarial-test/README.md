@@ -7,6 +7,8 @@ Adversarial manual testing. It answers one question - does this change work for 
 
 Unit tests, lint, and build output are supporting evidence only; a PASS backed by them alone is rejected.
 
+Build output is reused from `${XDG_CACHE_HOME:-$HOME/.cache}/sai/adversarial-test/builds/<repository>/<revision>/`. The tester checks for 20 GB free before a build, runs it as one blocking command and never polls it more often than once per minute.
+
 Output leads with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`, so callers such as `ship-it` can gate on the first line.
 
 ## Verdicts

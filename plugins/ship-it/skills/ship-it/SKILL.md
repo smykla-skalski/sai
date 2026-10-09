@@ -14,23 +14,21 @@ metadata:
 
 Take a change to a merged PR, or coordinate independently shippable issues from an approved complex plan.
 
-**Mode:** autonomous. Ask only for unresolved material ambiguity. Poll selected hosted gates until merged or a hard stop.
+**Mode:** autonomous. Ask only for unresolved material ambiguity. Wait for hosted gates through blocking waiters until merged or a hard stop; never poll in the foreground.
 
 **Other agents:** Read [references/fallbacks.md](references/fallbacks.md) when not in Claude Code or an agent feature is missing.
 
-Invocation: `/ship-it [--issue] [--risk low|medium|high] <task description | github-issue-url | jira-url>` (`$ship-it` in Codex). Runs only when invoked by name or asked to ship a change. Claude Code appends the arguments; if none are appended, take them from the user's request.
+Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira URL>` (`$ship-it` in Codex). If arguments are absent, use the request.
 
 ## Workflow contract
 
 - Run phases below in order; do not skip a gate because a harness lacks a preferred tool.
-- Before each phase, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), select its profile and satisfy the machine-readable preflight before any side effect.
-- Read [references/roles.md](references/roles.md) and [references/roles.json](references/roles.json) before dispatch.
-- Load each phase reference immediately before that phase, not during initial skill discovery.
-- After resolving, maintain [references/checkpoint.md](references/checkpoint.md) before repository changes, GitHub [references/claims.md](references/claims.md) before branch or source changes, and [references/telemetry.md](references/telemetry.md) through completion.
-- Read [references/evidence.md](references/evidence.md) when the first task revision is committed. Evidence due at each PR or merge gate must pass for the exact current revision.
-- Read [references/risk.md](references/risk.md) after exploration. Select and report the revision's risk, policy source and required gates before validation.
-- Read [references/release.md](references/release.md) after exploration. Resolve repository, GitHub and default release policy into the checkpoint before validation.
-- Before validation, read [references/convergence.md](references/convergence.md) and [references/convergence-policy.json](references/convergence-policy.json); use its shared cross-harness budget.
+- Read this entry once. Read each selected phase reference once, immediately before that phase, and keep its rules in the checkpoint. Do not reread a reference on phase transitions.
+- Read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json) once during resolve, select every phase profile, and rerun only the machine-readable preflight when runtime facts change.
+- Read [references/roles.md](references/roles.md) and [references/roles.json](references/roles.json) once before the first dispatch. Give each gate its mandate by path or inline exactly once in a fresh context without orchestrator history.
+- Always maintain [references/checkpoint.md](references/checkpoint.md). Claims, revision evidence and telemetry default off; read [references/claims.md](references/claims.md), [references/evidence.md](references/evidence.md) or [references/telemetry.md](references/telemetry.md) only when repository or explicit user policy enables that feature.
+- Keep routine guidance under 12k input tokens. After compaction, read only the checkpoint and current phase reference.
+- After exploration read [references/risk.md](references/risk.md), [references/release.md](references/release.md), then [references/convergence.md](references/convergence.md) and [references/convergence-policy.json](references/convergence-policy.json). Checkpoint the selected gates, release policy and shared budget before validation.
 - Every source change invalidates completion evidence from the previous revision.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
@@ -43,40 +41,45 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task description | git
 | 2 — Explore | [references/explore.md](references/explore.md) |
 | 3 — Branch | [references/branch.md](references/branch.md) |
 | 4 — Implement | [references/implementation.md](references/implementation.md) |
-| 5 — Review | [references/review.md](references/review.md) |
-| 6 — Test | [references/test.md](references/test.md) |
-| 7–10 — PR loop | [references/pr-loop.md](references/pr-loop.md) |
+| 5 — Publish draft | [references/publish.md](references/publish.md) |
+| 6 — Review | [references/review.md](references/review.md) |
+| 7 — Test | [references/test.md](references/test.md) |
+| 8–10 — PR loop | [references/pr-loop.md](references/pr-loop.md) |
 | 11 — Complete | [references/completion.md](references/completion.md) |
 
 ## Phase 1 — Resolve the task
 
-Classify the input, resolve its source and acceptance criteria, and create or resume its durable checkpoint outside the repository. No branch, edit or commit until resolution and checkpoint reconciliation succeed.
+Resolve the source and acceptance criteria, then create or resume the durable checkpoint before repository changes.
 
-If the input is an approved complex plan or an umbrella issue with subissues, read [references/orchestration.md](references/orchestration.md) and follow its parent coordinator workflow. The parent never implements a child issue. An ordinary implementation issue, including a worker's assigned issue, follows the single-change phases below. In Sail mode, absent worker or review/test gate subagents pause the run; never use inline gate fallbacks.
+For an approved complex plan or umbrella, read [references/orchestration.md](references/orchestration.md); the parent never implements a child. Ordinary issues use the phases below. In Sail, missing workers or gates pause the run.
 
 ## Phase 2 — Explore
 
-Discover repository instructions, affected code and required quality gates. Resolve and checkpoint release policy before editing.
+Discover repository instructions, affected code and gates.
 
 ## Phase 3 — Branch
 
-Start from the current default branch in an isolated conventional branch or assigned Sail worktree.
+Use an isolated branch from the current default branch or assigned Sail worktree.
 
 ## Phase 4 — Implement
 
-Implement the smallest complete change, add behavior tests, run relevant gates and create signed conventional commits.
+Implement the smallest complete change with behavior tests and signed conventional commits.
 
-## Phase 5 — Review
+## Phase 5 — Publish draft PR
+
+After the first committed revision passes local checks, push it and open a draft PR so CI starts. The draft remains pending review and test gates.
+
+## Phase 6 — Review
 
 Run the selected review gates for the current committed revision.
 
-## Phase 6 — Test
+## Phase 7 — Test
 
-Run the selected test gates for the review-clean committed revision.
+Run each selected broad test gate once, only for the review-clean committed revision.
 
-## Phases 7–10 — PR, wait, fix, merge
+## Phases 8–10 — Wait, fix, ready, merge
 
-Push and open the PR, wait for selected hosted gates, resolve every required thread, revalidate changed revisions, then merge through the repository's documented convention.
+Resolve hosted gates and threads, revalidate changes, mark ready only when review, test and CI pass for one head, then use the documented merge convention.
 
 ## Phase 11 — Close, report, clean up
 

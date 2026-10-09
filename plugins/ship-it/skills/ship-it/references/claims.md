@@ -1,6 +1,6 @@
 # Expiring GitHub work claims
 
-Use one visible issue comment as a portable lease for GitHub-backed work. Claude Code, Codex, OpenCode, Copilot CLI and Sail use this contract directly. Jira tickets and plain task descriptions do not create claims.
+Use this contract only when checkpoint bookkeeping policy enables claims. Claims default off; then create no issue comment and keep `claim: null`. When enabled, use one visible issue comment as a portable lease for GitHub-backed work. Jira tickets and plain task descriptions do not create claims.
 
 ## Comment format
 
@@ -45,7 +45,7 @@ Creating the checkpoint does not establish ownership. Branch creation, source ed
 
 ## Renew and reconcile
 
-Renew the same comment at least every 10 minutes while work is active and before a repository or GitHub write when the last successful renewal is older than 10 minutes. Update only `renewedAt` and `expiresAt`, then reread the comment and persist the new values in the checkpoint. A failed or unverifiable renewal stops repository and remote writes until reconciliation succeeds.
+Renew the same comment only immediately before a repository or GitHub write when the last successful renewal is older than 10 minutes. Never renew on a timer. Update only `renewedAt` and `expiresAt`, then reread the comment and persist the new values in the checkpoint. A failed or unverifiable renewal stops repository and remote writes until reconciliation succeeds.
 
 On resume, reread the issue and the checkpoint's claim comment before changing repository or remote state. Continue only when the comment is active, unexpired and owned by the checkpoint holder. If another active holder exists, stop with its identity. If this holder's claim expired, use the takeover flow; never silently reactivate it.
 
