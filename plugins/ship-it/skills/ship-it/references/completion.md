@@ -13,6 +13,7 @@ Report:
 - task source and PR URL
 - commits and merge commit
 - selected hosted-gate results, resolved release-policy source and required thread status
+- selected risk level, diff class and gate set
 - selected review and test verdicts with the gated PR head SHA
 - completion evidence path and status
 - GitHub issue closure or unchanged Jira status

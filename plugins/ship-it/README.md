@@ -22,7 +22,15 @@ Failed CI is triaged before escalation. The workflow deduplicates revision/workf
 
 Portable role routing gives exploration, implementation, review, testing and CI triage the same meaning across harnesses. Every role records requested and actual provider, model and variant. Strict review rejects the implementation model, unresolved aliases and reused or inline context; policy-permitted degradation stays explicit in revision evidence.
 
-Validation gates come from a portable risk policy. Repositories can add `.sai/ship-it-risk.json` with low, medium and high policies plus deterministic changed-path rules. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Without a repository policy every level retains the full local-check, adversarial-review, adversarial-test, CI and hosted-review sequence.
+Validation gates come from a portable risk policy. The bundled policy first classifies the change set: a diff that touches only docs, config or data files (`*.md`, `*.json`, `*.yaml`, `*.toml`, lock files, `Brewfile`, images and similar) is the `docs` class and starts at `low`; anything else, including a diff that mixes docs with code, is the `code` class and starts at the default `medium`. Each level then selects its gate set:
+
+| Risk | Review | Manual test | Gates |
+| :-- | :-- | :-- | :-- |
+| `low` | one inline review pass | none | local checks, inline review, CI |
+| `medium` | one adversarial review cycle | one adversarial test pass | local checks, adversarial review, adversarial test, CI |
+| `high` | one adversarial review cycle | one adversarial test pass | local checks, adversarial review, adversarial test, CI, hosted review |
+
+Repositories can add `.sai/ship-it-risk.json` with their own low, medium and high policies plus deterministic changed-path rules that raise matched paths, for example `plugins/**` to `medium` when markdown is the product. A repository policy never lowers a diff below its class level and cannot redefine the classes; its `default_risk` raises every change set when higher. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Repository release requirements (required checks and reviewers) are added at every level. The run report and the completion report name the selected risk, the diff class and the resulting gate set.
 
 Release controls come from `.sai/ship-it-release.json`, repository instructions, live GitHub rules and a conservative bundled default. The normalized policy is stored in the task checkpoint and names required human or automated reviewers, checks, merge mechanism and strategy, issue closure and branch cleanup. Repositories can require Copilot, another reviewer, human approval or no hosted review without changing the workflow.
 

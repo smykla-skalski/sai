@@ -2,6 +2,8 @@
 
 When `adversarial-test` is selected, use the installed skill only when it accepts the resolved selectors and returns a route record for every tester execution and retry. Otherwise treat it as unavailable and dispatch the routed generic tester below. In the Sybra repository, invoke `sybra-test` only when it meets the same route contract. The reply must start with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`. Run every other selected test gate according to its contract. If no test gate is selected, create no test evidence and atomically advance the checkpoint to `phase: pr` with PR-due evidence validation and PR creation as `nextAction`.
 
+The bundled risk policy selects `adversarial-test` for `medium` and `high` only. A `low` revision, which a docs-only change set takes unless a rule or floor raises it, has no manual test; the run report already names that selection, so do not record a skipped or blocked test gate.
+
 For GitHub work, verify and renew the claim when due before writing manual-test evidence. A verdict from another holder or after expiry does not satisfy the gate until ownership is reconciled.
 
 The tester derives acceptance criteria from the task, runs the real changed product surface in isolated state, attacks happy paths, boundaries, malformed input, repeated or concurrent use and adjacent flows, then reruns every reproduction. Automated tests, lint, build and source inspection are supporting evidence, not manual testing.

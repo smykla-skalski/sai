@@ -138,7 +138,7 @@ A record becomes complete at the merge gate only when all of these are true:
 
 - It contains every required result and no duplicate result ID.
 - It contains valid role routes for every invoked exploration, implementation, review, testing and CI-triage role.
-- Every strict review route is resolved, fresh, non-inline and uses a different actual provider-and-model pair from implementation.
+- Every `adversarial-review` route under strict independence is resolved, fresh, non-inline and uses a different actual provider-and-model pair from implementation. An `inline-review` route records `independence: not-applicable` and is outside those rules.
 - Every required result has `status: passed`, or `status: untested` under the partial-pass rule, and the exact record revision.
 - Every selected review reference records its required passing verdict.
 - Every selected manual-test reference records its required passing verdict.

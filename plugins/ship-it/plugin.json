@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ship-it",
-  "version": "1.4.27",
+  "version": "1.4.28",
   "description": "Ship a change or coordinate an approved plan through independent issues, adversarial gates, PRs, CI, repository-required review, and merge.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -15,7 +15,7 @@
       "interface": {
         "displayName": "Ship It",
         "shortDescription": "Ship a change or coordinate an approved plan",
-        "longDescription": "Implements a task description, GitHub issue, or Jira ticket, or coordinates an approved complex plan as an umbrella of independent issues. Each change passes adversarial review, manual testing, CI, and repository-required review before merge. Sail pauses when worker or gate agents are unavailable. Runs only when invoked by name.",
+        "longDescription": "Implements a task description, GitHub issue, or Jira ticket, or coordinates an approved complex plan as an umbrella of independent issues. Each change passes risk-selected review and test gates, CI, and repository-required review before merge. Sail pauses when worker or gate agents are unavailable. Runs only when invoked by name.",
         "developerName": "SAI",
         "category": "Developer Tools",
         "capabilities": ["Interactive", "Write"],

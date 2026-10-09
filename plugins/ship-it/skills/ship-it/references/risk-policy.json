@@ -3,16 +3,57 @@
   "risk_order": ["low", "medium", "high"],
   "default_risk": "medium",
   "independent_review": "strict",
+  "diff_classes": {
+    "docs": {
+      "risk": "low",
+      "paths": [
+        "**/*.md",
+        "**/*.mdx",
+        "**/*.markdown",
+        "**/*.rst",
+        "**/*.adoc",
+        "**/*.txt",
+        "**/LICENSE",
+        "**/LICENSE.*",
+        "**/NOTICE",
+        "**/CODEOWNERS",
+        "**/*.json",
+        "**/*.jsonc",
+        "**/*.json5",
+        "**/*.yaml",
+        "**/*.yml",
+        "**/*.toml",
+        "**/*.ini",
+        "**/*.cfg",
+        "**/*.conf",
+        "**/*.properties",
+        "**/*.lock",
+        "**/Brewfile",
+        "**/.editorconfig",
+        "**/.gitattributes",
+        "**/.gitignore",
+        "**/*.csv",
+        "**/*.tsv",
+        "**/*.ndjson",
+        "**/*.jsonl",
+        "**/*.xml",
+        "**/*.svg",
+        "**/*.png",
+        "**/*.jpg",
+        "**/*.jpeg",
+        "**/*.gif",
+        "**/*.ico",
+        "**/*.webp"
+      ]
+    }
+  },
   "policies": {
     "low": {
-      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "hosted-review"],
-      "fallbacks": {
-        "adversarial-review": ["portable-review-fallback"],
-        "adversarial-test": ["portable-test-fallback"]
-      }
+      "required_gates": ["local-checks", "inline-review", "ci"],
+      "fallbacks": {}
     },
     "medium": {
-      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci", "hosted-review"],
+      "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci"],
       "fallbacks": {
         "adversarial-review": ["portable-review-fallback"],
         "adversarial-test": ["portable-test-fallback"]

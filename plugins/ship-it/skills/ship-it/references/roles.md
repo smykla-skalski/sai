@@ -23,7 +23,7 @@ Exploration and implementation record the already-running execution because thei
 1. A configured native role worker.
 2. An installed skill that accepts the selectors and exposes every actual worker route, including retries.
 3. A fresh generic subagent with the role mandate prepended.
-4. Outside Sail, inline execution only when the active independence policy permits it.
+4. Outside Sail, inline execution only when the active independence policy permits it or the selected gate is `inline-review`.
 
 Harness adapters map the portable selector, not role names, to their available provider, model, variant and subagent controls. `session-provider` accepts `default` or the active provider; any other request is unsupported.
 
@@ -66,7 +66,7 @@ A diagnostic contains `role`, the full requested selector, `stage: pre-dispatch|
 
 ## Independent review policy
 
-Strict independent review is the default. Before each review dispatch, compare its resolved route with the implementation route for the same revision. Reject the route when any of these is true:
+Strict independent review is the default for every `adversarial-review` dispatch, that is each Code or Findings Adversary route. Before each such dispatch, compare its resolved route with the implementation route for the same revision. Reject the route when any of these is true:
 
 - Actual provider and model equal the implementation provider and model, regardless of variant.
 - `modelResolution` is `unresolved`, including a requested alias without a concrete actual model.
@@ -74,6 +74,8 @@ Strict independent review is the default. Before each review dispatch, compare i
 - `mechanism` is `inline`.
 
 Try the next adapter mechanism after a rejection. If no strict route remains, block the review gate and name the missing independent route as the next action.
+
+The risk policy's `inline-review` gate is outside this policy. It is one pass by the current execution, or by one fresh gate worker in Sail, recorded as a `review` route with its actual mechanism and `independence: not-applicable`. It never claims independence, so the strict rules neither reject nor validate it.
 
 A repository risk policy with `independent_review: degraded` explicitly disables strict independence. Then execution may continue only with `independence: degraded`, a non-empty `degradationReasons` array containing every failed strict rule, and the policy path in the evidence output reference. Missing `independent_review` means `strict`. The gate remains visibly degraded; a fallback never records `independent`.
 
