@@ -15,6 +15,36 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "plugins/ship-it/skills/ship-it/scripts/bookkeeping.py"
 
 
+def checkpoint_document() -> dict[str, object]:
+    return {
+        "schemaVersion": 1,
+        "checkpointId": "a" * 64,
+        "task": {},
+        "repository": {},
+        "workflow": {
+            "phase": "resolve",
+            "status": "active",
+            "revision": None,
+            "blocker": None,
+            "unresolvedQuestions": [],
+            "nextAction": "explore",
+        },
+        "delivery": {},
+        "evidence": {},
+        "claim": None,
+        "bookkeeping": {},
+        "risk": {},
+        "releasePolicy": None,
+        "hostedReviewDecision": None,
+        "convergence": {},
+        "ciTriage": {},
+        "orchestration": None,
+        "outcome": None,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-01T00:00:00Z",
+    }
+
+
 class BookkeepingTest(unittest.TestCase):
     def run_script(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -60,17 +90,7 @@ class BookkeepingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             checkpoint = Path(directory) / "checkpoint.json"
             checkpoint.write_text(
-                json.dumps(
-                    {
-                        "workflow": {
-                            "phase": "resolve",
-                            "status": "active",
-                            "revision": None,
-                            "nextAction": "explore",
-                        },
-                        "updatedAt": "2026-01-01T00:00:00Z",
-                    }
-                ),
+                json.dumps(checkpoint_document()),
                 encoding="utf-8",
             )
             result = self.run_script(
@@ -91,6 +111,48 @@ class BookkeepingTest(unittest.TestCase):
         self.assertEqual(updated["workflow"]["phase"], "publish")
         self.assertEqual(updated["workflow"]["nextAction"], "open draft PR")
         self.assertEqual(updated["workflow"]["revision"], "a" * 40)
+
+    def test_transition_rejects_invalid_phase_without_writing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / "checkpoint.json"
+            original = json.dumps(checkpoint_document())
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "nonsense",
+                "--status",
+                "active",
+                "--next-action",
+                "continue",
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid workflow phase", result.stderr)
+        self.assertEqual(current, original)
+
+    def test_blocked_transition_requires_blocker(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / "checkpoint.json"
+            original = json.dumps(checkpoint_document())
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "wait",
+                "--status",
+                "blocked",
+                "--next-action",
+                "supply credentials",
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--blocker is required", result.stderr)
+        self.assertEqual(current, original)
 
 
 if __name__ == "__main__":

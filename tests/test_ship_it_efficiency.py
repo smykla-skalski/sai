@@ -24,9 +24,11 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertLess(skill.index("Phase 5 — Publish draft PR"), skill.index("Phase 6 — Review"))
         self.assertLess(skill.index("Phase 6 — Review"), skill.index("Phase 7 — Test"))
         publish = read(REFERENCES / "publish.md")
+        implementation = read(REFERENCES / "implementation.md")
         self.assertIn("create a **draft** PR", publish)
         self.assertIn("let review run concurrently", publish)
         self.assertIn("same batched fix", publish)
+        self.assertIn("always advance to `phase: publish`", implementation)
 
     def test_manual_test_runs_once_after_clean_review(self) -> None:
         testing = read(REFERENCES / "test.md")
@@ -63,6 +65,8 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("checkpoint itself is mandatory", checkpoint)
         self.assertIn("scripts/bookkeeping.py", checkpoint)
         self.assertIn("Never renew on a timer", read(REFERENCES / "claims.md"))
+        self.assertIn("With evidence disabled", read(REFERENCES / "pr-loop.md"))
+        self.assertIn("Legacy runs used mandatory bookkeeping", checkpoint)
 
     def test_waits_are_event_driven_and_rate_limited(self) -> None:
         loop = read(REFERENCES / "pr-loop.md")
@@ -78,6 +82,11 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("never repeat the rules or fork coordinator history", orchestration)
         self.assertIn("exactly one final hand-back", orchestration)
         self.assertIn("never spawn new gates", orchestration)
+        self.assertIn("100,000 cumulative input tokens", orchestration)
+        self.assertIn(
+            "100,000 cumulative input tokens",
+            read(REFERENCES / "worker-rules.md"),
+        )
         self.assertTrue((REFERENCES / "worker-rules.md").is_file())
 
     def test_unserviceable_hosted_review_is_not_requested(self) -> None:
@@ -87,6 +96,7 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("send no request", release)
         self.assertIn("activate its configured fallback immediately", release)
         self.assertIn("Never retry a request", loop)
+        self.assertIn("immediately changes `hostedReviewDecision`", loop)
 
 
 if __name__ == "__main__":
