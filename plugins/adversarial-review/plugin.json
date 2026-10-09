@@ -1,6 +1,6 @@
 {
   "name": "adversarial-review",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Fast two-pass adversarial code review: a Code Adversary subagent hunts the concrete bug, then a clean-context Findings Adversary subagent refutes false positives.",
   "author": {
     "name": "Smykla Skalski Labs"

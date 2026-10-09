@@ -63,7 +63,7 @@ End with exactly one line:
 CODE_ADVERSARY_VERDICT: <FOUND BLOCKING (N) | FOUND ISSUES (N) | MINOR ONLY (N) | CLEAN>
 ```
 
-N is the number of findings above. FOUND BLOCKING when at least one `blocking:` carries its proof, FOUND ISSUES when the strongest label is `issue:`, MINOR ONLY when only `suggestion:` and `question:` remain, CLEAN with no findings. The caller matches this line against that exact format and discards a reply that deviates, so put nothing after it.
+N is the number of findings above and the keyword follows the labels: FOUND BLOCKING when any finding is labelled `blocking:` (so file an unproven one as `issue:` or `question:` - the verdict never relabels it), FOUND ISSUES when the strongest label is `issue:`, MINOR ONLY when only `suggestion:` and `question:` remain, CLEAN with no findings. The caller checks this line against that exact format and against your labels, and discards a reply that deviates, so put nothing after it.
 
 If CLEAN, add one sentence above the verdict line naming what you attacked - that is a strong positive signal, not a failure on your part.
 

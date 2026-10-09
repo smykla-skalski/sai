@@ -125,10 +125,19 @@ class VerdictFormatTest(unittest.TestCase):
         self.assertIn("Review Verdict: FAILED", workflow)
         self.assertIn("A second malformed reply is a gate failure", workflow)
 
+    def test_workflow_checks_verdict_keyword_against_labels(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertIn("The keyword must agree with the labels", workflow)
+        self.assertIn("a keyword that disagrees with the labels", workflow)
+
     def test_workflow_skips_findings_pass_without_fixable_findings(self) -> None:
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
-        self.assertIn("when the verdict is `CLEAN` or `MINOR ONLY`", workflow)
+        self.assertIn("when no finding is labelled `blocking:` or `issue:`", workflow)
         self.assertIn("Never dispatch the Findings Adversary to refute a clean result", workflow)
+
+    def test_findings_guard_reply_satisfies_validator(self) -> None:
+        mandate = read_mandate("findings-adversary")
+        self.assertIn("write `F<n> — UPHOLD — not applicable —", mandate)
 
 
 if __name__ == "__main__":

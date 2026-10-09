@@ -10,7 +10,7 @@ You start with a clean context. The assignment gives you how to obtain the diff,
 
 A `blocking:` label is earned only by an executed reproduction (a `*Proof:*` line with the command and its output) or an explicit interleaving trace (a `*Trace:*` line with numbered steps). Part of your job is to strip that label from every finding that did not earn it.
 
-If the list holds no `blocking:` or `issue:` finding, you were dispatched against a result that needs no fix. Verify nothing, write one line saying so, and end with `FINDINGS_ADVERSARY_VERDICT: SOUND`.
+If the list holds no `blocking:` or `issue:` finding, you were dispatched against a result that needs no fix. Verify nothing: write `F<n> — UPHOLD — not applicable — dispatched without a blocking or issue finding` for each input finding and end with `FINDINGS_ADVERSARY_VERDICT: SOUND`.
 
 ## Your mandate - attack every finding on these axes
 

@@ -95,16 +95,16 @@ An adversary lives for exactly one verdict. Start it with no forked or inherited
 
 **Verdict check and retry.** Validate every reply before using it. The last non-empty line must match the pass's documented format exactly:
 
-- Code Adversary: `^CODE_ADVERSARY_VERDICT: (FOUND BLOCKING \(\d+\)|FOUND ISSUES \(\d+\)|MINOR ONLY \(\d+\)|CLEAN)$`, where the count equals the number of `F<n>` findings in the reply.
+- Code Adversary: `^CODE_ADVERSARY_VERDICT: (FOUND BLOCKING \(\d+\)|FOUND ISSUES \(\d+\)|MINOR ONLY \(\d+\)|CLEAN)$`. The keyword must agree with the labels of the `F<n>` findings in the reply and the count must equal their number: `CLEAN` has no findings; `MINOR ONLY` has findings labelled only `suggestion:` or `question:`; `FOUND ISSUES` has at least one `issue:` and no `blocking:`; `FOUND BLOCKING` has at least one `blocking:`.
 - Findings Adversary: `^FINDINGS_ADVERSARY_VERDICT: (SOUND|CORRECTED|ESCAPED_BUG)$`, preceded by one `F<n> —` line for every input finding.
 
-An empty reply, a missing or malformed verdict line, a count that does not match, or a missing `F<n>` line is a malformed verdict. Close that subagent, spawn one fresh subagent for the same pass, and validate again. A second malformed reply is a gate failure: output `Review Verdict: FAILED` (see Output) and stop. Do not run the pass inline to rescue it. The inline Fallback is only for a runtime with no subagent tool or a spawn call that itself errors twice.
+An empty reply, a missing or malformed verdict line, a keyword that disagrees with the labels, a count that does not match, or a missing `F<n>` line is a malformed verdict. Close that subagent, spawn one fresh subagent for the same pass, and validate again. A second malformed reply is a gate failure: output `Review Verdict: FAILED` (see Output) and stop. Do not run the pass inline to rescue it. The inline Fallback is only for a runtime with no subagent tool or a spawn call that itself errors twice.
 
 ## Phase 2 - Code Adversary
 
 Spawn per [Spawning a clean-context subagent](#spawning-a-clean-context-subagent): named agent `adversarial-review:code-adversary`, mandate [references/code-adversary.md](references/code-adversary.md), payload *"Find the bug in this change and prove it. Read only; do not modify files."*
 
-Validate the reply with the verdict check, then close the subagent; nothing else is ever sent to it. The Findings Adversary exists to filter findings that would trigger a fix, so it runs only on a result that needs fixes: when the verdict is `CLEAN` or `MINOR ONLY` (no `blocking:` or `issue:` finding), skip Phase 3 and go to Output with `findings skipped`. Never dispatch the Findings Adversary to refute a clean result.
+Validate the reply with the verdict check, then close the subagent; nothing else is ever sent to it. The Findings Adversary exists to filter findings that would trigger a fix, so it runs only on a result that needs fixes. Decide from the labels, not the keyword: when no finding is labelled `blocking:` or `issue:` (a validated `CLEAN` or `MINOR ONLY`), skip Phase 3 and go to Output with `findings skipped`. Never dispatch the Findings Adversary to refute a clean result.
 
 ## Phase 3 - Findings Adversary
 
