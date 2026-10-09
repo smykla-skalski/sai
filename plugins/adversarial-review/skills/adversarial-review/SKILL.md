@@ -17,10 +17,10 @@ Find the bug, then try to prove the bug report wrong. It answers one question - 
 
 Two subagents, opposed, each with a clean context:
 
-1. **Code Adversary** - assumes the change is broken and hunts the concrete failure. Mandate: [references/code-adversary.md](references/code-adversary.md).
-2. **Findings Adversary** - assumes the Code Adversary is wrong and tries to refute each finding against the source. Mandate: [references/findings-adversary.md](references/findings-adversary.md).
+1. **Code Adversary** - assumes the change is broken and hunts the concrete failure. A `blocking:` finding carries an executed reproduction or an explicit interleaving trace; anything less is an `issue:` or a `question:`. Mandate: [references/code-adversary.md](references/code-adversary.md).
+2. **Findings Adversary** - assumes the Code Adversary is wrong and tries to refute each finding against the source, stripping `blocking:` from findings without proof. Runs only when the first pass found a `blocking:` or `issue:`. Mandate: [references/findings-adversary.md](references/findings-adversary.md).
 
-The second pass exists because an unrefuted adversary nit-bombs. It sees only the first pass's findings, never its reasoning, so it cannot inherit the same misread.
+The second pass exists because an unrefuted adversary nit-bombs. It sees only the first pass's findings, never its reasoning, so it cannot inherit the same misread. Each adversary lives for exactly one verdict: it starts in a fresh context with no forked or inherited history, is closed once its reply is validated, and is never reused for a fix, a re-check or another change.
 
 ## Required guidance
 
@@ -49,4 +49,6 @@ Paths in the workflow are relative to this skill directory. If argument substitu
 - Preserve explicit read gates: load each supporting reference immediately before the phase that needs it.
 - Follow repository instructions and the user's authorized scope.
 - Preserve validation, state-update, deduplication, adversarial-check, and output requirements exactly as defined in the workflow.
+- Check every adversary's final verdict line against the workflow's documented format: one retry with a fresh subagent, then `Review Verdict: FAILED`.
+- Never dispatch the Findings Adversary on a `CLEAN` or `MINOR ONLY` result, and never reuse an adversary after its verdict.
 - Stop at every hard stop named by the workflow and state the required next action.

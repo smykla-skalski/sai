@@ -2,10 +2,12 @@
 
 Fast two-pass adversarial code review. It answers one question - is this change correct? - with two opposed subagents, each in a clean context:
 
-1. **Code Adversary** assumes the change is broken and hunts the concrete bug. Every finding needs a failing input or sequence.
-2. **Findings Adversary** is spawned fresh, gets only the numbered findings (never the first agent's reasoning), and tries to refute each one against the source: removes false positives, right-sizes severity, fixes bad locations, merges duplicates.
+1. **Code Adversary** assumes the change is broken and hunts the concrete bug. Every finding needs a failing input or sequence, and a `blocking:` finding needs an executed reproduction (the command and its output) or an explicit interleaving trace; anything less is an `issue:` or a `question:`, so an unverifiable race comes back as a question.
+2. **Findings Adversary** runs only when the first pass found a `blocking:` or `issue:` - never to refute a clean result. It is spawned fresh, gets only the numbered findings (never the first agent's reasoning), and tries to refute each one against the source: removes false positives, strips `blocking:` from findings without proof, right-sizes severity, fixes bad locations, merges duplicates.
 
-Output leads with `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`, so callers such as `ship-it` can gate on the first line.
+Each adversary starts in a fresh context, is closed after its verdict and is never reused for a fix or another change. The skill checks every verdict line against the documented format: a malformed reply gets one retry with a fresh subagent, then the gate fails.
+
+Output leads with `Review Verdict: CLEAN`, `Review Verdict: NEEDS_FIXES` or `Review Verdict: FAILED` (a pass returned a malformed verdict twice), so callers such as `ship-it` can gate on the first line. Only `CLEAN` passes.
 
 For architecture, conventions, and cross-team impact, use `staff-code-review` instead.
 
@@ -58,7 +60,7 @@ In Claude Code and Copilot CLI use `/adversarial-review`, in Codex `$adversarial
 | opencode | `task` tool with the installed named agents or the built-in `general` subagent |
 | Copilot CLI | The same named agents through its subagent tool; a generic subagent with the mandate prepended otherwise |
 
-Every agent falls back to two labelled inline passes when no subagent tool is available.
+Every agent falls back to two labelled inline passes when no subagent tool is available. A malformed verdict is never rescued inline: it fails the gate after one retry.
 
 ## Files
 
