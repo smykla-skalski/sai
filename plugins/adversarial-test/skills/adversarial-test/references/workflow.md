@@ -69,11 +69,18 @@ Changed files:
 <one per line>
 Task context:
 <context, or "none">
+Build cache: <absolute revision-keyed cache path>
 ```
+
+## Persistent build cache
+
+Resolve `${XDG_CACHE_HOME:-$HOME/.cache}/sai/adversarial-test/builds/<repository-hash>/<revision>/` once, create it with owner-only permissions, and pass it in the assignment. Point project build outputs there (`CARGO_TARGET_DIR`, `GOCACHE`, `GOMODCACHE`, `npm_config_cache` or the repository equivalent). The repository hash comes from its normalized remote identity; the revision is the tested full SHA. A second run of the same revision reuses this directory. It is exempt from per-run cleanup and is never stored in the plugin cache.
+
+Before any build, run `df -h` for the cache filesystem. Under 20 GB available, stop with the exact cache path and action to free space; do not start the build. Run the build as one blocking command with a timeout long enough for the documented build, never issue a status read in under 60 seconds, and never interrupt the tester while that command runs. Per-run fixtures still use a separate temporary directory and are cleaned normally.
 
 ## Phase 2 - Test Adversary (subagent)
 
-The instruction for the subagent is: *"Prove this change does not satisfy the task by running it. Do not edit tracked files."* Pass the Test assignment and the instruction, nothing else - not your own reading of the code, not what you expect to work, not this conversation. When the mandate is not already the subagent's system prompt, prepend the full content of [references/test-adversary.md](references/test-adversary.md).
+The instruction for the subagent is: *"Prove this change does not satisfy the task by running it. Do not edit tracked files. Reuse the assigned revision-keyed build cache."* Pass the Test assignment and the instruction, nothing else - not your own reading of the code, not what you expect to work, not this conversation. When the mandate is not already the subagent's system prompt, prepend the full content of [references/test-adversary.md](references/test-adversary.md).
 
 **Claude Code and Copilot CLI.**
 

@@ -34,9 +34,10 @@ PHASE_REFERENCE_ROWS: Final[tuple[tuple[str, str], ...]] = (
     ("2 — Explore", "explore.md"),
     ("3 — Branch", "branch.md"),
     ("4 — Implement", "implementation.md"),
-    ("5 — Review", "review.md"),
-    ("6 — Test", "test.md"),
-    ("7–10 — PR loop", "pr-loop.md"),
+    ("5 — Publish draft", "publish.md"),
+    ("6 — Review", "review.md"),
+    ("7 — Test", "test.md"),
+    ("8\u201310 — PR loop", "pr-loop.md"),
     ("11 — Complete", "completion.md"),
 )
 PHASE_REFERENCE_ROW: Final[re.Pattern[str]] = re.compile(
@@ -127,7 +128,8 @@ class ShipItSkillSizeTest(unittest.TestCase):
                 self.assertIn(expected, checkpoint)
 
         example_match = re.search(r"```json\n(?P<document>.*?)\n```", checkpoint, re.DOTALL)
-        self.assertIsNotNone(example_match)
+        if example_match is None:
+            self.fail("checkpoint reference has no JSON example")
         example = json.loads(example_match["document"])
         self.assertEqual(example["schemaVersion"], 1)
         self.assertEqual(example["workflow"]["phase"].split("|")[-1], "complete")
@@ -216,7 +218,8 @@ class ShipItSkillSizeTest(unittest.TestCase):
                 self.assertIn(expected, evidence)
 
         example_match = re.search(r"```json\n(?P<document>.*?)\n```", evidence, re.DOTALL)
-        self.assertIsNotNone(example_match)
+        if example_match is None:
+            self.fail("evidence reference has no JSON example")
         example = json.loads(example_match["document"])
         self.assertEqual(example["schemaVersion"], 1)
         self.assertEqual(example["status"], "complete")
@@ -227,7 +230,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
         for result in example["results"]:
             self.assertTrue(result["required"])
             self.assertEqual(result["status"], "passed")
-            self.assertIn(result["requiredBy"], {"pr", "merge"})
+            self.assertIn(result["requiredBy"], {"draft", "ready", "merge"})
             for field in (
                 "sourceRevision",
                 "provider",
@@ -250,15 +253,15 @@ class ShipItSkillSizeTest(unittest.TestCase):
                 "run local gates according to the shared convergence budget",
             ),
             "review.md": (
-                "provider, model, timestamp and bounded output reference",
-                "any later source change marks the entire record stale",
+                "provider, model, timestamp, bounded summary and exact revision",
+                "any later source change marks or replaces",
             ),
             "test.md": (
-                "provider, model, timestamp and bounded output reference",
-                "reproduced failure marks the evidence failed",
+                "provider, model, timestamp, bounded summary and exact revision",
+                "reproduced failure marks the result failed",
             ),
             "pr-loop.md": (
-                "requiredby: pr",
+                "requiredby: ready",
                 "requiredby: merge",
                 "local `head` and the pr `headrefoid`",
             ),

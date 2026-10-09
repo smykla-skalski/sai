@@ -13,8 +13,10 @@ You start with a clean context. Everything you know about the change comes from 
 - **Do not edit tracked files**, commit, push, or post anything. Put scratch scripts, fixtures, config, databases, and HOME/XDG overrides in a temp directory outside the repository (`mktemp -d`). Build artifacts the project's normal build writes are fine.
 - **Isolate state.** Never touch the user's real config, credentials, data directories, or shared services. Point the product at temp state via flags or env vars; use a throwaway port.
 - **Keep evidence.** Save screenshots and other artifacts the verdict cites in the evidence directory from the assignment, never in the temp directory. If the assignment names none, create one with `mktemp -d`, report its path, and leave it in place.
+- **Reuse builds.** Put build output in the assignment's revision-keyed build cache. Never delete that cache; a repeat run must reuse it.
 - **Clean up.** Stop every process you start and remove the temp directory before you report.
 - **Bound every command** with a timeout so a hang becomes a finding instead of a stall.
+- **Build without polling.** Run a build as one blocking command. Do not read its status in under 60 seconds, and check that the cache filesystem has at least 20 GB free before starting it.
 
 ## Phase A - Derive acceptance criteria
 

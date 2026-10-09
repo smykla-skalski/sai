@@ -68,6 +68,8 @@ Before opening a PR, read repository-level policy:
 
 After the PR exists, and again immediately before merge, reconcile its live review requests, reviews, check runs, threads, head SHA and mergeability. PR-specific state never blocks initial policy resolution or PR creation.
 
+Resolve hosted-review serviceability once and store it in `hostedReviewDecision`. An empty configured reviewer list is `not-required` and sends no request. A reviewer whose last request returned quota, permission or service-unavailable is not serviceable: send no request. When policy requires that reviewer, activate its configured fallback immediately and record `fallback`; without one, record `blocked` with the exact policy change or human review required. Resume uses this recorded decision instead of reconsidering or polling the unavailable reviewer.
+
 Union named checks and reviewers from GitHub with the repository policy. When GitHub requires an approval count without naming actors, add synthetic reviewer entries `github-required-approval-1`, and so on, with `kind: human`, `actor: any-authorized-reviewer`, `requirement: approval`, `request: automatic` and `request_target: null`. A submitted approval can satisfy at most one synthetic entry. Dismissed, stale or changes-requested reviews do not satisfy approval requirements.
 
 Persist a normalized checkpoint object:
@@ -94,7 +96,7 @@ Apply the legacy `copilot-review` normalization from the risk contract before th
 
 ## Hosted review and checks
 
-The risk gate `hosted-review` means satisfy every resolved reviewer entry; it does not mean Copilot. For `request: reviewer|team-reviewer`, pass `request_target` to the matching GitHub request field. For `automatic`, wait without sending a request. Match user and bot actors by exact GitHub login after normalizing the optional `[bot]` suffix; never assume the request target and review author use the same login. Satisfy `team:<slug>` only with a review from a current member verified through the GitHub team-membership API, and satisfy `any-authorized-reviewer` only when GitHub's protected-branch review decision counts that approval.
+The risk gate `hosted-review` means satisfy every serviceable resolved reviewer entry; it does not mean Copilot. For `request: reviewer|team-reviewer`, pass `request_target` to the matching GitHub request field only when `hostedReviewDecision.status` is `serviceable`. For `automatic`, wait without sending a request. Match user and bot actors by exact GitHub login after normalizing the optional `[bot]` suffix; never assume the request target and review author use the same login. Satisfy `team:<slug>` only with a review from a current member verified through the GitHub team-membership API, and satisfy `any-authorized-reviewer` only when GitHub's protected-branch review decision counts that approval.
 
 `requirement: review` needs a submitted non-pending review; a no-comment review counts. `requirement: approval` needs `APPROVED`. Resolve every non-outdated thread authored by a required reviewer after fixing or answering it. Never wait for optional Copilot review. Ignore its comments, quota failures and missing review unless repository policy makes them blocking. If policy explicitly requires Copilot, immediately activate its configured non-Copilot fallback or hard-stop with the exact policy action; do not poll Copilot. Mandatory human review remains authoritative.
 

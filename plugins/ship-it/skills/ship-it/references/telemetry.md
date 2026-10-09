@@ -1,6 +1,6 @@
 # Portable workflow telemetry
 
-Record one privacy-safe event when a run starts, after each completed phase, and when it finishes. Telemetry failures never block or change the workflow outcome; report the diagnostic and continue.
+Use this contract only when checkpoint bookkeeping policy enables telemetry. Telemetry defaults off; then create no run state or event file. When enabled, record one privacy-safe event when a run starts, after each completed phase, and when it finishes. Telemetry failures never block or change the workflow outcome; report the diagnostic and continue.
 
 ## Recorder
 

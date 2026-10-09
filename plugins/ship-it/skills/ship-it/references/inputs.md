@@ -60,12 +60,12 @@ Capture the key, summary, description, status, and acceptance criteria.
 
 ## Durable task checkpoint
 
-After resolving the task source, read the checkpoint contract linked by the skill. Derive its canonical task key, then create or resume the corresponding checkpoint before exploring or changing the repository. The checkpoint replaces the temporary task context file and is the `--context <file>` passed to review and test gates.
+After resolving the task source, derive its canonical task key and create or resume the corresponding checkpoint before exploring or changing the repository. Use the bundled bookkeeping helper for policy and every transition. The checkpoint replaces the temporary task context file and is the `--context <file>` passed to review and test gates. Load the full checkpoint contract only when migration, recovery or helper validation requires it.
 
-Do not overwrite an existing checkpoint during resolution. Validate it, verify its task source and repository identity, and reconcile it with Git and GitHub as the contract requires. A completed checkpoint is a delivered task, not a fresh run. Invalid, mismatched or irreconcilable state is a hard stop with the recovery action from the contract.
+Do not overwrite an existing checkpoint during resolution. Validate it, verify its task source and repository identity, and reconcile it with Git and GitHub. A completed checkpoint is a delivered task, not a fresh run. Invalid, mismatched or irreconcilable state loads the recovery contract and hard-stops with its named action.
 
 ## GitHub work claim
 
-For a GitHub implementation issue, load the claim contract after checkpoint reconciliation. Acquire or reconcile the visible issue claim before exploration can advance to branch creation or any source edit. An active conflicting claim is the ownership check; assignees and informal comments are context, not a lease. Plain descriptions and Jira tickets keep their existing standalone workflow with `claim: null`.
+For a GitHub implementation issue with claims enabled, load the claim contract after checkpoint reconciliation. Acquire or reconcile the visible issue claim before exploration can advance to branch creation or any source edit. An active conflicting claim is the ownership check; assignees and informal comments are context, not a lease. With claims disabled, create no comment and keep `claim: null`. Plain descriptions and Jira tickets also keep `claim: null`.
 
-For an umbrella, the coordinator does not claim the umbrella. Each worker acquires its child issue claim before its assigned worktree changes, and the coordinator records that claim in the child checkpoint state.
+For an umbrella, the coordinator does not claim the umbrella. When claims are enabled, each worker acquires its child issue claim before its assigned worktree changes, and the coordinator records that claim in the child checkpoint state. With claims disabled, every child claim stays null.

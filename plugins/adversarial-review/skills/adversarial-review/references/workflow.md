@@ -16,10 +16,10 @@ Find the bug, then try to prove the bug report wrong. It answers one question - 
 
 Two subagents, opposed, each with a clean context:
 
-1. **Code Adversary** - assumes the change is broken and hunts the concrete failure. Mandate: [references/code-adversary.md](references/code-adversary.md).
-2. **Findings Adversary** - assumes the Code Adversary is wrong and tries to refute each finding against the source. Mandate: [references/findings-adversary.md](references/findings-adversary.md).
+1. **Code Adversary** - assumes the change is broken and hunts the concrete failure. A `blocking:` finding carries an executed reproduction or an explicit interleaving trace; anything less is an `issue:` or a `question:`. Mandate: [references/code-adversary.md](references/code-adversary.md).
+2. **Findings Adversary** - assumes the Code Adversary is wrong and tries to refute each finding against the source, stripping `blocking:` from findings without proof. Runs only when the first pass found a `blocking:` or `issue:`. Mandate: [references/findings-adversary.md](references/findings-adversary.md).
 
-The second pass exists because an unrefuted adversary nit-bombs. It sees only the first pass's findings, never its reasoning, so it cannot inherit the same misread.
+The second pass exists because an unrefuted adversary nit-bombs. It sees only the first pass's findings, never its reasoning, so it cannot inherit the same misread. Each adversary lives for exactly one verdict: it starts in a fresh context with no forked or inherited history, is closed once its reply is validated, and is never reused for a fix, a re-check or another change.
 
 ## Agent compatibility
 
@@ -74,7 +74,9 @@ Task context:
 
 Each pass is one fresh subagent whose prompt is the Review assignment plus the pass-specific payload. When the subagent is generic rather than a named adversary agent, prepend the full content of the pass's mandate file. Pass nothing else - not your own reading of the code, not hypotheses, not this conversation.
 
-**Claude Code.** Use the Agent tool with the named agent type given in each phase; its mandate is already the agent's system prompt. If the type is unknown (plugin loaded without agent registration), retry with `subagent_type: "general-purpose"` and the mandate prepended.
+An adversary lives for exactly one verdict. Start it with no forked or inherited history, close it as soon as its reply is validated, and never resume, message or reuse it afterwards - not for a fix, not for a re-check, not for the next revision. A later pass or a later change always gets a new subagent.
+
+**Claude Code.** Use the Agent tool with the named agent type given in each phase; its mandate is already the agent's system prompt. Never pass `subagent_type: "fork"` and never continue the agent with SendMessage after its verdict. If the type is unknown (plugin loaded without agent registration), retry with `subagent_type: "general-purpose"` and the mandate prepended.
 
 **Codex.** Use the native agent tools only (`spawn_agent` / `wait_agent` / `close_agent`); never nested `codex exec` or shell-based agent probing.
 
@@ -91,19 +93,24 @@ Each pass is one fresh subagent whose prompt is the Review assignment plus the p
 
 **Other agents** with a subagent tool: spawn a fresh generic subagent with the mandate prepended. Without a subagent tool, use the inline Fallback.
 
-**Validation and retry.** If a reply is empty or lacks its required final verdict line, spawn a fresh subagent once more. If that fails too, run the pass inline (see Fallback).
+**Verdict check and retry.** Validate every reply before using it. The last non-empty line must match the pass's documented format exactly:
+
+- Code Adversary: `^CODE_ADVERSARY_VERDICT: (FOUND BLOCKING \(\d+\)|FOUND ISSUES \(\d+\)|MINOR ONLY \(\d+\)|CLEAN)$`. The keyword must agree with the labels of the `F<n>` findings in the reply and the count must equal their number: `CLEAN` has no findings; `MINOR ONLY` has findings labelled only `suggestion:` or `question:`; `FOUND ISSUES` has at least one `issue:` and no `blocking:`; `FOUND BLOCKING` has at least one `blocking:`.
+- Findings Adversary: `^FINDINGS_ADVERSARY_VERDICT: (SOUND|CORRECTED|ESCAPED_BUG)$`, preceded by one `F<n> —` line for every input finding.
+
+An empty reply, a missing or malformed verdict line, a keyword that disagrees with the labels, a count that does not match, or a missing `F<n>` line is a malformed verdict. Close that subagent, spawn one fresh subagent for the same pass, and validate again. A second malformed reply is a gate failure: output `Review Verdict: FAILED` (see Output) and stop. Do not run the pass inline to rescue it. The inline Fallback is only for a runtime with no subagent tool or a spawn call that itself errors twice.
 
 ## Phase 2 - Code Adversary
 
 Spawn per [Spawning a clean-context subagent](#spawning-a-clean-context-subagent): named agent `adversarial-review:code-adversary`, mandate [references/code-adversary.md](references/code-adversary.md), payload *"Find the bug in this change and prove it. Read only; do not modify files."*
 
-The reply must end with a `CODE_ADVERSARY_VERDICT:` line. If the verdict is `CLEAN` with no findings, skip Phase 3 and go to Output.
+Validate the reply with the verdict check, then close the subagent; nothing else is ever sent to it. The Findings Adversary exists to filter findings that would trigger a fix, so it runs only on a result that needs fixes. Decide from the labels, not the keyword: when no finding is labelled `blocking:` or `issue:` (a validated `CLEAN` or `MINOR ONLY`), skip Phase 3 and go to Output with `findings skipped`. Never dispatch the Findings Adversary to refute a clean result.
 
 ## Phase 3 - Findings Adversary
 
-Spawn a **new** subagent - never resume, message, or reuse the Code Adversary: named agent `adversarial-review:findings-adversary`, mandate [references/findings-adversary.md](references/findings-adversary.md), payload `Findings to refute:` followed by **only** the numbered `F<n>` finding blocks (label, message, location) copied from Phase 2. Strip every other line of the Code Adversary's reply - the clean context is the point.
+Spawn a **new** subagent - never resume, message, or reuse the Code Adversary: named agent `adversarial-review:findings-adversary`, mandate [references/findings-adversary.md](references/findings-adversary.md), payload `Findings to refute:` followed by **only** the numbered `F<n>` finding blocks (label, message, location and, when present, the `*Proof:*` or `*Trace:*` line) copied verbatim from Phase 2. Strip every other line of the Code Adversary's reply - the clean context is the point.
 
-The reply must have one verdict line per input finding and end with a `FINDINGS_ADVERSARY_VERDICT:` line.
+Validate the reply with the verdict check (one `F<n> —` line per input finding, then the final verdict line), then close the subagent.
 
 ## Phase 4 - Apply verdicts
 
@@ -112,6 +119,7 @@ The reply must have one verdict line per input finding and end with a `FINDINGS_
 - REMOVE → drop; count it.
 - Every `E<n>` escaped bug → a new finding in the output, tagged `(escaped)`. An `ESCAPED_BUG` verdict with no escaped finding in your output means you dropped one - go back and add it.
 - Merge duplicates the adversary named.
+- A surviving `blocking:` with no `*Proof:*` or `*Trace:*` line did not earn the label: report it as `issue:` and count it as downgraded.
 
 ## Output
 
@@ -127,26 +135,38 @@ or
 Review Verdict: NEEDS_FIXES
 ```
 
+or, only after a pass returned a malformed verdict twice,
+
+```
+Review Verdict: FAILED
+```
+
 - **CLEAN** - no surviving `blocking:` or `issue:`. Suggestions and questions alone stay CLEAN.
 - **NEEDS_FIXES** - at least one surviving `blocking:` or `issue:`.
+- **FAILED** - a gate failure, never a pass: the second line is `Gate failure: <Code|Findings> Adversary returned no valid verdict after one retry`, no findings follow, and callers treat it as a failed gate rather than as CLEAN.
 
-Then the surviving findings, strongest first, in conventional-comment format, high-confidence ones tagged `(verified)`:
+Then the surviving findings, strongest first, in conventional-comment format, high-confidence ones tagged `(verified)`; a `blocking:` keeps its proof line:
 
 ```
 **{label}:** {message}
 *Location:* `{path/to/file}:{line}`
+*Proof:* `{command}` → {observed output}
 ```
 
-End with one line: `Adversaries: code <CODE_ADVERSARY_VERDICT> · findings <FINDINGS_ADVERSARY_VERDICT|skipped> · removed <N> · downgraded <N>`. Nothing after it. The findings verdict grades the findings, not the code - the `Review Verdict:` line is computed from the surviving findings alone.
+End with one line: `Adversaries: code <CODE_ADVERSARY_VERDICT|malformed> · findings <FINDINGS_ADVERSARY_VERDICT|skipped|malformed> · removed <N> · downgraded <N>`. Nothing after it. The findings verdict grades the findings, not the code - the `Review Verdict:` line is computed from the surviving findings alone.
 
 ## Fallback - no subagents
 
-If the runtime has no subagent tool or both spawn attempts fail, run each pass inline as a separate labelled section, following the mandate files linked above. In the Findings pass you MUST re-open every cited `file:line` and re-derive the claim from the source - never verify from memory of having written it. Assume your own mistakes are there. Note `inline` in the final Adversaries line.
+If the runtime has no subagent tool, or the spawn call itself errors on both attempts, run each pass inline as a separate labelled section, following the mandate files linked above. A malformed verdict is not a spawn error and is never rescued inline. Run the inline Findings pass only when the inline Code pass found a `blocking:` or `issue:`. In the Findings pass you MUST re-open every cited `file:line` and re-derive the claim from the source - never verify from memory of having written it. Assume your own mistakes are there. Note `inline` in the final Adversaries line.
 
 ## Anti-patterns
 
 - Passing the Code Adversary's reasoning to the Findings Adversary - it then shares the same blind spot
 - Reusing one subagent for both passes, or forking the parent conversation into either
+- Resuming an adversary after its verdict - for a fix, a re-check or the next revision
+- Dispatching the Findings Adversary on a `CLEAN` or `MINOR ONLY` result
+- Keeping a `blocking:` that has no executed reproduction or interleaving trace
+- Rescuing a malformed verdict with a third attempt or an inline pass
 - Padding a clean review - CLEAN is a real, useful verdict
 - Reviewing architecture, naming, or dead code - wrong skill, use `/staff-code-review`
 - Any prose above the `Review Verdict:` line

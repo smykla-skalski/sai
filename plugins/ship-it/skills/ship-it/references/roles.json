@@ -40,6 +40,8 @@
   },
   "independent_review": {
     "default": "strict",
+    "applies_to": "adversarial-review",
+    "exempt_gates": ["inline-review"],
     "strict_rejections": [
       "same-provider-and-model-as-implementation",
       "unresolved-model-alias",

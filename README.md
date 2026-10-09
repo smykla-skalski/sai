@@ -312,7 +312,7 @@ Audit and fix CLAUDE.md files using tiered binary checklist based on Anthropic b
 
 ### ship-it
 
-Take a task description, GitHub issue, or Jira ticket to a merged PR: implement, pass the `adversarial-review` and `adversarial-test` gates, open a PR, wait for green CI and a Copilot review, fix feedback, and merge. An approved complex plan becomes a coordinated umbrella with independent child workers and dependency-aware dispatch. Sail pauses when required subagents are unavailable. A description ships without an issue unless `--issue` is passed; a GitHub issue closes on merge; a Jira ticket is read-only and its key goes in the PR. Replaces `ship-issue`.
+Take a task description, GitHub issue, or Jira ticket to a merged PR: implement, open a draft PR after local checks, run risk-selected review and testing alongside CI, fix feedback once, and merge. Hosted review runs only when repository policy requires a serviceable reviewer. An approved complex plan becomes a coordinated umbrella with independent child workers and dependency-aware dispatch. Claims, evidence and telemetry are opt-in; the checkpoint always remains enabled. A description ships without an issue unless `--issue` is passed; a GitHub issue closes on merge; a Jira ticket is read-only and its key goes in the PR. Replaces `ship-issue`.
 
 **Usage**: `/ship-it [--issue] <task description | github-issue-url | jira-url>` (Codex: `$ship-it`, explicit invocation only). One package for Claude Code, Codex, Copilot CLI and opencode.
 

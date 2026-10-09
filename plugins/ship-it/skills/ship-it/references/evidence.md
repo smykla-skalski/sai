@@ -43,7 +43,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
       "category": "acceptance-criterion",
       "name": "first resolved acceptance criterion",
       "required": true,
-      "requiredBy": "pr",
+      "requiredBy": "ready",
       "status": "passed",
       "sourceRevision": "full hexadecimal commit SHA",
       "provider": "codex",
@@ -60,7 +60,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
       "category": "local-check",
       "name": "repository test command",
       "required": true,
-      "requiredBy": "pr",
+      "requiredBy": "draft",
       "status": "passed",
       "sourceRevision": "full hexadecimal commit SHA",
       "provider": "local-process",
@@ -73,7 +73,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
       "category": "review",
       "name": "two-pass adversarial review",
       "required": true,
-      "requiredBy": "pr",
+      "requiredBy": "ready",
       "status": "passed",
       "sourceRevision": "full hexadecimal commit SHA",
       "provider": "codex",
@@ -86,7 +86,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
       "category": "manual-test",
       "name": "adversarial manual test",
       "required": true,
-      "requiredBy": "pr",
+      "requiredBy": "ready",
       "status": "passed",
       "sourceRevision": "full hexadecimal commit SHA",
       "provider": "codex",
@@ -114,7 +114,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
 }
 ```
 
-`status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `untested`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
+`status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `untested`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: draft`, `requiredBy: ready` or `requiredBy: merge`. Local checks are due for the draft PR; review and manual testing are due before ready-for-review; CI and hosted review are due by merge. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
 
 A CI result also has `ciTriage` with unique `failureIds` from the checkpoint and a bounded `resolution` or null. On failure, keep the result failed and attach every observation for that job and revision. On a passing authorized rerun or provider recovery, set the result passed and record the matching resolution. After a source-changing fix, mark each old observation `superseded-by-revision`; the replacement revision starts with pending CI and no copied pass. This preserves failure, recurrence and resolution history without embedding logs in evidence.
 
@@ -122,13 +122,13 @@ A CI result also has `ciTriage` with unique `failureIds` from the checkpoint and
 
 `routeDiagnostics` records rejected route candidates and does not satisfy or block a gate. Pre-dispatch diagnostics have no execution metadata; post-dispatch diagnostics preserve returned route metadata for outputs rejected by independence checks. Only accepted dispatched executions belong in `roleRoutes`; therefore a later valid fallback can complete strict review while preserving all rejection history.
 
-`claim` is null for Jira and description tasks. For a GitHub implementation issue it contains the current claim's `issueUrl`, `commentUrl`, `holderId`, `acquiredAt` and latest verified `renewedAt`. Create or update evidence only while that claim is active, unexpired and matches the checkpoint. Claim renewal changes `renewedAt` in the current record without invalidating revision-bound results. Another holder, comment or acquisition time blocks ordinary evidence writes; an audited takeover follows the claim contract's rebind procedure and reruns every required result. Releasing the same claim after verified merge preserves the completed delivery evidence.
+`claim` is null when claims are disabled and for Jira or description tasks. With claims enabled for a GitHub issue, it contains the current claim's `issueUrl`, `commentUrl`, `holderId`, `acquiredAt` and latest verified `renewedAt`. Create or update evidence only while that claim is active, unexpired and matches the checkpoint. Claim renewal changes `renewedAt` in the current record without invalidating revision-bound results. Another holder, comment or acquisition time blocks ordinary evidence writes; an audited takeover follows the claim contract's rebind procedure and reruns every required result. Releasing the same claim after verified merge preserves the completed delivery evidence.
 
 An output reference has kind `inline`, `command`, `path` or `url`; a non-empty UTF-8 `value` of at most 2048 bytes; and `sha256`, which is null or the lowercase digest of a referenced immutable artifact. Store only a concise verdict or summary inline. Keep secrets and unbounded logs out of the record.
 
 ## Required result set
 
-Create one stable result ID for each resolved acceptance criterion and each gate required by the revision's selected risk policy. Use `gate-<gate-id>` for a one-result gate. Expand `local-checks` into one result per discovered command and expand `ci` into one result per required check, each with the final job URL. Review and manual-test gates are due by PR creation; CI and hosted-review gates are due by merge. A policy-declared fallback retains the original required gate result ID, keeps `provider` as the actual harness or service, and records the gate and fallback mechanism IDs in its bounded output reference. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
+Create one stable result ID for each resolved acceptance criterion and each gate required by the revision's selected risk policy. Use `gate-<gate-id>` for a one-result gate. Expand `local-checks` into one result per discovered command and expand `ci` into one result per required check, each with the final job URL. Local checks are due by draft creation; review and manual-test gates are due by ready-for-review; CI and hosted-review gates are due by merge. A policy-declared fallback retains the original required gate result ID, keeps `provider` as the actual harness or service, and records the gate and fallback mechanism IDs in its bounded output reference. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
 
 A gate passes only when every required result due at that gate has `status: passed`, or `status: untested` under the partial-pass rule below, for the exact record revision. Missing, pending, failed, blocked or stale due evidence blocks that gate. CI results that are not available before PR creation remain pending with `requiredBy: merge`.
 
@@ -138,7 +138,7 @@ A record becomes complete at the merge gate only when all of these are true:
 
 - It contains every required result and no duplicate result ID.
 - It contains valid role routes for every invoked exploration, implementation, review, testing and CI-triage role.
-- Every strict review route is resolved, fresh, non-inline and uses a different actual provider-and-model pair from implementation.
+- Every `adversarial-review` route under strict independence is resolved, fresh, non-inline and uses a different actual provider-and-model pair from implementation. An `inline-review` route records `independence: not-applicable` and is outside those rules.
 - Every required result has `status: passed`, or `status: untested` under the partial-pass rule, and the exact record revision.
 - Every selected review reference records its required passing verdict.
 - Every selected manual-test reference records its required passing verdict.
