@@ -113,9 +113,9 @@ class UntestedCriterionEvidenceTest(unittest.TestCase):
         mandate = MANDATE_FILE.read_text(encoding="utf-8")
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
         for text in (mandate, workflow):
-            self.assertIn("viewport dimensions", text)
-            self.assertIn("device scaling", text)
-            self.assertIn("capture command", text)
+            self.assertIn("runtime client/content-area", text)
+            self.assertIn("window.innerWidth", text)
+            self.assertIn("outer-window bounds", text)
 
 
 if __name__ == "__main__":

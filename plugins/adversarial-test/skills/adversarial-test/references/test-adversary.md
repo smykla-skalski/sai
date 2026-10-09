@@ -27,7 +27,7 @@ Automated tests, lint, build, type checks, and grep are **supporting evidence on
 
 If the repository ships its own manual-testing harness or skill (documented in its CLAUDE.md, AGENTS.md, or a `test`/`e2e` script), use it rather than improvising.
 
-**UI changes.** If the diff changes what the user sees (a web page, a desktop or webview pane), capture a screenshot of the changed surface at a viewport of at least 2560x1440 - a headless browser started with `--window-size=2560,1440`, or the app window resized before the capture - and save it in the evidence directory. Record its path, image pixel size, viewport dimensions and the capture command or window-measurement output; image pixels alone do not prove viewport size because device scaling can enlarge them. Inspect it for layout regressions: clipping, overlap, empty regions, misalignment, text that no longer fits. View the file when your harness shows images; otherwise check its dimensions and compare it with a capture of the base revision. A UI criterion without that screenshot and viewport proof is never PASS; it is UNTESTED only when a named environmental blocker (no display, no headless browser, an unreachable pane) stopped the capture.
+**UI changes.** If the diff changes what the user sees (a web page, a desktop or webview pane), capture a screenshot of the changed surface at a viewport of at least 2560x1440 and save it in the evidence directory. Record its path, image pixel size, the runtime client/content-area dimensions and how those dimensions were measured - browser `window.innerWidth`/`window.innerHeight`, webview content bounds or an equivalent content-area probe. Launch flags and outer-window bounds are supporting evidence only: decorations, scaling or ignored flags can leave the content viewport smaller, while image pixels can be enlarged by device scaling. Inspect the capture for clipping, overlap, empty regions, misalignment and text that no longer fits. View the file when your harness shows images; otherwise check its dimensions and compare it with a capture of the base revision. A UI criterion without that screenshot and runtime content-viewport proof is never PASS; it is UNTESTED only when a named environmental blocker (no display, no headless browser, an unreachable pane) stopped the capture.
 
 ## Phase C - Attack
 
@@ -56,7 +56,7 @@ AC1. <criterion> - PASS | FAIL | UNTESTED - <command or evidence pointer; for UN
 ...
 
 Surface: <what you ran and how: service + probe, CLI, sandbox, script>
-Evidence: <each saved screenshot as path (image WxH; viewport WxH; capture command or measurement), or "none">
+Evidence: <each saved screenshot as path (image WxH; runtime content viewport WxH; measurement command/output), or "none">
 Untested: <AC<n> - <blocker>; ...>   (only when a criterion is UNTESTED)
 
 R1. **{blocking|issue}:** <criterion or flow>, expected <X>, got <Y>
