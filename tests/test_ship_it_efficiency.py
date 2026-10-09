@@ -69,7 +69,13 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("Legacy runs used mandatory bookkeeping", checkpoint)
 
     def test_waits_are_event_driven_and_rate_limited(self) -> None:
+        skill = read(SHIP_IT / "SKILL.md")
+        review = read(REFERENCES / "review.md")
+        testing = read(REFERENCES / "test.md")
         loop = read(REFERENCES / "pr-loop.md")
+        self.assertIn("blocking wait of at least ten minutes", skill)
+        self.assertIn("blocking wait of at least ten minutes", review)
+        self.assertIn("blocking wait of at least ten minutes", testing)
         self.assertIn("one background waiter per PR", loop)
         self.assertIn("at most once per ten minutes", loop)
         self.assertIn("Do not list agents between waits", loop)
@@ -97,6 +103,17 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("activate its configured fallback immediately", release)
         self.assertIn("Never retry a request", loop)
         self.assertIn("immediately changes `hostedReviewDecision`", loop)
+        self.assertIn("one permitted `serviceable` to `fallback|blocked`", read(REFERENCES / "checkpoint.md"))
+
+    def test_default_off_claims_are_guarded_through_completion(self) -> None:
+        for reference in ("inputs.md", "branch.md", "review.md", "completion.md"):
+            with self.subTest(reference=reference):
+                content = read(REFERENCES / reference)
+                self.assertIn("claims enabled", content)
+        testing = read(REFERENCES / "test.md")
+        self.assertNotIn("PR creation as `nextAction`", testing)
+        completion = read(REFERENCES / "completion.md")
+        self.assertIn("With evidence disabled", completion)
 
 
 if __name__ == "__main__":

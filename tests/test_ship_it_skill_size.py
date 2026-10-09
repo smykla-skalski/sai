@@ -253,12 +253,12 @@ class ShipItSkillSizeTest(unittest.TestCase):
                 "run local gates according to the shared convergence budget",
             ),
             "review.md": (
-                "provider, model, timestamp and bounded output reference",
-                "any later source change marks the entire record stale",
+                "provider, model, timestamp, bounded summary and exact revision",
+                "any later source change marks or replaces",
             ),
             "test.md": (
-                "provider, model, timestamp and bounded output reference",
-                "reproduced failure marks the evidence failed",
+                "provider, model, timestamp, bounded summary and exact revision",
+                "reproduced failure marks the result failed",
             ),
             "pr-loop.md": (
                 "requiredby: ready",

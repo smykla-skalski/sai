@@ -1,6 +1,6 @@
 # Publish the draft PR
 
-Publish after the first committed revision passes every selected local check. Claims apply only when enabled by bookkeeping policy. Validate local-check evidence for the exact `HEAD`; review and manual-test results may remain pending until the ready gate.
+Publish after the first committed revision passes every selected local check. Claims apply only when enabled by bookkeeping policy. Validate the local-check evidence record or checkpoint gate verdict for the exact `HEAD`; review and manual-test results may remain pending until the ready gate.
 
 Push without rewriting history and create a **draft** PR. Its body follows the repository template and identifies the source, risk, diff class, selected gates and current revision. Mark review and test as pending. Store the PR URL and `headRefOid` in the checkpoint before dispatching either gate.
 

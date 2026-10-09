@@ -5,6 +5,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import tempfile
@@ -16,10 +17,15 @@ SCRIPT = ROOT / "plugins/ship-it/skills/ship-it/scripts/bookkeeping.py"
 
 
 def checkpoint_document() -> dict[str, object]:
+    canonical_source = '{"issue":198,"repository":"github.com/smykla-skalski/sai","sourceType":"github"}'
+    checkpoint_id = hashlib.sha256(canonical_source.encode()).hexdigest()
     return {
         "schemaVersion": 1,
-        "checkpointId": "a" * 64,
-        "task": {},
+        "checkpointId": checkpoint_id,
+        "task": {
+            "sourceType": "github",
+            "canonicalSource": canonical_source,
+        },
         "repository": {},
         "workflow": {
             "phase": "resolve",
@@ -30,9 +36,20 @@ def checkpoint_document() -> dict[str, object]:
             "nextAction": "explore",
         },
         "delivery": {},
-        "evidence": {},
+        "evidence": {
+            "revision": None,
+            "recordPath": None,
+            "status": "disabled",
+            "updatedAt": None,
+        },
+        "gateVerdicts": [],
         "claim": None,
-        "bookkeeping": {},
+        "bookkeeping": {
+            "claims": False,
+            "evidence": False,
+            "telemetry": False,
+            "policySource": "bundled default",
+        },
         "risk": {},
         "releasePolicy": None,
         "hostedReviewDecision": None,
@@ -43,6 +60,10 @@ def checkpoint_document() -> dict[str, object]:
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-01-01T00:00:00Z",
     }
+
+
+def checkpoint_path(directory: str, document: dict[str, object]) -> Path:
+    return Path(directory) / f"{document['checkpointId']}.json"
 
 
 class BookkeepingTest(unittest.TestCase):
@@ -88,9 +109,10 @@ class BookkeepingTest(unittest.TestCase):
 
     def test_transition_updates_checkpoint_in_one_call(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            checkpoint = Path(directory) / "checkpoint.json"
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
             checkpoint.write_text(
-                json.dumps(checkpoint_document()),
+                json.dumps(document),
                 encoding="utf-8",
             )
             result = self.run_script(
@@ -114,8 +136,9 @@ class BookkeepingTest(unittest.TestCase):
 
     def test_transition_rejects_invalid_phase_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            checkpoint = Path(directory) / "checkpoint.json"
-            original = json.dumps(checkpoint_document())
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
+            original = json.dumps(document)
             checkpoint.write_text(original, encoding="utf-8")
             result = self.run_script(
                 "transition",
@@ -135,8 +158,9 @@ class BookkeepingTest(unittest.TestCase):
 
     def test_blocked_transition_requires_blocker(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            checkpoint = Path(directory) / "checkpoint.json"
-            original = json.dumps(checkpoint_document())
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
+            original = json.dumps(document)
             checkpoint.write_text(original, encoding="utf-8")
             result = self.run_script(
                 "transition",
@@ -152,6 +176,103 @@ class BookkeepingTest(unittest.TestCase):
             current = checkpoint.read_text(encoding="utf-8")
         self.assertEqual(result.returncode, 2)
         self.assertIn("--blocker is required", result.stderr)
+        self.assertEqual(current, original)
+
+    def test_complete_transition_writes_outcome_atomically(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
+            checkpoint.write_text(json.dumps(document), encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "complete",
+                "--status",
+                "completed",
+                "--next-action",
+                "none",
+                "--outcome-json",
+                '{"result":"merged"}',
+            )
+            updated = json.loads(checkpoint.read_text(encoding="utf-8"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(updated["outcome"], {"result": "merged"})
+
+    def test_transition_migrates_known_legacy_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            document.pop("bookkeeping")
+            document.pop("hostedReviewDecision")
+            evidence = document["evidence"]
+            if isinstance(evidence, dict):
+                evidence["status"] = "missing"
+            checkpoint = checkpoint_path(directory, document)
+            checkpoint.write_text(json.dumps(document), encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "explore",
+                "--status",
+                "active",
+                "--next-action",
+                "inspect repository",
+            )
+            updated = json.loads(checkpoint.read_text(encoding="utf-8"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(updated["bookkeeping"]["policySource"], "legacy compatibility")
+        self.assertIsNone(updated["hostedReviewDecision"])
+
+    def test_transition_rejects_identity_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
+            document["checkpointId"] = "b" * 64
+            original = json.dumps(document)
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "explore",
+                "--status",
+                "active",
+                "--next-action",
+                "inspect repository",
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("filename must match", result.stderr)
+        self.assertEqual(current, original)
+
+    def test_transition_rejects_evidence_when_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            evidence = document["evidence"]
+            if isinstance(evidence, dict):
+                evidence["status"] = "complete"
+                evidence["revision"] = "a" * 40
+            checkpoint = checkpoint_path(directory, document)
+            original = json.dumps(document)
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "explore",
+                "--status",
+                "active",
+                "--next-action",
+                "inspect repository",
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("disabled evidence", result.stderr)
         self.assertEqual(current, original)
 
 

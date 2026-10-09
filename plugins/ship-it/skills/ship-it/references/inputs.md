@@ -66,6 +66,6 @@ Do not overwrite an existing checkpoint during resolution. Validate it, verify i
 
 ## GitHub work claim
 
-For a GitHub implementation issue, load the claim contract after checkpoint reconciliation. Acquire or reconcile the visible issue claim before exploration can advance to branch creation or any source edit. An active conflicting claim is the ownership check; assignees and informal comments are context, not a lease. Plain descriptions and Jira tickets keep their existing standalone workflow with `claim: null`.
+For a GitHub implementation issue with claims enabled, load the claim contract after checkpoint reconciliation. Acquire or reconcile the visible issue claim before exploration can advance to branch creation or any source edit. An active conflicting claim is the ownership check; assignees and informal comments are context, not a lease. With claims disabled, create no comment and keep `claim: null`. Plain descriptions and Jira tickets also keep `claim: null`.
 
-For an umbrella, the coordinator does not claim the umbrella. Each worker acquires its child issue claim before its assigned worktree changes, and the coordinator records that claim in the child checkpoint state.
+For an umbrella, the coordinator does not claim the umbrella. When claims are enabled, each worker acquires its child issue claim before its assigned worktree changes, and the coordinator records that claim in the child checkpoint state. With claims disabled, every child claim stays null.

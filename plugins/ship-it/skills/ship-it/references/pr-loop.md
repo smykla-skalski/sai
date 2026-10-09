@@ -29,7 +29,7 @@ Create or update the PR body with `## Motivation`, `## Implementation informatio
 
 Follow the repository's own PR template or conventions when it documents them. Capture the PR number.
 
-Read the created PR body back from GitHub. For `PASS (partial)`, verify that `## Untested criteria` contains every criterion and environmental blocker from the verdict before treating PR creation as complete. A missing or altered entry returns to PR-body correction; it does not invalidate the already-valid revision evidence.
+Read the created PR body back from GitHub. For `PASS (partial)`, verify that `## Untested criteria` contains every criterion and environmental blocker from the verdict before treating PR creation as complete. A missing or altered entry returns to PR-body correction; it does not invalidate the already-valid revision result.
 
 Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to `pr`, and keep `nextAction` aligned with the current wait, fix or merge action. Reconcile these fields with GitHub before every resumed PR loop.
 
@@ -59,9 +59,9 @@ If any selected reviewer or check remains unsatisfied for roughly 30 minutes, in
 
 Mark the PR ready only when local checks, review, the single broad manual-test pass and required CI all pass for the same `headRefOid`. Every result with `requiredBy: ready` must pass. Update the body with those revision-bound verdicts first. A passing tester verdict is final: the coordinator never reruns or widens it. Keep the PR draft when any selected gate is missing, stale, failed or blocked.
 
-Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in evidence.
+Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in the evidence record or checkpoint verdict.
 
-Record every selected hosted gate against the current PR head in its evidence record, including provider, timestamp and job URL. A code-changing fix creates a new revision record with selected results pending; recompute risk and validate the revision according to the shared convergence policy before returning to the PR loop. Never reset its counters for CI or hosted feedback.
+Record every selected hosted gate against the current PR head in its evidence record when evidence is enabled, otherwise in checkpoint `gateVerdicts`, including provider, timestamp and job URL. A code-changing fix creates results pending for the new revision; recompute risk and validate it according to the shared convergence policy before returning to the PR loop. Never reset its counters for CI or hosted feedback.
 
 ## Address required reviewer feedback
 
@@ -85,7 +85,7 @@ Then return to waiting. After the single fix pass, turn later non-blocking sugge
 Merge only when all of these hold:
 
 - With evidence enabled, the current evidence record is `complete`, every result with `requiredBy: merge` passed on its exact revision, and that revision equals both local `HEAD` and the PR `headRefOid`. With evidence disabled, the checkpoint's gate verdicts must record the same selected gates as passed for that exact revision and PR head.
-- The current PR head has passing evidence for every selected gate. Record its `headRefOid`; after a code-changing fix or default-branch merge, recompute risk and validate the new tip under the shared convergence policy. Check `headRefOid` again just before merge. The squash merge commit will have a different SHA; compare the PR head SHA.
+- The current PR head has a passing result for every selected gate. Record its `headRefOid`; after a code-changing fix or default-branch merge, recompute risk and validate the new tip under the shared convergence policy. Check `headRefOid` again just before merge. The squash merge commit will have a different SHA; compare the PR head SHA.
 - When `ci` is selected, every required CI check succeeded.
 - When `hosted-review` is selected, every resolved reviewer requirement is satisfied for the current policy. A `review` accepts a submitted no-comment review; an `approval` requires an effective approval.
 - When `hosted-review` is selected, every required reviewer's blocking comment is fixed or answered, and its thread is resolved.

@@ -4,7 +4,8 @@
 Usage:
   bookkeeping.py policy --repository PATH [--enable FEATURE,...]
   bookkeeping.py transition --checkpoint FILE --phase PHASE --status STATUS
-      --next-action TEXT [--revision SHA]
+      --next-action TEXT [--revision SHA] [--blocker TEXT]
+      [--outcome-json OBJECT]
 
 Output is one compact JSON result on stdout. Input or validation errors are
 reported on stderr and exit 2; successful policy resolution or transition
@@ -16,6 +17,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -57,6 +59,7 @@ REQUIRED_CHECKPOINT_FIELDS: Final[frozenset[str]] = frozenset(
         "workflow",
         "delivery",
         "evidence",
+        "gateVerdicts",
         "claim",
         "bookkeeping",
         "risk",
@@ -187,12 +190,106 @@ def validate_workflow(workflow: dict[str, Any]) -> None:
         raise BookkeepingError(message)
 
 
-def validate_checkpoint(checkpoint: dict[str, Any]) -> None:
+def migrate_legacy(checkpoint: dict[str, Any]) -> None:
+    """Add only documented defaults for known schema-v1 legacy shapes."""
+    if checkpoint.get("schemaVersion") != 1:
+        return
+    task = checkpoint.get("task")
+    github_source = isinstance(task, dict) and task.get("sourceType") == "github"
+    checkpoint.setdefault("claim", None)
+    checkpoint.setdefault("releasePolicy", None)
+    checkpoint.setdefault("hostedReviewDecision", None)
+    checkpoint.setdefault(
+        "bookkeeping",
+        {
+            "claims": github_source,
+            "evidence": True,
+            "telemetry": True,
+            "policySource": "legacy compatibility",
+        },
+    )
+    checkpoint.setdefault(
+        "risk",
+        {
+            "level": None,
+            "diffClass": None,
+            "policySource": None,
+            "matchedRules": [],
+            "requiredGates": [],
+            "overrideAuthorization": None,
+        },
+    )
+    checkpoint.setdefault("ciTriage", {"failures": []})
+    checkpoint.setdefault("gateVerdicts", [])
+    checkpoint.setdefault(
+        "convergence",
+        {
+            "mode": "bounded",
+            "authorizedBy": None,
+            "startedAt": None,
+            "reviewCycles": 0,
+            "fixPasses": 0,
+            "fullQualityGateRuns": 0,
+            "reviewedRevision": None,
+            "findings": [],
+            "followUpIssues": [],
+        },
+    )
+
+
+def validate_identity(checkpoint: dict[str, Any], path: Path) -> None:
+    """Validate checkpoint filename and canonical-source identity."""
+    checkpoint_id = checkpoint.get("checkpointId")
+    task = checkpoint.get("task")
+    canonical = task.get("canonicalSource") if isinstance(task, dict) else None
+    if not isinstance(checkpoint_id, str) or not isinstance(canonical, str):
+        message = "checkpoint identity fields must be strings"
+        raise BookkeepingError(message)
+    digest = hashlib.sha256(canonical.encode()).hexdigest()
+    if checkpoint_id != digest or path.name != f"{checkpoint_id}.json":
+        message = "checkpoint ID, canonical source, and filename must match"
+        raise BookkeepingError(message)
+
+
+def validate_bookkeeping(checkpoint: dict[str, Any]) -> None:
+    """Validate optional bookkeeping state coupling."""
+    bookkeeping = checkpoint.get("bookkeeping")
+    evidence = checkpoint.get("evidence")
+    if not isinstance(bookkeeping, dict) or not isinstance(evidence, dict):
+        message = "checkpoint bookkeeping and evidence must be objects"
+        raise BookkeepingError(message)
+    for feature in FEATURES:
+        if not isinstance(bookkeeping.get(feature), bool):
+            message = f"checkpoint bookkeeping.{feature} must be boolean"
+            raise BookkeepingError(message)
+    if not bookkeeping["claims"] and checkpoint.get("claim") is not None:
+        message = "disabled claims require claim: null"
+        raise BookkeepingError(message)
+    if not bookkeeping["evidence"]:
+        disabled = (
+            evidence.get("status") == "disabled"
+            and evidence.get("revision") is None
+            and evidence.get("recordPath") is None
+        )
+        if not disabled:
+            message = "disabled evidence requires null pointers and disabled status"
+            raise BookkeepingError(message)
+
+
+def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
     """Validate fields and invariants affected by a workflow transition."""
     missing = REQUIRED_CHECKPOINT_FIELDS.difference(checkpoint)
     if missing:
         names = ", ".join(sorted(missing))
         message = f"checkpoint missing required fields: {names}"
+        raise BookkeepingError(message)
+    validate_identity(checkpoint, path)
+    validate_bookkeeping(checkpoint)
+    if checkpoint.get("schemaVersion") != 1:
+        message = "unsupported checkpoint schemaVersion"
+        raise BookkeepingError(message)
+    if not isinstance(checkpoint.get("gateVerdicts"), list):
+        message = "checkpoint.gateVerdicts must be an array"
         raise BookkeepingError(message)
 
     workflow = checkpoint.get("workflow")
@@ -216,11 +313,33 @@ def validate_checkpoint(checkpoint: dict[str, Any]) -> None:
         raise BookkeepingError(message)
 
 
+def resolve_outcome(args: argparse.Namespace) -> dict[str, Any] | None:
+    """Parse the outcome for a terminal transition."""
+    if args.phase == "complete":
+        if args.outcome_json is None:
+            message = "--outcome-json is required for phase complete"
+            raise BookkeepingError(message)
+        try:
+            outcome = json.loads(args.outcome_json)
+        except json.JSONDecodeError as error:
+            message = f"invalid --outcome-json: {error}"
+            raise BookkeepingError(message) from error
+        if not isinstance(outcome, dict):
+            message = "--outcome-json must contain an object"
+            raise BookkeepingError(message)
+        return outcome
+    if args.outcome_json is not None:
+        message = "--outcome-json is valid only for phase complete"
+        raise BookkeepingError(message)
+    return None
+
+
 def transition(args: argparse.Namespace) -> dict[str, Any]:
     """Apply one validated workflow transition to a checkpoint."""
     checkpoint_path = Path(args.checkpoint).resolve()
     checkpoint = load_object(checkpoint_path)
-    validate_checkpoint(checkpoint)
+    migrate_legacy(checkpoint)
+    validate_checkpoint(checkpoint, checkpoint_path)
     workflow = checkpoint["workflow"]
     if args.phase not in VALID_PHASES:
         message = f"invalid workflow phase: {args.phase}"
@@ -238,10 +357,13 @@ def transition(args: argparse.Namespace) -> dict[str, Any]:
     workflow["status"] = args.status
     workflow["blocker"] = args.blocker
     workflow["nextAction"] = args.next_action
+    checkpoint["outcome"] = resolve_outcome(args)
+    if args.phase == "complete":
+        workflow["unresolvedQuestions"] = []
     if args.revision is not None:
         workflow["revision"] = args.revision
     checkpoint["updatedAt"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    validate_checkpoint(checkpoint)
+    validate_checkpoint(checkpoint, checkpoint_path)
     atomic_write(checkpoint_path, checkpoint)
     return {
         "checkpoint": str(checkpoint_path),
@@ -268,6 +390,7 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--phase", required=True)
     update.add_argument("--status", required=True)
     update.add_argument("--blocker")
+    update.add_argument("--outcome-json")
     update.add_argument("--next-action", required=True)
     update.add_argument("--revision")
     return parser
