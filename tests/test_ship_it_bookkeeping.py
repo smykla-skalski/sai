@@ -181,6 +181,18 @@ class BookkeepingTest(unittest.TestCase):
     def test_complete_transition_writes_outcome_atomically(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             document = checkpoint_document()
+            workflow = document["workflow"]
+            delivery = document["delivery"]
+            if isinstance(workflow, dict):
+                workflow["revision"] = "a" * 40
+            if isinstance(delivery, dict):
+                delivery.update(
+                    {
+                        "pullRequestUrl": "https://github.com/o/r/pull/1",
+                        "pullRequestHead": "a" * 40,
+                        "mergeCommit": "b" * 40,
+                    },
+                )
             checkpoint = checkpoint_path(directory, document)
             checkpoint.write_text(json.dumps(document), encoding="utf-8")
             result = self.run_script(
@@ -209,6 +221,103 @@ class BookkeepingTest(unittest.TestCase):
             updated = json.loads(checkpoint.read_text(encoding="utf-8"))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(updated["outcome"]["result"], "merged")
+
+    def test_complete_transition_rejects_outcome_that_differs_from_delivery(self) -> None:
+        fields = {
+            "pullRequestUrl": "https://github.com/o/r/pull/2",
+            "pullRequestHead": "c" * 40,
+            "mergeCommit": "d" * 40,
+        }
+        for field, mismatched in fields.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                document = checkpoint_document()
+                workflow = document["workflow"]
+                delivery = document["delivery"]
+                if isinstance(workflow, dict):
+                    workflow["revision"] = "a" * 40
+                if isinstance(delivery, dict):
+                    delivery.update(
+                        {
+                            "pullRequestUrl": "https://github.com/o/r/pull/1",
+                            "pullRequestHead": "a" * 40,
+                            "mergeCommit": "b" * 40,
+                        },
+                    )
+                outcome = {
+                    "result": "merged",
+                    "pullRequestUrl": "https://github.com/o/r/pull/1",
+                    "pullRequestHead": "a" * 40,
+                    "mergeCommit": "b" * 40,
+                    "sourceState": "closed",
+                    "branchCleanup": "deleted",
+                    "completedAt": "2026-01-01T00:00:00Z",
+                }
+                outcome[field] = mismatched
+                checkpoint = checkpoint_path(directory, document)
+                original = json.dumps(document)
+                checkpoint.write_text(original, encoding="utf-8")
+                result = self.run_script(
+                    "transition",
+                    "--checkpoint",
+                    str(checkpoint),
+                    "--phase",
+                    "complete",
+                    "--status",
+                    "completed",
+                    "--next-action",
+                    "none",
+                    "--outcome-json",
+                    json.dumps(outcome),
+                )
+                current = checkpoint.read_text(encoding="utf-8")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn(f"must match delivery.{field}", result.stderr)
+            self.assertEqual(current, original)
+
+    def test_complete_transition_rejects_head_that_differs_from_workflow_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            workflow = document["workflow"]
+            delivery = document["delivery"]
+            if isinstance(workflow, dict):
+                workflow["revision"] = "c" * 40
+            if isinstance(delivery, dict):
+                delivery.update(
+                    {
+                        "pullRequestUrl": "https://github.com/o/r/pull/1",
+                        "pullRequestHead": "a" * 40,
+                        "mergeCommit": "b" * 40,
+                    },
+                )
+            outcome = {
+                "result": "merged",
+                "pullRequestUrl": "https://github.com/o/r/pull/1",
+                "pullRequestHead": "a" * 40,
+                "mergeCommit": "b" * 40,
+                "sourceState": "closed",
+                "branchCleanup": "deleted",
+                "completedAt": "2026-01-01T00:00:00Z",
+            }
+            checkpoint = checkpoint_path(directory, document)
+            original = json.dumps(document)
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "complete",
+                "--status",
+                "completed",
+                "--next-action",
+                "none",
+                "--outcome-json",
+                json.dumps(outcome),
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("must match workflow.revision", result.stderr)
+        self.assertEqual(current, original)
 
     def test_complete_transition_rejects_incomplete_outcome(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
