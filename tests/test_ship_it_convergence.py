@@ -114,7 +114,8 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         review = reference("review.md")
         self.assertIn("`git diff <reviewedRevision>..HEAD`", review)
         self.assertIn("Dispatch no Code Adversary and no Findings Adversary", review)
-        self.assertIn("only while `reviewCycles` is below `max_cycles`", review)
+        self.assertIn("`reviewCycles` is below `max_cycles`", review)
+        self.assertIn("the elapsed budget has not expired", review)
         self.assertIn(
             "an unresolved acceptance criterion blocks delivery", reference("evidence.md")
         )
@@ -129,6 +130,9 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         self.assertIn("git diff --quiet HEAD^1 HEAD -- <branch files>", convergence)
         self.assertIn("including files the fix pass added", convergence)
         self.assertIn("triggers no review", convergence)
+        self.assertIn("re-attest only the review evidence", convergence)
+        self.assertIn("rerun the selected manual-test gate", convergence)
+        self.assertIn("focused acceptance checks", convergence)
         self.assertIn("naming the first-parent comparison", reference("evidence.md"))
         self.assertIn(
             "leaves the reviewed files unchanged triggers no review", reference("pr-loop.md")
@@ -229,7 +233,12 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         ):
             self.assertIn(field, checkpoint)
         self.assertIn("Review, test, CI and hosted feedback update the same counters", checkpoint)
-        self.assertIn("gets `reviewedRevision: null` and `findings: []`", checkpoint)
+        self.assertIn(
+            "add `reviewedRevision: null` and `findings: []` only when `reviewCycles` is zero",
+            checkpoint,
+        )
+        self.assertIn("reconstruct both fields only from unambiguous", checkpoint)
+        self.assertIn("stop with the checkpoint path", checkpoint)
         self.assertIn("`fixPasses` counts fix passes spent before their first edit", checkpoint)
         convergence = reference("convergence.md")
         self.assertIn("`reviewCycles` | A Code Adversary is dispatched", convergence)

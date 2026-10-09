@@ -20,7 +20,7 @@ On `NEEDS_FIXES`:
 1. When `fixPasses` already equals the policy's `max_passes`, start no fix: apply the convergence contract's limit rule (a delivery blocker stops the run; every other finding becomes a follow-up issue) and continue.
 2. Otherwise start the single fix pass: increment and persist `fixPasses` before the first edit, then fix every surviving `blocking:` and `issue:` finding in one batch, add regression coverage where behavior was wrong, run focused verification and commit.
 3. Verify the fix from `git diff <reviewedRevision>..HEAD` read against the recorded findings: mark each finding the diff addresses `fixed`; a finding it does not address becomes a follow-up issue, or stops delivery when it is a delivery blocker. Dispatch no Code Adversary and no Findings Adversary for this verification.
-4. Start the second and final review cycle only when that diff touches security, data loss or destructive concurrency, and only while `reviewCycles` is below `max_cycles`. Its surviving findings cannot start another fix pass.
+4. Start the second and final review cycle only when that diff touches security, data loss or destructive concurrency, `reviewCycles` is below `max_cycles`, and the elapsed budget has not expired. Its surviving findings cannot start another fix pass.
 5. Re-attest the fixed revision's review evidence with provider `ship-it-convergence`, naming `reviewedRevision`, the finding dispositions and the focused commands.
 
 Put unresolved `question:` findings in the PR body when the repository cannot settle them. After the fix pass, create follow-up issues for the findings it did not fix and record each URL in `followUpIssues`. Do not start manual testing while a delivery blocker remains unresolved.
