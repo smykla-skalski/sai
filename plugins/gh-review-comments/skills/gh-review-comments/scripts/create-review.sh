@@ -18,7 +18,7 @@
 #
 # The "side" field defaults to "RIGHT" if omitted.
 #
-# Output: JSON with review id, html_url, state, and number of comments submitted.
+# Output: JSON with review id, node_id (PRR_...), html_url, state, and number of comments submitted.
 #
 # Examples:
 #   # Review with inline body and comments
@@ -113,7 +113,7 @@ COMMENT_COUNT=$(head -n1 <<< "$BUILT")
   exit 1
 }
 PAYLOAD=$(tail -n1 <<< "$BUILT")
-[[ "${PAYLOAD}" =~ ^\{.+[0-9] ]] || {
+[[ "${PAYLOAD}" =~ ^\{.*\}$ ]] || {
   echo "Error: expected JSON object payload, got: $PAYLOAD" >&2
   echo "Python output was:" >&2
   echo "$BUILT" >&2
@@ -123,7 +123,7 @@ PAYLOAD=$(tail -n1 <<< "$BUILT")
 # Submit the review. The API response does NOT include the comments array, so
 # we build the jq filter with the known count from the payload we just sent.
 # If the API call succeeds (set -euo pipefail), all comments were attached.
-JQ_FILTER='{id: .id, html_url: .html_url, state: .state, comment_count: '"$COMMENT_COUNT"'}'
+JQ_FILTER='{id: .id, node_id: .node_id, html_url: .html_url, state: .state, comment_count: '"$COMMENT_COUNT"'}'
 echo "$PAYLOAD" | gh api "repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews" \
   --input - \
   --jq "$JQ_FILTER"

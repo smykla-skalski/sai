@@ -123,15 +123,28 @@ Supports adding (reply/new thread), editing, and deleting comments.
 - `--delete`: delete an existing pending review comment
 - `side`: `RIGHT` (default) or `LEFT`
 
+### `scripts/create-pending-review.sh`
+
+Get or create the viewer's pending review on a PR via GraphQL.
+
+```
+"${CLAUDE_SKILL_DIR}/scripts/create-pending-review.sh" <owner> <repo> <pr_number> [<body>]
+```
+
+- GitHub allows one pending review per user per PR. If the viewer already has one, the script returns it (`created: false`) and creates nothing, so it is safe to re-run
+- `body`: review body for a newly created review, ignored when one exists
+- Output: `review_id` (`PRR_...`, pass it to `add-review-comment.sh`), `url`, `created`
+
 ### `scripts/create-review.sh`
 
-Create a PR review with line-level comments via REST API.
+Create and submit a PR review with line-level comments in one REST call.
 
 ```
 "${CLAUDE_SKILL_DIR}/scripts/create-review.sh" <owner> <repo> <pr_number> <event> <body> [<comments_json>|-]
 ```
 
-- `event`: `PENDING`, `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`. `PENDING` omits the event field from the API payload, creating a draft review that is not yet submitted.
+- `event`: `PENDING`, `COMMENT`, `APPROVE`, or `REQUEST_CHANGES`. `PENDING` omits the event field from the API payload, creating a draft review that is not yet submitted. Prefer `create-pending-review.sh` for drafts: `create-review.sh` fails if the viewer already has a pending review on the PR
+- Output: `id`, `node_id` (`PRR_...`), `html_url`, `state`, `comment_count`
 - `comments_json`: JSON array of comment objects, each with `path`, `line`, `body` (and optional `side`, defaults to `RIGHT`)
 - Pass `-` as last arg to read comments from stdin
 
@@ -198,8 +211,8 @@ When `--create-review` is specified, skip Phase 2 actions and instead:
    - File path (validate it exists in the PR diff)
    - Line number
    - Comment body
-4. Build the comments JSON array
-5. Run `"${CLAUDE_SKILL_DIR}/scripts/create-review.sh"` **exactly once** with the collected data
+4. For `PENDING`: run `"${CLAUDE_SKILL_DIR}/scripts/create-pending-review.sh"` with owner, repo, PR number, and body, then add each comment with `add-review-comment.sh <review_id> <body> --new-thread <path> <line>`. If it returns `created: false`, tell the user their comments go into their existing pending review. Report the review URL and comment count, then skip steps 5-7
+5. Otherwise build the comments JSON array and run `"${CLAUDE_SKILL_DIR}/scripts/create-review.sh"` **exactly once** with the collected data
 6. The script returns `comment_count` from the submitted payload (not from the API response). If the script exits 0, the review and all comments were submitted atomically - treat it as fully successful
 7. Report the created review URL and comment count
 
