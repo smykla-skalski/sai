@@ -341,6 +341,24 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
     validate_outcome_values(result, outcome)
 
 
+def validate_merged_delivery(checkpoint: dict[str, Any], outcome: dict[str, Any]) -> None:
+    """Require a merged outcome to repeat the validated delivery identity."""
+    if outcome.get("result") != "merged":
+        return
+    delivery = checkpoint.get("delivery")
+    if not isinstance(delivery, dict):
+        message = "merged outcome requires delivery state"
+        raise BookkeepingError(message)
+    for field in ("pullRequestUrl", "pullRequestHead", "mergeCommit"):
+        if outcome[field] != delivery.get(field):
+            message = f"merged outcome {field} must match delivery.{field}"
+            raise BookkeepingError(message)
+    workflow = checkpoint["workflow"]
+    if outcome["pullRequestHead"] != workflow.get("revision"):
+        message = "merged outcome pullRequestHead must match workflow.revision"
+        raise BookkeepingError(message)
+
+
 def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
     """Validate fields and invariants affected by a workflow transition."""
     missing = REQUIRED_CHECKPOINT_FIELDS.difference(checkpoint)
@@ -374,6 +392,7 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
             message = "complete workflow requires terminal status and outcome"
             raise BookkeepingError(message)
         validate_outcome(status, checkpoint["outcome"])
+        validate_merged_delivery(checkpoint, checkpoint["outcome"])
     elif status in TERMINAL_STATUSES or checkpoint["outcome"] is not None:
         message = "terminal status and outcome require phase complete"
         raise BookkeepingError(message)
