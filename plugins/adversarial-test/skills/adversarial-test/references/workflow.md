@@ -52,6 +52,7 @@ Do not run or read the product yourself; the subagent does. Resolve only what it
 
 - **Local (`--base` or none):** resolve the default branch with `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `origin/main`). `BASE=$(git merge-base <ref> HEAD)`. Run location: the repository root. Diff command: `git diff <BASE sha>`. Files: `git diff --name-only <BASE sha>` plus untracked files (`git ls-files --others --exclude-standard`).
 - **PR URL:** `gh pr view <url> --json number,headRefOid,baseRefName,title,body`. If local `HEAD` is `headRefOid` and the tree is clean, run from the repository root. Otherwise `git fetch origin pull/<number>/head` and `git worktree add --detach <tmpdir> <headRefOid>`; run from that worktree and remove it after Phase 3. Diff command: `gh pr diff <url>`. Use the PR title and body as context when `--context` is absent.
+- **Evidence dir:** `${XDG_DATA_HOME:-$HOME/.local/share}/sai/adversarial-test/<short base or head sha>-<UTC timestamp>`; `mkdir -p` it. It outlives the run and holds the screenshots the verdict cites.
 
 If the file list is empty, output `Test Verdict: PASS` followed by `Nothing to test: empty diff.` and stop.
 
@@ -62,6 +63,7 @@ Assemble one **Test assignment** block:
 ```
 Repository: <absolute repo root>
 Run from: <absolute path of the checkout to run>
+Evidence dir: <absolute path; outlives the run>
 Diff command: <command>
 Changed files:
 <one per line>
@@ -87,9 +89,13 @@ The instruction for the subagent is: *"Prove this change does not satisfy the ta
 
 **opencode.** Use the `task` tool; each call creates a fresh child session, which is the clean context this skill needs. If a `test-adversary` subagent is installed (see the plugin README), use it with the Test assignment and the instruction. Otherwise use the built-in `general` subagent with the mandate prepended.
 
-**Validation and retry.** The reply must have a `Criteria:` list and end with a `TEST_ADVERSARY_VERDICT:` line. If it is empty or malformed, spawn a fresh subagent once more; if that fails too, run the pass inline (see Fallback).
+**Validation and retry.** The reply must have a `Criteria:` list, an `Untested:` line whenever a criterion is UNTESTED, and end with a `TEST_ADVERSARY_VERDICT:` line. If it is empty or malformed, spawn a fresh subagent once more; if that fails too, run the pass inline (see Fallback).
 
-Reject a `PASS` whose criteria cite only automated tests, lint, build, or grep while a runnable surface exists - spawn a fresh subagent once with *"Previous attempt used static evidence only. Run the real surface."* appended. If it still cannot run the surface, treat it as `BLOCKED`.
+Reject a `PASS` whose criteria cite only automated tests, lint, build, or grep while a runnable surface exists - spawn a fresh subagent once with *"Previous attempt used static evidence only. Run the real surface, or mark each criterion you cannot run UNTESTED with the named environmental blocker."* appended. A retry that names an environmental blocker makes that criterion UNTESTED. A retry that still cites only static evidence for a surface that runs is `BLOCKED`: `static evidence only` is not an environmental blocker, and the next line names the surface a human must run by hand.
+
+**Check the screenshot.** When the changed files include UI code (templates, components, stylesheets, view or pane sources), the `Evidence:` line must name a screenshot file that exists with a pixel size of at least 2560x1440 - check it (`sips -g pixelWidth -g pixelHeight <file>` on macOS, `identify <file>` elsewhere). If it names none and the `Untested:` line gives no environmental blocker for the capture (no display, no headless browser, an unreachable pane), spawn a fresh subagent once with *"Previous attempt captured no screenshot of the changed UI surface at 2560x1440 or larger. Capture it, or name the environmental blocker."* appended; if the retry has neither, the verdict is `BLOCKED` with the capture as the human action.
+
+**Reclassify a misfiled blocker.** A `BLOCKED` whose blocker is environmental - sandbox, network, package registry, a missing or fake tool, the build toolchain, a hook false positive, a stop directive, an unreachable display or pane - is not BLOCKED: tag each affected criterion UNTESTED with that blocker, and the verdict is `FAIL` when a reproduction survives Phase 3, otherwise `PASS (partial)`. `BLOCKED` stands for a product precondition that a human must supply (credentials, hardware, an approval, data), or a tester that twice declined a surface or capture that runs here.
 
 ## Phase 3 - Reproduction check
 
@@ -100,7 +106,7 @@ For each `R<n>`:
 3. **Did not reproduce** → run it twice more. Fails at least once → keep, tag `(flaky)`; flakiness is a bug. Passes all three → drop as unreproducible and count it.
 4. **Reproduction itself is broken** (typo, missing setup step) → fix only the harness, never the product, and rerun once; still broken → drop and count it.
 
-Clean up any processes and temp state the reproductions left.
+Clean up any processes and temp state the reproductions left. Leave the evidence directory in place; it holds the screenshots the verdict cites.
 
 ## Output
 
@@ -108,6 +114,11 @@ The verdict comes **first**, on its own line - callers match the first line:
 
 ```
 Test Verdict: PASS
+```
+
+```
+Test Verdict: PASS (partial)
+Untested: AC<n> - <blocker>; AC<m> - <blocker>
 ```
 
 ```
@@ -119,10 +130,11 @@ Test Verdict: BLOCKED
 ```
 
 - **PASS** - every criterion passed on the real surface and no reproduction survived Phase 3.
-- **FAIL** - at least one surviving reproduction.
-- **BLOCKED** - the real surface could not be exercised; the next line names the blocker and the exact human action that unblocks it.
+- **PASS (partial)** - no reproduction survived and at least one criterion is UNTESTED for an environmental reason; the second line lists each with its blocker. Callers treat it as passing and carry the `Untested:` line into the PR.
+- **FAIL** - at least one surviving reproduction, whatever else is UNTESTED.
+- **BLOCKED** - a product precondition that only a human can supply is missing, or the tester twice declined a surface or screenshot that runs here; the next line names the exact human action.
 
-Then the criteria table from the subagent, the surface line, and the surviving reproductions, strongest first:
+Then the criteria table from the subagent, the surface and evidence lines (screenshot paths with pixel sizes), and the surviving reproductions, strongest first:
 
 ```
 **{blocking|issue}:** <criterion or flow>, expected <X>, got <Y> (confirmed|flaky)
@@ -144,6 +156,8 @@ If the agent has no subagent tool or both spawn attempts fail, run the pass inli
 - Fixing product code inside this skill - report, the caller fixes
 - Running against the user's real config, data, or shared services
 - Leaving servers, containers, or worktrees running after the verdict
+- Returning BLOCKED for a sandbox, tooling, or build failure - that is UNTESTED with the blocker, and the verdict is PASS (partial) or FAIL
+- Screenshotting a UI change below 2560x1440, or passing a UI criterion without a screenshot
 - Any prose above the `Test Verdict:` line
 
 ## Example invocations

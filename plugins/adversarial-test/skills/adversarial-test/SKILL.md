@@ -22,6 +22,8 @@ One subagent with a clean context, then a check by you:
 
 The subagent gets a clean context so it tests the task, not the implementer's belief about the task.
 
+Verdicts: `PASS`; `PASS (partial)` when a criterion stayed `UNTESTED` because the environment (sandbox, tooling, build, an unreachable pane) could not exercise it - callers treat it as passing and list the untested criteria; `FAIL`; `BLOCKED` for a product precondition a human must supply, or a tester that twice declined a runnable surface. A UI change needs a screenshot of the changed surface at a viewport of at least 2560x1440 in the evidence directory.
+
 ## Required guidance
 
 Before taking any action, read [references/workflow.md](references/workflow.md) completely. It is the authoritative procedure and preserves every platform fallback, decision rule, template, command, validation step, and output contract. Follow its sections in order and load the deeper references it names only at their stated gates.
