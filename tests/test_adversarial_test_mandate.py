@@ -16,13 +16,19 @@ AGENT_FILE = PLUGIN_DIR / "agents" / "test-adversary.md"
 MANDATE_FILE = (
     PLUGIN_DIR / "skills" / "adversarial-test" / "references" / "test-adversary.md"
 )
-WORKFLOW_FILE = PLUGIN_DIR / "skills" / "adversarial-test" / "references" / "workflow.md"
-SHIP_IT_TEST_GATE = (
-    PLUGIN_DIR.parent / "ship-it" / "skills" / "ship-it" / "references" / "test.md"
+WORKFLOW_FILE = (
+    PLUGIN_DIR / "skills" / "adversarial-test" / "references" / "workflow.md"
 )
+SHIP_IT_REFERENCES = PLUGIN_DIR.parent / "ship-it" / "skills" / "ship-it" / "references"
+SHIP_IT_TEST_GATE = SHIP_IT_REFERENCES / "test.md"
+SHIP_IT_EVIDENCE = SHIP_IT_REFERENCES / "evidence.md"
+SHIP_IT_PR_LOOP = SHIP_IT_REFERENCES / "pr-loop.md"
 FRONTMATTER_FENCE = "---\n"
 VERDICT_LINE = "TEST_ADVERSARY_VERDICT: <PASS | PASS (partial) | FAIL (N) | BLOCKED>"
 VERDICTS = ("PASS", "PASS (partial)", "FAIL", "BLOCKED")
+UNTESTED_STATUS_LIST = "A result status is `pending`, `passed`, `untested`, `failed`, `blocked` or `stale`."
+UNTESTED_RECORDING_RULE = "`ac-<n>` result as `untested`"
+UNTESTED_PR_SECTION = "## Untested criteria"
 
 
 def strip_frontmatter(text: str) -> str:
@@ -61,6 +67,25 @@ class VerdictVocabularyTest(unittest.TestCase):
                 pattern = rf"Test Verdict: {re.escape(verdict)}(?!\w| \()"
                 with self.subTest(file=path.name, verdict=verdict):
                     self.assertRegex(text, pattern)
+
+
+class UntestedCriterionEvidenceTest(unittest.TestCase):
+    """A PASS (partial) verdict needs an evidence state the PR gate accepts."""
+
+    def test_evidence_contract_has_untested_result_state(self) -> None:
+        evidence = SHIP_IT_EVIDENCE.read_text(encoding="utf-8")
+        self.assertIn(UNTESTED_STATUS_LIST, evidence)
+        self.assertIn("`PASS (partial)`", evidence)
+        self.assertIn(UNTESTED_PR_SECTION, evidence)
+
+    def test_test_gate_records_untested_criteria(self) -> None:
+        gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
+        self.assertIn(UNTESTED_RECORDING_RULE, gate)
+
+    def test_pr_loop_lists_untested_criteria(self) -> None:
+        pr_loop = SHIP_IT_PR_LOOP.read_text(encoding="utf-8")
+        self.assertIn(UNTESTED_PR_SECTION, pr_loop)
+        self.assertIn("`untested`", pr_loop)
 
 
 if __name__ == "__main__":

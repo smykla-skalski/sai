@@ -17,7 +17,7 @@ Do not rewrite history after validation begins. If the unpublished branch still 
 
 ## Open the PR
 
-Before pushing, validate that every result with `requiredBy: pr` passed in the current revision's evidence record. Missing, pending, failed, blocked or stale due evidence stops PR creation. CI results remain pending with `requiredBy: merge` until the PR exists.
+Before pushing, validate that every result with `requiredBy: pr` passed in the current revision's evidence record; an acceptance criterion that a `PASS (partial)` verdict names with its environmental blocker may instead be `untested`. Missing, pending, failed, blocked or stale due evidence stops PR creation. CI results remain pending with `requiredBy: merge` until the PR exists.
 
 Push the branch and create a PR against the default branch. Title: the conventional lead-commit title. Body: `## Motivation`, `## Implementation information`, a changelog line (`> Changelog: type(scope): desc` or `> Changelog: skip`), any unsettled review `question:` findings, the untested criteria from a `PASS (partial)` test verdict under `## Untested criteria`, plus the source link:
 

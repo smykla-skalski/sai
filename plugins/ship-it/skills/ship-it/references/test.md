@@ -14,7 +14,7 @@ On `FAIL`, rerun each reproduction before acting. A surviving reproduction is an
 
 Review and test share the same fix, cycle and 90-minute counters. When they are exhausted, stop with the surviving reproduction and exact human action. Exhaustive review changes the budget only after explicit user opt-in.
 
-`PASS (partial)` is a passing verdict: every exercised criterion passed, and each `UNTESTED` criterion names an environmental blocker (sandbox, tooling, build, an unreachable pane), not a product gap. Record it as passed with the untested criteria and their blockers in the bounded output reference, and list them in the PR body under `## Untested criteria`.
+`PASS (partial)` is a passing verdict: every exercised criterion passed, and each `UNTESTED` criterion names an environmental blocker (sandbox, tooling, build, an unreachable pane), not a product gap. Record it as passed with the untested criteria and their blockers in the bounded output reference, and list them in the PR body under `## Untested criteria`. Record each `UNTESTED` criterion's `ac-<n>` result as `untested` with its blocker in that result's output reference, and each exercised criterion's result as `passed`.
 
 `BLOCKED` is a hard stop for a product precondition that only a human can supply, or a tester that twice declined a runnable surface: report the exact human action required. Open a PR only after every selected PR-due review and test gate passes on the same revision.
 
