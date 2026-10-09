@@ -87,6 +87,22 @@ class UntestedCriterionEvidenceTest(unittest.TestCase):
         self.assertIn(UNTESTED_PR_SECTION, pr_loop)
         self.assertIn("`untested`", pr_loop)
 
+    def test_partial_pass_survives_evidence_recovery(self) -> None:
+        evidence = SHIP_IT_EVIDENCE.read_text(encoding="utf-8")
+        self.assertIn(
+            "`passed` or `untested` evidence valid under the partial-pass rule",
+            evidence,
+        )
+        self.assertNotIn("complete record contains non-passing evidence", evidence)
+
+    def test_tester_noncompliance_is_not_blocked(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
+        self.assertIn("run the inline fallback", workflow)
+        self.assertIn("only for a product precondition", gate)
+        self.assertNotIn("tester twice declined", workflow)
+        self.assertNotIn("tester that twice declined", gate)
+
 
 if __name__ == "__main__":
     unittest.main()

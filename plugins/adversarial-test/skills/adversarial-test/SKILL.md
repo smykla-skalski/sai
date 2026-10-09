@@ -22,7 +22,7 @@ One subagent with a clean context, then a check by you:
 
 The subagent gets a clean context so it tests the task, not the implementer's belief about the task.
 
-Verdicts: `PASS`; `PASS (partial)` when a criterion stayed `UNTESTED` because the environment (sandbox, tooling, build, an unreachable pane) could not exercise it - callers treat it as passing and list the untested criteria; `FAIL`; `BLOCKED` for a product precondition a human must supply, or a tester that twice declined a runnable surface. A UI change needs a screenshot of the changed surface at a viewport of at least 2560x1440 in the evidence directory.
+Verdicts: `PASS`; `PASS (partial)` when a criterion stayed `UNTESTED` because the environment (sandbox, tooling, build, an unreachable pane) could not exercise it - callers treat it as passing and list the untested criteria; `FAIL`; `BLOCKED` only for a product precondition a human must supply. A UI change needs a screenshot of the changed surface at a viewport of at least 2560x1440 in the evidence directory. A tester that twice declines a runnable surface triggers the inline fallback, not `BLOCKED`.
 
 ## Required guidance
 
