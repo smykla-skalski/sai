@@ -24,6 +24,7 @@ EXPECTED_PHASES: Final[tuple[str, ...]] = (
     "explore",
     "branch",
     "implement",
+    "publish",
     "review",
     "test",
     "pr-loop",

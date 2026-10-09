@@ -142,6 +142,14 @@ class ShipItCiTriageContractTest(unittest.TestCase):
             telemetry_v1_schema["properties"]["schema_version"]["const"], 1
         )
 
+    def test_publish_is_a_telemetry_phase_in_every_contract_version(self) -> None:
+        telemetry = TELEMETRY_REFERENCE.read_text(encoding="utf-8")
+        for path in (TELEMETRY_SCHEMA, TELEMETRY_V1_SCHEMA):
+            with self.subTest(schema=path.name):
+                schema = json.loads(path.read_text(encoding="utf-8"))
+                self.assertIn("publish", schema["properties"]["phase"]["enum"])
+        self.assertIn("`publish`", telemetry)
+
 
 if __name__ == "__main__":
     unittest.main()

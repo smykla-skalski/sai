@@ -58,6 +58,7 @@ PHASES: Final[frozenset[str]] = frozenset(
         "explore",
         "branch",
         "implement",
+        "publish",
         "review",
         "test",
         "pr",

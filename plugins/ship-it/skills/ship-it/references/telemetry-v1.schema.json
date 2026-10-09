@@ -29,7 +29,7 @@
     "provider": {"$ref": "#/$defs/identifier"},
     "model": {"$ref": "#/$defs/identifier"},
     "role": {"enum": ["primary", "subagent", "validator", "guardian", "synthetic", "probe"]},
-    "phase": {"enum": ["resolve", "orchestrate", "explore", "branch", "implement", "review", "test", "pr", "wait", "fix", "merge", "complete"]},
+    "phase": {"enum": ["resolve", "orchestrate", "explore", "branch", "implement", "publish", "review", "test", "pr", "wait", "fix", "merge", "complete"]},
     "metrics": {
       "type": "object",
       "required": ["turns", "tool_calls", "permission_decisions", "compactions", "input_tokens", "output_tokens", "elapsed_ms", "retries", "findings", "checks", "human_interventions", "failed_commands", "approval_wait_ms"],

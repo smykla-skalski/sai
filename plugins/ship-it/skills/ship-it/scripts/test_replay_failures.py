@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("replay_failures.py")
+TRACE_SCHEMA = SCRIPT.parent.parent / "references" / "replay-trace.schema.json"
 SPEC = importlib.util.spec_from_file_location("replay_failures", SCRIPT)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError("cannot load replay_failures.py")
@@ -186,6 +187,24 @@ json.dump({
         result = REPLAY.grade_trace(trace, value)
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["failure_observations"], ["premature_completion"])
+
+    def test_publish_phase_is_supported(self) -> None:
+        value = case()
+        trace = {
+            "schema_version": 1,
+            "case_id": value["id"],
+            "harness": "codex",
+            "outcome": "accepted",
+            "events": [
+                {"sequence": 1, "phase": "publish", "observation": "draft_opened"}
+            ],
+            "cost": dict.fromkeys(REPLAY.COUNTERS),
+        }
+        validated = REPLAY.validate_trace(trace, value["id"], "codex")
+        self.assertEqual(validated["events"][0]["phase"], "publish")
+        schema = json.loads(TRACE_SCHEMA.read_text(encoding="utf-8"))
+        phases = schema["properties"]["events"]["items"]["properties"]["phase"]["enum"]
+        self.assertIn("publish", phases)
 
     def test_wrong_final_outcome_and_phase_block_release(self) -> None:
         value = case()

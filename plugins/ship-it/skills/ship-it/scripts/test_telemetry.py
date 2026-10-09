@@ -49,7 +49,7 @@ def test_lifecycle() -> None:
             root,
             "record",
             "--run-id", run_id,
-            "--phase", "review",
+            "--phase", "publish",
             "--role", "validator",
             "--tool-calls", "4",
         )
@@ -60,6 +60,7 @@ def test_lifecycle() -> None:
         assert [event["event"] for event in events] == ["run_started", "phase_completed", "run_finished"]
         assert all(event["schema_version"] == 2 for event in events)
         assert events[0]["task_id"] == "github-159"
+        assert events[1]["phase"] == "publish"
         assert events[1]["role"] == "validator" and events[1]["metrics"]["tool_calls"] == 4
         assert events[2]["outcome"] == "accepted" and events[2]["metrics"]["input_tokens"] is None
         assert set(events[0]["metrics"]) == {
