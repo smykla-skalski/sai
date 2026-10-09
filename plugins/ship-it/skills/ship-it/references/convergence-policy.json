@@ -8,24 +8,47 @@
       "review": {
         "code_adversary_passes": 1,
         "findings_challenge_passes": 1,
+        "findings_challenge_when": "blocking-or-issue-finding",
         "max_cycles": 2,
         "rereview_triggers": [
           "security",
           "data-loss",
-          "destructive-concurrency",
-          "unresolved-acceptance"
-        ]
+          "destructive-concurrency"
+        ],
+        "default_branch_merge": "no-review-when-reviewed-files-unchanged"
       },
       "fixes": {
         "max_passes": 1,
-        "validation": "focused-tests"
+        "validation": "focused-tests",
+        "verification": "diff-since-reviewed-revision-against-findings"
       },
       "full_quality_gate_runs": 1,
-      "later_non_blocking_findings": "follow-up-issue"
+      "later_non_blocking_findings": "follow-up-issue",
+      "at_limit": "follow-up-issues-then-deliver",
+      "delivery_blockers": [
+        "security-defect",
+        "data-loss",
+        "destructive-concurrency",
+        "unresolved-acceptance",
+        "repository-required-check",
+        "mandatory-human-review"
+      ]
     },
     "exhaustive": {
       "activation": "explicit-user-request",
-      "limits": "user-directed"
+      "limits": "user-directed",
+      "authorization": {
+        "accepted": ["user-current-request"],
+        "rejected": [
+          "coordinator",
+          "worker-rules",
+          "spawn-prompt",
+          "compaction-summary",
+          "repository-instruction",
+          "risk-level",
+          "agent-preference"
+        ]
+      }
     }
   },
   "copilot": {

@@ -12,6 +12,11 @@ SKILL_DIR: Final[Path] = (
 )
 POLICY_FILE: Final[Path] = SKILL_DIR / "references" / "convergence-policy.json"
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
+REFERENCES: Final[Path] = SKILL_DIR / "references"
+
+
+def reference(name: str) -> str:
+    return (REFERENCES / name).read_text(encoding="utf-8")
 
 
 class ShipItConvergenceContractTest(unittest.TestCase):
@@ -26,34 +31,119 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         self.assertEqual(self.bounded["review"]["code_adversary_passes"], 1)
         self.assertEqual(self.bounded["review"]["findings_challenge_passes"], 1)
         self.assertEqual(self.bounded["review"]["max_cycles"], 2)
-        self.assertEqual(self.bounded["fixes"], {"max_passes": 1, "validation": "focused-tests"})
+        self.assertEqual(
+            self.bounded["fixes"],
+            {
+                "max_passes": 1,
+                "validation": "focused-tests",
+                "verification": "diff-since-reviewed-revision-against-findings",
+            },
+        )
         self.assertEqual(self.bounded["full_quality_gate_runs"], 1)
 
     def test_only_severity_exceptions_allow_the_second_cycle(self) -> None:
+        review = self.bounded["review"]
+        blockers = set(self.bounded["delivery_blockers"])
         self.assertEqual(
-            set(self.bounded["review"]["rereview_triggers"]),
-            {"security", "data-loss", "destructive-concurrency", "unresolved-acceptance"},
+            set(review["rereview_triggers"]),
+            {"security", "data-loss", "destructive-concurrency"},
         )
+        self.assertNotIn("unresolved-acceptance", review["rereview_triggers"])
+        self.assertIn("unresolved-acceptance", blockers)
 
-        def decision(trigger: str, cycles: int, elapsed_minutes: int) -> str:
-            if elapsed_minutes >= self.bounded["max_elapsed_minutes"]:
+        def decision(finding: str, cycles: int, elapsed_minutes: int) -> str:
+            budget_left = (
+                cycles < review["max_cycles"]
+                and elapsed_minutes < self.bounded["max_elapsed_minutes"]
+            )
+            if finding in review["rereview_triggers"] and budget_left:
+                return "rereview"
+            if finding in blockers or f"{finding}-defect" in blockers:
                 return "stop"
-            if trigger not in self.bounded["review"]["rereview_triggers"]:
-                return self.bounded["later_non_blocking_findings"]
-            if cycles >= self.bounded["review"]["max_cycles"]:
-                return "stop"
-            return "rereview"
+            return self.bounded["later_non_blocking_findings"]
 
         self.assertEqual(decision("style", 1, 20), "follow-up-issue")
+        self.assertEqual(decision("style", 2, 95), "follow-up-issue")
         self.assertEqual(decision("security", 1, 20), "rereview")
-        self.assertEqual(decision("unresolved-acceptance", 2, 20), "stop")
+        self.assertEqual(decision("security", 2, 20), "stop")
         self.assertEqual(decision("security", 1, 90), "stop")
+        self.assertEqual(decision("unresolved-acceptance", 1, 20), "stop")
+        self.assertEqual(decision("repository-required-check", 1, 20), "stop")
+
+    def test_clean_verdict_ends_the_gate_without_a_findings_challenge(self) -> None:
+        self.assertEqual(
+            self.bounded["review"]["findings_challenge_when"],
+            "blocking-or-issue-finding",
+        )
+        self.assertIn(
+            "never dispatch the Findings Adversary for a CLEAN result", reference("review.md")
+        )
+        self.assertIn(
+            "never send a CLEAN result to the Findings Adversary", reference("convergence.md")
+        )
+
+    def test_fix_pass_is_verified_from_the_diff_since_the_reviewed_revision(self) -> None:
+        review = reference("review.md")
+        self.assertIn("`git diff <reviewedRevision>..HEAD`", review)
+        self.assertIn("Dispatch no Code Adversary and no Findings Adversary", review)
+        self.assertIn("only while `reviewCycles` is below `max_cycles`", review)
+        self.assertIn(
+            "an unresolved acceptance criterion blocks delivery", reference("evidence.md")
+        )
+        self.assertIn("never starts another review cycle", reference("test.md"))
+
+    def test_default_branch_merge_with_unchanged_reviewed_files_needs_no_review(self) -> None:
+        self.assertEqual(
+            self.bounded["review"]["default_branch_merge"],
+            "no-review-when-reviewed-files-unchanged",
+        )
+        convergence = reference("convergence.md")
+        self.assertIn("git diff --quiet <reviewedRevision> HEAD -- <reviewed files>", convergence)
+        self.assertIn("the merge triggers no review", convergence)
+        self.assertIn(
+            "leaves the reviewed files unchanged triggers no review", reference("pr-loop.md")
+        )
+
+    def test_reaching_the_limit_delivers_with_follow_up_issues_unless_blocked(self) -> None:
+        self.assertEqual(self.bounded["at_limit"], "follow-up-issues-then-deliver")
+        self.assertEqual(
+            set(self.bounded["delivery_blockers"]),
+            {
+                "security-defect",
+                "data-loss",
+                "destructive-concurrency",
+                "unresolved-acceptance",
+                "repository-required-check",
+                "mandatory-human-review",
+            },
+        )
+        convergence = reference("convergence.md")
+        self.assertIn("## Reaching the limit", convergence)
+        self.assertIn("start no further cycle or fix pass", convergence)
+        self.assertIn("Never defer a delivery blocker to a follow-up issue", convergence)
+        self.assertIn(
+            "a delivery blocker survives the convergence budget",
+            SKILL_FILE.read_text(encoding="utf-8"),
+        )
 
     def test_exhaustive_mode_requires_explicit_current_request(self) -> None:
         exhaustive = self.policy["modes"]["exhaustive"]
         self.assertEqual(exhaustive["activation"], "explicit-user-request")
         self.assertEqual(exhaustive["limits"], "user-directed")
         self.assertNotEqual(self.policy["default_mode"], "exhaustive")
+        self.assertEqual(exhaustive["authorization"]["accepted"], ["user-current-request"])
+        self.assertLessEqual(
+            {"coordinator", "worker-rules", "spawn-prompt", "compaction-summary"},
+            set(exhaustive["authorization"]["rejected"]),
+        )
+        convergence = reference("convergence.md")
+        for source in ("coordinator", "worker-rules file", "compaction summary"):
+            with self.subTest(source=source):
+                self.assertIn(source, convergence)
+        self.assertIn(
+            "The coordinator never authorizes another review cycle or fix pass",
+            reference("orchestration.md"),
+        )
 
     def test_budget_preserves_delivery_controls_and_ignores_copilot_waits(self) -> None:
         self.assertEqual(
@@ -95,9 +185,13 @@ class ShipItConvergenceContractTest(unittest.TestCase):
             '"reviewCycles": 0',
             '"fixPasses": 0',
             '"fullQualityGateRuns": 0',
+            '"reviewedRevision": null',
+            '"findings": []',
         ):
             self.assertIn(field, checkpoint)
         self.assertIn("Review, test, CI and hosted feedback update the same counters", checkpoint)
+        self.assertIn("gets `reviewedRevision: null` and `findings: []`", checkpoint)
+        self.assertIn("`reviewCycles` | A Code Adversary is dispatched", reference("convergence.md"))
 
 
 if __name__ == "__main__":

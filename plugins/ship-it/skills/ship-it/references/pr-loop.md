@@ -13,7 +13,7 @@ Do not rewrite history after validation begins. If the unpublished branch still 
 ## History rules after the first push
 
 - Never force-push and never rebase.
-- When the default branch moves or the PR conflicts, `git fetch origin` and `git merge origin/<default>` with a signed merge commit (`git merge -S`). In conflicts keep both sides' entries (changelogs, lists, version tables), then rerun the quality gates.
+- When the default branch moves or the PR conflicts, `git fetch origin` and `git merge origin/<default>` with a signed merge commit (`git merge -S`). In conflicts keep both sides' entries (changelogs, lists, version tables), then rerun the quality gates. A merge that leaves the reviewed files unchanged triggers no review; re-attest the merged revision under the convergence contract's default-branch-merge rule.
 
 ## Open the PR
 
