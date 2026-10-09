@@ -50,33 +50,61 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         )
         self.assertNotIn("unresolved-acceptance", review["rereview_triggers"])
         self.assertIn("unresolved-acceptance", blockers)
+        self.assertEqual(self.bounded["cycle_limit_counters"], ["reviewCycles", "elapsed"])
+        self.assertEqual(self.bounded["fix_limit_counters"], ["fixPasses"])
 
-        def decision(finding: str, cycles: int, elapsed_minutes: int) -> str:
-            budget_left = (
-                cycles < review["max_cycles"]
-                and elapsed_minutes < self.bounded["max_elapsed_minutes"]
-            )
-            if finding in review["rereview_triggers"] and budget_left:
+        def decision(finding: str, *, cycles: int, fix_passes: int, elapsed: int) -> str:
+            exhausted = {
+                "reviewCycles": cycles >= review["max_cycles"],
+                "elapsed": elapsed >= self.bounded["max_elapsed_minutes"],
+                "fixPasses": fix_passes >= self.bounded["fixes"]["max_passes"],
+            }
+            if not any(exhausted[name] for name in self.bounded["fix_limit_counters"]):
+                return "fix"
+            cycle_limit = any(exhausted[name] for name in self.bounded["cycle_limit_counters"])
+            if finding in review["rereview_triggers"] and not cycle_limit:
                 return "rereview"
             if finding in blockers or f"{finding}-defect" in blockers:
                 return "stop"
             return self.bounded["later_non_blocking_findings"]
 
-        self.assertEqual(decision("style", 1, 20), "follow-up-issue")
-        self.assertEqual(decision("style", 2, 95), "follow-up-issue")
-        self.assertEqual(decision("security", 1, 20), "rereview")
-        self.assertEqual(decision("security", 2, 20), "stop")
-        self.assertEqual(decision("security", 1, 90), "stop")
-        self.assertEqual(decision("unresolved-acceptance", 1, 20), "stop")
-        self.assertEqual(decision("repository-required-check", 1, 20), "stop")
+        self.assertEqual(decision("style", cycles=1, fix_passes=0, elapsed=20), "fix")
+        self.assertEqual(decision("style", cycles=1, fix_passes=1, elapsed=20), "follow-up-issue")
+        self.assertEqual(decision("style", cycles=2, fix_passes=1, elapsed=95), "follow-up-issue")
+        self.assertEqual(decision("security", cycles=1, fix_passes=1, elapsed=20), "rereview")
+        self.assertEqual(decision("security", cycles=2, fix_passes=1, elapsed=20), "stop")
+        self.assertEqual(decision("security", cycles=1, fix_passes=1, elapsed=90), "stop")
+        self.assertEqual(
+            decision("unresolved-acceptance", cycles=1, fix_passes=1, elapsed=20), "stop"
+        )
+        self.assertEqual(
+            decision("repository-required-check", cycles=1, fix_passes=1, elapsed=20), "stop"
+        )
+
+        convergence = reference("convergence.md")
+        self.assertIn(
+            "When `reviewCycles` equals `max_cycles` or the elapsed budget is spent, "
+            "start no further review cycle.",
+            convergence,
+        )
+        self.assertIn("When `fixPasses` equals `max_passes`, start no further fix pass.", convergence)
+        self.assertIn("The cycle limit does not depend on `fixPasses`", convergence)
+        self.assertIn(
+            "Reaching the cycle or elapsed limit starts no further cycle; "
+            "reaching the fix-pass limit starts no further fix pass.",
+            reference("review.md"),
+        )
 
     def test_clean_verdict_ends_the_gate_without_a_findings_challenge(self) -> None:
         self.assertEqual(
             self.bounded["review"]["findings_challenge_when"],
             "blocking-or-issue-finding",
         )
+        review = reference("review.md")
+        self.assertIn("never dispatch the Findings Adversary for a CLEAN result", review)
         self.assertIn(
-            "never dispatch the Findings Adversary for a CLEAN result", reference("review.md")
+            "dispatches the Findings Adversary only after a `blocking:` or `issue:` finding",
+            review,
         )
         self.assertIn(
             "never send a CLEAN result to the Findings Adversary", reference("convergence.md")
@@ -98,8 +126,10 @@ class ShipItConvergenceContractTest(unittest.TestCase):
             "no-review-when-reviewed-files-unchanged",
         )
         convergence = reference("convergence.md")
-        self.assertIn("git diff --quiet <reviewedRevision> HEAD -- <reviewed files>", convergence)
-        self.assertIn("the merge triggers no review", convergence)
+        self.assertIn("git diff --quiet HEAD^1 HEAD -- <branch files>", convergence)
+        self.assertIn("including files the fix pass added", convergence)
+        self.assertIn("triggers no review", convergence)
+        self.assertIn("naming the first-parent comparison", reference("evidence.md"))
         self.assertIn(
             "leaves the reviewed files unchanged triggers no review", reference("pr-loop.md")
         )
@@ -119,8 +149,17 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         )
         convergence = reference("convergence.md")
         self.assertIn("## Reaching the limit", convergence)
-        self.assertIn("start no further cycle or fix pass", convergence)
+        self.assertIn("Once no fix pass remains, classify every finding still `open`", convergence)
         self.assertIn("Never defer a delivery blocker to a follow-up issue", convergence)
+        self.assertIn(
+            "re-attest the review evidence for the current revision from the follow-up list",
+            convergence,
+        )
+        self.assertIn("leaves no failed evidence", reference("review.md"))
+        self.assertIn(
+            "after every remaining finding has become a follow-up issue under the limit rule",
+            reference("evidence.md"),
+        )
         self.assertIn(
             "a delivery blocker survives the convergence budget",
             SKILL_FILE.read_text(encoding="utf-8"),
@@ -191,7 +230,16 @@ class ShipItConvergenceContractTest(unittest.TestCase):
             self.assertIn(field, checkpoint)
         self.assertIn("Review, test, CI and hosted feedback update the same counters", checkpoint)
         self.assertIn("gets `reviewedRevision: null` and `findings: []`", checkpoint)
-        self.assertIn("`reviewCycles` | A Code Adversary is dispatched", reference("convergence.md"))
+        self.assertIn("`fixPasses` counts fix passes spent before their first edit", checkpoint)
+        convergence = reference("convergence.md")
+        self.assertIn("`reviewCycles` | A Code Adversary is dispatched", convergence)
+        self.assertIn("`fixPasses` | A fix pass starts, before its first edit", convergence)
+        self.assertIn(
+            "Spend a review cycle or fix pass in the checkpoint before it starts", convergence
+        )
+        self.assertIn(
+            "increment and persist `fixPasses` before the first edit", reference("review.md")
+        )
 
 
 if __name__ == "__main__":

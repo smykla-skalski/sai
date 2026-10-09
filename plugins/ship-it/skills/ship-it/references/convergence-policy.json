@@ -25,6 +25,8 @@
       "full_quality_gate_runs": 1,
       "later_non_blocking_findings": "follow-up-issue",
       "at_limit": "follow-up-issues-then-deliver",
+      "cycle_limit_counters": ["reviewCycles", "elapsed"],
+      "fix_limit_counters": ["fixPasses"],
       "delivery_blockers": [
         "security-defect",
         "data-loss",

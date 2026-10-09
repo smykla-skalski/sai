@@ -4,12 +4,12 @@ Use [convergence-policy.json](convergence-policy.json) directly in Claude Code, 
 
 ## Counters
 
-The checkpoint's `convergence` object is the only budget. Read it before every review dispatch, fix commit and full quality-gate run; update it when the event happens, never before.
+The checkpoint's `convergence` object is the only budget. Read it before every review dispatch, fix pass and full quality-gate run. Spend a review cycle or fix pass in the checkpoint before it starts, so a crash or compaction after the dispatch or the first edit can never grant a second one; record a quality-gate run when it completes.
 
 | Field | Changes when | Bounded limit |
 | :-- | :-- | :-- |
 | `reviewCycles` | A Code Adversary is dispatched | `review.max_cycles` |
-| `fixPasses` | The first commit of a fix pass is created | `fixes.max_passes` |
+| `fixPasses` | A fix pass starts, before its first edit | `fixes.max_passes` |
 | `fullQualityGateRuns` | The complete local quality gate runs inside the validation loop | `full_quality_gate_runs` |
 | `startedAt` | The first review worker is dispatched | `max_elapsed_minutes` |
 | `reviewedRevision` | A review cycle ends | The revision its verdict attests |
@@ -27,18 +27,18 @@ Batch every surviving `blocking:` and `issue:` finding into at most one fix pass
 
 A fix pass does not start another review. Verify it from `git diff <reviewedRevision>..HEAD` read against the recorded findings list and nothing else: mark a finding `fixed` when that diff addresses it, and treat a finding the diff does not address exactly like a finding at the limit below. Dispatch no Code Adversary and no Findings Adversary for this verification. Re-attest the fixed revision's pending review evidence from the finding dispositions, the focused verification and the final quality gate.
 
-Start the second and final review cycle only when that diff touches security, risks data loss or changes destructive concurrency, and only while `reviewCycles` is below `max_cycles`. It has the same one-Code-pass shape with a Findings challenge only when there are findings. Its surviving findings cannot start another fix pass.
+Start the second and final review cycle only when that diff touches security, risks data loss or changes destructive concurrency, and only while `reviewCycles` is below `max_cycles` and the elapsed budget remains; the spent fix pass does not prevent it. It has the same one-Code-pass shape with a Findings challenge only when there are findings. Its surviving findings cannot start another fix pass: they follow the limit rule below.
 
 ## Default-branch merges
 
-After `git merge origin/<default>`, the reviewed files are the paths in `git diff --name-only $(git merge-base origin/<default> <reviewedRevision>) <reviewedRevision>`. When `git diff --quiet <reviewedRevision> HEAD -- <reviewed files>` reports no change, the merge triggers no review: re-attest the review and manual-test evidence for the merged revision from `reviewedRevision`, and rerun the quality gate as merge verification, which consumes no cycle, fix-pass or gate-run budget. When the merge or its conflict resolution changed a reviewed file, verify only that delta against the findings list as in the fix verification; a new cycle needs one of its triggers and remaining budget. A moving default branch is never by itself a reason to review again.
+After `git merge origin/<default>` creates merge commit `HEAD`, the branch files are the paths in `git diff --name-only $(git merge-base origin/<default> HEAD^1) HEAD^1`: every file the task changed up to the pre-merge tip, including files the fix pass added. When `git diff --quiet HEAD^1 HEAD -- <branch files>` reports no change, the merge touched no reviewed or fixed file and triggers no review: re-attest the review and manual-test evidence for the merged revision from `reviewedRevision` and the finding dispositions, naming that first-parent comparison, and rerun the quality gate as merge verification, which consumes no cycle, fix-pass or gate-run budget. When the merge or its conflict resolution changed a branch file, verify only `git diff HEAD^1 HEAD -- <branch files>` against the findings list as in the fix verification; a new cycle needs one of its triggers and remaining cycle budget. A moving default branch is never by itself a reason to review again.
 
 ## Reaching the limit
 
-When `reviewCycles` equals `max_cycles`, `fixPasses` equals `max_passes` or the elapsed budget is spent, start no further cycle or fix pass. Classify every finding still `open` and every unresolved condition:
+When `reviewCycles` equals `max_cycles` or the elapsed budget is spent, start no further review cycle. When `fixPasses` equals `max_passes`, start no further fix pass. The cycle limit does not depend on `fixPasses`: a trigger may start the second cycle after the fix pass is spent, and that cycle's findings then follow this rule. Once no fix pass remains, classify every finding still `open` and every unresolved condition:
 
 - A delivery blocker, listed under `delivery_blockers` in the policy (a security defect, data-loss risk, destructive-concurrency defect, unresolved acceptance criterion, failing repository-required check or missing mandatory human review), sets `disposition: blocked` and stops the run with that exact condition and the next human action.
-- Every other finding, whatever its label, becomes a follow-up issue: create it, append its URL to `followUpIssues`, set `disposition: follow-up`, list it in the PR body, and continue to the next gate and the PR.
+- Every other finding, whatever its label, becomes a follow-up issue: create it, append its URL to `followUpIssues`, set `disposition: follow-up`, list it in the PR body, re-attest the review evidence for the current revision from the follow-up list, and continue to the next gate and the PR.
 
 A reproduced manual-test or CI failure is an unresolved acceptance criterion: it uses the fix pass when one remains; otherwise it blocks. Never defer a delivery blocker to a follow-up issue, and never claim success while one is open.
 
