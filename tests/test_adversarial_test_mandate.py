@@ -103,6 +103,20 @@ class UntestedCriterionEvidenceTest(unittest.TestCase):
         self.assertNotIn("tester twice declined", workflow)
         self.assertNotIn("tester that twice declined", gate)
 
+    def test_partial_pass_pr_body_is_verified_after_creation(self) -> None:
+        evidence = SHIP_IT_EVIDENCE.read_text(encoding="utf-8")
+        pr_loop = SHIP_IT_PR_LOOP.read_text(encoding="utf-8")
+        self.assertIn("PR-body state is not a prerequisite", evidence)
+        self.assertIn("Read the created PR body back from GitHub", pr_loop)
+
+    def test_ui_evidence_proves_viewport_not_only_pixels(self) -> None:
+        mandate = MANDATE_FILE.read_text(encoding="utf-8")
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        for text in (mandate, workflow):
+            self.assertIn("viewport dimensions", text)
+            self.assertIn("device scaling", text)
+            self.assertIn("capture command", text)
+
 
 if __name__ == "__main__":
     unittest.main()

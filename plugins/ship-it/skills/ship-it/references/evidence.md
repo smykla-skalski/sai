@@ -132,7 +132,7 @@ Create one stable result ID for each resolved acceptance criterion and each gate
 
 A gate passes only when every required result due at that gate has `status: passed`, or `status: untested` under the partial-pass rule below, for the exact record revision. Missing, pending, failed, blocked or stale due evidence blocks that gate. CI results that are not available before PR creation remain pending with `requiredBy: merge`.
 
-An acceptance-criterion result is `untested` only under a `PASS (partial)` manual-test verdict whose `Untested` line names an environmental blocker for that criterion: the result carries that blocker in its output reference, the PR body lists the criterion under `## Untested criteria`, and the record still satisfies the PR and merge gates for that revision. No other result category, and no criterion the verdict leaves unnamed, may be `untested`.
+An acceptance-criterion result is `untested` only under a `PASS (partial)` manual-test verdict whose `Untested` line names an environmental blocker for that criterion: the result carries that blocker in its output reference and still satisfies the PR and merge gates for that revision. No other result category, and no criterion the verdict leaves unnamed, may be `untested`. PR creation copies every such criterion into `## Untested criteria`, then verifies the live body separately; PR-body state is not a prerequisite for validating pre-PR evidence.
 
 A record becomes complete at the merge gate only when all of these are true:
 

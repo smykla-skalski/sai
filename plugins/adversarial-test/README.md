@@ -18,7 +18,7 @@ Output leads with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Ve
 | `FAIL` | At least one reproduction survived the rerun |
 | `BLOCKED` | A product precondition that only a human can supply is missing (credentials, hardware, an approval, data). The next line names the exact human action |
 
-A UI change (web page, desktop or webview pane) needs a screenshot of the changed surface at a viewport of at least 2560x1440. Screenshots land in the evidence directory `${XDG_DATA_HOME:-$HOME/.local/share}/sai/adversarial-test/<run>/`, which outlives the run; the report lists each path with its pixel size.
+A UI change (web page, desktop or webview pane) needs a screenshot of the changed surface at a viewport of at least 2560x1440. Screenshots land in the evidence directory `${XDG_DATA_HOME:-$HOME/.local/share}/sai/adversarial-test/<run>/`, which outlives the run; the report lists each path with its image pixels, viewport dimensions and capture command or window measurement. Image pixels alone do not prove viewport size on a scaled display.
 
 For code correctness review, use `adversarial-review`.
 

@@ -29,6 +29,8 @@ Push the branch and create a PR against the default branch. Title: the conventio
 
 Follow the repository's own PR template or conventions when it documents them. Capture the PR number.
 
+Read the created PR body back from GitHub. For `PASS (partial)`, verify that `## Untested criteria` contains every criterion and environmental blocker from the verdict before treating PR creation as complete. A missing or altered entry returns to PR-body correction; it does not invalidate the already-valid revision evidence.
+
 Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to `pr`, and keep `nextAction` aligned with the current wait, fix or merge action. Reconcile these fields with GitHub before every resumed PR loop.
 
 ## Request hosted reviewers
