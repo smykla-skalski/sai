@@ -26,6 +26,8 @@ Validation gates come from a portable risk policy. Repositories can add `.sai/sh
 
 Release controls come from `.sai/ship-it-release.json`, repository instructions, live GitHub rules and a conservative bundled default. The normalized policy is stored in the task checkpoint and names required human or automated reviewers, checks, merge mechanism and strategy, issue closure and branch cleanup. Repositories can require Copilot, another reviewer, human approval or no hosted review without changing the workflow.
 
+Validation converges by default. One Code Adversary pass reviews the change; a Findings Adversary challenges it only when there are findings, and a CLEAN verdict ends the gate. Surviving findings get one batched fix pass, verified from the diff since the reviewed revision against the recorded findings rather than by another review; a second hunt happens only when the fix touches security, data loss or destructive concurrency, and a default-branch merge that leaves the reviewed files unchanged triggers none. The checkpoint counts review cycles, fix passes and full quality-gate runs; at the limit the run opens the PR with the remaining findings as follow-up issues, while a security defect, an unresolved acceptance criterion or a repository-required check still blocks. Only your explicit request selects exhaustive mode; a coordinator, worker-rules file or compaction summary cannot raise the limit.
+
 `ship-it` replaces `ship-issue`. To upgrade, uninstall `ship-issue@sai` and install `ship-it@sai`.
 
 ## Installation
