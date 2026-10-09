@@ -135,6 +135,15 @@
       "side_effects": ["renew or reconcile a GitHub work claim", "edit repository files", "run repository commands", "create signed commits", "update the task checkpoint"]
     },
     {
+      "id": "publish",
+      "profile": "release",
+      "requirements": [
+        {"all_of": ["filesystem.read", "git.read", "git.write", "github.read", "github.write", "network.read", "network.write", "process.execute", "state.write"]},
+        {"all_of": ["issue.read", "issue.write"], "when": {"fact": "github_issue_tracking", "equals": true}}
+      ],
+      "side_effects": ["renew or reconcile a GitHub work claim", "push committed work", "create a draft pull request", "update the task checkpoint"]
+    },
+    {
       "id": "review",
       "profile": "review",
       "requirements": [

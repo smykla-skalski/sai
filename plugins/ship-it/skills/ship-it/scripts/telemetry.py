@@ -32,6 +32,7 @@ PHASES: Final[tuple[str, ...]] = (
     "explore",
     "branch",
     "implement",
+    "publish",
     "review",
     "test",
     "pr",

@@ -29,7 +29,7 @@ Outcomes are `accepted`, `rejected`, `blocked`, `cancelled` and `failed`. Accept
 ## Stable vocabulary
 
 - Roles: `primary`, `subagent`, `validator`, `guardian`, `synthetic`, `probe`
-- Phases: `resolve`, `orchestrate`, `explore`, `branch`, `implement`, `review`, `test`, `pr`, `wait`, `fix`, `merge`, `complete`
+- Phases: `resolve`, `orchestrate`, `explore`, `branch`, `implement`, `publish`, `review`, `test`, `pr`, `wait`, `fix`, `merge`, `complete`
 - Harness, provider and model are safe identifiers. Use the literal `unknown` when a value is unavailable
 - Counters: `turns`, `tool_calls`, `permission_decisions`, `compactions`, `input_tokens`, `output_tokens`, `elapsed_ms`, `retries`, `findings`, `checks`, `human_interventions`, `failed_commands`, `approval_wait_ms`, `ci_failures`, `ci_recurrences`, `ci_resolutions`
 

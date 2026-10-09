@@ -19,7 +19,7 @@
         "required": ["sequence", "phase", "observation"],
         "properties": {
           "sequence": {"type": "integer", "minimum": 1},
-          "phase": {"enum": ["resolve", "orchestrate", "explore", "branch", "implement", "review", "test", "pr", "wait", "fix", "merge", "complete"]},
+          "phase": {"enum": ["resolve", "orchestrate", "explore", "branch", "implement", "publish", "review", "test", "pr", "wait", "fix", "merge", "complete"]},
           "observation": {"$ref": "#/$defs/slug"}
         }
       }
