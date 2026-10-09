@@ -114,7 +114,7 @@ Write UTF-8 JSON and preserve unknown fields. Every result includes its producer
 }
 ```
 
-`status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
+`status` is `collecting`, `complete`, `failed`, `blocked` or `stale`. A result status is `pending`, `passed`, `untested`, `failed`, `blocked` or `stale`. Each required result has `requiredBy: pr` or `requiredBy: merge`; a merge result is not due at the PR gate. `provider`, `model`, `timestamp` and `outputReference` are always present; `model` is null when no model produced the result. Provider values identify the actual producer, such as `local-process`, `github-actions`, `claude-code`, `codex`, `opencode` or `sail`.
 
 A CI result also has `ciTriage` with unique `failureIds` from the checkpoint and a bounded `resolution` or null. On failure, keep the result failed and attach every observation for that job and revision. On a passing authorized rerun or provider recovery, set the result passed and record the matching resolution. After a source-changing fix, mark each old observation `superseded-by-revision`; the replacement revision starts with pending CI and no copied pass. This preserves failure, recurrence and resolution history without embedding logs in evidence.
 
@@ -130,14 +130,16 @@ An output reference has kind `inline`, `command`, `path` or `url`; a non-empty U
 
 Create one stable result ID for each resolved acceptance criterion and each gate required by the revision's selected risk policy. Use `gate-<gate-id>` for a one-result gate. Expand `local-checks` into one result per discovered command and expand `ci` into one result per required check, each with the final job URL. Review and manual-test gates are due by PR creation; CI and hosted-review gates are due by merge. A policy-declared fallback retains the original required gate result ID, keeps `provider` as the actual harness or service, and records the gate and fallback mechanism IDs in its bounded output reference. Optional diagnostics use `required: false`, omit `requiredBy`, and never compensate for missing required results.
 
-A gate passes only when every required result due at that gate has `status: passed` for the exact record revision. Missing, pending, failed, blocked or stale due evidence blocks that gate. CI results that are not available before PR creation remain pending with `requiredBy: merge`.
+A gate passes only when every required result due at that gate has `status: passed`, or `status: untested` under the partial-pass rule below, for the exact record revision. Missing, pending, failed, blocked or stale due evidence blocks that gate. CI results that are not available before PR creation remain pending with `requiredBy: merge`.
+
+An acceptance-criterion result is `untested` only under a `PASS (partial)` manual-test verdict whose `Untested` line names an environmental blocker for that criterion: the result carries that blocker in its output reference and still satisfies the PR and merge gates for that revision. No other result category, and no criterion the verdict leaves unnamed, may be `untested`. PR creation copies every such criterion into `## Untested criteria`, then verifies the live body separately; PR-body state is not a prerequisite for validating pre-PR evidence.
 
 A record becomes complete at the merge gate only when all of these are true:
 
 - It contains every required result and no duplicate result ID.
 - It contains valid role routes for every invoked exploration, implementation, review, testing and CI-triage role.
 - Every strict review route is resolved, fresh, non-inline and uses a different actual provider-and-model pair from implementation.
-- Every required result has `status: passed` and the exact record revision.
+- Every required result has `status: passed`, or `status: untested` under the partial-pass rule, and the exact record revision.
 - Every selected review reference records its required passing verdict.
 - Every selected manual-test reference records its required passing verdict.
 - Every required CI result names the final successful job URL.
@@ -165,4 +167,4 @@ On resume, validate the current record and compare it with the checkpoint, Git a
 
 A schema-v1 legacy record whose CI results have every previously required field but no `ciTriage` may be migrated for the same revision. Add `ciTriage: {"failureIds": [], "resolution": null}` to each such result and write the record atomically. A passed or pending result keeps its status. A failed or blocked result remains non-complete and returns to CI triage; never invent historical failure IDs or a resolution. Missing any other required field remains invalid.
 
-Stop and report one recovery action when JSON is invalid; required fields, results or enums are missing; identities or revisions disagree; an output reference is unbounded; or a supposedly complete record contains non-passing evidence. Restore its `.bak` after inspection, or rerun the missing evidence for the current revision. Never rewrite an old record to claim it proves a newer revision.
+Stop and report one recovery action when JSON is invalid; required fields, results or enums are missing; identities or revisions disagree; an output reference is unbounded; or a supposedly complete record contains required evidence other than `passed` or `untested` evidence valid under the partial-pass rule. Restore its `.bak` after inspection, or rerun the missing evidence for the current revision. Never rewrite an old record to claim it proves a newer revision.

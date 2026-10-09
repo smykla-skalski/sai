@@ -7,7 +7,18 @@ Adversarial manual testing. It answers one question - does this change work for 
 
 Unit tests, lint, and build output are supporting evidence only; a PASS backed by them alone is rejected.
 
-Output leads with `Test Verdict: PASS`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`, so callers such as `ship-it` can gate on the first line.
+Output leads with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`, so callers such as `ship-it` can gate on the first line.
+
+## Verdicts
+
+| Verdict | Meaning |
+| :-- | :-- |
+| `PASS` | Every criterion passed on the real surface |
+| `PASS (partial)` | Nothing failed, and at least one criterion is `UNTESTED` because the environment could not exercise it: a sandbox without network or a package registry, a missing or fake tool, a toolchain that does not build there, a hook false positive, an unreachable UI pane, a stop directive. The next line lists each untested criterion with its blocker. Callers treat it as passing and carry that list into the PR |
+| `FAIL` | At least one reproduction survived the rerun |
+| `BLOCKED` | A product precondition that only a human can supply is missing (credentials, hardware, an approval, data). The next line names the exact human action |
+
+A UI change (web page, desktop or webview pane) needs a screenshot of the changed surface at a content viewport of at least 2560x1440. Screenshots land in the evidence directory `${XDG_DATA_HOME:-$HOME/.local/share}/sai/adversarial-test/<run>/`, which outlives the run; the report lists each path with its image pixels and a runtime client/content-area measurement. Image pixels, launch flags and outer-window bounds alone do not prove viewport size.
 
 For code correctness review, use `adversarial-review`.
 
@@ -59,7 +70,7 @@ In Claude Code and Copilot CLI use `/adversarial-test`, in Codex `$adversarial-t
 | Codex | One `spawn_agent` call with the mandate prepended, closed after the pass |
 | opencode | `task` tool with an installed `test-adversary` agent or the built-in `general` subagent |
 
-Every agent falls back to an inline pass when subagents are unavailable. Only one subagent runs at a time.
+Every agent falls back to an inline pass when subagents are unavailable or twice decline a runnable surface. Only one subagent runs at a time.
 
 ## Files
 

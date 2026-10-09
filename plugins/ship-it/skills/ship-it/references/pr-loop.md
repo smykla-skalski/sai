@@ -17,9 +17,9 @@ Do not rewrite history after validation begins. If the unpublished branch still 
 
 ## Open the PR
 
-Before pushing, validate that every result with `requiredBy: pr` passed in the current revision's evidence record. Missing, pending, failed, blocked or stale due evidence stops PR creation. CI results remain pending with `requiredBy: merge` until the PR exists.
+Before pushing, validate that every result with `requiredBy: pr` passed in the current revision's evidence record; an acceptance criterion that a `PASS (partial)` verdict names with its environmental blocker may instead be `untested`. Missing, pending, failed, blocked or stale due evidence stops PR creation. CI results remain pending with `requiredBy: merge` until the PR exists.
 
-Push the branch and create a PR against the default branch. Title: the conventional lead-commit title. Body: `## Motivation`, `## Implementation information`, a changelog line (`> Changelog: type(scope): desc` or `> Changelog: skip`), any unsettled review `question:` findings, plus the source link:
+Push the branch and create a PR against the default branch. Title: the conventional lead-commit title. Body: `## Motivation`, `## Implementation information`, a changelog line (`> Changelog: type(scope): desc` or `> Changelog: skip`), any unsettled review `question:` findings, the untested criteria from a `PASS (partial)` test verdict under `## Untested criteria`, plus the source link:
 
 | Source | PR title or body must contain |
 | :-- | :-- |
@@ -28,6 +28,8 @@ Push the branch and create a PR against the default branch. Title: the conventio
 | Task description | No issue reference |
 
 Follow the repository's own PR template or conventions when it documents them. Capture the PR number.
+
+Read the created PR body back from GitHub. For `PASS (partial)`, verify that `## Untested criteria` contains every criterion and environmental blocker from the verdict before treating PR creation as complete. A missing or altered entry returns to PR-body correction; it does not invalidate the already-valid revision evidence.
 
 Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to `pr`, and keep `nextAction` aligned with the current wait, fix or merge action. Reconcile these fields with GitHub before every resumed PR loop.
 
