@@ -60,9 +60,9 @@ Capture the key, summary, description, status, and acceptance criteria.
 
 ## Durable task checkpoint
 
-After resolving the task source, read the checkpoint contract linked by the skill. Derive its canonical task key, then create or resume the corresponding checkpoint before exploring or changing the repository. The checkpoint replaces the temporary task context file and is the `--context <file>` passed to review and test gates.
+After resolving the task source, derive its canonical task key and create or resume the corresponding checkpoint before exploring or changing the repository. Use the bundled bookkeeping helper for policy and every transition. The checkpoint replaces the temporary task context file and is the `--context <file>` passed to review and test gates. Load the full checkpoint contract only when migration, recovery or helper validation requires it.
 
-Do not overwrite an existing checkpoint during resolution. Validate it, verify its task source and repository identity, and reconcile it with Git and GitHub as the contract requires. A completed checkpoint is a delivered task, not a fresh run. Invalid, mismatched or irreconcilable state is a hard stop with the recovery action from the contract.
+Do not overwrite an existing checkpoint during resolution. Validate it, verify its task source and repository identity, and reconcile it with Git and GitHub. A completed checkpoint is a delivered task, not a fresh run. Invalid, mismatched or irreconcilable state loads the recovery contract and hard-stops with its named action.
 
 ## GitHub work claim
 

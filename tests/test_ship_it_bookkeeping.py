@@ -194,11 +194,45 @@ class BookkeepingTest(unittest.TestCase):
                 "--next-action",
                 "none",
                 "--outcome-json",
-                '{"result":"merged"}',
+                json.dumps(
+                    {
+                        "result": "merged",
+                        "pullRequestUrl": "https://github.com/o/r/pull/1",
+                        "pullRequestHead": "a" * 40,
+                        "mergeCommit": "b" * 40,
+                        "sourceState": "closed",
+                        "branchCleanup": "deleted",
+                        "completedAt": "2026-01-01T00:00:00Z",
+                    },
+                ),
             )
             updated = json.loads(checkpoint.read_text(encoding="utf-8"))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(updated["outcome"], {"result": "merged"})
+        self.assertEqual(updated["outcome"]["result"], "merged")
+
+    def test_complete_transition_rejects_incomplete_outcome(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
+            original = json.dumps(document)
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "complete",
+                "--status",
+                "completed",
+                "--next-action",
+                "none",
+                "--outcome-json",
+                '{"result":"merged"}',
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("terminal outcome missing required fields", result.stderr)
+        self.assertEqual(current, original)
 
     def test_transition_migrates_known_legacy_fields(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -273,6 +307,32 @@ class BookkeepingTest(unittest.TestCase):
             current = checkpoint.read_text(encoding="utf-8")
         self.assertEqual(result.returncode, 2)
         self.assertIn("disabled evidence", result.stderr)
+        self.assertEqual(current, original)
+
+    def test_transition_rejects_wrong_typed_phase_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            workflow = document["workflow"]
+            if isinstance(workflow, dict):
+                workflow["phase"] = []
+            checkpoint = checkpoint_path(directory, document)
+            original = json.dumps(document)
+            checkpoint.write_text(original, encoding="utf-8")
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "explore",
+                "--status",
+                "active",
+                "--next-action",
+                "inspect repository",
+            )
+            current = checkpoint.read_text(encoding="utf-8")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid workflow phase", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
         self.assertEqual(current, original)
 
 

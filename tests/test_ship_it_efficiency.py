@@ -12,6 +12,23 @@ ROOT = Path(__file__).resolve().parent.parent
 SHIP_IT = ROOT / "plugins/ship-it/skills/ship-it"
 REFERENCES = SHIP_IT / "references"
 ADVERSARIAL_TEST = ROOT / "plugins/adversarial-test/skills/adversarial-test/references"
+ROUTINE_GUIDANCE = (
+    SHIP_IT / "SKILL.md",
+    *(REFERENCES / name for name in (
+        "inputs.md",
+        "explore.md",
+        "branch.md",
+        "implementation.md",
+        "publish.md",
+        "review.md",
+        "test.md",
+        "pr-loop.md",
+        "completion.md",
+        "risk-policy.json",
+        "release-policy.json",
+        "convergence-policy.json",
+    )),
+)
 
 
 def read(path: Path) -> str:
@@ -56,6 +73,16 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("under 12k input tokens", skill)
         self.assertIn("read only the checkpoint and current phase reference", skill)
         self.assertIn("mandate by path or inline exactly once", skill)
+        self.assertLessEqual(sum(path.stat().st_size for path in ROUTINE_GUIDANCE), 52_000)
+        for conditional in (
+            "capabilities.md",
+            "roles.md",
+            "checkpoint.md",
+            "risk.md",
+            "release.md",
+            "convergence.md",
+        ):
+            self.assertIn(f"references/{conditional}", skill)
 
     def test_optional_bookkeeping_defaults_off(self) -> None:
         checkpoint = read(REFERENCES / "checkpoint.md")

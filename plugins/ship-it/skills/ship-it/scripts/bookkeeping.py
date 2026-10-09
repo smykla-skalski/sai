@@ -173,10 +173,10 @@ def validate_workflow(workflow: dict[str, Any]) -> None:
     status = workflow["status"]
     blocker = workflow["blocker"]
     next_action = workflow["nextAction"]
-    if phase not in VALID_PHASES:
+    if not isinstance(phase, str) or phase not in VALID_PHASES:
         message = f"invalid workflow phase: {phase}"
         raise BookkeepingError(message)
-    if status not in VALID_STATUSES:
+    if not isinstance(status, str) or status not in VALID_STATUSES:
         message = f"invalid workflow status: {status}"
         raise BookkeepingError(message)
     if not isinstance(next_action, str) or not next_action.strip():
@@ -276,6 +276,71 @@ def validate_bookkeeping(checkpoint: dict[str, Any]) -> None:
             raise BookkeepingError(message)
 
 
+def outcome_fields(result: object) -> set[str]:
+    """Return required fields for a terminal outcome result."""
+    common = {"sourceState", "completedAt"}
+    if result == "merged":
+        return common | {
+            "pullRequestUrl",
+            "pullRequestHead",
+            "mergeCommit",
+            "branchCleanup",
+        }
+    if result == "coordinated":
+        return common | {"umbrellaUrl", "children"}
+    return common | {"reason", "branchCleanup"}
+
+
+def validate_outcome_values(result: object, outcome: dict[str, Any]) -> None:
+    """Validate terminal outcome enums and result-specific values."""
+    if outcome["sourceState"] not in {"closed", "unchanged", "not-applicable"}:
+        message = "terminal outcome has invalid sourceState"
+        raise BookkeepingError(message)
+    cleanup = outcome.get("branchCleanup")
+    if cleanup is not None and cleanup not in {
+        "deleted",
+        "preserved",
+        "not-applicable",
+    }:
+        message = "terminal outcome has invalid branchCleanup"
+        raise BookkeepingError(message)
+    if result == "coordinated":
+        if not isinstance(outcome["children"], list):
+            message = "coordinated outcome children must be an array"
+            raise BookkeepingError(message)
+        if outcome["sourceState"] != "closed":
+            message = "coordinated outcome requires closed sourceState"
+            raise BookkeepingError(message)
+    if result in {"cancelled", "failed"} and (
+        outcome["sourceState"] != "unchanged" or cleanup != "not-applicable"
+    ):
+        message = "undelivered outcome requires unchanged source and no cleanup"
+        raise BookkeepingError(message)
+
+
+def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
+    """Validate terminal outcome fields for the selected terminal status."""
+    result = outcome.get("result")
+    if status == "completed" and result not in {"merged", "coordinated"}:
+        message = "completed outcome result must be merged or coordinated"
+        raise BookkeepingError(message)
+    if status in {"cancelled", "failed"} and result != status:
+        message = f"{status} outcome result must match its status"
+        raise BookkeepingError(message)
+
+    required = outcome_fields(result)
+    missing = required.difference(outcome)
+    if missing:
+        names = ", ".join(sorted(missing))
+        message = f"terminal outcome missing required fields: {names}"
+        raise BookkeepingError(message)
+    for field in required.difference({"children"}):
+        if not isinstance(outcome[field], str) or not outcome[field].strip():
+            message = f"terminal outcome field {field} must be non-empty"
+            raise BookkeepingError(message)
+    validate_outcome_values(result, outcome)
+
+
 def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
     """Validate fields and invariants affected by a workflow transition."""
     missing = REQUIRED_CHECKPOINT_FIELDS.difference(checkpoint)
@@ -308,6 +373,7 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
         if not terminal_outcome:
             message = "complete workflow requires terminal status and outcome"
             raise BookkeepingError(message)
+        validate_outcome(status, checkpoint["outcome"])
     elif status in TERMINAL_STATUSES or checkpoint["outcome"] is not None:
         message = "terminal status and outcome require phase complete"
         raise BookkeepingError(message)
