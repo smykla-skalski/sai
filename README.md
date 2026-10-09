@@ -182,7 +182,7 @@ Fast two-pass adversarial code review. A Code Adversary subagent assumes the cha
 
 ### adversarial-test
 
-Adversarial manual testing. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) against isolated temp state, and attacks boundaries, malformed input, repetition, and adjacent flows. Every reproduction is rerun before it counts; a PASS backed only by unit tests or lint is rejected. Leads with `Test Verdict: PASS|FAIL|BLOCKED`. One package for Claude Code, Codex, Copilot CLI and opencode (Codex: `$adversarial-test`); `ship-it` uses it as its testing gate.
+Adversarial manual testing. A clean-context Test Adversary subagent derives acceptance criteria from the task, runs the real product surface (service, CLI, sandbox) against isolated temp state, and attacks boundaries, malformed input, repetition, and adjacent flows. Every reproduction is rerun before it counts; a PASS backed only by unit tests or lint is rejected. Leads with `Test Verdict: PASS|PASS (partial)|FAIL|BLOCKED`; `PASS (partial)` means an environmental blocker left a criterion UNTESTED. One package for Claude Code, Codex, Copilot CLI and opencode (Codex: `$adversarial-test`); `ship-it` uses it as its testing gate.
 
 **Usage**: `/adversarial-test [<pr-url> | --base <ref>] [--context <file|text>]`
 
