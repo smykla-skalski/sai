@@ -73,8 +73,8 @@ class ShipItRolesTest(unittest.TestCase):
     def test_rejected_routes_are_non_gating_diagnostics(self) -> None:
         diagnostics = self.contract["route_diagnostic"]
         self.assertEqual(set(diagnostics["stages"]), {"pre-dispatch", "post-dispatch"})
-        self.assertIn("strict-same-model", diagnostics["reasons"])
-        self.assertIn("strict-context-reuse", diagnostics["reasons"])
+        self.assertIn("context-reuse", diagnostics["reasons"])
+        self.assertNotIn("strict-same-model", diagnostics["reasons"])
         self.assertIn("actual", diagnostics["optional_fields"])
         self.assertIn("does not satisfy or block a gate", self.evidence)
         self.assertIn("post-dispatch diagnostics preserve", self.evidence)
@@ -84,11 +84,11 @@ class ShipItRolesTest(unittest.TestCase):
         test = (SKILL_DIR / "references" / "test.md").read_text()
         self.assertIn("route record for every Code and Findings worker", review)
         self.assertIn("route record for every tester execution and retry", test)
-        self.assertIn("With no subagent capability, block by default", test)
-        self.assertIn("authorize inline testing outside Sail only", test)
+        self.assertIn("With no subagent capability, block", test)
+        self.assertIn("Inline testing does not satisfy this gate", test)
         capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
-        self.assertIn("block by default", capabilities)
-        self.assertIn("degraded inline testing", capabilities)
+        self.assertIn("fresh subagent", capabilities)
+        self.assertIn("inline testing never satisfies the gate", capabilities)
 
     def test_portable_fallback_order_is_deterministic(self) -> None:
         skill_position = self.guidance.index("An installed skill")
@@ -96,54 +96,29 @@ class ShipItRolesTest(unittest.TestCase):
         self.assertLess(skill_position, generic_position)
         capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
         self.assertLess(
-            capabilities.index("adversarial-review skill"),
+            capabilities.index("review skill"),
             capabilities.index("fresh generic subagent"),
         )
 
-    def test_strict_review_rejects_every_unsafe_route(self) -> None:
-        self.assertEqual(self.contract["independent_review"]["default"], "strict")
+    def test_review_and_testing_require_fresh_context_not_a_different_model(self) -> None:
+        isolation = self.contract["context_isolation"]
+        self.assertEqual(isolation["required_for"], ["review", "testing"])
+        self.assertEqual(isolation["execution"], "fresh-subagent-per-pass-or-retry")
+        self.assertFalse(isolation["model_difference_required"])
         self.assertEqual(
-            set(self.contract["independent_review"]["strict_rejections"]),
-            {
-                "same-provider-and-model-as-implementation",
-                "unresolved-model-alias",
-                "implementation-execution-reuse",
-                "inline-execution",
-            },
+            set(isolation["rejections"]),
+            {"execution-context-reuse", "inline-execution"},
         )
-        for phrase in (
-            "Actual provider and model equal",
-            "modelResolution` is `unresolved",
-            "executionId` equals the implementation execution ID",
-            "mechanism` is `inline",
-        ):
-            self.assertIn(phrase, self.guidance)
+        self.assertIn("different provider or model is not required", self.guidance)
+        self.assertIn("fresh subagent contexts", self.guidance)
+        self.assertIn("provider and model may match implementation", self.evidence)
 
         review = (SKILL_DIR / "references" / "review.md").read_text()
-        capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
-        fallbacks = (SKILL_DIR / "references" / "fallbacks.md").read_text()
-        self.assertIn("block under strict independence", review)
-        self.assertIn("falls back inline", review)
-        self.assertIn("Strict independence blocks", capabilities)
-        self.assertIn("does not authorize a role route", capabilities)
-        self.assertIn("Strict review blocks without a subagent", fallbacks)
-        for content in (review, capabilities, fallbacks):
-            self.assertIn("degraded", content)
-
-    def test_degraded_routes_remain_visible(self) -> None:
-        requirements = set(
-            self.contract["independent_review"]["degraded_mode_requires"]
-        )
-        self.assertEqual(
-            requirements,
-            {
-                "explicit-policy-authorization",
-                "degraded-independence-value",
-                "non-empty-degradation-reasons",
-            },
-        )
-        self.assertIn("independence: degraded", self.guidance)
-        self.assertIn("non-empty `degradationReasons`", self.evidence)
+        test = (SKILL_DIR / "references" / "test.md").read_text()
+        self.assertIn("fresh subagent execution", review)
+        self.assertIn("same model as implementation", test)
+        self.assertNotIn("independent_review", review)
+        self.assertNotIn("independent_review", test)
 
     def test_evidence_example_records_requested_and_actual_selectors(self) -> None:
         example_match = re.search(

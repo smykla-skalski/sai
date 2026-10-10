@@ -149,7 +149,7 @@
       "requirements": [
         {"all_of": ["filesystem.read", "git.read", "process.read", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
-        {"any_of": ["skill.review", "subagent.review", "inline.review"], "when": {"fact": "review_gate_required", "equals": true}, "fallback": "portable-review-fallback"},
+        {"any_of": ["skill.review", "subagent.review"], "when": {"fact": "review_gate_required", "equals": true}, "fallback": "portable-review-fallback"},
         {"all_of": ["subagent.review"], "when": {"all": [{"fact": "review_gate_required", "equals": true}, {"fact": "sail", "equals": true}]}}
       ],
       "side_effects": ["renew or reconcile a GitHub work claim", "write bounded review state outside the repository", "update the task checkpoint"]
@@ -161,7 +161,7 @@
         {"all_of": ["filesystem.read", "git.read", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
         {"all_of": ["filesystem.transient-write", "process.execute"], "when": {"fact": "test_gate_required", "equals": true}},
-        {"any_of": ["skill.test", "subagent.test", "inline.test"], "when": {"fact": "test_gate_required", "equals": true}, "fallback": "portable-test-fallback"},
+        {"any_of": ["skill.test", "subagent.test"], "when": {"fact": "test_gate_required", "equals": true}, "fallback": "portable-test-fallback"},
         {"all_of": ["subagent.test"], "when": {"all": [{"fact": "test_gate_required", "equals": true}, {"fact": "sail", "equals": true}]}}
       ],
       "side_effects": ["renew or reconcile a GitHub work claim", "run the product in isolated state", "write temporary test state outside the repository", "update the task checkpoint"]
@@ -172,8 +172,8 @@
       "requirements": [
         {"all_of": ["filesystem.read", "filesystem.write", "git.read", "git.write", "github.read", "github.write", "merge.execute", "network.read", "network.write", "process.execute", "state.write"]},
         {"all_of": ["github.read", "github.write", "issue.read", "issue.write", "network.read", "network.write"], "when": {"fact": "github_source", "equals": true}},
-        {"any_of": ["skill.review", "subagent.review", "inline.review"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "review_gate_required", "equals": true}]}, "fallback": "portable-review-fallback"},
-        {"any_of": ["skill.test", "subagent.test", "inline.test"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "test_gate_required", "equals": true}]}, "fallback": "portable-test-fallback"},
+        {"any_of": ["skill.review", "subagent.review"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "review_gate_required", "equals": true}]}, "fallback": "portable-review-fallback"},
+        {"any_of": ["skill.test", "subagent.test"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "test_gate_required", "equals": true}]}, "fallback": "portable-test-fallback"},
         {"all_of": ["subagent.review"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "review_gate_required", "equals": true}, {"fact": "sail", "equals": true}]}},
         {"all_of": ["subagent.test"], "when": {"all": [{"fact": "code_changed", "equals": true}, {"fact": "test_gate_required", "equals": true}, {"fact": "sail", "equals": true}]}},
         {"all_of": ["issue.write"], "when": {"fact": "github_issue_tracking", "equals": true}}

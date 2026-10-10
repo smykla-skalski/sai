@@ -2,7 +2,6 @@
   "schema_version": "sai.ship-it.risk-policy/v1",
   "risk_order": ["low", "medium", "high"],
   "default_risk": "medium",
-  "independent_review": "strict",
   "diff_classes": {
     "docs": {
       "risk": "low",
@@ -50,7 +49,9 @@
   "policies": {
     "low": {
       "required_gates": ["local-checks", "inline-review", "ci"],
-      "fallbacks": {}
+      "fallbacks": {
+        "inline-review": ["portable-review-fallback"]
+      }
     },
     "medium": {
       "required_gates": ["local-checks", "adversarial-review", "adversarial-test", "ci"],
