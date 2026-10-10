@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "ship-it",
-  "version": "1.4.35",
+  "version": "1.4.37",
   "description": "Ship a change or coordinate an approved plan through independent issues, adversarial gates, PRs, CI, repository-required review, and merge.",
   "author": {
     "name": "Smykla Skalski Labs"

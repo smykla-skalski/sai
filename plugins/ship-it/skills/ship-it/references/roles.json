@@ -33,55 +33,50 @@
       "unsupported-selector",
       "unavailable-mechanism",
       "metadata-unavailable",
-      "strict-same-model",
-      "strict-context-reuse",
-      "strict-inline-execution"
+      "context-reuse",
+      "inline-execution"
     ]
   },
-  "independent_review": {
-    "default": "strict",
-    "applies_to": "adversarial-review",
-    "exempt_gates": ["inline-review"],
-    "strict_rejections": [
-      "same-provider-and-model-as-implementation",
-      "unresolved-model-alias",
-      "implementation-execution-reuse",
-      "inline-execution"
-    ],
-    "degraded_mode_requires": [
-      "explicit-policy-authorization",
-      "degraded-independence-value",
-      "non-empty-degradation-reasons"
-    ]
+  "context_isolation": {
+    "required_for": ["review", "testing"],
+    "execution": "fresh-subagent-per-pass-or-retry",
+    "rejections": ["execution-context-reuse", "inline-execution"],
+      "model_difference_required": false,
+      "adapter_fallback_roles_excluded": ["review", "testing"]
   },
   "adapters": {
     "claude-code": {
       "subagents": ["native-subagent", "generic-subagent"],
       "fallback": "inline",
+      "fallback_roles": ["exploration", "implementation", "ci-triage"],
       "selectors": {"provider": "session-provider", "model": "agent-model", "variant": "unsupported"},
       "unsupported_selector": "reject-before-dispatch"
     },
     "codex": {
       "subagents": ["generic-subagent"],
       "fallback": "inline",
+      "fallback_roles": ["exploration", "implementation", "ci-triage"],
       "selectors": {"provider": "session-provider", "model": "spawn-agent-model", "variant": "spawn-agent-reasoning-effort"},
       "unsupported_selector": "reject-before-dispatch"
     },
     "opencode": {
       "subagents": ["generic-subagent"],
       "fallback": "inline",
+      "fallback_roles": ["exploration", "implementation", "ci-triage"],
       "selectors": {"provider": "task-model-provider", "model": "task-model-id", "variant": "task-model-variant"},
       "unsupported_selector": "reject-before-dispatch"
     },
     "copilot-cli": {
       "subagents": ["native-subagent", "generic-subagent"],
       "fallback": "inline",
+      "fallback_roles": ["exploration", "implementation", "ci-triage"],
       "selectors": {"provider": "session-provider", "model": "agent-model", "variant": "unsupported"},
       "unsupported_selector": "reject-before-dispatch"
     },
     "sail": {
       "subagents": ["native-subagent"],
       "fallback": null,
+      "fallback_roles": [],
       "selectors": {"provider": "worker-provider", "model": "worker-model", "variant": "worker-variant"},
       "unsupported_selector": "reject-before-dispatch"
     }

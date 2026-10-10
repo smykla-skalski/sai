@@ -20,13 +20,13 @@ With revision evidence enabled, each committed task revision has one portable ev
 
 Failed CI is triaged before escalation. The workflow deduplicates revision/workflow/job/attempt observations, exposes only bounded redacted failure sections, classifies failures with evidence, routes code faults back to their implementation owner, and preserves recurrence and resolution in checkpoint, evidence and privacy-safe telemetry. CI reruns need an explicit repository policy or user approval.
 
-Portable role routing gives exploration, implementation, review, testing and CI triage the same meaning across harnesses. Every role records requested and actual provider, model and variant. Strict review rejects the implementation model, unresolved aliases and reused or inline context; policy-permitted degradation stays explicit in revision evidence.
+Portable role routing gives exploration, implementation, review, testing and CI triage the same meaning across harnesses. Every role records requested and actual provider, model and variant. Review and testing use fresh subagent contexts for every pass or attempt; they may use the implementation model. Reused or inline execution does not satisfy either gate.
 
 Validation gates come from a portable risk policy. The bundled policy first classifies the change set: a diff that touches only docs, config or data files (`*.md`, `*.json`, `*.yaml`, `*.toml`, lock files, `Brewfile`, images and similar) is the `docs` class and starts at `low`; anything else, including a diff that mixes docs with code, is the `code` class and starts at the default `medium`. Each level then selects its gate set:
 
 | Risk | Review | Manual test | Gates |
 | :-- | :-- | :-- | :-- |
-| `low` | one inline review pass | none | local checks, inline review, CI |
+| `low` | one review pass in a fresh subagent | none | local checks, inline review, CI |
 | `medium` | one adversarial review cycle | one adversarial test pass | local checks, adversarial review, adversarial test, CI |
 | `high` | one adversarial review cycle | one adversarial test pass | local checks, adversarial review, adversarial test, CI, hosted review |
 
@@ -87,7 +87,7 @@ In Claude Code and Copilot CLI use `/ship-it`, in Codex `$ship-it`:
 
 Input it cannot recognize or read stops with a message before any code changes.
 
-The skill pushes and merges, so Codex runs it only when invoked by name. Its `allow_implicit_invocation: false` policy intentionally omits it from Codex's default model-visible skill list; `$ship-it` loads it explicitly. Outside Sail, agents may use declared inline fallbacks. In Sail mode, unavailable required worker or gate subagents pause the run. A child completes only after all risk-selected gates pass, required threads resolve, its PR merges, and its issue closes.
+The skill pushes and merges, so Codex runs it only when invoked by name. Its `allow_implicit_invocation: false` policy intentionally omits it from Codex's default model-visible skill list; `$ship-it` loads it explicitly. Outside Sail, agents may use declared inline fallbacks for work that does not require review or testing. Every selected review and testing gate requires fresh subagent contexts. In Sail mode, unavailable required worker or gate subagents pause the run. A child completes only after all risk-selected gates pass, required threads resolve, its PR merges, and its issue closes.
 
 It merges through the resolved repository mechanism (including exact bot comments and protected-branch flows), never substitutes another reviewer or bypasses a control, and uses a squash merge only as the documented default. After the first push it never force-pushes or rebases.
 

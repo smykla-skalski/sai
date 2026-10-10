@@ -36,6 +36,7 @@ EXPECTED_GATES: Final[dict[str, list[str]]] = {
     ],
 }
 ADVERSARIAL_FALLBACKS: Final[dict[str, list[str]]] = {
+    "inline-review": ["portable-review-fallback"],
     "adversarial-review": ["portable-review-fallback"],
     "adversarial-test": ["portable-test-fallback"],
 }
@@ -57,6 +58,7 @@ DIFF_CLASS_CASES: Final[tuple[tuple[tuple[str, ...], str], ...]] = (
     ((), "code"),
 )
 FALLBACKS: Final[dict[str, set[str]]] = {
+    "inline-review": {"portable-review-fallback"},
     "adversarial-review": {"portable-review-fallback"},
     "adversarial-test": {"portable-test-fallback"},
     "copilot-review": {"human-review"},
@@ -113,7 +115,7 @@ class ShipItRiskContractTest(unittest.TestCase):
         )
         self.assertEqual(tuple(self.policy["risk_order"]), RISKS)
         self.assertEqual(self.policy["default_risk"], "medium")
-        self.assertEqual(self.policy["independent_review"], "strict")
+        self.assertNotIn("independent_review", self.policy)
         self.assertEqual(set(self.policy["policies"]), set(RISKS))
         self.assertEqual(self.policy["rules"], [])
         for risk, policy in self.policy["policies"].items():
@@ -128,7 +130,7 @@ class ShipItRiskContractTest(unittest.TestCase):
                 }
                 self.assertEqual(policy["fallbacks"], expected_fallbacks)
 
-    def test_low_risk_runs_one_inline_review_and_no_manual_test(self) -> None:
+    def test_low_risk_runs_one_isolated_review_and_no_manual_test(self) -> None:
         low = self.policy["policies"]["low"]["required_gates"]
         self.assertIn("inline-review", low)
         self.assertNotIn("adversarial-review", low)
@@ -143,17 +145,15 @@ class ShipItRiskContractTest(unittest.TestCase):
             set(self.policy["policies"]["high"]["required_gates"]), FULL_GATES
         )
         for expected in (
-            "`inline-review` is one review pass by the current execution",
-            "It dispatches no Code or Findings Adversary.",
-            "`independence: not-applicable`",
-            "the strict independent-review policy governs `adversarial-review` routes only",
+            "`inline-review` is the legacy gate ID for one review pass by a fresh subagent",
+            "does not allow current-context or inline execution",
             "`gate-inline-review`",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, self.guidance)
         review = REVIEW_REFERENCE.read_text(encoding="utf-8")
-        self.assertIn("selects `inline-review` instead of `adversarial-review`", review)
-        self.assertIn("dispatch no Code or Findings Adversary", review)
+        self.assertIn("risk policy selects `inline-review`", review)
+        self.assertIn("fresh generic subagent context", review)
         test = TEST_REFERENCE.read_text(encoding="utf-8")
         self.assertIn("selects `adversarial-test` for `medium` and `high` only", test)
 
@@ -180,29 +180,27 @@ class ShipItRiskContractTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, self.guidance)
 
-    def test_inline_review_is_outside_strict_independence(self) -> None:
+    def test_context_isolation_applies_to_every_review_gate(self) -> None:
         roles = json.loads(
             (SKILL_DIR / "references" / "roles.json").read_text(encoding="utf-8")
         )
-        independent_review = roles["independent_review"]
-        self.assertEqual(independent_review["default"], "strict")
-        self.assertEqual(independent_review["applies_to"], "adversarial-review")
-        self.assertEqual(independent_review["exempt_gates"], ["inline-review"])
+        isolation = roles["context_isolation"]
+        self.assertEqual(isolation["required_for"], ["review", "testing"])
+        self.assertFalse(isolation["model_difference_required"])
+        self.assertEqual(
+            set(isolation["rejections"]),
+            {"execution-context-reuse", "inline-execution"},
+        )
         roles_guidance = (SKILL_DIR / "references" / "roles.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("for every `adversarial-review` dispatch", roles_guidance)
-        self.assertIn("`inline-review` gate is outside this policy", roles_guidance)
+        self.assertIn("Every review and testing pass runs in a fresh subagent context", roles_guidance)
+        self.assertIn("one-pass `inline-review` gate too", roles_guidance)
         evidence = (SKILL_DIR / "references" / "evidence.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn(
-            "Every `adversarial-review` route under strict independence", evidence
-        )
-        self.assertIn(
-            "An `inline-review` route records `independence: not-applicable`",
-            evidence,
-        )
+        self.assertIn("Every review and testing route uses a fresh subagent execution", evidence)
+        self.assertIn("Provider and model may match implementation", evidence)
 
     def test_hosted_review_is_resolved_by_release_policy(self) -> None:
         self.assertIn(
@@ -238,14 +236,9 @@ class ShipItRiskContractTest(unittest.TestCase):
                     self.assertIsNotNone(GATE_ID.fullmatch(fallback))
                     self.assertIn(fallback, FALLBACKS[gate])
 
-    def test_independent_review_policy_is_explicit_and_safe_by_default(self) -> None:
-        self.assertIn(self.policy["independent_review"], {"strict", "degraded"})
-        for expected in (
-            "Missing `independent_review` in a legacy v1 policy means `strict`",
-            "`degraded` explicitly authorizes a weaker route",
-            "repository policy path",
-        ):
-            self.assertIn(expected, self.guidance)
+    def test_legacy_model_independence_field_is_ignored(self) -> None:
+        self.assertIn("Legacy `independent_review` fields are ignored", self.guidance)
+        self.assertIn("context isolation is fixed by the role contract", self.guidance)
 
     def test_rejects_incompatible_fallback_fixture(self) -> None:
         fixture = {

@@ -2,7 +2,7 @@
 
 Follow repository patterns and implement the smallest complete behavior. Add or extend behavior-focused tests; avoid tests that only mirror implementation details.
 
-Resolve and record the implementation role before the first source edit. Its actual route and execution identity are the baseline for later independence checks.
+Resolve and record the implementation role before the first source edit. Its execution identity is the baseline for ensuring review and testing use fresh subagent contexts.
 
 For GitHub work with claims enabled, verify the checkpoint's claim immediately before the first source edit. Renew it only immediately before a repository or GitHub write when due, never on a timer. A failed renewal stops that write and later edits until claim reconciliation succeeds.
 

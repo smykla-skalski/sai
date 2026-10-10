@@ -8,8 +8,8 @@
 | :-- | :-- | :-- |
 | `exploration` | Repository discovery, constraints and implementation map | May use the primary execution |
 | `implementation` | Product changes, behavior tests and local checks | Owns the implementation execution identity |
-| `review` | Adversarial review passes and finding verification | Independent when review policy is strict |
-| `testing` | Real-surface adversarial testing and reproductions | Use a fresh execution when a subagent is available |
+| `review` | Adversarial review passes and finding verification | Fresh subagent execution for every pass |
+| `testing` | Real-surface adversarial testing and reproductions | Fresh subagent execution for every attempt |
 | `ci-triage` | Failed hosted-check diagnosis and fix recommendation | Use a fresh execution when a subagent is available |
 
 The review role covers each Code or Findings Adversary invocation. Create a route record for every invocation; repeated role IDs are valid when `executionId` differs. Testing and CI triage retries use new records rather than overwriting history. CI triage is invoked only for a hosted-check failure; successful CI needs no triage route.
@@ -23,7 +23,7 @@ Exploration and implementation record the already-running execution because thei
 1. A configured native role worker.
 2. An installed skill that accepts the selectors and exposes every actual worker route, including retries.
 3. A fresh generic subagent with the role mandate prepended.
-4. Outside Sail, inline execution only when the active independence policy permits it or the selected gate is `inline-review`.
+4. Apply adapter fallback only to the roles listed by that adapter's `fallback_roles`. `context_isolation.adapter_fallback_roles_excluded` takes precedence for review and testing: do not use inline execution for either role. Both require fresh subagent contexts.
 
 Harness adapters map the portable selector, not role names, to their available provider, model, variant and subagent controls. `session-provider` accepts `default` or the active provider; any other request is unsupported.
 
@@ -37,7 +37,7 @@ Harness adapters map the portable selector, not role names, to their available p
 
 For each non-default request, pass the selector through its mapped control and compare returned worker metadata with the request before accepting the route. Never silently ignore, substitute or normalize an unsupported selector. Reject it before dispatch, append the request and reason to non-gating `routeDiagnostics`, try the next mechanism, and block with the exact unsupported selector when none can satisfy it. Rejected candidates never enter `roleRoutes`.
 
-Never invent an actual selector. If the harness cannot expose the concrete provider, model and variant, set `modelResolution: unresolved`. A strict independent review then stops before dispatch. Other roles may proceed only under a policy that permits degraded execution and must expose the degradation in evidence.
+Never invent an actual selector. If the harness cannot expose the concrete provider, model and variant, set `modelResolution: unresolved`; unresolved model metadata does not block a gate when the fresh execution identity is established. Review and testing are blocked when the harness cannot establish a fresh subagent execution.
 
 ## Route evidence
 
@@ -62,21 +62,10 @@ Every committed revision's evidence record has `roleRoutes`, an append-only arra
 
 Identifiers must not contain prompts, URLs, repository paths, credentials or conversation content. Preserve old route records when a role is retried for one revision. The result produced by a role names the matching `executionId` in its bounded output reference.
 
-A diagnostic contains `role`, the full requested selector, `stage: pre-dispatch|post-dispatch`, a contract reason and `timestamp`. A post-dispatch diagnostic also records the returned `actual`, `executionId` and `modelResolution` when available. Reasons cover unsupported selectors, unavailable mechanisms or metadata, and strict rejection for the implementation model, reused context or inline execution. Diagnostics explain fallback selection but never participate in independence or completion checks because the candidate output was not accepted for the gate.
+A diagnostic contains `role`, the full requested selector, `stage: pre-dispatch|post-dispatch`, a contract reason and `timestamp`. A post-dispatch diagnostic also records the returned `actual`, `executionId` and `modelResolution` when available. Reasons cover unsupported selectors, unavailable mechanisms or metadata, reused context or inline execution. Diagnostics explain fallback selection but never participate in context-isolation or completion checks because the candidate output was not accepted for the gate.
 
-## Independent review policy
+## Context isolation policy
 
-Strict independent review is the default for every `adversarial-review` dispatch, that is each Code or Findings Adversary route. Before each such dispatch, compare its resolved route with the implementation route for the same revision. Reject the route when any of these is true:
-
-- Actual provider and model equal the implementation provider and model, regardless of variant.
-- `modelResolution` is `unresolved`, including a requested alias without a concrete actual model.
-- `executionId` equals the implementation execution ID or otherwise reuses its context.
-- `mechanism` is `inline`.
-
-Try the next adapter mechanism after a rejection. If no strict route remains, block the review gate and name the missing independent route as the next action.
-
-The risk policy's `inline-review` gate is outside this policy. It is one pass by the current execution, or by one fresh gate worker in Sail, recorded as a `review` route with its actual mechanism and `independence: not-applicable`. It never claims independence, so the strict rules neither reject nor validate it.
-
-A repository risk policy with `independent_review: degraded` explicitly disables strict independence. Then execution may continue only with `independence: degraded`, a non-empty `degradationReasons` array containing every failed strict rule, and the policy path in the evidence output reference. Missing `independent_review` means `strict`. The gate remains visibly degraded; a fallback never records `independent`.
+Every review and testing pass runs in a fresh subagent context. Reject a route when its execution identity reuses the implementation context or another gate execution, or when its mechanism is `inline`. Each adversarial review pass and every tester retry uses a distinct execution. A different provider or model is not required; unresolved model metadata does not block a route when its execution identity is known. This applies to the one-pass `inline-review` gate too: its legacy gate ID does not authorize current-context or inline execution. If no fresh subagent route is available, block the gate and name the missing route as the next action.
 
 No role contract pins a provider or commercial model identifier. Repositories and harnesses choose concrete selectors at runtime.
