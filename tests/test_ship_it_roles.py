@@ -53,6 +53,11 @@ class ShipItRolesTest(unittest.TestCase):
             self.assertEqual(
                 adapter["unsupported_selector"], "reject-before-dispatch"
             )
+        isolation = self.contract["context_isolation"]
+        self.assertEqual(isolation["adapter_fallback_roles_excluded"], ["review", "testing"])
+        for adapter in self.contract["adapters"].values():
+            self.assertNotIn("review", adapter["fallback_roles"])
+            self.assertNotIn("testing", adapter["fallback_roles"])
 
     def test_adapter_maps_each_harness_selector_control(self) -> None:
         adapters = self.contract["adapters"]
@@ -86,6 +91,8 @@ class ShipItRolesTest(unittest.TestCase):
         self.assertIn("route record for every tester execution and retry", test)
         self.assertIn("With no subagent capability, block", test)
         self.assertIn("Inline testing does not satisfy this gate", test)
+        self.assertIn("Dispatch every reproduction rerun to a fresh subagent execution", test)
+        self.assertIn("each reproduction check before acting to a fresh subagent execution", test)
         capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
         self.assertIn("fresh subagent", capabilities)
         self.assertIn("inline testing never satisfies the gate", capabilities)

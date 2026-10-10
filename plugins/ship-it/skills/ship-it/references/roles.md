@@ -23,7 +23,7 @@ Exploration and implementation record the already-running execution because thei
 1. A configured native role worker.
 2. An installed skill that accepts the selectors and exposes every actual worker route, including retries.
 3. A fresh generic subagent with the role mandate prepended.
-4. Do not use inline execution for review or testing. Both roles require fresh subagent contexts.
+4. Apply adapter fallback only to the roles listed by that adapter's `fallback_roles`. `context_isolation.adapter_fallback_roles_excluded` takes precedence for review and testing: do not use inline execution for either role. Both require fresh subagent contexts.
 
 Harness adapters map the portable selector, not role names, to their available provider, model, variant and subagent controls. `session-provider` accepts `default` or the active provider; any other request is unsupported.
 
