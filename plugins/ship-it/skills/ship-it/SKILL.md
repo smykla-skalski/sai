@@ -1,6 +1,6 @@
 ---
 name: ship-it
-description: Ship a change or coordinate an approved complex plan through risk-selected gates, PR feedback and merge. Accepts a task description, GitHub issue or Jira ticket. Use for end-to-end shipping.
+description: Ship a change or approved complex plan through risk-selected gates, PR feedback, and merge. Accepts task text, a GitHub issue, or Jira ticket.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and authenticated gh. Uses adversarial-review and adversarial-test when installed.
 argument-hint: "[--issue] [--risk low|medium|high] <task description | github-issue-url | jira-url>"
@@ -12,7 +12,7 @@ metadata:
 
 # Ship It
 
-Merge a change, or coordinate shippable issues from an approved complex plan.
+Merge a change or coordinate an approved complex plan.
 
 **Mode:** autonomous. Ask only on material ambiguity. Use blocking waiters until merged or a hard stop; never foreground-poll.
 

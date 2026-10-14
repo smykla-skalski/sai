@@ -18,6 +18,8 @@ Telemetry writes privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/
 
 Portable releases can replay the shared redacted [`environment-as-code` workflow failure corpus](https://github.com/Automaat/environment-as-code/tree/main/evals/agent-workflows) through available Claude Code, Codex, OpenCode, Copilot CLI, and Sail adapters. The [replay contract](skills/ship-it/references/replay.md) normalizes phase and observation traces, treats unavailable harnesses as skipped, blocks on supported-harness regressions, and compares accepted-task cost without storing task or source content.
 
+The [delivery performance benchmark](benchmarks/delivery-performance/) compares baseline and candidate contracts against five public synthetic cases with fixed acceptance criteria and model settings. Its normalized report includes elapsed and active time, workflow waits, repeated gates, approval requests, user interruptions, defect blocking, and untested criteria without storing prompts, transcripts, source, or credentials.
+
 With revision evidence enabled, each committed task revision has one portable evidence record under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/evidence/`. Local checks permit draft PR creation; review and the single broad manual-test pass permit ready-for-review; passing CI for the same head permits merge.
 
 Failed CI is triaged before escalation. The workflow deduplicates revision/workflow/job/attempt observations, exposes only bounded redacted failure sections, classifies failures with evidence, routes code faults back to their implementation owner, and preserves recurrence and resolution in checkpoint, evidence and privacy-safe telemetry. CI reruns need an explicit repository policy or user approval.
