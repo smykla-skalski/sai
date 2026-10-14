@@ -324,7 +324,11 @@ def event_identifier(state: dict[str, Any], event: str, args: argparse.Namespace
     observation_id = getattr(args, "observation_id", None)
     if observation_id is None:
         return f"evt_{secrets.token_hex(12)}"
-    material = "\0".join((state["run_id"], event, args.phase, observation_id))
+    worker_id = getattr(args, "worker_id", None) or ""
+    parts = [state["run_id"], event, args.phase, observation_id]
+    if worker_id:
+        parts.append(worker_id)
+    material = "\0".join(parts)
     return f"evt_{hashlib.sha256(material.encode()).hexdigest()[:24]}"
 
 
@@ -374,6 +378,12 @@ def begin(args: argparse.Namespace) -> dict[str, Any]:
     private_directory(tasks)
     with exclusive_lock(runs / ".index.lock"):
         state = indexed_run(task_id) or discover_run(task_id)
+        if (
+            state is not None
+            and state.get("status") == "finished"
+            and state.get("outcome") == "blocked"
+        ):
+            state = None
         if state is None:
             state = {
                 "run_id": f"run_{secrets.token_hex(12)}",
@@ -541,7 +551,7 @@ def repeated_count(events: list[dict[str, Any]], counter: str) -> int | None:
 
 
 def build_report(run_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
-    starts: dict[tuple[str, str], dict[str, Any]] = {}
+    starts: dict[tuple[str, str, str | None], dict[str, Any]] = {}
     primary_by_phase: dict[str, list[tuple[datetime, datetime]]] = {
         phase: [] for phase in PHASES
     }
@@ -571,12 +581,15 @@ def build_report(run_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
         if event_name in ("phase_started", "wait_started"):
             has_timing_observation = True
             kind = "phase" if event_name == "phase_started" else "wait"
-            starts.setdefault((kind, observation_id), event)
+            starts.setdefault((kind, observation_id, event.get("worker_id")), event)
             continue
         if event_name not in ("phase_completed", "wait_completed"):
             continue
         kind = "phase" if event_name == "phase_completed" else "wait"
-        started = starts.pop((kind, observation_id), None)
+        started = starts.pop(
+            (kind, observation_id, event.get("worker_id")),
+            None,
+        )
         if started is None:
             incomplete += 1
             continue

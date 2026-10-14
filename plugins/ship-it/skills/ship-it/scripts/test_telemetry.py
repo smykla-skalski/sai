@@ -85,6 +85,17 @@ def test_lifecycle_resumes_and_deduplicates() -> None:
         )
         assert json.loads(run(root, *finished).stdout)["duplicate"] is False
         assert json.loads(run(root, *finished).stdout)["duplicate"] is True
+        completed_retry = json.loads(run(
+            root,
+            "begin",
+            "--task-id", "github-159",
+            "--harness", "codex",
+            "--provider", "openai",
+            "--model", "gpt-5",
+            "--role", "primary",
+        ).stdout)
+        assert completed_retry["run_id"] == run_id
+        assert completed_retry["duplicate"] is True
 
         event_path = root / "sai" / "ship-it" / "telemetry" / "events.ndjson"
         events = [json.loads(line) for line in event_path.read_text(encoding="utf-8").splitlines()]
@@ -111,6 +122,69 @@ def test_lifecycle_resumes_and_deduplicates() -> None:
         assert report["observed_wait_ms"]["hosted_service"] is None
         assert event_path.stat().st_mode & 0o777 == 0o600
         assert event_path.parent.stat().st_mode & 0o777 == 0o700
+
+
+def test_finished_run_starts_a_new_run_for_the_same_task() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        started = json.loads(run(
+            root,
+            "begin",
+            "--task-id", "github-224",
+            "--harness", "codex",
+            "--provider", "openai",
+            "--model", "gpt",
+            "--role", "primary",
+        ).stdout)
+        run(root, "finish", "--run-id", started["run_id"], "--outcome", "blocked")
+
+        resumed = json.loads(run(
+            root,
+            "begin",
+            "--task-id", "github-224",
+            "--harness", "codex",
+            "--provider", "openai",
+            "--model", "gpt",
+            "--role", "primary",
+        ).stdout)
+        assert resumed["run_id"] != started["run_id"]
+        assert resumed["duplicate"] is False
+        run(root, "finish", "--run-id", resumed["run_id"], "--outcome", "accepted")
+        report = json.loads(run(root, "report", "--task-id", "github-224").stdout)
+        assert report["run_id"] == resumed["run_id"]
+
+
+def test_worker_observation_ids_are_scoped_to_the_worker() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        started = json.loads(run(
+            root,
+            "begin",
+            "--task-id", "github-224-workers",
+            "--harness", "codex",
+            "--provider", "openai",
+            "--model", "gpt",
+            "--role", "primary",
+        ).stdout)
+        run_id = started["run_id"]
+        for worker in ("worker-a", "worker-b"):
+            for event in ("phase_started", "phase_completed"):
+                result = json.loads(run(
+                    root,
+                    "observe",
+                    "--run-id", run_id,
+                    "--event", event,
+                    "--phase", "review",
+                    "--observation-id", "review-1",
+                    "--worker-id", worker,
+                    "--role", "validator",
+                ).stdout)
+                assert result["duplicate"] is False
+                assert result["event"]["worker_id"] == worker
+        run(root, "finish", "--run-id", run_id, "--outcome", "accepted")
+        report = json.loads(run(root, "report", "--run-id", run_id).stdout)
+        assert set(report["worker_durations_ms"]) == {"worker-a", "worker-b"}
+        assert report["observations_complete"] is True
 
 
 def test_unknown_values_and_validation() -> None:
@@ -261,6 +335,10 @@ def test_short_append_completes_record() -> None:
 if __name__ == "__main__":
     test_lifecycle_resumes_and_deduplicates()
     print("ok test_lifecycle_resumes_and_deduplicates")
+    test_finished_run_starts_a_new_run_for_the_same_task()
+    print("ok test_finished_run_starts_a_new_run_for_the_same_task")
+    test_worker_observation_ids_are_scoped_to_the_worker()
+    print("ok test_worker_observation_ids_are_scoped_to_the_worker")
     test_unknown_values_and_validation()
     print("ok test_unknown_values_and_validation")
     test_report_separates_elapsed_work_waits_and_workers()
