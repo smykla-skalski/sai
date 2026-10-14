@@ -561,6 +561,8 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
 def validate_merged_delivery(
     checkpoint: dict[str, Any],
     outcome: dict[str, Any],
+    *,
+    allow_unreconciled_legacy: bool = False,
 ) -> None:
     """Require a merged outcome to repeat the validated delivery identity."""
     if outcome.get("result") != "merged":
@@ -569,14 +571,21 @@ def validate_merged_delivery(
     if not isinstance(delivery, dict):
         message = "merged outcome requires delivery state"
         raise BookkeepingError(message)
-    if delivery.get("pullRequestState") != "merged":
+    unreconciled_legacy = (
+        delivery.get("pullRequestState") is None
+        and delivery.get("mergedAt") is None
+        and delivery.get("reconciliation") is None
+    )
+    if delivery.get("pullRequestState") != "merged" and not (
+        allow_unreconciled_legacy and unreconciled_legacy
+    ):
         message = "merged outcome requires delivery.pullRequestState merged"
         raise BookkeepingError(message)
     reconciliation = delivery.get("reconciliation")
     if (
         not isinstance(reconciliation, dict)
         or reconciliation.get("status") != "matched"
-    ):
+    ) and not (allow_unreconciled_legacy and unreconciled_legacy):
         message = "merged outcome requires matched delivery reconciliation"
         raise BookkeepingError(message)
     for field in ("pullRequestUrl", "pullRequestHead", "mergeCommit"):
@@ -589,7 +598,12 @@ def validate_merged_delivery(
         raise BookkeepingError(message)
 
 
-def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
+def validate_checkpoint(
+    checkpoint: dict[str, Any],
+    path: Path,
+    *,
+    allow_unreconciled_legacy: bool = False,
+) -> None:
     """Validate fields and invariants affected by a workflow transition."""
     missing = REQUIRED_CHECKPOINT_FIELDS.difference(checkpoint)
     if missing:
@@ -625,7 +639,11 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
             message = "complete workflow requires terminal status and outcome"
             raise BookkeepingError(message)
         validate_outcome(status, checkpoint["outcome"])
-        validate_merged_delivery(checkpoint, checkpoint["outcome"])
+        validate_merged_delivery(
+            checkpoint,
+            checkpoint["outcome"],
+            allow_unreconciled_legacy=allow_unreconciled_legacy,
+        )
     elif status in TERMINAL_STATUSES or checkpoint["outcome"] is not None:
         message = "terminal status and outcome require phase complete"
         raise BookkeepingError(message)
@@ -780,7 +798,7 @@ def reconcile_delivery(args: argparse.Namespace) -> dict[str, Any]:
     with checkpoint_lock(path):
         checkpoint = load_object(path)
         migrate_legacy(checkpoint)
-        validate_checkpoint(checkpoint, path)
+        validate_checkpoint(checkpoint, path, allow_unreconciled_legacy=True)
         delivery = checkpoint["delivery"]
         now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         if args.failure is not None:

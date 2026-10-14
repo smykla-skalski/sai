@@ -294,6 +294,60 @@ class BookkeepingTest(unittest.TestCase):
             self.assertIn(field, result.stderr)
             self.assertEqual(current, original)
 
+    def test_reconciliation_upgrades_completed_legacy_merge(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            workflow = document["workflow"]
+            delivery = document["delivery"]
+            if isinstance(workflow, dict):
+                workflow.update(
+                    phase="complete",
+                    status="completed",
+                    revision="a" * 40,
+                    nextAction="none",
+                )
+            if isinstance(delivery, dict):
+                delivery.update(
+                    pullRequestUrl="https://github.com/o/r/pull/1",
+                    pullRequestHead="a" * 40,
+                    mergeCommit="b" * 40,
+                )
+            document["outcome"] = {
+                "result": "merged",
+                "pullRequestUrl": "https://github.com/o/r/pull/1",
+                "pullRequestHead": "a" * 40,
+                "mergeCommit": "b" * 40,
+                "sourceState": "closed",
+                "branchCleanup": "deleted",
+                "completedAt": "2026-01-02T03:06:00Z",
+            }
+            checkpoint = checkpoint_path(directory, document)
+            checkpoint.write_text(json.dumps(document), encoding="utf-8")
+
+            result = self.run_script(
+                "reconcile-delivery",
+                "--checkpoint",
+                str(checkpoint),
+                "--pull-request-json",
+                json.dumps(
+                    {
+                        "url": "https://github.com/o/r/pull/1",
+                        "state": "MERGED",
+                        "headRefOid": "a" * 40,
+                        "mergeCommit": {"oid": "b" * 40},
+                        "mergedAt": "2026-01-02T03:04:05Z",
+                    }
+                ),
+            )
+
+            updated = json.loads(checkpoint.read_text(encoding="utf-8"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(updated["delivery"]["pullRequestState"], "merged")
+        self.assertEqual(updated["delivery"]["mergedAt"], "2026-01-02T03:04:05Z")
+        self.assertEqual(updated["delivery"]["reconciliation"]["status"], "matched")
+        self.assertEqual(updated["workflow"]["status"], "completed")
+        self.assertEqual(updated["outcome"]["result"], "merged")
+
     def test_unreachable_reconciliation_preserves_confirmed_merge(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             document = checkpoint_document()
