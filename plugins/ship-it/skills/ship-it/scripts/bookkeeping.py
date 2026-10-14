@@ -24,6 +24,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 from __future__ import annotations
 
 import argparse
+import copy
 import fcntl
 import hashlib
 import json
@@ -608,7 +609,12 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
             if args.command == "assess":
                 result = assess(checkpoint, args.kind, args.revision, snapshot)
             else:
-                result = reserve_request(args, checkpoint, snapshot)
+                before = copy.deepcopy(checkpoint)
+                try:
+                    result = reserve_request(args, checkpoint, snapshot)
+                except ConvergenceError:
+                    persist_invalidations(before, checkpoint, path)
+                    raise
         else:
             try:
                 outcome = json.loads(args.result_json)
@@ -623,6 +629,32 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
         validate_checkpoint(checkpoint, path)
         atomic_write(path, checkpoint)
         return {"checkpoint": str(path), **result}
+
+
+def persist_invalidations(
+    before: dict[str, Any],
+    attempted: dict[str, Any],
+    path: Path,
+) -> None:
+    """Keep derived invalidation after refusal, rolling back all attempted spending."""
+    decisions = attempted["convergence"].get("validityDecisions", [])
+    if decisions == before["convergence"].get("validityDecisions", []):
+        return
+    before["convergence"]["validityDecisions"] = decisions
+    for original, current in zip(
+        before["gateVerdicts"],
+        attempted["gateVerdicts"],
+        strict=False,
+    ):
+        if (
+            original.get("status") == "passed"
+            and current.get("status") == "stale"
+            and isinstance(current.get("invalidation"), dict)
+        ):
+            original.update(status="stale", invalidation=current["invalidation"])
+    before["updatedAt"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    validate_checkpoint(before, path)
+    atomic_write(path, before)
 
 
 def reserve_request(
@@ -697,11 +729,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     reservation.add_argument("--grant")
     validity = commands.add_parser(
-        "assess", help="persist gate input validity without dispatch",
+        "assess",
+        help="persist gate input validity without dispatch",
     )
     validity.add_argument("--checkpoint", required=True)
     validity.add_argument(
-        "--kind", choices=("review", "test", "quality"), required=True,
+        "--kind",
+        choices=("review", "test", "quality"),
+        required=True,
     )
     validity.add_argument("--revision", required=True)
     validity.add_argument("--inputs-json", required=True)

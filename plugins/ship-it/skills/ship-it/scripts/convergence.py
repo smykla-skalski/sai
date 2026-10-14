@@ -22,6 +22,7 @@ from validation_reuse import (
     capture,
     digest,
     require,
+    review_provenance_valid,
 )
 
 COUNTERS: Final[dict[str, str]] = {
@@ -353,6 +354,10 @@ def review_clean(checkpoint: dict[str, Any], revision: str) -> bool:
             "gate-inline-review",
         )
         and verdict.get("status") == "passed"
+        and (
+            verdict.get("provider") != "ship-it-validation-reuse"
+            or review_provenance_valid(checkpoint, verdict, revision)
+        )
         for verdict in verdicts
     )
 
@@ -367,7 +372,8 @@ def reserve(
     state = checkpoint["convergence"]
     existing = next(
         (
-            operation for operation in state["reservations"]
+            operation
+            for operation in state["reservations"]
             if operation["id"] == request["id"]
         ),
         None,
@@ -381,7 +387,10 @@ def reserve(
         require(request["kind"] != "fix", "fix operations cannot reuse validation")
         check_dispatch(checkpoint, request)
         decision = assess(
-            checkpoint, request["kind"], request["revision"], request["inputSnapshot"],
+            checkpoint,
+            request["kind"],
+            request["revision"],
+            request["inputSnapshot"],
         )
         if decision["status"] == "reusable":
             operation = next(
@@ -497,7 +506,8 @@ def finish(
                 "completion must target the reserved current revision",
             )
             current = capture(
-                operation["inputManifest"], operation["revision"],
+                operation["inputManifest"],
+                operation["revision"],
                 checkpoint["task"].get("acceptanceCriteria", []),
             )
             require(

@@ -283,14 +283,73 @@ def assess(
         "status": "invalid" if reasons else "reusable",
         "reasons": reasons,
     }
+    store_decision(checkpoint, decision)
+    return decision
+
+
+def store_decision(checkpoint: dict[str, Any], decision: dict[str, Any]) -> None:
+    """Record derived invalidity independently from optional dispatch allowances."""
     decisions = checkpoint["convergence"].setdefault("validityDecisions", [])
     if not decisions or decisions[-1] != decision:
         decisions.append(decision)
-    if reasons:
+    if decision["status"] == "invalid":
         for verdict in checkpoint["gateVerdicts"]:
-            if verdict.get("gate") == GATES[kind] and verdict.get("status") == "passed":
+            if (
+                verdict.get("gate") == GATES[decision["kind"]]
+                and verdict.get("status") == "passed"
+            ):
                 verdict.update(status="stale", invalidation=decision)
-    return decision
+
+
+def review_provenance_valid(
+    checkpoint: dict[str, Any],
+    verdict: dict[str, Any],
+    revision: str,
+) -> bool:
+    """Recheck reusable review evidence at the test prerequisite boundary."""
+    provenance = verdict.get("provenance")
+    if not isinstance(provenance, dict):
+        return False
+    operation = next(
+        (
+            receipt
+            for receipt in checkpoint["convergence"]["reservations"]
+            if receipt["id"] == provenance.get("operation")
+            and receipt["kind"] == "review"
+        ),
+        None,
+    )
+    if operation is None:
+        return False
+    try:
+        snapshot = capture(
+            operation["inputManifest"],
+            revision,
+            checkpoint["task"].get("acceptanceCriteria", []),
+        )
+    except ConvergenceError:
+        store_decision(
+            checkpoint,
+            {
+                "kind": "review",
+                "revision": revision,
+                "inputs": operation["inputs"],
+                "previousOperation": operation["id"],
+                "previousRevision": operation["revision"],
+                "status": "invalid",
+                "reasons": ["unverifiable-current-inputs"],
+            },
+        )
+        return False
+    decision = assess(checkpoint, "review", revision, snapshot)
+    return (
+        decision["status"] == "reusable"
+        and decision["previousOperation"] == operation["id"]
+        and operation["result"]["verdict"] == "passed"
+        and provenance.get("inputs") == operation["inputs"]
+        and provenance.get("originalRevision") == operation["revision"]
+        and provenance.get("outputArtifact") == operation["outputArtifact"]
+    )
 
 
 def attest(

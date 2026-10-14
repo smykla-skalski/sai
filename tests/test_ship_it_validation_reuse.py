@@ -247,18 +247,62 @@ class ValidationReuseTest(unittest.TestCase):
         self.assert_ok(self.structured())
         original = self.path.read_bytes()
         (self.repository / "src/behavior").write_text("changed while executing")
-        result = self.finish("initial", {"verdict": "passed", "findings": [], "output": str(self.output)})
+        result = self.finish(
+            "initial", {"verdict": "passed", "findings": [], "output": str(self.output)}
+        )
         self.assert_denied(result)
         self.assertEqual(self.path.read_bytes(), original)
 
     def test_same_identity_cannot_change_request_on_cache_hit(self) -> None:
         self.complete()
-        self.assert_denied(self.structured("initial", "review", "--reason", "changed request"))
+        self.assert_denied(
+            self.structured("initial", "review", "--reason", "changed request")
+        )
 
     def test_same_identity_cannot_return_passing_unverifiable_evidence(self) -> None:
         self.complete()
         self.output.write_text("modified output")
         self.assert_denied(self.structured())
+        document = self.read()
+        self.assertEqual(document["gateVerdicts"][0]["status"], "stale")
+        self.assertEqual(
+            document["convergence"]["validityDecisions"][-1]["reasons"],
+            ["unverifiable-output"],
+        )
+        self.assertEqual(document["convergence"]["reviewCycles"], 1)
+        self.assert_denied(self.structured("test-after-invalid-retry", "test"))
+
+    def test_corrupted_review_output_cannot_authorize_test_without_assessment(
+        self,
+    ) -> None:
+        self.complete()
+        self.output.write_text("corrupted after completion")
+
+        self.assert_denied(self.structured("manual-test", "test"))
+
+        document = self.read()
+        self.assertEqual(document["convergence"]["broadTestRuns"], 0)
+        self.assertEqual(document["gateVerdicts"][0]["status"], "stale")
+        self.assertEqual(
+            document["convergence"]["validityDecisions"][-1]["reasons"],
+            ["unverifiable-output"],
+        )
+
+    def test_changed_runtime_invalidates_review_before_test_dispatch(self) -> None:
+        self.complete()
+        original = os.environ.get("SAI_REUSE_TEST_ENV")
+        try:
+            os.environ["SAI_REUSE_TEST_ENV"] = "different runtime"
+            self.assert_denied(self.structured("manual-test", "test"))
+            self.assertEqual(
+                self.read()["convergence"]["validityDecisions"][-1]["reasons"],
+                ["environment"],
+            )
+        finally:
+            if original is None:
+                os.environ.pop("SAI_REUSE_TEST_ENV", None)
+            else:
+                os.environ["SAI_REUSE_TEST_ENV"] = original
 
     def test_symlink_scope_and_unknown_manifest_field_fail_closed(self) -> None:
         (self.repository / "src/link").symlink_to(self.output)
@@ -268,8 +312,15 @@ class ValidationReuseTest(unittest.TestCase):
     def test_failed_test_has_no_passing_attestation_when_reused(self) -> None:
         self.complete()
         self.assert_ok(self.structured("manual-test", "test"))
-        self.assert_ok(self.finish("manual-test", {"verdict": "failed", "output": str(self.output)}))
+        self.assert_ok(
+            self.finish(
+                "manual-test", {"verdict": "failed", "output": str(self.output)}
+            )
+        )
         result = self.assert_ok(self.structured("repeat", "test"))
         self.assertFalse(result["dispatch"])
         self.assertEqual(result["reservation"]["result"]["verdict"], "failed")
-        self.assertEqual([verdict["gate"] for verdict in self.read()["gateVerdicts"]], ["adversarial-review"])
+        self.assertEqual(
+            [verdict["gate"] for verdict in self.read()["gateVerdicts"]],
+            ["adversarial-review"],
+        )
