@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "documentation-only-work",
+      "title": "Documentation-only work waits without coordinator churn",
+      "acceptance_criteria": [
+        "Classify the change as low risk",
+        "Run each selected gate at most once",
+        "Do not turn an empty worker wait into a status read or user interruption"
+      ],
+      "scenario": [
+        "The user authorized a documentation-only correction and its delivery.",
+        "Revision A changes one Markdown file and passes local checks.",
+        "The inline review worker is running and has emitted no event.",
+        "CI is pending and has emitted no state change.",
+        "A host-required progress update occurs while both waits remain unchanged."
+      ],
+      "expected": {
+        "outcome": "waiting",
+        "confirmed_defect_detected": false,
+        "required_delivery_blocker_present": false,
+        "candidate_max_redundant_approval_requests": 0,
+        "candidate_max_duplicate_gate_executions": 0,
+        "required_untested_criteria": []
+      }
+    },
+    {
+      "id": "ordinary-fix-resume",
+      "title": "Ordinary fix resumes concurrent gates once",
+      "acceptance_criteria": [
+        "Retain the scoped approval across resumption",
+        "Count one user interruption without requesting the same approval again",
+        "Do not dispatch a second gate for an existing reservation or delayed completion event"
+      ],
+      "scenario": [
+        "The user replied 'I approve' to a concrete request for one focused validation pass on a parser fix.",
+        "Review worker A and test worker B started concurrently before a user interruption.",
+        "The durable checkpoint contains active reservations for both dispatches.",
+        "The session resumes with unchanged source, dependencies, commands, runtime, policy, and acceptance criteria.",
+        "A delayed duplicate completion event arrives from review worker A after its original completion was recorded.",
+        "CI is pending and no required validation has failed."
+      ],
+      "expected": {
+        "outcome": "waiting",
+        "confirmed_defect_detected": false,
+        "required_delivery_blocker_present": false,
+        "candidate_max_redundant_approval_requests": 0,
+        "candidate_max_duplicate_gate_executions": 0,
+        "required_untested_criteria": []
+      }
+    },
+    {
+      "id": "confirmed-security-defect",
+      "title": "Confirmed security defect blocks delivery",
+      "acceptance_criteria": [
+        "Detect the confirmed authorization bypass",
+        "Keep delivery blocked while the defect remains open",
+        "Do not defer the required security fix as optional follow-up work"
+      ],
+      "scenario": [
+        "The task changes authentication middleware.",
+        "The adversarial reviewer confirms that revision A accepts a forged role claim.",
+        "The finding reproduces reliably and is labeled as a security defect.",
+        "The bounded optional review and fix allowances are exhausted.",
+        "The security regression criterion has not passed."
+      ],
+      "expected": {
+        "outcome": "blocked",
+        "confirmed_defect_detected": true,
+        "required_delivery_blocker_present": true,
+        "candidate_max_redundant_approval_requests": 0,
+        "candidate_max_duplicate_gate_executions": 0,
+        "required_untested_criteria": ["security regression criterion"]
+      }
+    },
+    {
+      "id": "moving-default-branch",
+      "title": "Moving default branch preserves unaffected validation",
+      "acceptance_criteria": [
+        "Integrate the current default branch with a signed merge",
+        "Carry review and test evidence when reviewed behavior and validation inputs are unchanged",
+        "Run repository-required checks on the new pull request head"
+      ],
+      "scenario": [
+        "Revision A passed local checks, adversarial review, and adversarial test.",
+        "The default branch then gained an unrelated documentation commit.",
+        "A signed merge produces revision B without changing reviewed files, dependencies, commands, runtime, policy, or acceptance criteria.",
+        "Integration checks pass on revision B and required hosted CI is pending.",
+        "The session resumes at revision B with the previous gate manifests available."
+      ],
+      "expected": {
+        "outcome": "waiting",
+        "confirmed_defect_detected": false,
+        "required_delivery_blocker_present": false,
+        "candidate_max_redundant_approval_requests": 0,
+        "candidate_max_duplicate_gate_executions": 0,
+        "required_untested_criteria": []
+      }
+    },
+    {
+      "id": "native-fixture-failure",
+      "title": "Native fixture failure remains explicit",
+      "acceptance_criteria": [
+        "Report the native fixture startup failure",
+        "Keep the affected acceptance criterion untested",
+        "Block delivery instead of replacing the required native test with a mock"
+      ],
+      "scenario": [
+        "The selected adversarial test requires the repository's native local fixture.",
+        "The fixture exits before readiness because its required local runtime is unavailable.",
+        "The product behavior cannot be exercised through another repository-supported surface.",
+        "The criterion 'Persist a record through the native fixture' has not been tested.",
+        "All unrelated checks pass."
+      ],
+      "expected": {
+        "outcome": "blocked",
+        "confirmed_defect_detected": false,
+        "required_delivery_blocker_present": true,
+        "candidate_max_redundant_approval_requests": 0,
+        "candidate_max_duplicate_gate_executions": 0,
+        "required_untested_criteria": ["Persist a record through the native fixture"]
+      }
+    }
+  ]
+}

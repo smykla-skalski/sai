@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "required_gates", "gate_executions", "approval_requests", "redundant_approval_requests", "duplicate_gate_executions", "user_interruptions", "concurrent_workers_peak", "waits", "confirmed_defect_detected", "required_delivery_blocker_present", "untested_criteria"],
+  "properties": {
+    "outcome": {"enum": ["accepted", "blocked", "waiting"]},
+    "required_gates": {"type": "array", "items": {"type": "string"}},
+    "gate_executions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate", "count", "status"],
+        "properties": {
+          "gate": {"type": "string"},
+          "count": {"type": "integer", "minimum": 0},
+          "status": {"enum": ["passed", "failed", "blocked", "pending", "reused"]}
+        }
+      }
+    },
+    "approval_requests": {"type": "integer", "minimum": 0},
+    "redundant_approval_requests": {"type": "integer", "minimum": 0},
+    "duplicate_gate_executions": {"type": "integer", "minimum": 0},
+    "user_interruptions": {"type": "integer", "minimum": 0},
+    "concurrent_workers_peak": {"type": "integer", "minimum": 0},
+    "waits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "count", "duration_ms"],
+        "properties": {
+          "kind": {"enum": ["approval", "hosted_service", "resource_queue"]},
+          "count": {"type": "integer", "minimum": 0},
+          "duration_ms": {"type": ["integer", "null"], "minimum": 0}
+        }
+      }
+    },
+    "confirmed_defect_detected": {"type": "boolean"},
+    "required_delivery_blocker_present": {
+      "type": "boolean",
+      "description": "True when an unresolved required defect or unavailable required native test blocks delivery."
+    },
+    "untested_criteria": {"type": "array", "items": {"type": "string"}}
+  }
+}

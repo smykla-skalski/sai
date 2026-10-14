@@ -1,0 +1,814 @@
+{
+  "acceptance": {
+    "failures": [],
+    "status": "passed"
+  },
+  "benchmark": "ship-it-delivery-performance",
+  "cases_digest": "698d57f491cad027e2f6835fe04c35341c18ffc70fae2dd44b5280c7af296190",
+  "comparison": {
+    "improvements": [
+      {
+        "baseline": 40332,
+        "candidate": 31605,
+        "case_id": "documentation-only-work",
+        "metric": "mean_elapsed_ms"
+      },
+      {
+        "baseline": 35265,
+        "candidate": 29196,
+        "case_id": "native-fixture-failure",
+        "metric": "mean_elapsed_ms"
+      },
+      {
+        "baseline": 1,
+        "candidate": 0,
+        "case_id": "native-fixture-failure",
+        "metric": "reported_wait_count"
+      }
+    ],
+    "regressions": [
+      {
+        "baseline": 33703,
+        "candidate": 90242,
+        "case_id": "ordinary-fix-resume",
+        "metric": "mean_elapsed_ms"
+      },
+      {
+        "baseline": 44812,
+        "candidate": 53243,
+        "case_id": "confirmed-security-defect",
+        "metric": "mean_elapsed_ms"
+      },
+      {
+        "baseline": 0,
+        "candidate": 1,
+        "case_id": "moving-default-branch",
+        "metric": "user_interruptions"
+      },
+      {
+        "baseline": 44541,
+        "candidate": 55009,
+        "case_id": "moving-default-branch",
+        "metric": "mean_elapsed_ms"
+      }
+    ],
+    "speedup_claimed": false,
+    "speedup_reason": "No speedup claim: one sample per case and variant is insufficient for timing inference, and aggregate candidate elapsed time increased.",
+    "unchanged": [
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "documentation-only-work",
+        "metric": "redundant_approval_requests"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "documentation-only-work",
+        "metric": "duplicate_gate_executions"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "documentation-only-work",
+        "metric": "user_interruptions"
+      },
+      {
+        "baseline": 2,
+        "candidate": 2,
+        "case_id": "documentation-only-work",
+        "metric": "reported_wait_count"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "ordinary-fix-resume",
+        "metric": "redundant_approval_requests"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "ordinary-fix-resume",
+        "metric": "duplicate_gate_executions"
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "ordinary-fix-resume",
+        "metric": "user_interruptions"
+      },
+      {
+        "baseline": 2,
+        "candidate": 2,
+        "case_id": "ordinary-fix-resume",
+        "metric": "reported_wait_count"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "confirmed-security-defect",
+        "metric": "redundant_approval_requests"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "confirmed-security-defect",
+        "metric": "duplicate_gate_executions"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "confirmed-security-defect",
+        "metric": "user_interruptions"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "confirmed-security-defect",
+        "metric": "reported_wait_count"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "moving-default-branch",
+        "metric": "redundant_approval_requests"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "moving-default-branch",
+        "metric": "duplicate_gate_executions"
+      },
+      {
+        "baseline": 1,
+        "candidate": 1,
+        "case_id": "moving-default-branch",
+        "metric": "reported_wait_count"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "native-fixture-failure",
+        "metric": "redundant_approval_requests"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "native-fixture-failure",
+        "metric": "duplicate_gate_executions"
+      },
+      {
+        "baseline": 0,
+        "candidate": 0,
+        "case_id": "native-fixture-failure",
+        "metric": "user_interruptions"
+      }
+    ]
+  },
+  "environment": {
+    "adapter": "codex-exec-read-only",
+    "adapter_version": "codex-cli 0.162.1",
+    "machine": "arm64",
+    "model": "gpt-5.6-sol",
+    "platform": "darwin",
+    "python": "3.12.14",
+    "reasoning_effort": "high",
+    "sandbox": "read-only"
+  },
+  "provenance": {
+    "baseline_artifact_sha256": "34e5cea99f80bb8529f6ce0dbb0ea5470c67aaee480c8c49c0945e73ea1c7c8d",
+    "baseline_harness_revision": "226a561bd260eeb75102d0632855a139c0519154",
+    "candidate_harness_revision": "ba97832ee25138cc4295806f522b6a96fa02b2c0"
+  },
+  "result_schema_digest": "64475fc5a58c1b14e140268a0be36f9fd757ef3ca85e923fdb63ac569907c62a",
+  "runs": [
+    {
+      "case_id": "documentation-only-work",
+      "contract_digest": "fbfc63af93783a22606120c23d9baa8e54ebb952b2ffe3acc8c517b610dc181c",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 1,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 0,
+            "gate": "local-checks",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "inline-review",
+            "status": "pending"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "waiting",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": false,
+        "required_gates": [
+          "local-checks",
+          "inline-review",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 40332,
+          "elapsed_ms": 40332,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [],
+        "usage": {
+          "cached_input_tokens": 42240,
+          "input_tokens": 71437,
+          "output_tokens": 1869
+        },
+        "user_interruptions": 0,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "resource_queue"
+          },
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "hosted_service"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "913312e7b3580ae7ad3bc4f9a484072585deed87",
+      "variant": "baseline"
+    },
+    {
+      "case_id": "ordinary-fix-resume",
+      "contract_digest": "fbfc63af93783a22606120c23d9baa8e54ebb952b2ffe3acc8c517b610dc181c",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 2,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 0,
+            "gate": "review",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "test",
+            "status": "pending"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "waiting",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": false,
+        "required_gates": [
+          "review",
+          "test",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 33703,
+          "elapsed_ms": 33703,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [],
+        "usage": {
+          "cached_input_tokens": 42240,
+          "input_tokens": 71910,
+          "output_tokens": 1728
+        },
+        "user_interruptions": 1,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "resource_queue"
+          },
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "hosted_service"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "913312e7b3580ae7ad3bc4f9a484072585deed87",
+      "variant": "baseline"
+    },
+    {
+      "case_id": "confirmed-security-defect",
+      "contract_digest": "fbfc63af93783a22606120c23d9baa8e54ebb952b2ffe3acc8c517b610dc181c",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 0,
+        "confirmed_defect_detected": true,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 0,
+            "gate": "local-checks",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-review",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-test",
+            "status": "blocked"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "blocked"
+          }
+        ],
+        "outcome": "blocked",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": true,
+        "required_gates": [
+          "local-checks",
+          "adversarial-review",
+          "adversarial-test",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 44812,
+          "elapsed_ms": 44812,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [
+          "Security regression criterion has not passed."
+        ],
+        "usage": {
+          "cached_input_tokens": 68992,
+          "input_tokens": 97232,
+          "output_tokens": 2252
+        },
+        "user_interruptions": 0,
+        "waits": []
+      },
+      "sample": 1,
+      "source_revision": "913312e7b3580ae7ad3bc4f9a484072585deed87",
+      "variant": "baseline"
+    },
+    {
+      "case_id": "moving-default-branch",
+      "contract_digest": "fbfc63af93783a22606120c23d9baa8e54ebb952b2ffe3acc8c517b610dc181c",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 1,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 1,
+            "gate": "local-checks",
+            "status": "passed"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-review",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-test",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "waiting",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": false,
+        "required_gates": [
+          "local-checks",
+          "adversarial-review",
+          "adversarial-test",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 44541,
+          "elapsed_ms": 44541,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [],
+        "usage": {
+          "cached_input_tokens": 42240,
+          "input_tokens": 68444,
+          "output_tokens": 2306
+        },
+        "user_interruptions": 0,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "hosted_service"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "913312e7b3580ae7ad3bc4f9a484072585deed87",
+      "variant": "baseline"
+    },
+    {
+      "case_id": "native-fixture-failure",
+      "contract_digest": "fbfc63af93783a22606120c23d9baa8e54ebb952b2ffe3acc8c517b610dc181c",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 1,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 1,
+            "gate": "adversarial-test",
+            "status": "blocked"
+          }
+        ],
+        "outcome": "blocked",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": true,
+        "required_gates": [
+          "adversarial-test"
+        ],
+        "timing": {
+          "active_ms": 35265,
+          "elapsed_ms": 35265,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [
+          "Persist a record through the native fixture"
+        ],
+        "usage": {
+          "cached_input_tokens": 43776,
+          "input_tokens": 68546,
+          "output_tokens": 1762
+        },
+        "user_interruptions": 0,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "resource_queue"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "913312e7b3580ae7ad3bc4f9a484072585deed87",
+      "variant": "baseline"
+    },
+    {
+      "case_id": "documentation-only-work",
+      "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 2,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 0,
+            "gate": "local-checks",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "inline-review",
+            "status": "pending"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "waiting",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": false,
+        "required_gates": [
+          "local-checks",
+          "inline-review",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 31605,
+          "elapsed_ms": 31605,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [],
+        "usage": {
+          "cached_input_tokens": 55296,
+          "input_tokens": 73789,
+          "output_tokens": 1592
+        },
+        "user_interruptions": 0,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "resource_queue"
+          },
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "hosted_service"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "41133043ec6fbde4da57bab57d5b77bb47e601ed",
+      "variant": "candidate"
+    },
+    {
+      "case_id": "ordinary-fix-resume",
+      "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
+      "result": {
+        "approval_requests": 1,
+        "concurrent_workers_peak": 2,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 0,
+            "gate": "local-checks",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-review",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-test",
+            "status": "pending"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "waiting",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": false,
+        "required_gates": [
+          "local-checks",
+          "adversarial-review",
+          "adversarial-test",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 90242,
+          "elapsed_ms": 90242,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [],
+        "usage": {
+          "cached_input_tokens": 107264,
+          "input_tokens": 146759,
+          "output_tokens": 4007
+        },
+        "user_interruptions": 1,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "approval"
+          },
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "hosted_service"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "41133043ec6fbde4da57bab57d5b77bb47e601ed",
+      "variant": "candidate"
+    },
+    {
+      "case_id": "confirmed-security-defect",
+      "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 0,
+        "confirmed_defect_detected": true,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 0,
+            "gate": "local-checks",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-review",
+            "status": "failed"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-test",
+            "status": "blocked"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "blocked",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": true,
+        "required_gates": [
+          "local-checks",
+          "adversarial-review",
+          "adversarial-test",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 53243,
+          "elapsed_ms": 53243,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [
+          "The security regression criterion has not passed."
+        ],
+        "usage": {
+          "cached_input_tokens": 144640,
+          "input_tokens": 161016,
+          "output_tokens": 2020
+        },
+        "user_interruptions": 0,
+        "waits": []
+      },
+      "sample": 1,
+      "source_revision": "41133043ec6fbde4da57bab57d5b77bb47e601ed",
+      "variant": "candidate"
+    },
+    {
+      "case_id": "moving-default-branch",
+      "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 1,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 1,
+            "gate": "local-checks",
+            "status": "passed"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-review",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-test",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "ci",
+            "status": "pending"
+          }
+        ],
+        "outcome": "waiting",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": false,
+        "required_gates": [
+          "local-checks",
+          "adversarial-review",
+          "adversarial-test",
+          "ci"
+        ],
+        "timing": {
+          "active_ms": 55009,
+          "elapsed_ms": 55009,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [],
+        "usage": {
+          "cached_input_tokens": 168832,
+          "input_tokens": 205643,
+          "output_tokens": 2608
+        },
+        "user_interruptions": 1,
+        "waits": [
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "hosted_service"
+          }
+        ]
+      },
+      "sample": 1,
+      "source_revision": "41133043ec6fbde4da57bab57d5b77bb47e601ed",
+      "variant": "candidate"
+    },
+    {
+      "case_id": "native-fixture-failure",
+      "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
+      "result": {
+        "approval_requests": 0,
+        "concurrent_workers_peak": 1,
+        "confirmed_defect_detected": false,
+        "duplicate_gate_executions": 0,
+        "gate_executions": [
+          {
+            "count": 1,
+            "gate": "adversarial-test: native fixture startup failed because the required local runtime is unavailable",
+            "status": "blocked"
+          }
+        ],
+        "outcome": "blocked",
+        "redundant_approval_requests": 0,
+        "required_delivery_blocker_present": true,
+        "required_gates": [
+          "adversarial-test using the native local fixture"
+        ],
+        "timing": {
+          "active_ms": 29196,
+          "elapsed_ms": 29196,
+          "wait_ms": {
+            "approval": null,
+            "hosted_service": null,
+            "resource_queue": null
+          }
+        },
+        "untested_criteria": [
+          "Persist a record through the native fixture"
+        ],
+        "usage": {
+          "cached_input_tokens": 91264,
+          "input_tokens": 118925,
+          "output_tokens": 1237
+        },
+        "user_interruptions": 0,
+        "waits": []
+      },
+      "sample": 1,
+      "source_revision": "41133043ec6fbde4da57bab57d5b77bb47e601ed",
+      "variant": "candidate"
+    }
+  ],
+  "sample_count_per_case_and_variant": 1,
+  "schema_version": 1
+}
