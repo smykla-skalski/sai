@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/smykla-skalski/sai/ship-it/telemetry/v2",
+  "$id": "https://github.com/smykla-skalski/sai/ship-it/telemetry/v3",
   "title": "ship-it workflow telemetry event",
   "type": "object",
   "required": [
@@ -15,24 +15,30 @@
     "model",
     "role",
     "phase",
+    "observation_id",
+    "worker_id",
+    "wait_kind",
     "metrics",
     "outcome"
   ],
   "properties": {
-    "schema_version": {"const": 2},
+    "schema_version": {"const": 3},
     "event_id": {"type": "string", "pattern": "^evt_[0-9a-f]{24}$"},
     "emitted_at": {"type": "string", "format": "date-time"},
     "run_id": {"type": "string", "pattern": "^run_[0-9a-f]{24}$"},
     "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$"},
-    "event": {"enum": ["run_started", "phase_completed", "run_finished"]},
+    "event": {"enum": ["run_started", "phase_started", "phase_completed", "wait_started", "wait_completed", "user_interruption", "run_finished"]},
     "harness": {"$ref": "#/$defs/identifier"},
     "provider": {"$ref": "#/$defs/identifier"},
     "model": {"$ref": "#/$defs/identifier"},
     "role": {"enum": ["primary", "subagent", "validator", "guardian", "synthetic", "probe"]},
     "phase": {"enum": ["resolve", "orchestrate", "explore", "branch", "implement", "publish", "review", "test", "pr", "wait", "fix", "merge", "complete"]},
+    "observation_id": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$"},
+    "worker_id": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$"},
+    "wait_kind": {"type": ["string", "null"], "enum": ["approval", "hosted_service", "resource_queue", null]},
     "metrics": {
       "type": "object",
-      "required": ["turns", "tool_calls", "permission_decisions", "compactions", "input_tokens", "output_tokens", "elapsed_ms", "retries", "findings", "checks", "human_interventions", "failed_commands", "approval_wait_ms", "ci_failures", "ci_recurrences", "ci_resolutions"],
+      "required": ["turns", "tool_calls", "permission_decisions", "compactions", "input_tokens", "output_tokens", "elapsed_ms", "retries", "findings", "checks", "human_interventions", "failed_commands", "approval_wait_ms", "ci_failures", "ci_recurrences", "ci_resolutions", "review_cycles", "test_runs", "full_quality_gate_runs", "user_interruptions"],
       "properties": {
         "turns": {"$ref": "#/$defs/counter"},
         "tool_calls": {"$ref": "#/$defs/counter"},
@@ -49,7 +55,11 @@
         "approval_wait_ms": {"$ref": "#/$defs/counter"},
         "ci_failures": {"$ref": "#/$defs/counter"},
         "ci_recurrences": {"$ref": "#/$defs/counter"},
-        "ci_resolutions": {"$ref": "#/$defs/counter"}
+        "ci_resolutions": {"$ref": "#/$defs/counter"},
+        "review_cycles": {"$ref": "#/$defs/counter"},
+        "test_runs": {"$ref": "#/$defs/counter"},
+        "full_quality_gate_runs": {"$ref": "#/$defs/counter"},
+        "user_interruptions": {"$ref": "#/$defs/counter"}
       },
       "additionalProperties": false
     },
@@ -62,17 +72,28 @@
   "allOf": [
     {
       "if": {"properties": {"event": {"const": "run_started"}}},
-      "then": {"properties": {"phase": {"const": "resolve"}, "outcome": {"type": "null"}}}
+      "then": {"properties": {"phase": {"const": "resolve"}, "observation_id": {"const": "run"}, "worker_id": {"type": "null"}, "wait_kind": {"type": "null"}, "outcome": {"type": "null"}}}
     },
     {
-      "if": {"properties": {"event": {"const": "phase_completed"}}},
-      "then": {"properties": {"outcome": {"type": "null"}}}
+      "if": {"properties": {"event": {"enum": ["phase_started", "phase_completed", "user_interruption"]}}},
+      "then": {"properties": {"wait_kind": {"type": "null"}, "outcome": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"event": {"enum": ["phase_started", "user_interruption"]}}},
+      "then": {"properties": {"observation_id": {"type": "string"}}}
+    },
+    {
+      "if": {"properties": {"event": {"enum": ["wait_started", "wait_completed"]}}},
+      "then": {"properties": {"observation_id": {"type": "string"}, "wait_kind": {"enum": ["approval", "hosted_service", "resource_queue"]}, "outcome": {"type": "null"}}}
     },
     {
       "if": {"properties": {"event": {"const": "run_finished"}}},
       "then": {
         "properties": {
           "phase": {"const": "complete"},
+          "observation_id": {"const": "run"},
+          "worker_id": {"type": "null"},
+          "wait_kind": {"type": "null"},
           "outcome": {"enum": ["accepted", "rejected", "blocked", "cancelled", "failed"]}
         }
       }

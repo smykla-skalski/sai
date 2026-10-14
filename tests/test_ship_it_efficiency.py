@@ -85,11 +85,11 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         ):
             self.assertIn(f"references/{conditional}", skill)
 
-    def test_optional_bookkeeping_defaults_off(self) -> None:
+    def test_local_telemetry_defaults_on(self) -> None:
         checkpoint = read(REFERENCES / "checkpoint.md")
         self.assertIn('"claims": false', checkpoint)
         self.assertIn('"evidence": false', checkpoint)
-        self.assertIn('"telemetry": false', checkpoint)
+        self.assertIn('"telemetry": true', checkpoint)
         self.assertIn("checkpoint itself is mandatory", checkpoint)
         self.assertIn("scripts/bookkeeping.py", checkpoint)
         self.assertIn("Never renew on a timer", read(REFERENCES / "claims.md"))

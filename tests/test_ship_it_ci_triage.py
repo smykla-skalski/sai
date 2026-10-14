@@ -20,6 +20,9 @@ EVIDENCE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "evidence.md"
 PR_LOOP_REFERENCE: Final[Path] = SKILL_DIR / "references" / "pr-loop.md"
 TELEMETRY_REFERENCE: Final[Path] = SKILL_DIR / "references" / "telemetry.md"
 TELEMETRY_SCHEMA: Final[Path] = SKILL_DIR / "references" / "telemetry.schema.json"
+TELEMETRY_V2_SCHEMA: Final[Path] = (
+    SKILL_DIR / "references" / "telemetry-v2.schema.json"
+)
 TELEMETRY_V1_SCHEMA: Final[Path] = (
     SKILL_DIR / "references" / "telemetry-v1.schema.json"
 )
@@ -110,6 +113,9 @@ class ShipItCiTriageContractTest(unittest.TestCase):
         pr_loop = PR_LOOP_REFERENCE.read_text(encoding="utf-8")
         telemetry = TELEMETRY_REFERENCE.read_text(encoding="utf-8")
         telemetry_schema = json.loads(TELEMETRY_SCHEMA.read_text(encoding="utf-8"))
+        telemetry_v2_schema = json.loads(
+            TELEMETRY_V2_SCHEMA.read_text(encoding="utf-8")
+        )
         telemetry_v1_schema = json.loads(
             TELEMETRY_V1_SCHEMA.read_text(encoding="utf-8")
         )
@@ -133,18 +139,25 @@ class ShipItCiTriageContractTest(unittest.TestCase):
                     counter,
                     telemetry_schema["properties"]["metrics"]["properties"],
                 )
+                self.assertIn(
+                    counter,
+                    telemetry_v2_schema["properties"]["metrics"]["properties"],
+                )
                 self.assertNotIn(
                     counter,
                     telemetry_v1_schema["properties"]["metrics"]["properties"],
                 )
-        self.assertEqual(telemetry_schema["properties"]["schema_version"]["const"], 2)
+        self.assertEqual(telemetry_schema["properties"]["schema_version"]["const"], 3)
+        self.assertEqual(
+            telemetry_v2_schema["properties"]["schema_version"]["const"], 2
+        )
         self.assertEqual(
             telemetry_v1_schema["properties"]["schema_version"]["const"], 1
         )
 
     def test_publish_is_a_telemetry_phase_in_every_contract_version(self) -> None:
         telemetry = TELEMETRY_REFERENCE.read_text(encoding="utf-8")
-        for path in (TELEMETRY_SCHEMA, TELEMETRY_V1_SCHEMA):
+        for path in (TELEMETRY_SCHEMA, TELEMETRY_V2_SCHEMA, TELEMETRY_V1_SCHEMA):
             with self.subTest(schema=path.name):
                 schema = json.loads(path.read_text(encoding="utf-8"))
                 self.assertIn("publish", schema["properties"]["phase"]["enum"])

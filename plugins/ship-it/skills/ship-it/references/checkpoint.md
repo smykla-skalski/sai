@@ -62,7 +62,7 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
   "bookkeeping": {
     "claims": false,
     "evidence": false,
-    "telemetry": false,
+    "telemetry": true,
     "policySource": "bundled default|repository path|explicit user request"
   },
   "risk": {
@@ -103,7 +103,7 @@ For a single change, a delivered `outcome` is an object with `result: merged`, `
 
 `orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, gated head, PR URL, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
 
-`bookkeeping` is resolved from `.sai/ship-it-bookkeeping.json` or the current user's explicit request; the bundled default disables claims, revision evidence and telemetry. The checkpoint itself is mandatory in every mode. When claims are disabled, `claim` stays null and no claim comment is created. When evidence is disabled, `gateVerdicts` records each selected gate's ID, status, exact revision, provider, timestamp and bounded summary directly, and evidence status is `disabled`. When telemetry is disabled, no telemetry file or event is created.
+`bookkeeping` is resolved from `.sai/ship-it-bookkeeping.json` or the current user's explicit request. The bundled default disables claims and revision evidence and enables local telemetry. A repository policy may disable telemetry. The checkpoint itself is mandatory in every mode. When claims are disabled, `claim` stays null and no claim comment is created. When evidence is disabled, `gateVerdicts` records each selected gate's ID, status, exact revision, provider, timestamp and bounded summary directly, and evidence status is `disabled`. When telemetry is disabled, no telemetry file or event is created.
 
 With claims enabled, `claim` is null for Jira and description sources. For a GitHub implementation issue it repeats the claim comment's `commentId`, `commentUrl`, `holder`, `status`, `acquiredAt`, `renewedAt`, `expiresAt`, `releasedAt`, `releaseReason` and `takeover`. Before the first comment, `status` may be `pending`, with a generated holder and null comment and lease fields; resume uses that holder for the acquisition attempt. Once a comment exists, the issue comment is authoritative and status is `active` or `released`. An umbrella coordinator keeps its own claim null and stores each worker's claim fields in that child's orchestration entry.
 
@@ -136,7 +136,7 @@ Validate these invariants in addition to field presence and types:
 
 Validate the complete next document before replacing state. Write it to a same-directory temporary file with owner-only permissions, flush and sync it, preserve the current valid file as `<checkpoint-id>.json.bak`, then atomically rename the temporary file over the checkpoint. Never record successful completion before its operation succeeds. Allowance reservations intentionally persist before work starts; failed/interrupted attempts retain consumption. A failed write leaves the previous checkpoint authoritative.
 
-Use `python3 <skill-dir>/scripts/bookkeeping.py policy --repository <root>` once during resolve, adding `--enable claims,evidence,telemetry` only for features the current user explicitly enabled. Use `bookkeeping.py transition` for every checkpoint phase or status transition so each transition is one validated call; pass the complete outcome object through `--outcome-json` for a terminal transition. Never write an ad-hoc state helper. Optional claim, evidence and telemetry operations run only when the returned policy enables them.
+Use `python3 <skill-dir>/scripts/bookkeeping.py policy --repository <root>` once during resolve, adding `--enable claims,evidence,telemetry` only for features the current user explicitly enabled. Use `bookkeeping.py transition` for every checkpoint phase or status transition so each transition is one validated call; pass the complete outcome object through `--outcome-json` for a terminal transition. Never write an ad-hoc state helper. Claim and evidence operations run only when enabled. Telemetry runs by default and is skipped only when the returned policy disables it.
 
 ## Creation and resume
 
