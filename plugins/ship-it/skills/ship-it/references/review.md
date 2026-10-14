@@ -8,14 +8,14 @@ When the risk policy selects `inline-review`, make one review pass in a fresh ge
 
 Assess the manifest and reserve `review` with `bookkeeping.py reserve --inputs-json MANIFEST`; dispatch only on `dispatch: true`. Reusable results return current-head provenance without a worker. A fresh Findings Adversary runs only when the Code Adversary reports `blocking:` or `issue:` findings. With none, `Review Verdict: CLEAN` ends the gate; never dispatch the Findings Adversary for a CLEAN result.
 
-Record each review invocation before dispatch. Reject inline or reused implementation context. Each pass and retry needs a fresh subagent execution.
+Record each review invocation before dispatch. Reject inline or reused implementation context. Each pass and retry needs a fresh subagent execution and a stable dispatch ID.
 
 For a routed generic review, supply the repository, `git diff origin/<default>...HEAD`, changed files and checkpoint:
 
 1. Dispatch a fresh Code Adversary to prove failures with input and `file:line`, suggest fixes, and label findings `blocking:`, `issue:` or `question:`. Blocking findings need executed reproduction or explicit interleaving. Validate `CODE_ADVERSARY_VERDICT:`; malformed output gets one fresh retry, then gate failure. Close each worker.
 2. Only after `blocking:` or `issue:` findings, dispatch a separate fresh Findings Adversary with numbered findings, never the Code worker's reasoning. Refute each against the source. Validate `FINDINGS_ADVERSARY_VERDICT:` with one fresh retry, then gate failure; close the worker.
 
-After each dispatch, wait once with a blocking wait of at least ten minutes unless the worker returns sooner. Do not list agents or request status between waits. Close each worker immediately after its verdict.
+Apply [worker-events.md](worker-events.md) after each dispatch. Accept only the active dispatch's terminal event, then close that worker once.
 
 The fallback verdict is `NEEDS_FIXES` when any `blocking:` or `issue:` survives refutation, otherwise `CLEAN`. With no subagent capability, block. Inline passes do not satisfy this gate. Sail always pauses when a review subagent is unavailable.
 

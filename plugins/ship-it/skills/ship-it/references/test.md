@@ -10,9 +10,7 @@ For GitHub work with claims enabled, verify and renew the claim when due before 
 
 The tester derives acceptance criteria from the task, runs the real changed product surface in isolated state, and attacks happy paths, boundaries, malformed input, repeated or concurrent use and adjacent flows. Every reproduction rerun is a separate attempt: dispatch it to a fresh subagent execution, including checks before a fix and focused checks after a fix. Automated tests, lint, build and source inspection are supporting evidence, not manual testing.
 
-Resolve and record a fresh testing role before each adversarial-test dispatch.
-
-After dispatch, wait once with a blocking wait of at least ten minutes unless the tester returns sooner. Do not list agents or request status between waits. Close the tester immediately after its verdict.
+Resolve and record a fresh testing role and stable dispatch ID before each adversarial-test dispatch. Apply [worker-events.md](worker-events.md); accept only that dispatch's terminal event, then close the tester once.
 
 For a generic tester, supply repository, `git diff origin/<default>...HEAD`, changed files and checkpoint. Exercise the isolated real surface; report reproductions and `UNTESTED` environmental blockers. For changed UI, save a screenshot of at least 2560x1440 under the persistent adversarial-test evidence directory. Dispatch every reproduction rerun to a fresh subagent execution. A surviving reproduction is `FAIL`; a human-supplied product precondition is `BLOCKED`; only environmental gaps yield `PASS (partial)`; otherwise `PASS`. With no subagent capability, block; Inline testing does not satisfy this gate.
 
