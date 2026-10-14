@@ -151,6 +151,17 @@ def validate(checkpoint: dict[str, Any]) -> None:
     )
     for field in ("reservations", "findings", "followUpIssues"):
         require(isinstance(state[field], list), f"convergence.{field} must be an array")
+    require(
+        not state["reviewCycles"]
+        or state["reviewedRevision"] is not None
+        or any(
+            isinstance(operation, dict)
+            and operation.get("kind") == "review"
+            and operation.get("status") == "reserved"
+            for operation in state["reservations"]
+        ),
+        "recover revision-bound review evidence or reconcile a pending review receipt",
+    )
     identities: set[str] = set()
     counts = dict.fromkeys(COUNTERS, 0)
     for operation in state["reservations"]:
@@ -241,7 +252,7 @@ def spend_allowance(
         state["mode"] = "exhaustive"
         state["authorizedBy"] = grant_id
     for grant in checkpoint["authorization"]["grants"]:
-        if grant["id"] == grant_id or counter in grant["scope"]:
+        if grant["id"] == grant_id:
             continue
         for limit in grant["limits"]:
             if limit["resource"] == counter:

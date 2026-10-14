@@ -355,6 +355,69 @@ class ReservationTest(unittest.TestCase):
         self.assert_denied(result)
         self.assertIn("recover revision-bound", result.stderr)
 
+    def test_scoped_user_limits_bind_ordinary_reservations(self) -> None:
+        for maximum in (0, 1):
+            with self.subTest(maximum=maximum):
+                self.document["authorization"]["grants"][0].update(
+                    scope=["reviewCycles"],
+                    limits=[
+                        {"resource": "reviewCycles", "maximum": maximum, "used": 0}
+                    ],
+                )
+                self.write(self.document)
+                if maximum:
+                    self.assert_ok(self.reserve("first"))
+                    self.assertEqual(
+                        self.read()["authorization"]["grants"][0]["limits"][0]["used"],
+                        1,
+                    )
+                    self.assert_ok(
+                        self.finish("first", {"verdict": "passed", "findings": []})
+                    )
+                self.assert_denied(
+                    self.reserve(
+                        "second",
+                        "review",
+                        "changed",
+                        "--trigger",
+                        "security",
+                        "--reason",
+                        "security correction",
+                    )
+                )
+                self.assertEqual(
+                    self.read()["authorization"]["grants"][0]["limits"][0]["used"],
+                    maximum,
+                )
+
+    def test_legacy_null_review_evidence_without_receipt_blocks_transition(
+        self,
+    ) -> None:
+        doc = self.read()
+        doc["convergence"] = {
+            "reviewCycles": 1,
+            "startedAt": "2026-01-01T00:00:00Z",
+            "reviewedRevision": None,
+            "findings": [],
+            "reservations": [],
+        }
+        self.write(doc)
+        before = self.path.read_bytes()
+        result = self.cli(
+            "transition",
+            "--checkpoint",
+            str(self.path),
+            "--phase",
+            "test",
+            "--status",
+            "active",
+            "--next-action",
+            "resume testing",
+        )
+        self.assert_denied(result)
+        self.assertIn("recover revision-bound", result.stderr)
+        self.assertEqual(self.path.read_bytes(), before)
+
     def test_unrecorded_overspent_bounded_counter_is_rejected(self) -> None:
         doc = self.read()
         doc["convergence"] = {"fixPasses": 99}
