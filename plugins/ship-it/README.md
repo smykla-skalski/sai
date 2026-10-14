@@ -93,7 +93,7 @@ The skill pushes and merges, so Codex runs it only when invoked by name. Its `al
 
 It merges through the resolved repository mechanism (including exact bot comments and protected-branch flows), never substitutes another reviewer or bypasses a control, and uses a squash merge only as the documented default. After the first push it never force-pushes or rebases.
 
-The skill owns the full lifecycle and stops only for genuine ambiguity, branch-protection requirements, persistent review/test failures, or product decisions that the request and repository cannot answer. It waits through blocking background waiters instead of polling, reads each phase reference once, and keeps coordinators out of child implementation.
+The skill owns the full lifecycle and stops only for genuine ambiguity, branch-protection requirements, persistent review/test failures, or product decisions that the request and repository cannot answer. It wakes coordinators only for meaningful worker or hosted-state events, deadlines and user input. Empty waits trigger no status reads or messages; duplicate terminal events cannot repeat a gate or delivery action. A harness without event waits uses one bounded ten-minute poller. Host progress updates report the last event without waking work. Each mandate is delivered once, and resumption loads only missing current-phase guidance.
 
 ## License
 

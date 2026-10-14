@@ -1,6 +1,6 @@
 # ship-it PR loop: open, wait, fix, merge
 
-Resume the draft's current head. Never foreground-poll. Use one background waiter per PR for hosted-state changes or a 30-minute deadline; read status at most once per ten minutes.
+Resume the draft's current head. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
 
 Load the resolved release policy from the checkpoint and reconcile it with live GitHub policy before the first push and immediately before merge. A missing, stale, ambiguous or unsatisfied release policy blocks this loop with the exact required human action.
 
@@ -45,7 +45,7 @@ If the request mechanism itself fails, use the matching GitHub REST reviewer or 
 
 ## Wait for hosted gates
 
-Use one blocking background waiter that returns when checks, reviews, threads or the deadline change. Do not list agents between waits, and do not issue a status read more than once per ten minutes. In Sail, consume worker events instead of reading terminal panes. On each returned change inspect:
+Consume a hosted-state event instead of reading terminal panes or listing agents. On each check, review or thread change inspect:
 
 - `gh pr checks <n>` when `ci` is selected.
 - Reviews and outstanding requests when `hosted-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` plus the PR's requested reviewers and teams.
