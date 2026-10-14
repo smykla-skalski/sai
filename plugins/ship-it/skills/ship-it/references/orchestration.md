@@ -24,6 +24,8 @@ A worker sends exactly one final hand-back containing its checkpoint path and te
 
 After every graph mutation, dispatch, worker update, gate result, PR change, CI result, review-thread change, merge or issue-state change, atomically update the matching child and the parent's `nextAction`. Mark the parent blocked with the exact child and recovery action when coordination cannot continue. Complete the parent checkpoint only after every child and the umbrella are verified closed; its outcome records the umbrella URL and the children's final PR heads and merge commits.
 
+Workers inherit the original user authorization record and its scope, limits, consumed allowances and revocations from the checkpoint. The coordinator forwards verified authority; it never widens it. A replacement worker reads [authorization.md](authorization.md) and continues already authorized work without requesting the same permission. Internal limits trigger focused acceptance triage, not new optional hunts.
+
 ## Agent availability and pause
 
 Check that a worker can launch before dispatch. In Sail, check that fresh review and manual-test subagents can launch before treating a worker as runnable. If any required agent tool or session is unavailable, pause the run and report the exact unavailable capability and affected issues. Do not implement a child in the parent, run either gate inline, or treat automated tests as a manual-test substitute. Resume only when the required agent is available; keep completed children recorded.

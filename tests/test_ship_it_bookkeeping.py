@@ -107,6 +107,163 @@ class BookkeepingTest(unittest.TestCase):
         self.assertTrue(policy["telemetry"])
         self.assertEqual(policy["policySource"], "explicit user request")
 
+    def test_resumed_transition_preserves_scoped_reply_and_consumed_limits(
+        self,
+    ) -> None:
+        for status in ("active", "ambiguous", "revoked", "exhausted"):
+            with (
+                self.subTest(status=status),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                document = checkpoint_document()
+                authorization = {
+                    "grants": [
+                        {
+                            "id": "one-extra-gate",
+                            "source": {
+                                "kind": "user-reply",
+                                "message": "I approve",
+                                "request": "Run one additional acceptance gate?",
+                                "reference": "original conversation reply 17",
+                            },
+                            "scope": ["one additional acceptance gate"],
+                            "limits": [
+                                {"resource": "gate runs", "maximum": 1, "used": 1}
+                            ],
+                            "status": status,
+                            "futureField": "preserve",
+                        }
+                    ]
+                }
+                document["authorization"] = authorization
+                checkpoint = checkpoint_path(directory, document)
+                checkpoint.write_text(json.dumps(document), encoding="utf-8")
+
+                result = self.run_script(
+                    "transition",
+                    "--checkpoint",
+                    str(checkpoint),
+                    "--phase",
+                    "review",
+                    "--status",
+                    "active",
+                    "--next-action",
+                    "reconcile original authorization before dispatch",
+                )
+
+                self.assertEqual(result.returncode, 0, result.stderr)
+                updated = json.loads(checkpoint.read_text(encoding="utf-8"))
+                self.assertEqual(updated["authorization"], authorization)
+
+    def test_legacy_transition_does_not_invent_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            document = checkpoint_document()
+            checkpoint = checkpoint_path(directory, document)
+            checkpoint.write_text(json.dumps(document), encoding="utf-8")
+
+            result = self.run_script(
+                "transition",
+                "--checkpoint",
+                str(checkpoint),
+                "--phase",
+                "explore",
+                "--status",
+                "active",
+                "--next-action",
+                "recover original user request",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            updated = json.loads(checkpoint.read_text(encoding="utf-8"))
+            self.assertEqual(updated["authorization"], {"grants": []})
+
+    def test_invalid_authority_leaves_original_checkpoint_unchanged(self) -> None:
+        cases = (
+            ("null record", None),
+            ("missing grants", {}),
+            (
+                "summary-only source",
+                {
+                    "grants": [
+                        {
+                            "id": "summary",
+                            "status": "active",
+                            "source": {
+                                "kind": "coordinator",
+                                "message": "approved",
+                                "reference": "summary",
+                                "request": None,
+                            },
+                            "scope": ["ship"],
+                            "limits": [],
+                        }
+                    ]
+                },
+            ),
+            (
+                "reply without request",
+                {
+                    "grants": [
+                        {
+                            "id": "reply",
+                            "status": "active",
+                            "source": {
+                                "kind": "user-reply",
+                                "message": "I approve",
+                                "reference": "message 17",
+                                "request": None,
+                            },
+                            "scope": ["ship"],
+                            "limits": [],
+                        }
+                    ]
+                },
+            ),
+            (
+                "overspent user limit",
+                {
+                    "grants": [
+                        {
+                            "id": "reply",
+                            "status": "exhausted",
+                            "source": {
+                                "kind": "user-request",
+                                "message": "one gate",
+                                "reference": "message 17",
+                                "request": None,
+                            },
+                            "scope": ["one gate"],
+                            "limits": [
+                                {"resource": "gate runs", "maximum": 1, "used": 2}
+                            ],
+                        }
+                    ]
+                },
+            ),
+        )
+        for name, authorization in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                document = checkpoint_document()
+                document["authorization"] = authorization
+                checkpoint = checkpoint_path(directory, document)
+                original = json.dumps(document)
+                checkpoint.write_text(original, encoding="utf-8")
+
+                result = self.run_script(
+                    "transition",
+                    "--checkpoint",
+                    str(checkpoint),
+                    "--phase",
+                    "explore",
+                    "--status",
+                    "active",
+                    "--next-action",
+                    "reconcile authority",
+                )
+
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(checkpoint.read_text(encoding="utf-8"), original)
+
     def test_transition_updates_checkpoint_in_one_call(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             document = checkpoint_document()
@@ -222,7 +379,9 @@ class BookkeepingTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(updated["outcome"]["result"], "merged")
 
-    def test_complete_transition_rejects_outcome_that_differs_from_delivery(self) -> None:
+    def test_complete_transition_rejects_outcome_that_differs_from_delivery(
+        self,
+    ) -> None:
         fields = {
             "pullRequestUrl": "https://github.com/o/r/pull/2",
             "pullRequestHead": "c" * 40,
@@ -274,7 +433,9 @@ class BookkeepingTest(unittest.TestCase):
             self.assertIn(f"must match delivery.{field}", result.stderr)
             self.assertEqual(current, original)
 
-    def test_complete_transition_rejects_head_that_differs_from_workflow_revision(self) -> None:
+    def test_complete_transition_rejects_head_that_differs_from_workflow_revision(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             document = checkpoint_document()
             workflow = document["workflow"]

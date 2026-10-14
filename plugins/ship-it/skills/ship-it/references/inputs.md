@@ -60,9 +60,9 @@ Capture the key, summary, description, status, and acceptance criteria.
 
 ## Durable task checkpoint
 
-After resolving the task source, derive its canonical task key and create or resume the corresponding checkpoint before exploring or changing the repository. Use the bundled bookkeeping helper for policy and every transition. The checkpoint replaces the temporary task context file and is the `--context <file>` passed to review and test gates. Load the full checkpoint contract only when migration, recovery or helper validation requires it.
+Read [authorization.md](authorization.md); record original user source, scope and limits. Resolve the canonical task key and durable checkpoint before exploration or changes; pass it as gate `--context`. Use the bookkeeping helper for policy and transitions; load the full checkpoint contract only for migration, recovery or validation errors.
 
-Do not overwrite an existing checkpoint during resolution. Validate it, verify its task source and repository identity, and reconcile it with Git and GitHub. A completed checkpoint is a delivered task, not a fresh run. Invalid, mismatched or irreconcilable state loads the recovery contract and hard-stops with its named action.
+Never overwrite an existing checkpoint: validate source/repository identity and reconcile Git/GitHub. Completed means delivered, not a fresh run. Invalid, mismatched or irreconcilable state loads recovery and hard-stops with the named action.
 
 ## GitHub work claim
 
