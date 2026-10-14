@@ -42,7 +42,7 @@ The measured report uses one sample for each case and variant. Run with a larger
 - `elapsed_ms` measures the complete Codex subprocess from prompt submission to validated output
 - `active_ms` equals elapsed time because the read-only simulation executes no external approval, hosted-service, or resource-queue waits
 - `waits` records workflow waits selected by the contract; duration stays `null` when the synthetic case supplies no measured duration
-- `duplicate_gate_executions` counts a gate dispatched again with unchanged relevant inputs
+- `duplicate_gate_executions` counts a gate dispatched again with unchanged relevant inputs; validation also derives repeats from grouped gate execution counts
 - `approval_requests` counts requests made in the measured continuation and excludes previously granted approval history
 - `redundant_approval_requests` counts a request for permission already recorded in the scenario
 - `user_interruptions` comes from the scenario, including interruptions before resumption

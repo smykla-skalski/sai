@@ -130,6 +130,32 @@ class DeliveryBenchmarkTests(unittest.TestCase):
             ],
         )
 
+    def test_candidate_derives_duplicate_gate_executions(self) -> None:
+        case = self.cases[1]
+        cases = (
+            [{"gate": "review", "count": 2, "status": "passed"}],
+            [
+                {"gate": "review", "count": 1, "status": "passed"},
+                {"gate": "review", "count": 1, "status": "passed"},
+            ],
+        )
+
+        for gate_executions in cases:
+            with self.subTest(gate_executions=gate_executions):
+                result = sample_result()
+                result["gate_executions"] = gate_executions
+
+                failures = delivery_benchmark.validate_result(
+                    case, result, "candidate"
+                )
+
+                self.assertEqual(
+                    failures,
+                    [
+                        "derived duplicate gate executions: expected at most 0, got 1"
+                    ],
+                )
+
     def test_native_failure_requires_explicit_untested_criterion(self) -> None:
         case = self.cases[4]
         result = sample_result(outcome="blocked", blocking=True)

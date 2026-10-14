@@ -295,6 +295,40 @@ def validate_result(
                 or value > maximum
             ):
                 failures.append(f"{field}: expected at most {maximum}, got {value!r}")
+        gate_executions = result.get("gate_executions")
+        derived_duplicates: int | None = None
+        if isinstance(gate_executions, list):
+            totals: dict[str, int] = {}
+            for execution in gate_executions:
+                if not isinstance(execution, dict):
+                    break
+                gate = execution.get("gate")
+                count = execution.get("count")
+                if (
+                    not isinstance(gate, str)
+                    or not gate
+                    or not isinstance(count, int)
+                    or isinstance(count, bool)
+                    or count < 0
+                ):
+                    break
+                totals[gate] = totals.get(gate, 0) + count
+            else:
+                derived_duplicates = sum(
+                    max(total - 1, 0) for total in totals.values()
+                )
+        maximum_duplicates = expected.get(
+            "candidate_max_duplicate_gate_executions"
+        )
+        if (
+            isinstance(maximum_duplicates, int)
+            and derived_duplicates is not None
+            and derived_duplicates > maximum_duplicates
+        ):
+            failures.append(
+                "derived duplicate gate executions: expected at most "
+                f"{maximum_duplicates}, got {derived_duplicates}"
+            )
         approval_requests = result.get("approval_requests")
         maximum_requests = expected.get("candidate_max_approval_requests")
         if maximum_requests is not None and (
