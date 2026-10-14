@@ -355,6 +355,44 @@ class ReservationTest(unittest.TestCase):
         self.assert_denied(result)
         self.assertIn("recover revision-bound", result.stderr)
 
+    def test_completed_receipt_requires_result_before_finish_or_resume(self) -> None:
+        self.assert_ok(self.reserve("quality", "quality"))
+        self.assert_ok(self.finish("quality", {"verdict": "passed"}))
+        original = self.read()
+        for invalid in ("missing", None, {}, {"verdict": "unknown"}, "passed"):
+            with self.subTest(invalid=invalid):
+                doc = json.loads(json.dumps(original))
+                receipt = doc["convergence"]["reservations"][0]
+                if invalid == "missing":
+                    receipt.pop("result")
+                else:
+                    receipt["result"] = invalid
+                self.write(doc)
+                before = self.path.read_bytes()
+                self.assert_denied(self.finish("quality", {"verdict": "passed"}))
+                self.assert_denied(
+                    self.cli(
+                        "transition",
+                        "--checkpoint",
+                        str(self.path),
+                        "--phase",
+                        "test",
+                        "--status",
+                        "active",
+                        "--next-action",
+                        "resume",
+                    )
+                )
+                self.assertEqual(self.path.read_bytes(), before)
+                self.assertEqual(self.read()["convergence"]["fullQualityGateRuns"], 1)
+
+    def test_reserved_receipt_cannot_claim_completed_result(self) -> None:
+        self.assert_ok(self.reserve("quality", "quality"))
+        doc = self.read()
+        doc["convergence"]["reservations"][0]["result"] = {"verdict": "passed"}
+        self.write(doc)
+        self.assert_denied(self.finish("quality", {"verdict": "passed"}))
+
     def test_scoped_user_limits_bind_ordinary_reservations(self) -> None:
         for maximum in (0, 1):
             with self.subTest(maximum=maximum):

@@ -120,6 +120,17 @@ def validate_operation(operation: object, identities: set[str]) -> str:
         operation.get("status") in ("reserved", "completed"),
         "invalid reservation status",
     )
+    require("result" in operation, "reservation requires result")
+    result = operation["result"]
+    require(
+        (operation["status"] == "reserved" and result is None)
+        or (
+            operation["status"] == "completed"
+            and isinstance(result, dict)
+            and result.get("verdict") in ("passed", "failed", "blocked")
+        ),
+        "reservation result must match its status",
+    )
     return kind
 
 
