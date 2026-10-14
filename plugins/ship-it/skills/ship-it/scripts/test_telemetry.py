@@ -124,7 +124,7 @@ def test_lifecycle_resumes_and_deduplicates() -> None:
         assert event_path.parent.stat().st_mode & 0o777 == 0o700
 
 
-def test_finished_run_starts_a_new_run_for_the_same_task() -> None:
+def test_blocked_run_resumes_the_same_history() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         started = json.loads(run(
@@ -136,7 +136,11 @@ def test_finished_run_starts_a_new_run_for_the_same_task() -> None:
             "--model", "gpt",
             "--role", "primary",
         ).stdout)
-        run(root, "finish", "--run-id", started["run_id"], "--outcome", "blocked")
+        blocked = (
+            "finish", "--run-id", started["run_id"], "--outcome", "blocked",
+        )
+        assert json.loads(run(root, *blocked).stdout)["duplicate"] is False
+        assert json.loads(run(root, *blocked).stdout)["duplicate"] is True
 
         resumed = json.loads(run(
             root,
@@ -147,11 +151,22 @@ def test_finished_run_starts_a_new_run_for_the_same_task() -> None:
             "--model", "gpt",
             "--role", "primary",
         ).stdout)
-        assert resumed["run_id"] != started["run_id"]
-        assert resumed["duplicate"] is False
-        run(root, "finish", "--run-id", resumed["run_id"], "--outcome", "accepted")
+        assert resumed["run_id"] == started["run_id"]
+        assert resumed["duplicate"] is True
+        accepted = (
+            "finish", "--run-id", resumed["run_id"], "--outcome", "accepted",
+        )
+        assert json.loads(run(root, *accepted).stdout)["duplicate"] is False
+        assert json.loads(run(root, *accepted).stdout)["duplicate"] is True
         report = json.loads(run(root, "report", "--task-id", "github-224").stdout)
-        assert report["run_id"] == resumed["run_id"]
+        assert report["run_id"] == started["run_id"]
+        assert report["delivery_elapsed_ms"] is not None
+
+        event_path = root / "sai" / "ship-it" / "telemetry" / "events.ndjson"
+        events = [json.loads(line) for line in event_path.read_text().splitlines()]
+        assert [event["outcome"] for event in events if event["event"] == "run_finished"] == [
+            "blocked", "accepted",
+        ]
 
 
 def test_worker_observation_ids_are_scoped_to_the_worker() -> None:
@@ -335,8 +350,8 @@ def test_short_append_completes_record() -> None:
 if __name__ == "__main__":
     test_lifecycle_resumes_and_deduplicates()
     print("ok test_lifecycle_resumes_and_deduplicates")
-    test_finished_run_starts_a_new_run_for_the_same_task()
-    print("ok test_finished_run_starts_a_new_run_for_the_same_task")
+    test_blocked_run_resumes_the_same_history()
+    print("ok test_blocked_run_resumes_the_same_history")
     test_worker_observation_ids_are_scoped_to_the_worker()
     print("ok test_worker_observation_ids_are_scoped_to_the_worker")
     test_unknown_values_and_validation()

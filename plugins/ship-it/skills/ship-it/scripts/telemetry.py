@@ -320,7 +320,12 @@ def persist_event(record: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
     return duplicate, stored
 
 
-def event_identifier(state: dict[str, Any], event: str, args: argparse.Namespace) -> str:
+def event_identifier(
+    state: dict[str, Any],
+    event: str,
+    args: argparse.Namespace,
+    outcome: str | None,
+) -> str:
     observation_id = getattr(args, "observation_id", None)
     if observation_id is None:
         return f"evt_{secrets.token_hex(12)}"
@@ -328,6 +333,8 @@ def event_identifier(state: dict[str, Any], event: str, args: argparse.Namespace
     parts = [state["run_id"], event, args.phase, observation_id]
     if worker_id:
         parts.append(worker_id)
+    if outcome is not None:
+        parts.append(outcome)
     material = "\0".join(parts)
     return f"evt_{hashlib.sha256(material.encode()).hexdigest()[:24]}"
 
@@ -350,7 +357,7 @@ def emit(
         validate_opaque_identifier("worker id", worker_id)
     record = {
         "schema_version": SCHEMA_VERSION,
-        "event_id": event_identifier(state, event, args),
+        "event_id": event_identifier(state, event, args, outcome),
         "emitted_at": timestamp(),
         "run_id": state["run_id"],
         "task_id": state["task_id"],
@@ -378,12 +385,11 @@ def begin(args: argparse.Namespace) -> dict[str, Any]:
     private_directory(tasks)
     with exclusive_lock(runs / ".index.lock"):
         state = indexed_run(task_id) or discover_run(task_id)
-        if (
+        reactivate = (
             state is not None
             and state.get("status") == "finished"
             and state.get("outcome") == "blocked"
-        ):
-            state = None
+        )
         if state is None:
             state = {
                 "run_id": f"run_{secrets.token_hex(12)}",
@@ -398,6 +404,10 @@ def begin(args: argparse.Namespace) -> dict[str, Any]:
         else:
             for field in ("harness", "provider", "model", "role"):
                 setattr(args, field, state[field])
+            if reactivate:
+                state["status"] = "active"
+                state.pop("outcome", None)
+                atomic_json(runs / f"{state['run_id']}.json", state)
         atomic_json(
             task_index_path(task_id),
             {"run_id": state["run_id"], "task_id": task_id},
