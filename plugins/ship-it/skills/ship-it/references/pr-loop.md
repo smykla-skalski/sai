@@ -1,6 +1,6 @@
 # ship-it PR loop: open, wait, fix, merge
 
-Resume the draft PR created in the publish step and take its current head to merge. Never poll in the foreground. Start one background waiter per PR that returns on a hosted-state change or the 30-minute deadline; read hosted status at most once per ten minutes.
+Resume the draft's current head. Never foreground-poll. Use one background waiter per PR for hosted-state changes or a 30-minute deadline; read status at most once per ten minutes.
 
 Load the resolved release policy from the checkpoint and reconcile it with live GitHub policy before the first push and immediately before merge. A missing, stale, ambiguous or unsatisfied release policy blocks this loop with the exact required human action.
 
@@ -13,7 +13,7 @@ Do not rewrite history after validation begins. If the unpublished branch still 
 ## History rules after the first push
 
 - Never force-push and never rebase.
-- When the default branch moves or the PR conflicts, `git fetch origin` and `git merge origin/<default>` with a signed merge commit (`git merge -S`). In conflicts keep both sides' entries (changelogs, lists, version tables), then rerun the quality gates. A merge that leaves the reviewed files unchanged triggers no review; re-attest the merged revision under the convergence contract's default-branch-merge rule.
+- On a moved default branch or conflict, `git fetch origin` and `git merge origin/<default>` with a signed merge commit (`git merge -S`). Preserve both sides' entries. Assess local manifests under [validation-reuse.md](validation-reuse.md); carry verified results and verify affected criteria under the convergence contract.
 
 ## Draft PR compatibility
 
@@ -61,7 +61,7 @@ Mark the PR ready only when local checks, review, the single broad manual-test p
 
 Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in the evidence record or checkpoint verdict.
 
-Record selected hosted results in enabled evidence or checkpoint `gateVerdicts`, bound to PR head, provider, timestamp and job URL. Source changes invalidate results; recompute risk and revalidate. Never reset shared counters.
+Record selected hosted results in enabled evidence or checkpoint `gateVerdicts`, bound to PR head, provider, timestamp and job URL. Source changes require a helper validity decision for local results and live policy reconciliation for hosted results; recompute risk and revalidate affected inputs. Never reset shared counters.
 
 ## Address required reviewer feedback
 
@@ -90,7 +90,7 @@ Merge only when all of these hold:
 - When `hosted-review` is selected, every resolved reviewer requirement is satisfied for the current policy. A `review` accepts a submitted no-comment review; an `approval` requires an effective approval.
 - When `hosted-review` is selected, every required reviewer's blocking comment is fixed or answered, and its thread is resolved.
 
-Merge only through the checkpoint's resolved mechanism. For `bot-comment`, post its exact inert comment and wait for the bot; do not fall back to `gh pr merge`. For `github`, pass the resolved `merge|squash|rebase` strategy to `gh pr merge` and request remote-branch deletion only when policy says `delete`. If either mechanism reports that the default branch moved, merge `origin/<default>` (signed), push, rerun every selected gate and retry the same mechanism.
+Merge only through the checkpoint's resolved mechanism. For `bot-comment`, post its exact inert comment and wait for the bot; do not fall back to `gh pr merge`. For `github`, pass the resolved `merge|squash|rebase` strategy to `gh pr merge` and request remote-branch deletion only when policy says `delete`. If either mechanism reports that the default branch moved, merge `origin/<default>` (signed), assess local input validity, push, satisfy the selected local gates and current-head hosted requirements, then retry the same mechanism.
 
 Never force-merge or use admin overrides. If branch protection requires extra approvals or admin action, report the exact required action and stop. Confirm the PR shows as merged before reporting. Delete a still-present remote branch only when resolved cleanup policy is `delete`; preserve it when policy says `preserve`.
 

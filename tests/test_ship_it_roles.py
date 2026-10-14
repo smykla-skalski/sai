@@ -1,4 +1,7 @@
-"""Validate ship-it's portable role-routing contract."""
+"""Validate ship-it's portable role-routing contract.
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +10,6 @@ import re
 import unittest
 from pathlib import Path
 from typing import Final
-
 
 ROOT: Final[Path] = Path(__file__).resolve().parent.parent
 SKILL_DIR: Final[Path] = ROOT / "plugins" / "ship-it" / "skills" / "ship-it"
@@ -140,7 +142,7 @@ class ShipItRolesTest(unittest.TestCase):
         for field in self.contract["route_record"]["required_fields"]:
                 self.assertIn(field, route)
 
-    def test_revision_rollover_preserves_only_active_build_routes(self) -> None:
+    def test_revision_rollover_preserves_verified_result_provenance(self) -> None:
         for expected in (
             "Bind pre-commit exploration and implementation routes",
             "Never carry a review, testing or CI-triage route forward",
@@ -148,7 +150,8 @@ class ShipItRolesTest(unittest.TestCase):
             self.assertIn(expected, self.guidance)
         for expected in (
             "Carry still-active exploration and implementation routes",
-            "Drop old review, testing and CI-triage routes",
+            "Retain their original route execution identity with explicit carry-forward provenance",
+            "Drop prior CI-triage routes",
         ):
             self.assertIn(expected, self.evidence)
 

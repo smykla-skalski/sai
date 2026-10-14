@@ -12,7 +12,7 @@ metadata:
 
 # Ship It
 
-Take a change to a merged PR, or coordinate independently shippable issues from an approved complex plan.
+Merge a change, or coordinate shippable issues from an approved complex plan.
 
 **Mode:** autonomous. Ask only on material ambiguity. Use blocking waiters until merged or a hard stop; never foreground-poll.
 
@@ -24,13 +24,13 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 
 - Run phases in order; a missing preferred tool never skips a gate.
 - Read this entry once. Read each selected phase reference once, immediately before that phase, and keep its rules in the checkpoint. Do not reread a reference on phase transitions.
-- Resolve routine capabilities from current tools and the phase reference. Read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json) only on a missing/changed capability or fallback; then rerun the machine preflight.
+- Resolve capabilities from tools and phase guidance. Read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json) only on missing/changed capability or fallback; rerun preflight.
 - Phase references name routine routes. Read [references/roles.md](references/roles.md) and [references/roles.json](references/roles.json) only for unresolved aliases or policy overrides. Give each gate its mandate by path or inline exactly once in fresh context.
 - After each subagent dispatch, use one blocking wait of at least ten minutes unless the worker returns sooner. Do not list agents or read status between waits; close the worker after its verdict.
 - Maintain the checkpoint through the helper. Read [references/checkpoint.md](references/checkpoint.md) only for migration, recovery or validation error. Claims, evidence and telemetry default off; read [references/claims.md](references/claims.md), [references/evidence.md](references/evidence.md) or [references/telemetry.md](references/telemetry.md) only when enabled.
 - Routine guidance is this entry, selected phase references, [references/risk-policy.json](references/risk-policy.json), [references/release-policy.json](references/release-policy.json) and [references/convergence-policy.json](references/convergence-policy.json): keep it under 12k input tokens. After compaction, read only the checkpoint and current phase reference.
 - Read [references/risk.md](references/risk.md) or [references/release.md](references/release.md) only on override/ambiguity; read [references/convergence.md](references/convergence.md) only after failure, recovery or exhaustive opt-in. Checkpoint gates, release policy and budget before validation.
-- Every source change invalidates completion evidence from the previous revision.
+- Assess gate inputs before validation or integration; read [validation-reuse.md](references/validation-reuse.md). Reuse only verified results with current-head provenance.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
 

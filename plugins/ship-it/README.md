@@ -10,6 +10,8 @@ Every phase also has a versioned machine-readable capability contract. It select
 
 Every task has a portable JSON checkpoint under `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/checkpoints/`. Claude Code, Codex, Copilot CLI, opencode and Sail use the same task identity, phase, revision, blocker and outcome fields, so another harness can safely reconcile Git and GitHub before resuming.
 
+Gate input manifests make validation reuse observable: unchanged source, dependencies, invocation, runtime and policy return the verified completed result without another dispatch or counter increment. Changes record precise invalidation reasons. Unrelated integration carries passing local results to the current PR head with their original revision and output digest; failed, incomplete and unverifiable evidence never supplies a passing gate. Required hosted checks and approvals retain their own revision policy. See [validation reuse](skills/ship-it/references/validation-reuse.md).
+
 GitHub work claims, revision evidence and telemetry are optional bookkeeping features configured by `.sai/ship-it-bookkeeping.json` or the current user request; single-user runs default them off. The durable checkpoint always remains enabled. When claims are on, renewal happens only before a GitHub write, never on a timer.
 
 With telemetry enabled, runs write privacy-safe workflow events to `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/telemetry/events.ndjson`. The versioned NDJSON contract uses stable harness, provider, model, role and phase fields; unavailable counters stay `null`, and prompt or source content is never recorded.

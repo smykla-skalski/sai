@@ -7,8 +7,11 @@ Usage:
       --next-action TEXT [--revision SHA] [--blocker TEXT]
       [--outcome-json OBJECT]
   bookkeeping.py reserve --checkpoint FILE --id ID --kind KIND
-      --revision SHA --inputs FINGERPRINT [--reason TEXT] [--trigger CATEGORY]
+      --revision SHA (--inputs FINGERPRINT | --inputs-json MANIFEST)
+      [--reason TEXT] [--trigger CATEGORY]
       [--grant ID]
+  bookkeeping.py assess --checkpoint FILE --kind KIND
+      --revision SHA --inputs-json MANIFEST
   bookkeeping.py finish --checkpoint FILE --id ID --result-json OBJECT
 
 Output is one compact JSON result on stdout. Input or validation errors are
@@ -21,6 +24,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 from __future__ import annotations
 
 import argparse
+import copy
 import fcntl
 import hashlib
 import json
@@ -44,6 +48,7 @@ from convergence import (
 from convergence import (
     validate as validate_convergence,
 )
+from validation_reuse import assess, capture, digest, unavailable_decision
 
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -593,21 +598,29 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
         checkpoint = load_object(path)
         migrate_legacy(checkpoint)
         validate_checkpoint(checkpoint, path)
-        if args.command == "reserve":
-            for field in ("id", "revision", "inputs"):
-                if not getattr(args, field).strip():
-                    msg = f"--{field} must be non-empty"
-                    raise BookkeepingError(msg)
-            request = {
-                "id": args.id,
-                "kind": args.kind,
-                "revision": args.revision,
-                "inputs": args.inputs,
-                "reason": args.reason,
-                "trigger": args.trigger,
-                "grant": args.grant,
-            }
-            result = reserve(checkpoint, request, datetime.now(UTC))
+        if args.command in ("reserve", "assess"):
+            snapshot = None
+            if args.inputs_json:
+                before_capture = copy.deepcopy(checkpoint)
+                try:
+                    snapshot = capture(
+                        load_object(Path(args.inputs_json)),
+                        args.revision,
+                        checkpoint["task"].get("acceptanceCriteria", []),
+                    )
+                except ConvergenceError as error:
+                    unavailable_decision(checkpoint, args.kind, args.revision, error)
+                    persist_invalidations(before_capture, checkpoint, path)
+                    raise
+            if args.command == "assess":
+                result = assess(checkpoint, args.kind, args.revision, snapshot)
+            else:
+                before = copy.deepcopy(checkpoint)
+                try:
+                    result = reserve_request(args, checkpoint, snapshot)
+                except ConvergenceError:
+                    persist_invalidations(before, checkpoint, path)
+                    raise
         else:
             try:
                 outcome = json.loads(args.result_json)
@@ -622,6 +635,62 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
         validate_checkpoint(checkpoint, path)
         atomic_write(path, checkpoint)
         return {"checkpoint": str(path), **result}
+
+
+def persist_invalidations(
+    before: dict[str, Any],
+    attempted: dict[str, Any],
+    path: Path,
+) -> None:
+    """Keep derived invalidation after refusal, rolling back all attempted spending."""
+    decisions = attempted["convergence"].get("validityDecisions", [])
+    if decisions == before["convergence"].get("validityDecisions", []):
+        return
+    before["convergence"]["validityDecisions"] = decisions
+    for original, current in zip(
+        before["gateVerdicts"],
+        attempted["gateVerdicts"],
+        strict=False,
+    ):
+        if (
+            original.get("status") == "passed"
+            and current.get("status") == "stale"
+            and isinstance(current.get("invalidation"), dict)
+        ):
+            original.update(status="stale", invalidation=current["invalidation"])
+    before["updatedAt"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    validate_checkpoint(before, path)
+    atomic_write(path, before)
+
+
+def reserve_request(
+    args: argparse.Namespace,
+    checkpoint: dict[str, Any],
+    snapshot: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Resolve a structured snapshot or a legacy opaque reservation input."""
+    inputs = digest(snapshot) if snapshot is not None else args.inputs
+    for field, value in (
+        ("id", args.id),
+        ("revision", args.revision),
+        ("inputs", inputs),
+    ):
+        if not value.strip():
+            msg = f"--{field} must be non-empty"
+            raise BookkeepingError(msg)
+    request = {
+        "id": args.id,
+        "kind": args.kind,
+        "revision": args.revision,
+        "inputs": inputs,
+        "reason": args.reason,
+        "trigger": args.trigger,
+        "grant": args.grant,
+    }
+    if snapshot is not None:
+        request["inputSnapshot"] = snapshot
+        request["inputManifest"] = load_object(Path(args.inputs_json))
+    return reserve(checkpoint, request, datetime.now(UTC))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -656,13 +725,27 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     reservation.add_argument("--revision", required=True)
-    reservation.add_argument("--inputs", required=True)
+    inputs = reservation.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("--inputs")
+    inputs.add_argument("--inputs-json", help="path to relevant input manifest")
     reservation.add_argument("--reason")
     reservation.add_argument(
         "--trigger",
         choices=("security", "data-loss", "destructive-concurrency"),
     )
     reservation.add_argument("--grant")
+    validity = commands.add_parser(
+        "assess",
+        help="persist gate input validity without dispatch",
+    )
+    validity.add_argument("--checkpoint", required=True)
+    validity.add_argument(
+        "--kind",
+        choices=("review", "test", "quality"),
+        required=True,
+    )
+    validity.add_argument("--revision", required=True)
+    validity.add_argument("--inputs-json", required=True)
     completion = commands.add_parser(
         "finish",
         help="record a reserved operation result without spending again",

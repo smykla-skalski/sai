@@ -165,15 +165,13 @@ class ShipItConvergenceContractTest(unittest.TestCase):
             "no-review-when-reviewed-files-unchanged",
         )
         convergence = reference("convergence.md")
-        self.assertIn("git diff --quiet HEAD^1 HEAD -- <branch files>", convergence)
-        self.assertIn("including files the fix pass added", convergence)
-        self.assertIn("triggers no review", convergence)
-        self.assertIn("re-attest only the review evidence", convergence)
-        self.assertIn("rerun the selected manual-test gate", convergence)
-        self.assertIn("focused acceptance checks", convergence)
+        self.assertIn("assess the review, test and quality manifests", convergence)
+        self.assertIn("unchanged relevant inputs carry the completed results", convergence)
+        self.assertIn("changed dimensions record their invalidation", convergence)
+        self.assertIn("focused checks under the retained authorization", convergence)
         self.assertIn("naming the first-parent comparison", reference("evidence.md"))
         self.assertIn(
-            "leaves the reviewed files unchanged triggers no review",
+            "Assess local manifests",
             reference("pr-loop.md"),
         )
 
