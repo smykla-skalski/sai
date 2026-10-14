@@ -2,9 +2,9 @@
 
 ## Result
 
-The controlled comparison passed all five cases for both contracts. The candidate made zero redundant approval requests and executed zero duplicate gates in the replayed-approval and unchanged-input cases. Both contracts detected the confirmed security defect, kept it blocking, and left the failed security criterion explicit. Both also blocked on the native fixture failure and named its untested criterion.
+The controlled comparison passed all five cases for both contracts. The candidate made zero approval requests, zero redundant approval requests, and executed zero duplicate gates in the replayed-approval and unchanged-input cases. The replayed-approval continuation also recorded zero approval waits. Both contracts detected the confirmed security defect, kept it blocking, and left the failed security criterion explicit. Both also blocked on the native fixture failure and named its untested criterion.
 
-This run does not support a speedup claim. Each case has one sample per variant, candidate aggregate elapsed time was 30.5% higher, and the case-level timing moved in both directions.
+This run does not support a speedup claim. Each case has one sample per variant, candidate aggregate elapsed time was 24.9% higher, and the case-level timing moved in both directions.
 
 ## Controlled inputs
 
@@ -24,39 +24,40 @@ The immutable baseline tar has SHA-256 `34e5cea99f80bb8529f6ce0dbb0ea5470c67aaee
 
 | Case | Baseline elapsed/active | Candidate elapsed/active | Change |
 | :-- | --: | --: | --: |
-| Documentation-only work | 40.332 s | 31.605 s | -21.6% |
-| Ordinary fix with resumption | 33.703 s | 90.242 s | +167.8% |
-| Confirmed security defect | 44.812 s | 53.243 s | +18.8% |
-| Moving default branch | 44.541 s | 55.009 s | +23.5% |
-| Native fixture failure | 35.265 s | 29.196 s | -17.2% |
-| Aggregate | 198.653 s | 259.295 s | +30.5% |
+| Documentation-only work | 67.780 s | 59.171 s | -12.7% |
+| Ordinary fix with resumption | 64.512 s | 77.638 s | +20.3% |
+| Confirmed security defect | 45.240 s | 61.327 s | +35.6% |
+| Moving default branch | 52.084 s | 77.385 s | +48.6% |
+| Native fixture failure | 31.533 s | 50.653 s | +60.6% |
+| Aggregate | 261.149 s | 326.174 s | +24.9% |
 
 Active time equals elapsed time because the simulation did not execute external waits. Workflow wait decisions have unknown duration and stay `null` in the machine report.
 
 ## Workflow measures
 
-| Case | Wait count baseline/candidate | Repeated gates baseline/candidate | Redundant approvals baseline/candidate | User interruptions baseline/candidate | Peak workers baseline/candidate | Defect detected | Required blocker |
-| :-- | --: | --: | --: | --: | --: | :-- | :-- |
-| Documentation-only work | 2 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 2 | no / no | no / no |
-| Ordinary fix with resumption | 2 / 2 | 0 / 0 | 0 / 0 | 1 / 1 | 2 / 2 | no / no | no / no |
-| Confirmed security defect | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | yes / yes | yes / yes |
-| Moving default branch | 1 / 1 | 0 / 0 | 0 / 0 | 0 / 1 | 1 / 1 | no / no | no / no |
-| Native fixture failure | 1 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 1 | no / no | yes / yes |
+| Case | Waits baseline/candidate | Approval requests baseline/candidate | Repeated gates baseline/candidate | Redundant approvals baseline/candidate | User interruptions baseline/candidate | Peak workers baseline/candidate | Defect detected | Required blocker |
+| :-- | --: | --: | --: | --: | --: | --: | :-- | :-- |
+| Documentation-only work | 2 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 0 | 1 / 1 | no / no | no / no |
+| Ordinary fix with resumption | 1 / 2 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 1 | 2 / 2 | no / no | no / no |
+| Confirmed security defect | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | yes / yes | yes / yes |
+| Moving default branch | 1 / 1 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 1 | 0 / 1 | no / no | no / no |
+| Native fixture failure | 1 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 | 1 / 1 | no / no | yes / yes |
 
-The candidate reduced one reported workflow wait decision in the native-fixture case and reported one additional user interruption in the moving-default case. All required validation counters stayed at the baseline floor. The report does not convert wait decisions into time saved because no wait duration was measured.
+The candidate reduced one reported workflow wait decision in the native-fixture case, added one in the ordinary-fix case, reported one fewer user interruption for documentation-only work, and reported one additional user interruption in the moving-default case. All required validation counters stayed at the baseline floor. The report does not convert wait decisions into time saved because no wait duration was measured.
 
 ## Measured improvements
 
-- Documentation-only evaluation finished 8.727 seconds faster
-- Native-fixture evaluation finished 6.069 seconds faster and removed one resource-queue wait decision while keeping the test blocked
+- Documentation-only evaluation finished 8.609 seconds faster and reported one fewer user interruption
+- Native-fixture evaluation removed one resource-queue wait decision while keeping the test blocked
 
 ## Measured regressions
 
-- Ordinary-fix evaluation took 56.539 seconds longer
-- Security-defect evaluation took 8.431 seconds longer while retaining detection and the delivery blocker
-- Moving-default evaluation took 10.468 seconds longer and reported one additional user interruption
-- Aggregate candidate elapsed time increased by 60.642 seconds
-- Candidate input plus output tokens increased from 387,486 to 717,596 in these samples
+- Ordinary-fix evaluation took 13.126 seconds longer and reported one additional wait decision
+- Security-defect evaluation took 16.087 seconds longer while retaining detection and the delivery blocker
+- Moving-default evaluation took 25.301 seconds longer and reported one additional user interruption
+- Native-fixture evaluation took 19.120 seconds longer
+- Aggregate candidate elapsed time increased by 65.025 seconds
+- Candidate input plus output tokens increased from 516,467 to 659,704 in these samples
 
 The sample count is too small to separate contract effects from model variance. No speedup is claimed.
 

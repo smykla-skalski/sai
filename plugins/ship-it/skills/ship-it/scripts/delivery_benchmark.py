@@ -139,7 +139,7 @@ Acceptance criteria:
 Scenario:
 {scenario}
 
-Count only workflow actions required by the loaded contract. A gate execution means an actual dispatch or command in this continuation; a reused result and a pending hosted check each have count zero. Count a duplicate gate execution only when the same gate runs again with unchanged relevant inputs. Preserve every untested criterion explicitly. A required security defect or unavailable required native test blocks delivery. Wait duration is null when the scenario provides no measured duration. Report the scenario's user interruption count, even when the continuation introduces none.
+Count only workflow actions required by the loaded contract. A gate execution means an actual dispatch or command in this continuation; a reused result and a pending hosted check each have count zero. Count a duplicate gate execution only when the same gate runs again with unchanged relevant inputs. A previously granted approval is neither a new approval request nor a new approval wait when scope is unchanged; do not recount its historical request or wait. Preserve every untested criterion explicitly. A required security defect or unavailable required native test blocks delivery. Wait duration is null when the scenario provides no measured duration. Report the scenario's user interruption count, even when the continuation introduces none.
 """
 
 
@@ -295,6 +295,39 @@ def validate_result(
                 or value > maximum
             ):
                 failures.append(f"{field}: expected at most {maximum}, got {value!r}")
+        approval_requests = result.get("approval_requests")
+        maximum_requests = expected.get("candidate_max_approval_requests")
+        if maximum_requests is not None and (
+            not isinstance(approval_requests, int)
+            or isinstance(approval_requests, bool)
+            or not isinstance(maximum_requests, int)
+            or approval_requests > maximum_requests
+        ):
+            failures.append(
+                "approval_requests: expected at most "
+                f"{maximum_requests}, got {approval_requests!r}"
+            )
+        waits = result.get("waits")
+        approval_waits = None
+        if isinstance(waits, list):
+            approval_waits = sum(
+                wait.get("count", 0)
+                for wait in waits
+                if isinstance(wait, dict)
+                and wait.get("kind") == "approval"
+                and isinstance(wait.get("count"), int)
+                and not isinstance(wait.get("count"), bool)
+            )
+        maximum_waits = expected.get("candidate_max_approval_waits")
+        if maximum_waits is not None and (
+            approval_waits is None
+            or not isinstance(maximum_waits, int)
+            or approval_waits > maximum_waits
+        ):
+            failures.append(
+                "approval waits: expected at most "
+                f"{maximum_waits}, got {approval_waits!r}"
+            )
     return failures
 
 

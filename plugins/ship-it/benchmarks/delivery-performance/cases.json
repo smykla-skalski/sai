@@ -45,6 +45,8 @@
         "outcome": "waiting",
         "confirmed_defect_detected": false,
         "required_delivery_blocker_present": false,
+        "candidate_max_approval_requests": 0,
+        "candidate_max_approval_waits": 0,
         "candidate_max_redundant_approval_requests": 0,
         "candidate_max_duplicate_gate_executions": 0,
         "required_untested_criteria": []

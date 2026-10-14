@@ -4,19 +4,19 @@
     "status": "passed"
   },
   "benchmark": "ship-it-delivery-performance",
-  "cases_digest": "698d57f491cad027e2f6835fe04c35341c18ffc70fae2dd44b5280c7af296190",
+  "cases_digest": "4c458746c639839d8df89e56fdf6a1ea1c7c1ed51fe2616b405dcaf670667067",
   "comparison": {
     "improvements": [
       {
-        "baseline": 40332,
-        "candidate": 31605,
+        "baseline": 1,
+        "candidate": 0,
         "case_id": "documentation-only-work",
-        "metric": "mean_elapsed_ms"
+        "metric": "user_interruptions"
       },
       {
-        "baseline": 35265,
-        "candidate": 29196,
-        "case_id": "native-fixture-failure",
+        "baseline": 67780,
+        "candidate": 59171,
+        "case_id": "documentation-only-work",
         "metric": "mean_elapsed_ms"
       },
       {
@@ -28,14 +28,20 @@
     ],
     "regressions": [
       {
-        "baseline": 33703,
-        "candidate": 90242,
+        "baseline": 64512,
+        "candidate": 77638,
         "case_id": "ordinary-fix-resume",
         "metric": "mean_elapsed_ms"
       },
       {
-        "baseline": 44812,
-        "candidate": 53243,
+        "baseline": 1,
+        "candidate": 2,
+        "case_id": "ordinary-fix-resume",
+        "metric": "reported_wait_count"
+      },
+      {
+        "baseline": 45240,
+        "candidate": 61327,
         "case_id": "confirmed-security-defect",
         "metric": "mean_elapsed_ms"
       },
@@ -46,9 +52,15 @@
         "metric": "user_interruptions"
       },
       {
-        "baseline": 44541,
-        "candidate": 55009,
+        "baseline": 52084,
+        "candidate": 77385,
         "case_id": "moving-default-branch",
+        "metric": "mean_elapsed_ms"
+      },
+      {
+        "baseline": 31533,
+        "candidate": 50653,
+        "case_id": "native-fixture-failure",
         "metric": "mean_elapsed_ms"
       }
     ],
@@ -68,12 +80,6 @@
         "metric": "duplicate_gate_executions"
       },
       {
-        "baseline": 0,
-        "candidate": 0,
-        "case_id": "documentation-only-work",
-        "metric": "user_interruptions"
-      },
-      {
         "baseline": 2,
         "candidate": 2,
         "case_id": "documentation-only-work",
@@ -96,12 +102,6 @@
         "candidate": 1,
         "case_id": "ordinary-fix-resume",
         "metric": "user_interruptions"
-      },
-      {
-        "baseline": 2,
-        "candidate": 2,
-        "case_id": "ordinary-fix-resume",
-        "metric": "reported_wait_count"
       },
       {
         "baseline": 0,
@@ -180,7 +180,7 @@
     "baseline_harness_revision": "226a561bd260eeb75102d0632855a139c0519154",
     "candidate_harness_revision": "ba97832ee25138cc4295806f522b6a96fa02b2c0"
   },
-  "result_schema_digest": "64475fc5a58c1b14e140268a0be36f9fd757ef3ca85e923fdb63ac569907c62a",
+  "result_schema_digest": "e8fb1472d1644255d60f2faef7f4a7e31e4981ea60fe69efbaf5642ff690c4c2",
   "runs": [
     {
       "case_id": "documentation-only-work",
@@ -216,8 +216,8 @@
           "ci"
         ],
         "timing": {
-          "active_ms": 40332,
-          "elapsed_ms": 40332,
+          "active_ms": 67780,
+          "elapsed_ms": 67780,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -226,21 +226,26 @@
         },
         "untested_criteria": [],
         "usage": {
-          "cached_input_tokens": 42240,
-          "input_tokens": 71437,
-          "output_tokens": 1869
+          "cached_input_tokens": 43776,
+          "input_tokens": 73655,
+          "output_tokens": 3415
         },
-        "user_interruptions": 0,
+        "user_interruptions": 1,
         "waits": [
           {
-            "count": 1,
+            "count": 0,
             "duration_ms": null,
-            "kind": "resource_queue"
+            "kind": "approval"
           },
           {
             "count": 1,
             "duration_ms": null,
             "kind": "hosted_service"
+          },
+          {
+            "count": 1,
+            "duration_ms": null,
+            "kind": "resource_queue"
           }
         ]
       },
@@ -259,12 +264,17 @@
         "gate_executions": [
           {
             "count": 0,
-            "gate": "review",
+            "gate": "local-checks",
             "status": "reused"
           },
           {
             "count": 0,
-            "gate": "test",
+            "gate": "adversarial-review",
+            "status": "reused"
+          },
+          {
+            "count": 0,
+            "gate": "adversarial-test",
             "status": "pending"
           },
           {
@@ -277,13 +287,14 @@
         "redundant_approval_requests": 0,
         "required_delivery_blocker_present": false,
         "required_gates": [
-          "review",
-          "test",
+          "local-checks",
+          "adversarial-review",
+          "adversarial-test",
           "ci"
         ],
         "timing": {
-          "active_ms": 33703,
-          "elapsed_ms": 33703,
+          "active_ms": 64512,
+          "elapsed_ms": 64512,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -292,17 +303,12 @@
         },
         "untested_criteria": [],
         "usage": {
-          "cached_input_tokens": 42240,
-          "input_tokens": 71910,
-          "output_tokens": 1728
+          "cached_input_tokens": 68352,
+          "input_tokens": 123125,
+          "output_tokens": 3007
         },
         "user_interruptions": 1,
         "waits": [
-          {
-            "count": 1,
-            "duration_ms": null,
-            "kind": "resource_queue"
-          },
           {
             "count": 1,
             "duration_ms": null,
@@ -325,22 +331,12 @@
         "gate_executions": [
           {
             "count": 0,
-            "gate": "local-checks",
-            "status": "reused"
-          },
-          {
-            "count": 0,
             "gate": "adversarial-review",
             "status": "reused"
           },
           {
             "count": 0,
-            "gate": "adversarial-test",
-            "status": "blocked"
-          },
-          {
-            "count": 0,
-            "gate": "ci",
+            "gate": "security regression verification",
             "status": "blocked"
           }
         ],
@@ -348,14 +344,12 @@
         "redundant_approval_requests": 0,
         "required_delivery_blocker_present": true,
         "required_gates": [
-          "local-checks",
           "adversarial-review",
-          "adversarial-test",
-          "ci"
+          "security regression verification"
         ],
         "timing": {
-          "active_ms": 44812,
-          "elapsed_ms": 44812,
+          "active_ms": 45240,
+          "elapsed_ms": 45240,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -363,12 +357,12 @@
           }
         },
         "untested_criteria": [
-          "Security regression criterion has not passed."
+          "Security regression criterion"
         ],
         "usage": {
-          "cached_input_tokens": 68992,
-          "input_tokens": 97232,
-          "output_tokens": 2252
+          "cached_input_tokens": 65920,
+          "input_tokens": 91764,
+          "output_tokens": 1362
         },
         "user_interruptions": 0,
         "waits": []
@@ -382,7 +376,7 @@
       "contract_digest": "fbfc63af93783a22606120c23d9baa8e54ebb952b2ffe3acc8c517b610dc181c",
       "result": {
         "approval_requests": 0,
-        "concurrent_workers_peak": 1,
+        "concurrent_workers_peak": 0,
         "confirmed_defect_detected": false,
         "duplicate_gate_executions": 0,
         "gate_executions": [
@@ -417,8 +411,8 @@
           "ci"
         ],
         "timing": {
-          "active_ms": 44541,
-          "elapsed_ms": 44541,
+          "active_ms": 52084,
+          "elapsed_ms": 52084,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -427,9 +421,9 @@
         },
         "untested_criteria": [],
         "usage": {
-          "cached_input_tokens": 42240,
-          "input_tokens": 68444,
-          "output_tokens": 2306
+          "cached_input_tokens": 119168,
+          "input_tokens": 147695,
+          "output_tokens": 2667
         },
         "user_interruptions": 0,
         "waits": [
@@ -466,8 +460,8 @@
           "adversarial-test"
         ],
         "timing": {
-          "active_ms": 35265,
-          "elapsed_ms": 35265,
+          "active_ms": 31533,
+          "elapsed_ms": 31533,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -478,9 +472,9 @@
           "Persist a record through the native fixture"
         ],
         "usage": {
-          "cached_input_tokens": 43776,
-          "input_tokens": 68546,
-          "output_tokens": 1762
+          "cached_input_tokens": 43904,
+          "input_tokens": 68597,
+          "output_tokens": 1180
         },
         "user_interruptions": 0,
         "waits": [
@@ -500,7 +494,7 @@
       "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
       "result": {
         "approval_requests": 0,
-        "concurrent_workers_peak": 2,
+        "concurrent_workers_peak": 1,
         "confirmed_defect_detected": false,
         "duplicate_gate_executions": 0,
         "gate_executions": [
@@ -529,8 +523,8 @@
           "ci"
         ],
         "timing": {
-          "active_ms": 31605,
-          "elapsed_ms": 31605,
+          "active_ms": 59171,
+          "elapsed_ms": 59171,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -539,9 +533,9 @@
         },
         "untested_criteria": [],
         "usage": {
-          "cached_input_tokens": 55296,
-          "input_tokens": 73789,
-          "output_tokens": 1592
+          "cached_input_tokens": 43904,
+          "input_tokens": 75364,
+          "output_tokens": 2446
         },
         "user_interruptions": 0,
         "waits": [
@@ -565,24 +559,19 @@
       "case_id": "ordinary-fix-resume",
       "contract_digest": "27a05f30a6989afa6c74a1d78c95874aeac12491bb598bca2d16a5e0193a082d",
       "result": {
-        "approval_requests": 1,
+        "approval_requests": 0,
         "concurrent_workers_peak": 2,
         "confirmed_defect_detected": false,
         "duplicate_gate_executions": 0,
         "gate_executions": [
           {
             "count": 0,
-            "gate": "local-checks",
+            "gate": "review",
             "status": "reused"
           },
           {
             "count": 0,
-            "gate": "adversarial-review",
-            "status": "reused"
-          },
-          {
-            "count": 0,
-            "gate": "adversarial-test",
+            "gate": "test",
             "status": "pending"
           },
           {
@@ -595,14 +584,13 @@
         "redundant_approval_requests": 0,
         "required_delivery_blocker_present": false,
         "required_gates": [
-          "local-checks",
-          "adversarial-review",
-          "adversarial-test",
+          "review",
+          "test",
           "ci"
         ],
         "timing": {
-          "active_ms": 90242,
-          "elapsed_ms": 90242,
+          "active_ms": 77638,
+          "elapsed_ms": 77638,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -611,16 +599,16 @@
         },
         "untested_criteria": [],
         "usage": {
-          "cached_input_tokens": 107264,
-          "input_tokens": 146759,
-          "output_tokens": 4007
+          "cached_input_tokens": 89472,
+          "input_tokens": 120636,
+          "output_tokens": 3416
         },
         "user_interruptions": 1,
         "waits": [
           {
             "count": 1,
             "duration_ms": null,
-            "kind": "approval"
+            "kind": "resource_queue"
           },
           {
             "count": 1,
@@ -661,6 +649,11 @@
             "count": 0,
             "gate": "ci",
             "status": "pending"
+          },
+          {
+            "count": 0,
+            "gate": "hosted-review",
+            "status": "pending"
           }
         ],
         "outcome": "blocked",
@@ -670,11 +663,12 @@
           "local-checks",
           "adversarial-review",
           "adversarial-test",
-          "ci"
+          "ci",
+          "hosted-review"
         ],
         "timing": {
-          "active_ms": 53243,
-          "elapsed_ms": 53243,
+          "active_ms": 61327,
+          "elapsed_ms": 61327,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -682,12 +676,12 @@
           }
         },
         "untested_criteria": [
-          "The security regression criterion has not passed."
+          "security regression criterion"
         ],
         "usage": {
-          "cached_input_tokens": 144640,
-          "input_tokens": 161016,
-          "output_tokens": 2020
+          "cached_input_tokens": 70656,
+          "input_tokens": 101137,
+          "output_tokens": 2370
         },
         "user_interruptions": 0,
         "waits": []
@@ -736,8 +730,8 @@
           "ci"
         ],
         "timing": {
-          "active_ms": 55009,
-          "elapsed_ms": 55009,
+          "active_ms": 77385,
+          "elapsed_ms": 77385,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -746,9 +740,9 @@
         },
         "untested_criteria": [],
         "usage": {
-          "cached_input_tokens": 168832,
-          "input_tokens": 205643,
-          "output_tokens": 2608
+          "cached_input_tokens": 238208,
+          "input_tokens": 256749,
+          "output_tokens": 2831
         },
         "user_interruptions": 1,
         "waits": [
@@ -774,7 +768,7 @@
         "gate_executions": [
           {
             "count": 1,
-            "gate": "adversarial-test: native fixture startup failed because the required local runtime is unavailable",
+            "gate": "adversarial-test",
             "status": "blocked"
           }
         ],
@@ -782,11 +776,11 @@
         "redundant_approval_requests": 0,
         "required_delivery_blocker_present": true,
         "required_gates": [
-          "adversarial-test using the native local fixture"
+          "adversarial-test"
         ],
         "timing": {
-          "active_ms": 29196,
-          "elapsed_ms": 29196,
+          "active_ms": 50653,
+          "elapsed_ms": 50653,
           "wait_ms": {
             "approval": null,
             "hosted_service": null,
@@ -797,9 +791,9 @@
           "Persist a record through the native fixture"
         ],
         "usage": {
-          "cached_input_tokens": 91264,
-          "input_tokens": 118925,
-          "output_tokens": 1237
+          "cached_input_tokens": 85632,
+          "input_tokens": 93253,
+          "output_tokens": 1502
         },
         "user_interruptions": 0,
         "waits": []

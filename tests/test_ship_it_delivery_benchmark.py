@@ -36,18 +36,23 @@ def sample_result(
     blocking: bool = False,
     untested: list[str] | None = None,
     approvals: int = 0,
+    approval_requests: int = 0,
+    approval_waits: int = 0,
     duplicates: int = 0,
 ) -> dict[str, object]:
     return {
         "outcome": outcome,
         "required_gates": ["ci"],
         "gate_executions": [{"gate": "ci", "count": 0, "status": "pending"}],
-        "approval_requests": approvals,
+        "approval_requests": approval_requests,
         "redundant_approval_requests": approvals,
         "duplicate_gate_executions": duplicates,
         "user_interruptions": 0,
         "concurrent_workers_peak": 0,
-        "waits": [{"kind": "hosted_service", "count": 1, "duration_ms": None}],
+        "waits": [
+            {"kind": "approval", "count": approval_waits, "duration_ms": None},
+            {"kind": "hosted_service", "count": 1, "duration_ms": None},
+        ],
         "confirmed_defect_detected": detected,
         "required_delivery_blocker_present": blocking,
         "untested_criteria": [] if untested is None else untested,
@@ -109,6 +114,20 @@ class DeliveryBenchmarkTests(unittest.TestCase):
         self.assertEqual(
             failures,
             ["required_delivery_blocker_present: expected True, got False"],
+        )
+
+    def test_candidate_rejects_new_approval_action_after_recorded_approval(self) -> None:
+        case = self.cases[1]
+        result = sample_result(approval_requests=1, approval_waits=1)
+
+        failures = delivery_benchmark.validate_result(case, result, "candidate")
+
+        self.assertEqual(
+            failures,
+            [
+                "approval_requests: expected at most 0, got 1",
+                "approval waits: expected at most 0, got 1",
+            ],
         )
 
     def test_native_failure_requires_explicit_untested_criterion(self) -> None:

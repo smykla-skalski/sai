@@ -19,7 +19,11 @@
         }
       }
     },
-    "approval_requests": {"type": "integer", "minimum": 0},
+    "approval_requests": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Approval requests made in this continuation; do not recount a previously granted approval."
+    },
     "redundant_approval_requests": {"type": "integer", "minimum": 0},
     "duplicate_gate_executions": {"type": "integer", "minimum": 0},
     "user_interruptions": {"type": "integer", "minimum": 0},
