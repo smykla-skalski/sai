@@ -14,6 +14,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Final
 
+from validation_reuse import (
+    ConvergenceError,
+    artifact,
+    assess,
+    attest,
+    capture,
+    digest,
+    require,
+)
+
 COUNTERS: Final[dict[str, str]] = {
     "review": "reviewCycles",
     "fix": "fixPasses",
@@ -52,10 +62,6 @@ DEFAULTS: Final[dict[str, Any]] = {
 }
 
 
-class ConvergenceError(ValueError):
-    """Invalid or unauthorized validation work."""
-
-
 def initialize(checkpoint: dict[str, Any]) -> None:
     """Add zero-activity defaults without inventing completed review evidence."""
     state = checkpoint.get("convergence")
@@ -88,12 +94,6 @@ def timestamp(value: object) -> datetime:
     return result
 
 
-def require(condition: object, message: str) -> None:
-    """Fail without mutating durable state when an invariant is unsatisfied."""
-    if not condition:
-        raise ConvergenceError(message)
-
-
 def validate_operation(operation: object, identities: set[str]) -> str:
     """Validate one persisted reservation and return its resource kind."""
     require(isinstance(operation, dict), "reservation must be an object")
@@ -122,6 +122,21 @@ def validate_operation(operation: object, identities: set[str]) -> str:
     )
     require("result" in operation, "reservation requires result")
     result = operation["result"]
+    if "inputSnapshot" in operation:
+        require(
+            isinstance(operation["inputSnapshot"], dict)
+            and isinstance(operation.get("inputManifest"), dict)
+            and digest(operation["inputSnapshot"]) == operation["inputs"],
+            "reservation snapshot does not match inputs fingerprint",
+        )
+        if operation["status"] == "completed":
+            output = operation.get("outputArtifact")
+            require(
+                isinstance(output, dict)
+                and isinstance(output.get("path"), str)
+                and isinstance(output.get("sha256"), str),
+                "completed structured reservation requires output artifact provenance",
+            )
     require(
         (operation["status"] == "reserved" and result is None)
         or (
@@ -350,13 +365,45 @@ def reserve(
     """Reserve exactly one operation; a retry returns its existing receipt."""
     validate(checkpoint)
     state = checkpoint["convergence"]
-    for operation in state["reservations"]:
-        if operation["id"] == request["id"]:
-            require(
-                all(operation.get(key) == value for key, value in request.items()),
-                "reservation retry changed its request",
+    existing = next(
+        (
+            operation for operation in state["reservations"]
+            if operation["id"] == request["id"]
+        ),
+        None,
+    )
+    if existing:
+        require(
+            all(existing.get(key) == value for key, value in request.items()),
+            "reservation retry changed its request",
+        )
+    if request.get("inputSnapshot") is not None:
+        require(request["kind"] != "fix", "fix operations cannot reuse validation")
+        check_dispatch(checkpoint, request)
+        decision = assess(
+            checkpoint, request["kind"], request["revision"], request["inputSnapshot"],
+        )
+        if decision["status"] == "reusable":
+            operation = next(
+                op
+                for op in state["reservations"]
+                if op["id"] == decision["previousOperation"]
             )
-            return {"dispatch": False, "reservation": operation}
+            require(
+                not any(
+                    op["id"] == request["id"] and op is not operation
+                    for op in state["reservations"]
+                ),
+                "reservation ID already belongs to another operation",
+            )
+            attest(checkpoint, operation, request["revision"])
+            return {"dispatch": False, "reservation": operation, "validity": decision}
+        require(
+            not existing or existing["status"] != "completed",
+            "completed result is invalid; assess and recover its recorded evidence",
+        )
+    if existing:
+        return {"dispatch": False, "reservation": existing}
     check_dispatch(checkpoint, request)
     check_rerun(state, request)
     spend_allowance(checkpoint, request, now)
@@ -444,8 +491,25 @@ def finish(
             raise ConvergenceError(msg)
         if operation["kind"] == "review":
             record_review(checkpoint, operation, result)
+        if "inputSnapshot" in operation:
+            require(
+                operation["revision"] == checkpoint["workflow"]["revision"],
+                "completion must target the reserved current revision",
+            )
+            current = capture(
+                operation["inputManifest"], operation["revision"],
+                checkpoint["task"].get("acceptanceCriteria", []),
+            )
+            require(
+                current == operation["inputSnapshot"],
+                "inputs changed during gate execution",
+            )
+            output = artifact(result.get("output"))
+            operation["outputArtifact"] = output
         operation["status"] = "completed"
         operation["result"] = result
+        if "inputSnapshot" in operation:
+            attest(checkpoint, operation, operation["revision"])
         return {"completion": "recorded", "reservation": operation}
     msg = "unknown reservation ID"
     raise ConvergenceError(msg)

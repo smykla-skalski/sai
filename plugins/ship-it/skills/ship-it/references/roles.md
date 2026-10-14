@@ -58,7 +58,7 @@ Every committed revision's evidence record has `roleRoutes`, an append-only arra
 }
 ```
 
-`sourceRevision` is the committed revision whose work or verdict the route supports. Bind pre-commit exploration and implementation routes to the resulting first commit. After a source-changing fix, carry those still-active route selections into the new revision record with the new `sourceRevision`; the old evidence record preserves their prior binding. Never carry a review, testing or CI-triage route forward because its output must be rerun for the new revision.
+`sourceRevision` is the committed revision whose work or verdict the route supports. Bind pre-commit exploration and implementation routes to the resulting first commit. Carry still-active build selections to a new revision, retaining the original record. Never carry a review, testing or CI-triage route forward as a fresh execution. A helper-verified reusable review/test result retains its actual execution identity with original revision, input/output digests and explicit current-head attestation under [validation-reuse.md](validation-reuse.md). Changed inputs require focused verification or a permitted fresh gate; CI follows live revision policy.
 
 Identifiers must not contain prompts, URLs, repository paths, credentials or conversation content. Preserve old route records when a role is retried for one revision. The result produced by a role names the matching `executionId` in its bounded output reference.
 

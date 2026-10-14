@@ -6,4 +6,4 @@ Push without rewriting history and create a **draft** PR. Its body follows the r
 
 Start one background CI waiter for the PR and let review run concurrently with it. A CI failure that arrives before the single fix pass is complete joins the same batched fix. Do not defer a known CI failure until after local gates. Never start manual testing before review is clean for the same revision.
 
-The draft stays draft while review, test or required CI is pending. A source-changing fix pushes a new ordinary commit, updates the checkpoint head, invalidates older revision results and lets the existing PR run CI for the new head. Never force-push or rebase after this first push.
+Keep the draft while review, test or required CI is pending. Fixes push ordinary commits, update the checkpoint head and assess local input validity. Carry verified unaffected results; CI follows live revision policy. Never force-push or rebase after first push.

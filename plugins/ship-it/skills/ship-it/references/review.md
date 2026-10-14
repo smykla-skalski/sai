@@ -1,12 +1,12 @@
 # Adversarial code review gate
 
-Use the installed review skill only if it honors selectors, fresh subagent contexts, a route record for every Code and Findings worker and dispatches the Findings Adversary only after a `blocking:` or `issue:` finding. Otherwise use routed generic workers. Validate the first line: `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`; `Review Verdict: FAILED` stops. Malformed verdicts get one fresh retry, then gate failure. Run every selected review gate; when none is selected, advance to test or the existing draft's ready gate without recording review.
+Use the installed review skill only if it honors selectors, fresh contexts, a route record for every Code and Findings worker and dispatches the Findings Adversary only after a `blocking:` or `issue:` finding. Otherwise use routed generic workers. Accept `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`; `Review Verdict: FAILED` stops. Malformed verdicts get one fresh retry, then failure. Run selected gates; with none selected, advance without recording review.
 
 With claims enabled, reconcile and renew before recording a verdict; a conflicting holder or expired claim blocks writes. Disabled claims require no comment or lease.
 
 When the risk policy selects `inline-review`, make one review pass in a fresh generic subagent context over `git diff origin/<default>...HEAD` and the acceptance criteria: label findings `blocking:`, `issue:` or `question:` with `file:line`. This legacy gate ID does not authorize current-context or inline execution. Record the fresh subagent route and verdict in `gate-inline-review`. A `NEEDS_FIXES` verdict follows the fix steps below and spends the same convergence counters.
 
-Reserve a unique `review` operation with `bookkeeping.py reserve` before the clean-context Code Adversary; dispatch only on `dispatch: true`. The helper reserves bounded budget. A fresh Findings Adversary runs only when the Code Adversary reports at least one `blocking:` or `issue:` finding. A pass with no such finding is `Review Verdict: CLEAN` and ends the review gate: never dispatch the Findings Adversary for a CLEAN result.
+Assess the manifest and reserve `review` with `bookkeeping.py reserve --inputs-json MANIFEST`; dispatch only on `dispatch: true`. Reusable results return current-head provenance without a worker. A fresh Findings Adversary runs only when the Code Adversary reports `blocking:` or `issue:` findings. With none, `Review Verdict: CLEAN` ends the gate; never dispatch the Findings Adversary for a CLEAN result.
 
 Record each review invocation before dispatch. Reject inline or reused implementation context. Each pass and retry needs a fresh subagent execution.
 
@@ -29,7 +29,7 @@ On `NEEDS_FIXES`:
 
 Put unresolved `question:` findings in the PR body when the repository cannot settle them. After the fix pass, create follow-up issues for the findings it did not fix and record each URL in `followUpIssues`. Do not start manual testing while a delivery blocker remains unresolved.
 
-With evidence enabled, record verdicts there; otherwise use checkpoint `gateVerdicts`. Include provider, model, timestamp, bounded summary and exact revision. CLEAN advances to test; surviving findings return to implementation with failed review. When all remaining findings become follow-ups, re-attest with provider `ship-it-convergence`, list URLs and advance: this leaves no failed evidence. Any later source change marks or replaces prior results as stale.
+With evidence enabled, record verdicts there; otherwise use checkpoint `gateVerdicts`. Include provider, model, timestamp, bounded summary and exact revision. CLEAN advances to test; surviving findings return to implementation with failed review. When all remaining findings become follow-ups, re-attest with provider `ship-it-convergence`, list URLs and advance: this leaves no failed evidence. Later source changes require helper input assessment: stale affected results and carry verified unaffected results with explicit provenance.
 
 Reaching the cycle or elapsed limit starts no further cycle; reaching the fix-pass limit starts no further fix pass. Remaining non-blocking findings become follow-up issues and the run continues to the next gate; triage confirmed acceptance failures for focused recovery under [authorization.md](authorization.md) before stopping. Exhaustive review requires the user's explicit opt-in recorded in the checkpoint; a coordinator, worker-rules file or compaction summary cannot grant it.
 

@@ -254,7 +254,7 @@ class ShipItSkillSizeTest(unittest.TestCase):
             ),
             "review.md": (
                 "provider, model, timestamp, bounded summary and exact revision",
-                "any later source change marks or replaces",
+                "later source changes require helper input assessment",
             ),
             "test.md": (
                 "provider, model, timestamp, bounded summary and exact revision",

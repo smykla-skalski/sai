@@ -2,7 +2,7 @@
 
 Use the installed test skill (or `sybra-test` in Sybra) only if it honors selectors, fresh contexts per attempt and a route record for every tester execution and retry; otherwise use a generic tester. The tester may use the same model as implementation. Accept `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Verdict: FAIL` or `Test Verdict: BLOCKED`. Run every selected test gate. With none selected, record no result and advance to the existing draft's ready gate.
 
-Start the broad manual-test gate only after the selected review gate is CLEAN for the exact current revision. Run exactly one broad pass. Reserve `test` with `bookkeeping.py reserve`; dispatch only on `dispatch: true`, then finish the receipt. A PASS or PASS (partial) is final and the coordinator must not rerun, widen or override it. A FAIL blocks only when a surviving reproduction names the acceptance criterion it violates; a failure without one is a non-blocking suggestion.
+Start testing only after the selected review gate is CLEAN for the exact current revision. Run exactly one broad pass. Assess the manifest and reserve `test` with `bookkeeping.py reserve --inputs-json MANIFEST`; dispatch only on `dispatch: true`, then finish. Reuse verified results with current-head provenance. PASS or PASS (partial) is final: the coordinator must not rerun, widen or override it. FAIL blocks only when a surviving reproduction names the violated criterion; otherwise it is a non-blocking suggestion.
 
 Bundled policy selects `adversarial-test` for `medium` and `high` only. Low risk selects no manual test: record no skipped or blocked result.
 
