@@ -82,6 +82,9 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
     "reviewCycles": 0,
     "fixPasses": 0,
     "fullQualityGateRuns": 0,
+    "broadTestRuns": 0,
+    "reservations": [],
+    "reassessment": null,
     "reviewedRevision": null,
     "findings": [],
     "followUpIssues": []
@@ -131,7 +134,7 @@ Validate these invariants in addition to field presence and types:
 
 ## Safe writes
 
-Validate the complete next document before replacing state. Write it to a same-directory temporary file with owner-only permissions, flush and sync it, preserve the current valid file as `<checkpoint-id>.json.bak`, then atomically rename the temporary file over the checkpoint. Never update state before its associated operation succeeds. A failed write leaves the previous checkpoint authoritative.
+Validate the complete next document before replacing state. Write it to a same-directory temporary file with owner-only permissions, flush and sync it, preserve the current valid file as `<checkpoint-id>.json.bak`, then atomically rename the temporary file over the checkpoint. Never record successful completion before its operation succeeds. Allowance reservations intentionally persist before work starts; failed/interrupted attempts retain consumption. A failed write leaves the previous checkpoint authoritative.
 
 Use `python3 <skill-dir>/scripts/bookkeeping.py policy --repository <root>` once during resolve, adding `--enable claims,evidence,telemetry` only for features the current user explicitly enabled. Use `bookkeeping.py transition` for every checkpoint phase or status transition so each transition is one validated call; pass the complete outcome object through `--outcome-json` for a terminal transition. Never write an ad-hoc state helper. Optional claim, evidence and telemetry operations run only when the returned policy enables them.
 
@@ -171,3 +174,5 @@ Stop before repository changes and report the checkpoint path plus exactly one r
 - `status: cancelled|failed`: report the recorded reason and released claim, then stop. Resume only on an explicit restart instruction; atomically clear the terminal outcome, set status active, and follow audited claim takeover before any repository or GitHub write.
 
 Never infer success from an advanced phase name. Revision, PR, issue and merge facts must agree before advancing or finalizing.
+
+Validation reservations use `bookkeeping.py reserve` and `finish` under the same checkpoint lock as transitions. Do not manually change counters. `reservations` preserves request, ordinal, status and immutable completed result; `broadTestRuns` counts broad passes. Legacy checkpoints gain empty receipts without resetting any counter. A spent review lacking historical attestation requires evidence recovery. See [convergence.md](convergence.md) for receipt reconciliation and reassessment.

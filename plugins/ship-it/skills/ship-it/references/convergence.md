@@ -4,7 +4,7 @@ Use [convergence-policy.json](convergence-policy.json) directly in Claude Code, 
 
 ## Counters
 
-The checkpoint's `convergence` object is the optional-validation budget; explicit user limits remain separately binding in `authorization.grants`. Read it before every review dispatch, fix pass and full quality-gate run. Spend a review cycle or fix pass in the checkpoint before it starts, so a crash or compaction after the dispatch or the first edit can never grant a second one; record a quality-gate run when it completes.
+The checkpoint's `convergence` object is the optional-validation budget; explicit user limits remain separately binding in `authorization.grants`. Read it before every review dispatch, fix pass and full quality-gate run. Spend a review cycle or fix pass in the checkpoint before it starts, so a crash or compaction after the dispatch or the first edit can never grant a second one; reserve a quality-gate run before starting it, then record its result when it completes.
 
 | Field | Changes when | Bounded limit |
 | :-- | :-- | :-- |
@@ -16,6 +16,23 @@ The checkpoint's `convergence` object is the optional-validation budget; explici
 | `findings` | A review cycle ends or a finding's disposition changes | Surviving findings only |
 
 Counters only increase. A resumed checkpoint, a new harness, a default-branch merge, a compaction summary or a coordinator message never resets or raises them. Review, manual testing, CI fixes and hosted-review feedback share the same counters.
+
+## Atomic reservations
+
+Use `bookkeeping.py reserve` in every harness before a Code Adversary dispatch, broad manual-test dispatch, fix batch or complete quality run. Never increment counters by editing JSON. The helper locks the checkpoint across the entire read/validate/write transaction; workflow transitions take the same lock.
+
+```text
+bookkeeping.py reserve --checkpoint FILE --id OPERATION --kind review|test|fix|quality --revision HEAD --inputs FINGERPRINT
+bookkeeping.py finish --checkpoint FILE --id OPERATION --result-json OBJECT
+```
+
+Choose and retain a unique operation ID before attempting the reservation. `dispatch: true` authorizes that one attempt; `dispatch: false` returns the existing receipt and forbids redispatch or another fix edit. Resume a pending attempt by reconciling its worker/command and completing its receipt, never by refunding it or assigning a replacement ID. An interrupted attempt remains consumed. A Findings challenge belongs to the Code reservation; focused verification spends no broad allowance.
+
+Fingerprint only relevant inputs (affected source contents, acceptance criteria, test surface and gate settings), rather than HEAD alone. A broad rerun needs changed inputs and `--reason`; the second routine review also needs `--trigger security|data-loss|destructive-concurrency`. Complete the prior broad receipt first. Unchanged inputs need `--grant ID`: the original-user grant must explicitly scope the counter resource (`reviewCycles`, `broadTestRuns`, `fixPasses` or `fullQualityGateRuns`) with a remaining integer allowance. The helper spends it atomically, records exhaustive mode and retains all earlier explicit limits. Empty limits never expand optional validation.
+
+A finish object has `verdict: passed|failed|blocked`; review results also require `findings`, empty for CLEAN. Surviving findings retain ID, label, location, summary, `disposition: open` and `category: security|data-loss|destructive-concurrency|acceptance|optional`. The second review with severe surviving findings records `reassessment`, blocks the workflow and names scope/design reassessment before any further broad work. Reconcile that decision against scoped authority; an extension alone cannot skip it. Legacy counters remain consumed; missing revision-bound historical review evidence stops resume instead of inventing a clean review.
+
+At exhaustion, finish already-reserved work and complete remaining permitted selected gates. For each open condition record exactly one next action: focused acceptance recovery under its retained grant, a follow-up issue for optional work, or a named delivery blocker with the diagnostic/human action that resolves it. Mandatory checks remain required; focused recovery and merge verification record their commands/results separately and never reset or add broad allowances.
 
 ## Default bounded mode
 

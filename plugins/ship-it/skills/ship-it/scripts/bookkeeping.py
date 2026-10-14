@@ -6,6 +6,10 @@ Usage:
   bookkeeping.py transition --checkpoint FILE --phase PHASE --status STATUS
       --next-action TEXT [--revision SHA] [--blocker TEXT]
       [--outcome-json OBJECT]
+  bookkeeping.py reserve --checkpoint FILE --id ID --kind KIND
+      --revision SHA --inputs FINGERPRINT [--reason TEXT] [--trigger CATEGORY]
+      [--grant ID]
+  bookkeeping.py finish --checkpoint FILE --id ID --result-json OBJECT
 
 Output is one compact JSON result on stdout. Input or validation errors are
 reported on stderr and exit 2; successful policy resolution or transition
@@ -17,15 +21,29 @@ Copyright 2026 Smykla Skalski, MIT License.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
 import shutil
 import sys
 import tempfile
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+from convergence import (
+    ConvergenceError,
+    finish,
+    reserve,
+)
+from convergence import (
+    validate as validate_convergence,
+)
 
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -77,6 +95,23 @@ REQUIRED_CHECKPOINT_FIELDS: Final[frozenset[str]] = frozenset(
 REQUIRED_WORKFLOW_FIELDS: Final[frozenset[str]] = frozenset(
     {"phase", "status", "revision", "blocker", "unresolvedQuestions", "nextAction"},
 )
+
+
+@contextmanager
+def checkpoint_lock(path: Path) -> Iterator[None]:
+    """Serialize read/validate/write transactions across processes and harnesses."""
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    descriptor = os.open(
+        path.with_suffix(path.suffix + ".lock"),
+        os.O_CREAT | os.O_RDWR,
+        0o600,
+    )
+    with os.fdopen(descriptor, "a", encoding="utf-8") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 class BookkeepingError(ValueError):
@@ -424,7 +459,8 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
 
 
 def validate_merged_delivery(
-    checkpoint: dict[str, Any], outcome: dict[str, Any],
+    checkpoint: dict[str, Any],
+    outcome: dict[str, Any],
 ) -> None:
     """Require a merged outcome to repeat the validated delivery identity."""
     if outcome.get("result") != "merged":
@@ -453,6 +489,7 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
     validate_identity(checkpoint, path)
     validate_bookkeeping(checkpoint)
     validate_authorization(checkpoint)
+    validate_convergence(checkpoint)
     if checkpoint.get("schemaVersion") != 1:
         message = "unsupported checkpoint schemaVersion"
         raise BookkeepingError(message)
@@ -505,7 +542,13 @@ def resolve_outcome(args: argparse.Namespace) -> dict[str, Any] | None:
 
 
 def transition(args: argparse.Namespace) -> dict[str, Any]:
-    """Apply one validated workflow transition to a checkpoint."""
+    """Apply one validated workflow transition under the shared checkpoint lock."""
+    with checkpoint_lock(Path(args.checkpoint).resolve()):
+        return transition_locked(args)
+
+
+def transition_locked(args: argparse.Namespace) -> dict[str, Any]:
+    """Apply a transition after acquiring the transaction lock."""
     checkpoint_path = Path(args.checkpoint).resolve()
     checkpoint = load_object(checkpoint_path)
     migrate_legacy(checkpoint)
@@ -543,6 +586,44 @@ def transition(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
+    """Reserve or complete validation work as one locked durable transaction."""
+    path = Path(args.checkpoint).resolve()
+    with checkpoint_lock(path):
+        checkpoint = load_object(path)
+        migrate_legacy(checkpoint)
+        validate_checkpoint(checkpoint, path)
+        if args.command == "reserve":
+            for field in ("id", "revision", "inputs"):
+                if not getattr(args, field).strip():
+                    msg = f"--{field} must be non-empty"
+                    raise BookkeepingError(msg)
+            request = {
+                "id": args.id,
+                "kind": args.kind,
+                "revision": args.revision,
+                "inputs": args.inputs,
+                "reason": args.reason,
+                "trigger": args.trigger,
+                "grant": args.grant,
+            }
+            result = reserve(checkpoint, request, datetime.now(UTC))
+        else:
+            try:
+                outcome = json.loads(args.result_json)
+            except json.JSONDecodeError as error:
+                msg = "invalid --result-json"
+                raise BookkeepingError(msg) from error
+            if not isinstance(outcome, dict):
+                msg = "--result-json must contain an object"
+                raise BookkeepingError(msg)
+            result = finish(checkpoint, args.id, outcome)
+        checkpoint["updatedAt"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        validate_checkpoint(checkpoint, path)
+        atomic_write(path, checkpoint)
+        return {"checkpoint": str(path), **result}
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the command-line argument parser."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -563,6 +644,32 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--outcome-json")
     update.add_argument("--next-action", required=True)
     update.add_argument("--revision")
+    reservation = commands.add_parser(
+        "reserve",
+        help="spend an idempotent validation allowance before work",
+    )
+    reservation.add_argument("--checkpoint", required=True)
+    reservation.add_argument("--id", required=True)
+    reservation.add_argument(
+        "--kind",
+        choices=("review", "fix", "quality", "test"),
+        required=True,
+    )
+    reservation.add_argument("--revision", required=True)
+    reservation.add_argument("--inputs", required=True)
+    reservation.add_argument("--reason")
+    reservation.add_argument(
+        "--trigger",
+        choices=("security", "data-loss", "destructive-concurrency"),
+    )
+    reservation.add_argument("--grant")
+    completion = commands.add_parser(
+        "finish",
+        help="record a reserved operation result without spending again",
+    )
+    completion.add_argument("--checkpoint", required=True)
+    completion.add_argument("--id", required=True)
+    completion.add_argument("--result-json", required=True)
     return parser
 
 
@@ -576,9 +683,11 @@ def main(argv: list[str] | None = None) -> int:
                 Path(args.repository).resolve(),
                 parse_enabled(args.enable),
             )
-        else:
+        elif args.command == "transition":
             result = transition(args)
-    except BookkeepingError as error:
+        else:
+            result = convergence_operation(args)
+    except (BookkeepingError, ConvergenceError) as error:
         print(str(error), file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
