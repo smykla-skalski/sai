@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve opt-in bookkeeping and atomically transition a ship-it checkpoint.
+"""Resolve ship-it bookkeeping and atomically transition a checkpoint.
 
 Usage:
   bookkeeping.py policy --repository PATH [--enable FEATURE,...]
@@ -148,8 +148,8 @@ def load_object(path: Path) -> dict[str, Any]:
 
 
 def resolve_policy(repository: Path, explicit: set[str]) -> dict[str, Any]:
-    """Resolve optional bookkeeping features from repo policy and user input."""
-    values = dict.fromkeys(FEATURES, False)
+    """Resolve bookkeeping features from repo policy and user input."""
+    values = {"claims": False, "evidence": False, "telemetry": True}
     source = "bundled default"
     policy_file = repository / POLICY_PATH
     if policy_file.is_file():

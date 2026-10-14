@@ -1,4 +1,4 @@
-"""Behavior tests for opt-in ship-it bookkeeping.
+"""Behavior tests for ship-it bookkeeping.
 
 Copyright 2026 Smykla Skalski, MIT License.
 """
@@ -76,7 +76,7 @@ class BookkeepingTest(unittest.TestCase):
             timeout=10,
         )
 
-    def test_default_policy_disables_optional_bookkeeping(self) -> None:
+    def test_default_policy_enables_local_telemetry_only(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             result = self.run_script("policy", "--repository", directory)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -86,7 +86,7 @@ class BookkeepingTest(unittest.TestCase):
                 "claims": False,
                 "evidence": False,
                 "policySource": "bundled default",
-                "telemetry": False,
+                "telemetry": True,
             },
         )
 
@@ -106,6 +106,25 @@ class BookkeepingTest(unittest.TestCase):
         self.assertFalse(policy["evidence"])
         self.assertTrue(policy["telemetry"])
         self.assertEqual(policy["policySource"], "explicit user request")
+
+    def test_repository_policy_disables_default_telemetry(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".sai").mkdir()
+            (root / ".sai/ship-it-bookkeeping.json").write_text(
+                '{"telemetry":false}', encoding="utf-8"
+            )
+            result = self.run_script("policy", "--repository", directory)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            json.loads(result.stdout),
+            {
+                "claims": False,
+                "evidence": False,
+                "policySource": ".sai/ship-it-bookkeeping.json",
+                "telemetry": False,
+            },
+        )
 
     def test_resumed_transition_preserves_scoped_reply_and_consumed_limits(
         self,
