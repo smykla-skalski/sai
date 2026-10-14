@@ -167,6 +167,21 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         completion = read(REFERENCES / "completion.md")
         self.assertIn("With evidence disabled", completion)
 
+    def test_resume_reconciles_delivery_before_planning(self) -> None:
+        checkpoint = read(REFERENCES / "checkpoint.md")
+        self.assertIn("reconcile-delivery --pull-request-json", checkpoint)
+        self.assertIn("stop before planning or delivery work", checkpoint)
+        self.assertIn(
+            "`merged` advances directly to completion verification", checkpoint
+        )
+        self.assertIn("`closed-unmerged` stops", checkpoint)
+        self.assertIn("Issue closure never follows from `pullRequestState`", checkpoint)
+        self.assertIn(
+            "A different PR URL conflicts with the stored identity", checkpoint
+        )
+        completion = read(REFERENCES / "completion.md")
+        self.assertIn("Query the source issue separately", completion)
+
 
 if __name__ == "__main__":
     unittest.main()

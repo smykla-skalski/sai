@@ -48,7 +48,14 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
   "delivery": {
     "pullRequestUrl": "URL or null",
     "pullRequestHead": "full commit SHA or null",
-    "mergeCommit": "full commit SHA or null"
+    "pullRequestState": "open|closed-unmerged|merged|null",
+    "mergeCommit": "full commit SHA or null",
+    "mergedAt": "RFC 3339 UTC timestamp or null",
+    "reconciliation": {
+      "status": "matched|unreachable",
+      "checkedAt": "RFC 3339 UTC timestamp",
+      "error": "failure text or null"
+    }
   },
   "evidence": {
     "revision": "full commit SHA or null",
@@ -101,6 +108,8 @@ Write UTF-8 JSON with these fields. Preserve unknown fields so a newer harness c
 
 For a single change, a delivered `outcome` is an object with `result: merged`, `pullRequestUrl`, `pullRequestHead`, `mergeCommit`, `sourceState` (`closed`, `unchanged` or `not-applicable`), `branchCleanup` (`deleted`, `preserved` or `not-applicable`) and `completedAt`. A terminal undelivered outcome has `result: cancelled|failed`, null delivery fields, the unchanged source state, `branchCleanup: not-applicable`, a non-empty `reason` and `completedAt`. For orchestration it has `result: coordinated`, `umbrellaUrl`, each child's final PR head and merge commit, `sourceState: closed` and `completedAt`. Use JSON `null`, never an empty string, for unknown optional values. Timestamps use `Z`; commit IDs are full hexadecimal SHAs.
 
+`delivery` records authoritative PR facts independently from workflow compliance and cleanup. `pullRequestState: merged` with its head, merge commit and `mergedAt` remains delivered while the workflow is active or blocked on a separate audit. Reconciliation failure changes only `reconciliation`; it never clears or downgrades confirmed delivery facts.
+
 `orchestration` is null for a single change. For an approved plan or umbrella, it is an object with `umbrellaUrl` and a `children` array. Every child records `issueUrl`, dependency issue URLs, status, worker identity, worktree, branch, revision, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, gated head, PR URL, unresolved-thread count, merge commit, issue state and next action. Unknown optional values are null. This state supplements rather than replaces live GitHub and worker reconciliation.
 
 `bookkeeping` is resolved from `.sai/ship-it-bookkeeping.json` or the current user's explicit request. The bundled default disables claims and revision evidence and enables local telemetry. A repository policy may disable telemetry. The checkpoint itself is mandatory in every mode. When claims are disabled, `claim` stays null and no claim comment is created. When evidence is disabled, `gateVerdicts` records each selected gate's ID, status, exact revision, provider, timestamp and bounded summary directly, and evidence status is `disabled`. When telemetry is disabled, no telemetry file or event is created.
@@ -123,6 +132,7 @@ Validate these invariants in addition to field presence and types:
 - `status: blocked` has a non-empty `blocker` and actionable `nextAction`; other statuses have a null blocker.
 - `phase: complete` and a non-null `outcome` occur together with `status: completed|cancelled|failed`; active and blocked states have a null outcome. Completed means delivered, cancelled means explicitly cancelled, and failed means a terminal failure ended the run.
 - A merge commit requires a PR URL and PR head. A completed single-change outcome repeats the matching delivery values.
+- A matched merged delivery has `pullRequestState: merged`, a non-null `mergedAt` and a null reconciliation error. Open and closed-unmerged PRs have no merge facts. A later unreachable observation preserves the last confirmed PR state and merge facts.
 - Evidence is `disabled` when bookkeeping evidence is off. When enabled, it is `missing` before the first task commit; otherwise its revision and record path identify the current revision's valid evidence record, and `complete` requires the exact workflow revision.
 - With claims enabled, an active GitHub implementation checkpoint has exactly one claim comment for its holder. Repository or GitHub writes require `status: active`, an unexpired `expiresAt`, and values reconciled with the authoritative issue comment. A completed checkpoint with a claim has released it with reason `merged`. With claims disabled, `claim` remains null and writes need no claim lease.
 - Before validation, risk has a level, a diff class, a policy source and unique required gates. A lower level than an earlier revision, matching rule or resumed checkpoint requires non-null explicit override authorization; a null level recorded before the first commit is not a floor.
@@ -147,15 +157,17 @@ When the file exists, migrate only the known legacy shapes before validating cur
 1. Recompute the ID from `task.canonicalSource`; it must match both `checkpointId` and the filename.
 2. Compare the resolved task source and repository identity with the checkpoint. They must match exactly after normalization.
 3. Reconcile Git before edits: current repository identity, default branch, task branch, `HEAD`, dirty files and ancestry.
-4. For GitHub work, reread the issue, linked PR and PR head. When claims are enabled, also reread the claim comment and reconcile it with checkpoint ownership. For Jira, reread its status without mutating it.
-5. Update stale but unambiguous facts atomically, then continue from `workflow.nextAction` rather than replaying completed phases.
+4. For GitHub work, resolve the checkpoint's stored PR URL before using issue links, then read that exact PR with `gh pr view <url> --json url,state,headRefOid,mergeCommit,mergedAt`. Pass the successful object to `bookkeeping.py reconcile-delivery --pull-request-json`; on a remote read failure pass its bounded error to `--failure`, preserve confirmed facts, report the failure and stop before planning or delivery work. When claims are enabled, also reread the claim comment and reconcile it with checkpoint ownership. For Jira, reread its status without mutating it.
+5. Route the helper result before planning: `merged` advances directly to completion verification without push, merge, local validation or hosted validation; `open` resumes the recorded PR at its authoritative head; `closed-unmerged` stops with reopening or replacement as the recovery action. An identity mismatch or conflict with confirmed merge facts stops without changing the checkpoint.
+6. Reread the source issue separately from the PR. Issue closure never follows from `pullRequestState`; apply and verify the resolved closure policy during completion.
+7. Update other stale but unambiguous facts atomically, then continue from `workflow.nextAction` rather than replaying completed phases.
 
 Safe reconciliation cases:
 
 - `HEAD` equals the recorded revision: continue after external-state checks.
 - `HEAD` descends from the recorded revision and every intervening commit belongs to this task: inspect it, update the revision, and invalidate review or test evidence from the older revision.
 - The current evidence record matches `HEAD`: validate it and continue collecting only the results still pending for that revision.
-- GitHub already shows the recorded PR merged: advance to completion verification using its actual head and merge commit.
+- GitHub already shows the recorded PR merged: preserve delivery, record its actual head, merge commit and `mergedAt`, then advance directly to completion verification even when compliance or cleanup remains blocked.
 - The issue is closed and its linked PR is merged: finalize only after verifying the merge contains the task revision.
 
 ## Recovery stops
@@ -165,7 +177,7 @@ Stop before repository changes and report the checkpoint path plus exactly one r
 - Invalid JSON, missing required fields, bad enums or an ID mismatch: restore the `.bak` after inspecting it, or move the invalid file aside and explicitly restart the task.
 - Different canonical source or repository identity: open the task in the matching repository, or explicitly start a distinct task; never rewrite identity in place.
 - Recorded revision descends from the current `HEAD`, histories diverge, unrelated dirty files overlap, or intervening commits cannot be attributed: switch to the recorded task branch/worktree or reconcile the Git history manually.
-- Open PR branch or head conflicts with the checkpoint: inspect the PR and choose the authoritative branch before resuming.
+- A different PR URL conflicts with the stored identity: inspect the issue and choose the authoritative PR before resuming. A matching open PR uses its remote head; a matching closed-unmerged PR needs an explicit reopen or replacement decision.
 - With claims enabled, a missing, expired, conflicting or mismatched GitHub claim follows the claim contract's reconciliation or audited takeover flow; never rewrite ownership in the checkpoint alone. With claims disabled, any non-null claim is invalid.
 - Missing, invalid or mismatched evidence: restore its `.bak` after inspection, or rerun the required evidence for the current revision; never advance with an older record.
 - Closed issue without a verifiable merged PR, or merged PR that does not contain the recorded revision: inspect the external state and correct it before completion.
