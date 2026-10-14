@@ -22,6 +22,15 @@ class ConvergenceError(ValueError):
     """Invalid or unauthorized validation work."""
 
 
+class InputUnavailableError(ConvergenceError):
+    """A declared input dimension cannot establish committed coverage."""
+
+    def __init__(self, dimension: str, message: str) -> None:
+        """Retain the affected dimension for durable invalidation."""
+        super().__init__(message)
+        self.dimension = dimension
+
+
 def require(condition: object, message: str) -> None:
     """Fail without mutating durable state when an invariant is unsatisfied."""
     if not condition:
@@ -193,6 +202,12 @@ def capture(spec: dict[str, Any], revision: str, criteria: list[str]) -> dict[st
         "acceptanceCriteria": criteria,
     }
     for name, selected in scope.items():
+        for root in selected:
+            if not any(
+                root in (".", path) or path.startswith(root + "/") for path in entries
+            ):
+                msg = f"declared {name} path has no committed files: {root}"
+                raise InputUnavailableError(name, msg)
         snapshot[name] = {
             path: content
             for path, content in sorted(entries.items())
@@ -301,6 +316,40 @@ def store_decision(checkpoint: dict[str, Any], decision: dict[str, Any]) -> None
                 verdict.update(status="stale", invalidation=decision)
 
 
+def unavailable_decision(
+    checkpoint: dict[str, Any],
+    kind: str,
+    revision: str,
+    error: ConvergenceError,
+) -> None:
+    """Invalidate requested gate coverage when committed input capture refuses."""
+    if kind not in GATES or revision != checkpoint["workflow"]["revision"]:
+        return
+    previous = next(
+        (
+            receipt
+            for receipt in reversed(checkpoint["convergence"]["reservations"])
+            if receipt["kind"] == kind
+        ),
+        None,
+    )
+    reasons = ["unverifiable-inputs"]
+    if isinstance(error, InputUnavailableError):
+        reasons.insert(0, error.dimension)
+    store_decision(
+        checkpoint,
+        {
+            "kind": kind,
+            "revision": revision,
+            "inputs": previous["inputs"] if previous else None,
+            "previousOperation": previous["id"] if previous else None,
+            "previousRevision": previous["revision"] if previous else None,
+            "status": "invalid",
+            "reasons": reasons,
+        },
+    )
+
+
 def review_provenance_valid(
     checkpoint: dict[str, Any],
     verdict: dict[str, Any],
@@ -327,19 +376,8 @@ def review_provenance_valid(
             revision,
             checkpoint["task"].get("acceptanceCriteria", []),
         )
-    except ConvergenceError:
-        store_decision(
-            checkpoint,
-            {
-                "kind": "review",
-                "revision": revision,
-                "inputs": operation["inputs"],
-                "previousOperation": operation["id"],
-                "previousRevision": operation["revision"],
-                "status": "invalid",
-                "reasons": ["unverifiable-current-inputs"],
-            },
-        )
+    except ConvergenceError as error:
+        unavailable_decision(checkpoint, "review", revision, error)
         return False
     decision = assess(checkpoint, "review", revision, snapshot)
     return (

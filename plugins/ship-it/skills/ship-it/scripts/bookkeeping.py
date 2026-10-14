@@ -48,7 +48,7 @@ from convergence import (
 from convergence import (
     validate as validate_convergence,
 )
-from validation_reuse import assess, capture, digest
+from validation_reuse import assess, capture, digest, unavailable_decision
 
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -601,11 +601,17 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
         if args.command in ("reserve", "assess"):
             snapshot = None
             if args.inputs_json:
-                snapshot = capture(
-                    load_object(Path(args.inputs_json)),
-                    args.revision,
-                    checkpoint["task"].get("acceptanceCriteria", []),
-                )
+                before_capture = copy.deepcopy(checkpoint)
+                try:
+                    snapshot = capture(
+                        load_object(Path(args.inputs_json)),
+                        args.revision,
+                        checkpoint["task"].get("acceptanceCriteria", []),
+                    )
+                except ConvergenceError as error:
+                    unavailable_decision(checkpoint, args.kind, args.revision, error)
+                    persist_invalidations(before_capture, checkpoint, path)
+                    raise
             if args.command == "assess":
                 result = assess(checkpoint, args.kind, args.revision, snapshot)
             else:

@@ -324,3 +324,46 @@ class ValidationReuseTest(unittest.TestCase):
             [verdict["gate"] for verdict in self.read()["gateVerdicts"]],
             ["adversarial-review"],
         )
+
+    def test_missing_declared_inputs_cannot_start_passing_coverage(self) -> None:
+        for dimension in ("source", "dependencies", "policy"):
+            with self.subTest(dimension=dimension):
+                original = self.spec[dimension]
+                self.spec[dimension] = ["absent-declared-path"]
+                self.save_manifest()
+
+                self.assert_denied(self.structured())
+
+                document = self.read()
+                self.assertEqual(document["convergence"]["reviewCycles"], 0)
+                self.assertEqual(document["gateVerdicts"], [])
+                self.assertEqual(
+                    document["convergence"]["validityDecisions"][-1]["reasons"],
+                    [dimension, "unverifiable-inputs"],
+                )
+                self.spec[dimension] = original
+
+    def test_missing_new_declaration_persists_invalidation_and_blocks_reuse(
+        self,
+    ) -> None:
+        self.complete()
+        self.spec["dependencies"] = ["absent-declared-path"]
+        self.save_manifest()
+
+        self.assert_denied(self.structured("new-head"))
+
+        document = self.read()
+        self.assertEqual(document["convergence"]["reviewCycles"], 1)
+        self.assertEqual(document["gateVerdicts"][0]["status"], "stale")
+        self.assertEqual(
+            document["convergence"]["validityDecisions"][-1]["reasons"],
+            ["dependencies", "unverifiable-inputs"],
+        )
+
+    def test_empty_dependency_declaration_remains_valid(self) -> None:
+        self.spec["dependencies"] = []
+        self.save_manifest()
+
+        self.complete()
+
+        self.assertFalse(self.assert_ok(self.structured("repeat"))["dispatch"])

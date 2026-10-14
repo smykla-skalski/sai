@@ -18,7 +18,7 @@ Write one JSON manifest per review, test or local quality gate outside the workt
 }
 ```
 
-The helper captures committed contents from a clean worktree at the checkpoint revision, hashes declared environment variable values without retaining secrets, and binds the task's acceptance criteria. It does not execute `command`. Symlink scopes fail closed because the committed link cannot prove its target contents. External inputs require explicit content or version facts; an inaccessible, mutable or unknown dependency makes the result unverifiable. Never omit an input merely to obtain a cache hit.
+The helper captures committed contents from a clean worktree at the checkpoint revision, hashes declared environment variable values without retaining secrets, and binds the task's acceptance criteria. Every declared source, dependency or policy root must match committed files; a missing or misspelled root refuses capture and records invalidity without spending an allowance. An empty dependency list explicitly declares no repository dependencies. It does not execute `command`. Symlink scopes fail closed because the committed link cannot prove its target contents. External inputs require explicit content or version facts; an inaccessible, mutable or unknown dependency makes the result unverifiable. Never omit an input merely to obtain a cache hit.
 
 ## Assess, reserve, finish
 
