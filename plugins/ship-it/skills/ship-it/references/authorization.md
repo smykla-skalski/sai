@@ -1,10 +1,10 @@
 # Scoped task authorization
 
-Reconcile checkpoint `authorization.grants` with original user messages and later limits/revocations before action or handoff. Forwarding preserves authority; coordinators, worker rules, spawn prompts, risk levels and summaries never create or widen it.
+Reconcile `authorization.grants` with original messages and later limits/revocations before acting. Forwarding preserves authority; coordinators, worker rules, spawn prompts, risk levels and summaries never create or widen it.
 
-- Record grant ID, original message/reference, pending request for a reply, scope, explicit limits/units, consumption and status (`active`, `ambiguous`, `revoked`, `exhausted`). Pass the checkpoint to replacement workers.
+- Record ID, original message/reference, pending request, scope, limits/units, consumption and status (`active`, `ambiguous`, `revoked`, `exhausted`). Pass the checkpoint to replacement workers.
 - "I approve" or "yes" answering one concrete pending request authorizes exactly that request. No phrase such as "exhaustive validation" is required. Retain request and reply; multiple pending requests or unclear scope need clarification.
-- Shipping authorizes scoped implementation, necessary fixes, validation, PR feedback, publication, merge and closure. Do not ask again for covered actions. New scope or material product decisions need input.
+- Shipping authorizes scoped implementation, necessary fixes, validation, PR feedback, publication, merge and closure. Covered actions need no renewed approval. New scope/product decisions need input.
 - Check explicit user limits before acting and reserve consumption before dispatch. Reconcile interrupted attempts without spending twice. Preserve revoked, exhausted and ambiguous grants; none authorizes more work. Empty limits retain bounded optional validation, never unlimited loops. Optional expansion needs a concrete bounded approval; one gate means one gate.
 
 ## Internal limits
@@ -18,4 +18,4 @@ Recovery does not replenish optional counters. Source changes stale old verdicts
 
 ## Resume
 
-Keep original request/reply, status and consumed allowances. Legacy checkpoints gain empty grants: recover original messages before acting. A summary alone is insufficient. Ask only for unverifiable authority, ambiguous scope, revocation or exhausted user limits.
+Keep original request/reply, status and consumed allowances. Legacy checkpoints gain empty grants: recover original messages before acting. Summaries alone are insufficient; ask only about unverifiable authority, ambiguity, revocation or spent user limits.
