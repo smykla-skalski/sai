@@ -25,8 +25,13 @@
       "full_quality_gate_runs": 1,
       "later_non_blocking_findings": "follow-up-issue",
       "at_limit": "follow-up-issues-then-deliver",
-      "cycle_limit_counters": ["reviewCycles", "elapsed"],
-      "fix_limit_counters": ["fixPasses"],
+      "cycle_limit_counters": [
+        "reviewCycles",
+        "elapsed"
+      ],
+      "fix_limit_counters": [
+        "fixPasses"
+      ],
       "delivery_blockers": [
         "security-defect",
         "data-loss",
@@ -34,13 +39,29 @@
         "unresolved-acceptance",
         "repository-required-check",
         "mandatory-human-review"
-      ]
+      ],
+      "acceptance_recovery": {
+        "activation": "confirmed-failure-within-active-task-authorization",
+        "validation": "focused-reproductions-and-required-checks",
+        "optional_budget": "preserve-exhausted-counters",
+        "stop_when": [
+          "explicit-user-limit",
+          "out-of-scope",
+          "product-decision",
+          "unresolved-technical-blocker",
+          "mandatory-control"
+        ]
+      }
     },
     "exhaustive": {
       "activation": "explicit-user-request",
       "limits": "user-directed",
       "authorization": {
-        "accepted": ["user-current-request"],
+        "accepted": [
+          "user-current-request",
+          "verified-original-user-grant",
+          "reply-to-concrete-bounded-request"
+        ],
         "rejected": [
           "coordinator",
           "worker-rules",

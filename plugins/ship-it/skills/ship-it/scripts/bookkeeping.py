@@ -66,6 +66,7 @@ REQUIRED_CHECKPOINT_FIELDS: Final[frozenset[str]] = frozenset(
         "releasePolicy",
         "hostedReviewDecision",
         "convergence",
+        "authorization",
         "ciTriage",
         "orchestration",
         "outcome",
@@ -196,6 +197,7 @@ def migrate_legacy(checkpoint: dict[str, Any]) -> None:
         return
     task = checkpoint.get("task")
     github_source = isinstance(task, dict) and task.get("sourceType") == "github"
+    checkpoint.setdefault("authorization", {"grants": []})
     checkpoint.setdefault("claim", None)
     checkpoint.setdefault("releasePolicy", None)
     checkpoint.setdefault("hostedReviewDecision", None)
@@ -249,6 +251,86 @@ def validate_identity(checkpoint: dict[str, Any], path: Path) -> None:
     if checkpoint_id != digest or path.name != f"{checkpoint_id}.json":
         message = "checkpoint ID, canonical source, and filename must match"
         raise BookkeepingError(message)
+
+
+def validate_authorization(checkpoint: dict[str, Any]) -> None:
+    """Reject incomplete authority without inferring or expanding a grant."""
+    authorization = checkpoint.get("authorization")
+    if not isinstance(authorization, dict) or not isinstance(
+        authorization.get("grants"),
+        list,
+    ):
+        message = "authorization requires a grants array"
+        raise BookkeepingError(message)
+    identities: set[str] = set()
+    for grant in authorization["grants"]:
+        if not isinstance(grant, dict):
+            message = "authorization grant must be an object"
+            raise BookkeepingError(message)
+        identity = grant.get("id")
+        if (
+            not isinstance(identity, str)
+            or not identity.strip()
+            or identity in identities
+        ):
+            message = "authorization grant IDs must be non-empty and unique"
+            raise BookkeepingError(message)
+        identities.add(identity)
+        if grant.get("status") not in ("active", "ambiguous", "revoked", "exhausted"):
+            message = "invalid authorization grant status"
+            raise BookkeepingError(message)
+        validate_authorization_source(grant.get("source"))
+        scope = grant.get("scope")
+        if (
+            not isinstance(scope, list)
+            or not scope
+            or any(not isinstance(item, str) or not item.strip() for item in scope)
+        ):
+            message = "authorization grant requires non-empty scope"
+            raise BookkeepingError(message)
+        validate_authorization_limits(grant.get("limits"))
+
+
+def validate_authorization_source(source: object) -> None:
+    """Require the original user source and concrete request for approval replies."""
+    if not isinstance(source, dict) or source.get("kind") not in (
+        "user-request",
+        "user-reply",
+    ):
+        message = "authorization source must identify the original user"
+        raise BookkeepingError(message)
+    for field in ("message", "reference"):
+        if not isinstance(source.get(field), str) or not source[field].strip():
+            message = f"authorization source requires {field}"
+            raise BookkeepingError(message)
+    request = source.get("request")
+    if source["kind"] == "user-reply" and (
+        not isinstance(request, str) or not request.strip()
+    ):
+        message = "authorization reply requires the concrete pending request"
+        raise BookkeepingError(message)
+
+
+def validate_authorization_limits(limits: object) -> None:
+    """Validate explicit allowances and retained consumed amounts."""
+    if not isinstance(limits, list):
+        message = "authorization limits must be an array"
+        raise BookkeepingError(message)
+    for limit in limits:
+        if not isinstance(limit, dict):
+            message = "authorization limit must be an object"
+            raise BookkeepingError(message)
+        resource = limit.get("resource")
+        if not isinstance(resource, str) or not resource.strip():
+            message = "authorization limit requires a resource with units"
+            raise BookkeepingError(message)
+        maximum, used = limit.get("maximum"), limit.get("used")
+        if type(maximum) is not int or type(used) is not int:
+            message = "authorization limit maximum and used must be integers"
+            raise BookkeepingError(message)
+        if maximum < 0 or used < 0 or used > maximum:
+            message = "authorization consumed amount must stay within its limit"
+            raise BookkeepingError(message)
 
 
 def validate_bookkeeping(checkpoint: dict[str, Any]) -> None:
@@ -341,7 +423,9 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
     validate_outcome_values(result, outcome)
 
 
-def validate_merged_delivery(checkpoint: dict[str, Any], outcome: dict[str, Any]) -> None:
+def validate_merged_delivery(
+    checkpoint: dict[str, Any], outcome: dict[str, Any],
+) -> None:
     """Require a merged outcome to repeat the validated delivery identity."""
     if outcome.get("result") != "merged":
         return
@@ -368,6 +452,7 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
         raise BookkeepingError(message)
     validate_identity(checkpoint, path)
     validate_bookkeeping(checkpoint)
+    validate_authorization(checkpoint)
     if checkpoint.get("schemaVersion") != 1:
         message = "unsupported checkpoint schemaVersion"
         raise BookkeepingError(message)

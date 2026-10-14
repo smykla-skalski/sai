@@ -16,6 +16,7 @@ ROUTINE_GUIDANCE = (
     SHIP_IT / "SKILL.md",
     *(REFERENCES / name for name in (
         "inputs.md",
+        "authorization.md",
         "explore.md",
         "branch.md",
         "implementation.md",

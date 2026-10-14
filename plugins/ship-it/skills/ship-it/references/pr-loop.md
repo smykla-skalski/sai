@@ -17,7 +17,7 @@ Do not rewrite history after validation begins. If the unpublished branch still 
 
 ## Draft PR compatibility
 
-The normal path already has a draft PR from [publish.md](publish.md). On resume from an older checkpoint without one, use that phase now: local checks are the only validation due before draft creation. Review and manual-test results are due before ready-for-review, and CI remains due before merge.
+Legacy checkpoints without a PR use [publish.md](publish.md) after local checks; review/test remain due before ready and CI before merge.
 
 Create or update the PR body with `## Motivation`, `## Implementation information`, a changelog line (`> Changelog: type(scope): desc` or `> Changelog: skip`), gate verdicts for the current head, any unsettled review `question:` findings, each criterion recorded as `untested` by a `PASS (partial)` verdict under `## Untested criteria`, plus the source link:
 
@@ -52,7 +52,7 @@ Use one blocking background waiter that returns when checks, reviews, threads or
 - Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments), filtered by the resolved release policy.
 - Every named policy or platform-required check on the exact PR head when `ci` is selected.
 
-If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. A code failure is an unresolved acceptance failure under the shared convergence policy and consumes its remaining fix/cycle budget. Never rerun CI without the repository policy or explicit approval required there.
+If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. A code failure is an unresolved acceptance failure under the shared convergence policy and consumes its remaining fix budget; after an internal limit, triage focused recovery under active scoped authorization. Never rerun CI without the repository policy or explicit approval required there.
 If any selected reviewer or check remains unsatisfied for roughly 30 minutes, including a continuously requested reviewer or pending check, block with that exact requirement and the human action that satisfies it; never silently skip it.
 
 ## Ready gate
@@ -61,7 +61,7 @@ Mark the PR ready only when local checks, review, the single broad manual-test p
 
 Before diagnosing a failed hosted check, resolve and record a fresh CI-triage role. Its output identifies the matching route execution in the evidence record or checkpoint verdict.
 
-Record every selected hosted gate against the current PR head in its evidence record when evidence is enabled, otherwise in checkpoint `gateVerdicts`, including provider, timestamp and job URL. A code-changing fix creates results pending for the new revision; recompute risk and validate it according to the shared convergence policy before returning to the PR loop. Never reset its counters for CI or hosted feedback.
+Record selected hosted results in enabled evidence or checkpoint `gateVerdicts`, bound to PR head, provider, timestamp and job URL. Source changes invalidate results; recompute risk and revalidate. Never reset shared counters.
 
 ## Address required reviewer feedback
 
@@ -78,7 +78,7 @@ gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThr
 gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -f id=<thread-id>
 ```
 
-Then return to waiting. After the single fix pass, turn later non-blocking suggestions into follow-up issues. Required feedback that cannot be resolved inside the remaining cycle or time budget is a hard stop.
+Then return to waiting. After the single fix pass, turn later non-blocking suggestions into follow-up issues. Required feedback that survives an internal limit enters focused acceptance triage under [authorization.md](authorization.md). Existing scoped task authority covers necessary corrections; explicit user limits and mandatory controls still bind. Stop for an unresolved blocker, not to ask for the same permission again.
 
 ## Merge
 

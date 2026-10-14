@@ -50,7 +50,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 
 ## Phase 1 — Resolve the task
 
-Resolve the source and acceptance criteria, then create or resume the durable checkpoint before repository changes.
+Resolve the source, criteria and scoped authorization, then create or resume the checkpoint before changes.
 
 For an approved complex plan or umbrella, read [references/orchestration.md](references/orchestration.md); the parent never implements a child. Ordinary issues use the phases below. In Sail, missing workers or gates pause the run.
 
@@ -88,4 +88,4 @@ Verify delivery, close only the GitHub issue, report evidence and clean up when 
 
 ## Hard stops
 
-Stop and name the exact next human action when: a capability preflight fails; the source is invalid or ownership conflicts; a required control cannot pass; a hosted requirement exceeds its deadline; a delivery blocker survives the convergence budget; a selected test is BLOCKED; or the repository cannot answer a required product decision.
+Stop and name the exact next human action when: a capability preflight fails; the source is invalid or ownership conflicts; a required control cannot pass; a hosted requirement exceeds its deadline; a delivery blocker survives scoped acceptance recovery; a selected test is BLOCKED; or the repository cannot answer a required product decision.

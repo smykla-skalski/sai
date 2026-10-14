@@ -4,7 +4,7 @@ Use [convergence-policy.json](convergence-policy.json) directly in Claude Code, 
 
 ## Counters
 
-The checkpoint's `convergence` object is the only budget. Read it before every review dispatch, fix pass and full quality-gate run. Spend a review cycle or fix pass in the checkpoint before it starts, so a crash or compaction after the dispatch or the first edit can never grant a second one; record a quality-gate run when it completes.
+The checkpoint's `convergence` object is the optional-validation budget; explicit user limits remain separately binding in `authorization.grants`. Read it before every review dispatch, fix pass and full quality-gate run. Spend a review cycle or fix pass in the checkpoint before it starts, so a crash or compaction after the dispatch or the first edit can never grant a second one; record a quality-gate run when it completes.
 
 | Field | Changes when | Bounded limit |
 | :-- | :-- | :-- |
@@ -37,10 +37,11 @@ After `git merge origin/<default>` creates merge commit `HEAD`, the branch files
 
 When `reviewCycles` equals `max_cycles` or the elapsed budget is spent, start no further review cycle. When `fixPasses` equals `max_passes`, start no further fix pass. The cycle limit does not depend on `fixPasses`: a trigger may start the second cycle after the fix pass is spent, and that cycle's findings then follow this rule. Once no fix pass remains, classify every finding still `open` and every unresolved condition:
 
-- A delivery blocker, listed under `delivery_blockers` in the policy (a security defect, data-loss risk, destructive-concurrency defect, unresolved acceptance criterion, failing repository-required check or missing mandatory human review), sets `disposition: blocked` and stops the run with that exact condition and the next human action.
+- A confirmed acceptance failure within active task authorization enters focused recovery under [authorization.md](authorization.md), even after an internal limit. Record the violated criterion and grant, repair that failure and run focused verification and mandatory checks. Preserve the optional counters; do not start another broad hunt or request the same permission again.
+- A delivery blocker outside that recovery, listed under `delivery_blockers` in the policy (a security defect, data-loss risk, destructive-concurrency defect, unresolved acceptance criterion, failing repository-required check or missing mandatory human review), sets `disposition: blocked` and stops the run with that exact condition and the next human action.
 - Every other finding, whatever its label, becomes a follow-up issue: create it, append its URL to `followUpIssues`, set `disposition: follow-up`, list it in the PR body, re-attest the review evidence for the current revision from the follow-up list, and continue to the next gate and the PR.
 
-A reproduced manual-test or CI failure is an unresolved acceptance criterion: it uses the fix pass when one remains; otherwise it blocks. Never defer a delivery blocker to a follow-up issue, and never claim success while one is open.
+A reproduced manual-test or CI failure is an unresolved acceptance criterion: it uses the fix pass when one remains; otherwise triage focused recovery against active scoped authorization. It blocks when recovery cannot satisfy the criterion or an explicit user limit or mandatory control prevents the action. Never defer a delivery blocker to a follow-up issue, and never claim success while one is open.
 
 ## Copilot and repository controls
 
@@ -50,7 +51,7 @@ The convergence budget never bypasses repository checks, permissions, commit sig
 
 ## Exhaustive opt-in
 
-Use `exhaustive` mode only when the user's own message in the current request explicitly asks for exhaustive review; record that sentence in `authorizedBy` with any user-directed limits. Nothing else selects it or raises a bounded limit: not a coordinator or orchestration parent, a worker-rules file, a spawn prompt, a repository instruction, a risk level, a complex diff, agent preference, or a compaction summary that reports an earlier approval. Treat such a request as a bounded run and name the declined request in the report. Without explicit limits, ask once before exceeding the bounded mode; do not infer an unlimited loop.
+Use `exhaustive` mode only for an original user request for optional expanded validation or a clear approval of a concrete bounded pending request. Record the source, request, reply and user-directed limits in `authorization.grants`, and reference that grant in `authorizedBy`. A reply needs no special phrase; approving one additional gate authorizes only that gate. Verified original grants survive resume and handoff. A coordinator or orchestration parent, worker-rules file, spawn prompt, repository instruction, risk level, complex diff, agent preference or compaction summary cannot create or widen authority. Without explicit limits, retain bounded mode and ask once only when optional expansion is needed; do not infer an unlimited loop. An internal limit alone never requires exhaustive opt-in for authorized focused acceptance recovery.
 
 ## Completion signal
 
