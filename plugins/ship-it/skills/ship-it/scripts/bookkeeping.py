@@ -31,11 +31,12 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -78,6 +79,7 @@ TERMINAL_STATUSES: Final[frozenset[str]] = frozenset(
 PULL_REQUEST_STATES: Final[frozenset[str]] = frozenset(
     {"open", "closed-unmerged", "merged"},
 )
+FULL_COMMIT_ID: Final[re.Pattern[str]] = re.compile(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}")
 REQUIRED_CHECKPOINT_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "schemaVersion",
@@ -408,16 +410,39 @@ def validate_bookkeeping(checkpoint: dict[str, Any]) -> None:
             raise BookkeepingError(message)
 
 
-def validate_delivery(checkpoint: dict[str, Any]) -> None:
-    """Validate durable pull request facts and their reconciliation audit."""
-    delivery = checkpoint.get("delivery")
-    if not isinstance(delivery, dict):
-        message = "checkpoint.delivery must be an object"
+def validate_commit_id(value: object, field: str) -> None:
+    """Require a full hexadecimal Git object ID."""
+    if not isinstance(value, str) or FULL_COMMIT_ID.fullmatch(value) is None:
+        message = f"{field} must be a full hexadecimal commit ID"
         raise BookkeepingError(message)
-    state = delivery.get("pullRequestState")
-    if state is not None and state not in PULL_REQUEST_STATES:
-        message = "checkpoint.delivery has invalid pullRequestState"
+
+
+def validate_utc_timestamp(value: object, field: str) -> None:
+    """Require an RFC 3339 timestamp whose offset is UTC."""
+    if not isinstance(value, str) or "T" not in value:
+        message = f"{field} must be an RFC 3339 UTC timestamp"
         raise BookkeepingError(message)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        message = f"{field} must be an RFC 3339 UTC timestamp"
+        raise BookkeepingError(message) from error
+    if parsed.utcoffset() != timedelta(0):
+        message = f"{field} must be an RFC 3339 UTC timestamp"
+        raise BookkeepingError(message)
+
+
+def validate_delivery_facts(delivery: dict[str, Any], state: object) -> None:
+    """Validate pull request object IDs and merge facts."""
+    for field in ("pullRequestHead", "mergeCommit"):
+        value = delivery.get(field)
+        if value is not None:
+            validate_commit_id(value, f"checkpoint.delivery.{field}")
+    if delivery.get("mergedAt") is not None:
+        validate_utc_timestamp(
+            delivery["mergedAt"],
+            "checkpoint.delivery.mergedAt",
+        )
     if state == "merged":
         for field in ("pullRequestUrl", "pullRequestHead", "mergeCommit", "mergedAt"):
             value = delivery.get(field)
@@ -429,6 +454,19 @@ def validate_delivery(checkpoint: dict[str, Any]) -> None:
     ):
         message = "unmerged delivery cannot retain merge facts"
         raise BookkeepingError(message)
+
+
+def validate_delivery(checkpoint: dict[str, Any]) -> None:
+    """Validate durable pull request facts and their reconciliation audit."""
+    delivery = checkpoint.get("delivery")
+    if not isinstance(delivery, dict):
+        message = "checkpoint.delivery must be an object"
+        raise BookkeepingError(message)
+    state = delivery.get("pullRequestState")
+    if state is not None and state not in PULL_REQUEST_STATES:
+        message = "checkpoint.delivery has invalid pullRequestState"
+        raise BookkeepingError(message)
+    validate_delivery_facts(delivery, state)
     reconciliation = delivery.get("reconciliation")
     if reconciliation is None:
         return
@@ -445,9 +483,7 @@ def validate_delivery_reconciliation(reconciliation: object) -> None:
         message = "delivery reconciliation has invalid status"
         raise BookkeepingError(message)
     checked_at = reconciliation.get("checkedAt")
-    if not isinstance(checked_at, str) or not checked_at.strip():
-        message = "delivery reconciliation requires checkedAt"
-        raise BookkeepingError(message)
+    validate_utc_timestamp(checked_at, "delivery reconciliation checkedAt")
     error = reconciliation.get("error")
     if status == "matched" and error is not None:
         message = "matched delivery reconciliation requires a null error"
@@ -532,6 +568,16 @@ def validate_merged_delivery(
     delivery = checkpoint.get("delivery")
     if not isinstance(delivery, dict):
         message = "merged outcome requires delivery state"
+        raise BookkeepingError(message)
+    if delivery.get("pullRequestState") != "merged":
+        message = "merged outcome requires delivery.pullRequestState merged"
+        raise BookkeepingError(message)
+    reconciliation = delivery.get("reconciliation")
+    if (
+        not isinstance(reconciliation, dict)
+        or reconciliation.get("status") != "matched"
+    ):
+        message = "merged outcome requires matched delivery reconciliation"
         raise BookkeepingError(message)
     for field in ("pullRequestUrl", "pullRequestHead", "mergeCommit"):
         if outcome[field] != delivery.get(field):
@@ -641,9 +687,7 @@ def parse_pull_request(value: str) -> dict[str, Any]:
     if not isinstance(url, str) or not url.strip():
         message = "pull request observation requires url"
         raise BookkeepingError(message)
-    if not isinstance(head, str) or not head.strip():
-        message = "pull request observation requires headRefOid"
-        raise BookkeepingError(message)
+    validate_commit_id(head, "pull request observation headRefOid")
     if not isinstance(state, str) or state.upper() not in {"OPEN", "CLOSED", "MERGED"}:
         message = "pull request observation has invalid state"
         raise BookkeepingError(message)
@@ -714,12 +758,8 @@ def reconcile_merged_pull_request(
     confirmed_merged: bool,
 ) -> None:
     """Validate and retain authoritative merge facts without downgrades."""
-    if not isinstance(merge_commit, str) or not merge_commit.strip():
-        message = "merged pull request observation requires mergeCommit"
-        raise BookkeepingError(message)
-    if not isinstance(merged_at, str) or not merged_at.strip():
-        message = "merged pull request observation requires mergedAt"
-        raise BookkeepingError(message)
+    validate_commit_id(merge_commit, "merged pull request observation mergeCommit")
+    validate_utc_timestamp(merged_at, "merged pull request observation mergedAt")
     if confirmed_merged:
         for field, observed in (
             ("pullRequestHead", remote["headRefOid"]),

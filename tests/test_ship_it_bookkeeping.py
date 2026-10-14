@@ -66,6 +66,21 @@ def checkpoint_path(directory: str, document: dict[str, object]) -> Path:
     return Path(directory) / f"{document['checkpointId']}.json"
 
 
+def merged_delivery() -> dict[str, object]:
+    return {
+        "pullRequestUrl": "https://github.com/o/r/pull/1",
+        "pullRequestHead": "a" * 40,
+        "pullRequestState": "merged",
+        "mergeCommit": "b" * 40,
+        "mergedAt": "2026-01-02T03:04:05Z",
+        "reconciliation": {
+            "status": "matched",
+            "checkedAt": "2026-01-02T03:05:06Z",
+            "error": None,
+        },
+    }
+
+
 class BookkeepingTest(unittest.TestCase):
     def run_script(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -244,6 +259,40 @@ class BookkeepingTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("pull request identity mismatch", result.stderr)
         self.assertEqual(current, original)
+
+    def test_reconciliation_rejects_malformed_remote_merge_facts(self) -> None:
+        invalid_fields = {
+            "headRefOid": "not-a-sha",
+            "mergeCommit": {"oid": "also-not-a-sha"},
+            "mergedAt": "yesterday",
+        }
+        for field, invalid in invalid_fields.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                document = checkpoint_document()
+                checkpoint = checkpoint_path(directory, document)
+                original = json.dumps(document)
+                checkpoint.write_text(original, encoding="utf-8")
+                remote = {
+                    "url": "https://github.com/o/r/pull/1",
+                    "state": "MERGED",
+                    "headRefOid": "a" * 40,
+                    "mergeCommit": {"oid": "b" * 40},
+                    "mergedAt": "2026-01-02T03:04:05Z",
+                }
+                remote[field] = invalid
+
+                result = self.run_script(
+                    "reconcile-delivery",
+                    "--checkpoint",
+                    str(checkpoint),
+                    "--pull-request-json",
+                    json.dumps(remote),
+                )
+
+                current = checkpoint.read_text(encoding="utf-8")
+            self.assertEqual(result.returncode, 2)
+            self.assertIn(field, result.stderr)
+            self.assertEqual(current, original)
 
     def test_unreachable_reconciliation_preserves_confirmed_merge(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -555,13 +604,7 @@ class BookkeepingTest(unittest.TestCase):
             if isinstance(workflow, dict):
                 workflow["revision"] = "a" * 40
             if isinstance(delivery, dict):
-                delivery.update(
-                    {
-                        "pullRequestUrl": "https://github.com/o/r/pull/1",
-                        "pullRequestHead": "a" * 40,
-                        "mergeCommit": "b" * 40,
-                    },
-                )
+                delivery.update(merged_delivery())
             checkpoint = checkpoint_path(directory, document)
             checkpoint.write_text(json.dumps(document), encoding="utf-8")
             result = self.run_script(
@@ -607,13 +650,7 @@ class BookkeepingTest(unittest.TestCase):
                 if isinstance(workflow, dict):
                     workflow["revision"] = "a" * 40
                 if isinstance(delivery, dict):
-                    delivery.update(
-                        {
-                            "pullRequestUrl": "https://github.com/o/r/pull/1",
-                            "pullRequestHead": "a" * 40,
-                            "mergeCommit": "b" * 40,
-                        },
-                    )
+                    delivery.update(merged_delivery())
                 outcome = {
                     "result": "merged",
                     "pullRequestUrl": "https://github.com/o/r/pull/1",
@@ -655,13 +692,7 @@ class BookkeepingTest(unittest.TestCase):
             if isinstance(workflow, dict):
                 workflow["revision"] = "c" * 40
             if isinstance(delivery, dict):
-                delivery.update(
-                    {
-                        "pullRequestUrl": "https://github.com/o/r/pull/1",
-                        "pullRequestHead": "a" * 40,
-                        "mergeCommit": "b" * 40,
-                    },
-                )
+                delivery.update(merged_delivery())
             outcome = {
                 "result": "merged",
                 "pullRequestUrl": "https://github.com/o/r/pull/1",
@@ -691,6 +722,53 @@ class BookkeepingTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("must match workflow.revision", result.stderr)
         self.assertEqual(current, original)
+
+    def test_complete_transition_requires_reconciled_merged_delivery(self) -> None:
+        missing_states = {
+            "pull request state": {"pullRequestState": None},
+            "merge timestamp": {"mergedAt": None},
+            "matched reconciliation": {"reconciliation": None},
+        }
+        for name, replacement in missing_states.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                document = checkpoint_document()
+                workflow = document["workflow"]
+                delivery = document["delivery"]
+                if isinstance(workflow, dict):
+                    workflow["revision"] = "a" * 40
+                if isinstance(delivery, dict):
+                    delivery.update(merged_delivery())
+                    delivery.update(replacement)
+                checkpoint = checkpoint_path(directory, document)
+                original = json.dumps(document)
+                checkpoint.write_text(original, encoding="utf-8")
+                outcome = {
+                    "result": "merged",
+                    "pullRequestUrl": "https://github.com/o/r/pull/1",
+                    "pullRequestHead": "a" * 40,
+                    "mergeCommit": "b" * 40,
+                    "sourceState": "closed",
+                    "branchCleanup": "preserved",
+                    "completedAt": "2026-01-02T03:06:07Z",
+                }
+
+                result = self.run_script(
+                    "transition",
+                    "--checkpoint",
+                    str(checkpoint),
+                    "--phase",
+                    "complete",
+                    "--status",
+                    "completed",
+                    "--next-action",
+                    "none",
+                    "--outcome-json",
+                    json.dumps(outcome),
+                )
+
+                current = checkpoint.read_text(encoding="utf-8")
+            self.assertEqual(result.returncode, 2)
+            self.assertEqual(current, original)
 
     def test_complete_transition_rejects_incomplete_outcome(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
