@@ -1,6 +1,6 @@
 # Completing the shipped task
 
-Confirm the exact reconciled PR is merged and retain its head, merge commit and `mergedAt` as delivered even when compliance or cleanup audit remains. Query the source issue separately, then apply the resolved closing behavior: verify keyword closure, close manually only for `manual-after-merge`, or preserve `unchanged`. Leave Jira unchanged unless the user explicitly requested otherwise.
+Confirm the exact reconciled PR is merged and retain its head, merge commit and `mergedAt` as delivered even when compliance or cleanup audit remains. Query the source issue separately, then apply the resolved issue-closing behavior: verify keyword closure, close manually only for `manual-after-merge`, or preserve `unchanged`. Leave Jira unchanged unless the user explicitly requested otherwise.
 
 For a GitHub implementation issue with claims enabled, release the current work claim with reason `merged` after the merge and issue state are verified. Reread the released comment and store it in the checkpoint before finalizing. On explicit cancellation or terminal failure, release with the matching reason before reporting when GitHub remains reachable. With claims disabled, keep `claim: null` and perform no claim write.
 
