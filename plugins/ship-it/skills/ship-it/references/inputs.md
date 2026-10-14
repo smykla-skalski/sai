@@ -39,7 +39,7 @@ With `--issue`:
 
 ## GitHub issue
 
-Parse the owner, repository, and issue number, then inspect the issue with `gh issue view` including title, body, labels, assignees, milestone, state, comments, and subissues. If this `gh` version cannot return subissues, query `repository.issue.subIssues` through `gh api graphql -H "GraphQL-Features: sub_issues"`; paginate until all children are known. If neither read works, stop rather than assume the issue is a leaf. If `gh` cannot find or read the issue, stop and report the error. Stop if it is closed. Extract scope hints from labels and linked PRs from comments. Route an umbrella to orchestration even if assigned to its maintainer; assess each child's ownership and PR before dispatch. Route an implementation issue to the single-change lifecycle, but stop if it is actively owned by someone else.
+Parse the owner, repository and issue number, then inspect the issue with `gh issue view`, including its metadata, comments and subissues. If this `gh` version omits subissues, paginate `repository.issue.subIssues` through `gh api graphql -H "GraphQL-Features: sub_issues"`. If neither read works, stop rather than assume a leaf; if the issue cannot be read, stop with the error. Retain a closed issue's state until the durable checkpoint is resolved and reconciled. Stop without a matching merged checkpoint. A reconciled merge continues directly to completion and audits. Extract scope hints from labels and linked PRs. Route an umbrella to orchestration and assess every child's ownership and PR. Route an implementation issue to the single-change lifecycle, but stop if someone else actively owns it.
 
 ## Jira ticket
 
@@ -62,7 +62,7 @@ Capture the key, summary, description, status, and acceptance criteria.
 
 Read [authorization.md](authorization.md); record original user source, scope and limits. Resolve the canonical task key and durable checkpoint before exploration or changes; pass it as gate `--context`. Use the bookkeeping helper for policy and transitions; load the full checkpoint contract only for migration, recovery or validation errors.
 
-Never overwrite an existing checkpoint: validate source/repository identity and reconcile Git/GitHub. Completed means delivered, not a fresh run. Invalid, mismatched or irreconcilable state loads recovery and hard-stops with the named action.
+Never overwrite an existing checkpoint: load its full contract, validate source/repository identity, then reconcile GitHub delivery before planning. A confirmed merge stays delivered while audits remain separate. Invalid, mismatched or irreconcilable state loads recovery and hard-stops with the named action.
 
 ## GitHub work claim
 

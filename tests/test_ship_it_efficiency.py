@@ -14,21 +14,24 @@ REFERENCES = SHIP_IT / "references"
 ADVERSARIAL_TEST = ROOT / "plugins/adversarial-test/skills/adversarial-test/references"
 ROUTINE_GUIDANCE = (
     SHIP_IT / "SKILL.md",
-    *(REFERENCES / name for name in (
-        "inputs.md",
-        "authorization.md",
-        "explore.md",
-        "branch.md",
-        "implementation.md",
-        "publish.md",
-        "review.md",
-        "test.md",
-        "pr-loop.md",
-        "completion.md",
-        "risk-policy.json",
-        "release-policy.json",
-        "convergence-policy.json",
-    )),
+    *(
+        REFERENCES / name
+        for name in (
+            "inputs.md",
+            "authorization.md",
+            "explore.md",
+            "branch.md",
+            "implementation.md",
+            "publish.md",
+            "review.md",
+            "test.md",
+            "pr-loop.md",
+            "completion.md",
+            "risk-policy.json",
+            "release-policy.json",
+            "convergence-policy.json",
+        )
+    ),
 )
 
 
@@ -39,7 +42,9 @@ def read(path: Path) -> str:
 class ShipItEfficiencyContractTest(unittest.TestCase):
     def test_draft_pr_precedes_review_and_test(self) -> None:
         skill = read(SHIP_IT / "SKILL.md")
-        self.assertLess(skill.index("Phase 5 — Publish draft PR"), skill.index("Phase 6 — Review"))
+        self.assertLess(
+            skill.index("Phase 5 — Publish draft PR"), skill.index("Phase 6 — Review")
+        )
         self.assertLess(skill.index("Phase 6 — Review"), skill.index("Phase 7 — Test"))
         publish = read(REFERENCES / "publish.md")
         implementation = read(REFERENCES / "implementation.md")
@@ -55,7 +60,9 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("Run exactly one broad pass", testing)
         self.assertIn("must not rerun, widen or override it", testing)
         self.assertIn("Rerun only the surviving reproductions", testing)
-        self.assertIn("manual-test adversary starts after a clean review", orchestration)
+        self.assertIn(
+            "manual-test adversary starts after a clean review", orchestration
+        )
 
     def test_build_cache_is_revision_keyed_and_not_polled(self) -> None:
         workflow = read(ADVERSARIAL_TEST / "workflow.md")
@@ -74,7 +81,9 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("under 12k input tokens", skill)
         self.assertIn("read only the checkpoint and current phase reference", skill)
         self.assertIn("mandate by path or inline exactly once", skill)
-        self.assertLessEqual(sum(path.stat().st_size for path in ROUTINE_GUIDANCE), 52_000)
+        self.assertLessEqual(
+            sum(path.stat().st_size for path in ROUTINE_GUIDANCE), 52_000
+        )
         for conditional in (
             "capabilities.md",
             "roles.md",
@@ -102,14 +111,22 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         testing = read(REFERENCES / "test.md")
         loop = read(REFERENCES / "pr-loop.md")
         events = read(REFERENCES / "worker-events.md")
-        for wake_reason in ("completion", "failure", "cancellation", "user input", "configured deadline"):
+        for wake_reason in (
+            "completion",
+            "failure",
+            "cancellation",
+            "user input",
+            "configured deadline",
+        ):
             with self.subTest(wake_reason=wake_reason):
                 self.assertIn(wake_reason, events)
         self.assertIn("No event means continue the same wait", events)
         self.assertIn("no progress message, agent listing, terminal read", events)
         self.assertIn("one bounded fallback waiter per dispatch", events)
         self.assertIn("no more than once per ten minutes", events)
-        self.assertIn("an explicit deadline for every implementation, review, test", events)
+        self.assertIn(
+            "an explicit deadline for every implementation, review, test", events
+        )
         self.assertIn("host-required progress update", events)
         self.assertIn("does not restart the waiter", events)
         self.assertIn("references/worker-events.md", skill)
@@ -130,14 +147,18 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("forbids any later gate or delivery action", events)
         self.assertIn("Ignore duplicate worker events", events)
         self.assertIn("delayed terminal events", events)
-        self.assertIn("duplicate or delayed completion events never dispatch", orchestration)
+        self.assertIn(
+            "duplicate or delayed completion events never dispatch", orchestration
+        )
         self.assertIn("stable event ID", worker_rules)
 
     def test_coordinator_never_implements_children(self) -> None:
         orchestration = read(REFERENCES / "orchestration.md")
         self.assertIn("never edits product source", orchestration)
         self.assertIn("prompt under 2 KB", orchestration)
-        self.assertIn("never repeat the rules or fork coordinator history", orchestration)
+        self.assertIn(
+            "never repeat the rules or fork coordinator history", orchestration
+        )
         self.assertIn("exactly one final hand-back", orchestration)
         self.assertIn("never spawn new gates", orchestration)
         self.assertIn("100,000 cumulative input tokens", orchestration)
@@ -155,7 +176,10 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("activate its configured fallback immediately", release)
         self.assertIn("Never retry a request", loop)
         self.assertIn("immediately changes `hostedReviewDecision`", loop)
-        self.assertIn("one permitted `serviceable` to `fallback|blocked`", read(REFERENCES / "checkpoint.md"))
+        self.assertIn(
+            "one permitted `serviceable` to `fallback|blocked`",
+            read(REFERENCES / "checkpoint.md"),
+        )
 
     def test_default_off_claims_are_guarded_through_completion(self) -> None:
         for reference in ("inputs.md", "branch.md", "review.md", "completion.md"):
@@ -166,6 +190,30 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertNotIn("PR creation as `nextAction`", testing)
         completion = read(REFERENCES / "completion.md")
         self.assertIn("With evidence disabled", completion)
+
+    def test_resume_reconciles_delivery_before_planning(self) -> None:
+        checkpoint = read(REFERENCES / "checkpoint.md")
+        self.assertIn("reconcile-delivery --pull-request-json", checkpoint)
+        self.assertIn("stop before planning or delivery work", checkpoint)
+        self.assertIn(
+            "`merged` advances directly to completion verification", checkpoint
+        )
+        self.assertIn("`closed-unmerged` stops", checkpoint)
+        self.assertIn("Issue closure never follows from `pullRequestState`", checkpoint)
+        self.assertIn(
+            "A different PR URL conflicts with the stored identity", checkpoint
+        )
+        completion = read(REFERENCES / "completion.md")
+        self.assertIn("Query the source issue separately", completion)
+        inputs = read(REFERENCES / "inputs.md")
+        self.assertIn(
+            "Retain a closed issue's state until the durable checkpoint is resolved and reconciled",
+            inputs,
+        )
+        self.assertIn(
+            "A reconciled merge continues directly to completion and audits",
+            inputs,
+        )
 
 
 if __name__ == "__main__":

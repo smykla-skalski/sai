@@ -3,6 +3,8 @@
 
 Usage:
   bookkeeping.py policy --repository PATH [--enable FEATURE,...]
+  bookkeeping.py reconcile-delivery --checkpoint FILE
+      (--pull-request-json OBJECT | --failure TEXT)
   bookkeeping.py transition --checkpoint FILE --phase PHASE --status STATUS
       --next-action TEXT [--revision SHA] [--blocker TEXT]
       [--outcome-json OBJECT]
@@ -29,11 +31,12 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -73,6 +76,10 @@ VALID_PHASES: Final[frozenset[str]] = frozenset(
 TERMINAL_STATUSES: Final[frozenset[str]] = frozenset(
     {"completed", "cancelled", "failed"},
 )
+PULL_REQUEST_STATES: Final[frozenset[str]] = frozenset(
+    {"open", "closed-unmerged", "merged"},
+)
+FULL_COMMIT_ID: Final[re.Pattern[str]] = re.compile(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}")
 REQUIRED_CHECKPOINT_FIELDS: Final[frozenset[str]] = frozenset(
     {
         "schemaVersion",
@@ -237,6 +244,11 @@ def migrate_legacy(checkpoint: dict[str, Any]) -> None:
         return
     task = checkpoint.get("task")
     github_source = isinstance(task, dict) and task.get("sourceType") == "github"
+    delivery = checkpoint.get("delivery")
+    if isinstance(delivery, dict):
+        delivery.setdefault("pullRequestState", None)
+        delivery.setdefault("mergedAt", None)
+        delivery.setdefault("reconciliation", None)
     checkpoint.setdefault("authorization", {"grants": []})
     checkpoint.setdefault("claim", None)
     checkpoint.setdefault("releasePolicy", None)
@@ -398,6 +410,89 @@ def validate_bookkeeping(checkpoint: dict[str, Any]) -> None:
             raise BookkeepingError(message)
 
 
+def validate_commit_id(value: object, field: str) -> None:
+    """Require a full hexadecimal Git object ID."""
+    if not isinstance(value, str) or FULL_COMMIT_ID.fullmatch(value) is None:
+        message = f"{field} must be a full hexadecimal commit ID"
+        raise BookkeepingError(message)
+
+
+def validate_utc_timestamp(value: object, field: str) -> None:
+    """Require an RFC 3339 timestamp whose offset is UTC."""
+    if not isinstance(value, str) or "T" not in value:
+        message = f"{field} must be an RFC 3339 UTC timestamp"
+        raise BookkeepingError(message)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        message = f"{field} must be an RFC 3339 UTC timestamp"
+        raise BookkeepingError(message) from error
+    if parsed.utcoffset() != timedelta(0):
+        message = f"{field} must be an RFC 3339 UTC timestamp"
+        raise BookkeepingError(message)
+
+
+def validate_delivery_facts(delivery: dict[str, Any], state: object) -> None:
+    """Validate pull request object IDs and merge facts."""
+    for field in ("pullRequestHead", "mergeCommit"):
+        value = delivery.get(field)
+        if value is not None:
+            validate_commit_id(value, f"checkpoint.delivery.{field}")
+    if delivery.get("mergedAt") is not None:
+        validate_utc_timestamp(
+            delivery["mergedAt"],
+            "checkpoint.delivery.mergedAt",
+        )
+    if state == "merged":
+        for field in ("pullRequestUrl", "pullRequestHead", "mergeCommit", "mergedAt"):
+            value = delivery.get(field)
+            if not isinstance(value, str) or not value.strip():
+                message = f"merged delivery requires {field}"
+                raise BookkeepingError(message)
+    if state in {"open", "closed-unmerged"} and (
+        delivery.get("mergeCommit") is not None or delivery.get("mergedAt") is not None
+    ):
+        message = "unmerged delivery cannot retain merge facts"
+        raise BookkeepingError(message)
+
+
+def validate_delivery(checkpoint: dict[str, Any]) -> None:
+    """Validate durable pull request facts and their reconciliation audit."""
+    delivery = checkpoint.get("delivery")
+    if not isinstance(delivery, dict):
+        message = "checkpoint.delivery must be an object"
+        raise BookkeepingError(message)
+    state = delivery.get("pullRequestState")
+    if state is not None and state not in PULL_REQUEST_STATES:
+        message = "checkpoint.delivery has invalid pullRequestState"
+        raise BookkeepingError(message)
+    validate_delivery_facts(delivery, state)
+    reconciliation = delivery.get("reconciliation")
+    if reconciliation is None:
+        return
+    validate_delivery_reconciliation(reconciliation)
+
+
+def validate_delivery_reconciliation(reconciliation: object) -> None:
+    """Validate the last authoritative delivery read or connection failure."""
+    if not isinstance(reconciliation, dict):
+        message = "checkpoint.delivery.reconciliation must be an object or null"
+        raise BookkeepingError(message)
+    status = reconciliation.get("status")
+    if status not in {"matched", "unreachable"}:
+        message = "delivery reconciliation has invalid status"
+        raise BookkeepingError(message)
+    checked_at = reconciliation.get("checkedAt")
+    validate_utc_timestamp(checked_at, "delivery reconciliation checkedAt")
+    error = reconciliation.get("error")
+    if status == "matched" and error is not None:
+        message = "matched delivery reconciliation requires a null error"
+        raise BookkeepingError(message)
+    if status == "unreachable" and (not isinstance(error, str) or not error.strip()):
+        message = "unreachable delivery reconciliation requires an error"
+        raise BookkeepingError(message)
+
+
 def outcome_fields(result: object) -> set[str]:
     """Return required fields for a terminal outcome result."""
     common = {"sourceState", "completedAt"}
@@ -466,6 +561,8 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
 def validate_merged_delivery(
     checkpoint: dict[str, Any],
     outcome: dict[str, Any],
+    *,
+    allow_unreconciled_legacy: bool = False,
 ) -> None:
     """Require a merged outcome to repeat the validated delivery identity."""
     if outcome.get("result") != "merged":
@@ -473,6 +570,23 @@ def validate_merged_delivery(
     delivery = checkpoint.get("delivery")
     if not isinstance(delivery, dict):
         message = "merged outcome requires delivery state"
+        raise BookkeepingError(message)
+    unreconciled_legacy = (
+        delivery.get("pullRequestState") is None
+        and delivery.get("mergedAt") is None
+        and delivery.get("reconciliation") is None
+    )
+    if delivery.get("pullRequestState") != "merged" and not (
+        allow_unreconciled_legacy and unreconciled_legacy
+    ):
+        message = "merged outcome requires delivery.pullRequestState merged"
+        raise BookkeepingError(message)
+    reconciliation = delivery.get("reconciliation")
+    if (
+        not isinstance(reconciliation, dict)
+        or reconciliation.get("status") != "matched"
+    ) and not (allow_unreconciled_legacy and unreconciled_legacy):
+        message = "merged outcome requires matched delivery reconciliation"
         raise BookkeepingError(message)
     for field in ("pullRequestUrl", "pullRequestHead", "mergeCommit"):
         if outcome[field] != delivery.get(field):
@@ -484,7 +598,12 @@ def validate_merged_delivery(
         raise BookkeepingError(message)
 
 
-def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
+def validate_checkpoint(
+    checkpoint: dict[str, Any],
+    path: Path,
+    *,
+    allow_unreconciled_legacy: bool = False,
+) -> None:
     """Validate fields and invariants affected by a workflow transition."""
     missing = REQUIRED_CHECKPOINT_FIELDS.difference(checkpoint)
     if missing:
@@ -493,6 +612,7 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
         raise BookkeepingError(message)
     validate_identity(checkpoint, path)
     validate_bookkeeping(checkpoint)
+    validate_delivery(checkpoint)
     validate_authorization(checkpoint)
     validate_convergence(checkpoint)
     if checkpoint.get("schemaVersion") != 1:
@@ -519,7 +639,11 @@ def validate_checkpoint(checkpoint: dict[str, Any], path: Path) -> None:
             message = "complete workflow requires terminal status and outcome"
             raise BookkeepingError(message)
         validate_outcome(status, checkpoint["outcome"])
-        validate_merged_delivery(checkpoint, checkpoint["outcome"])
+        validate_merged_delivery(
+            checkpoint,
+            checkpoint["outcome"],
+            allow_unreconciled_legacy=allow_unreconciled_legacy,
+        )
     elif status in TERMINAL_STATUSES or checkpoint["outcome"] is not None:
         message = "terminal status and outcome require phase complete"
         raise BookkeepingError(message)
@@ -550,6 +674,154 @@ def transition(args: argparse.Namespace) -> dict[str, Any]:
     """Apply one validated workflow transition under the shared checkpoint lock."""
     with checkpoint_lock(Path(args.checkpoint).resolve()):
         return transition_locked(args)
+
+
+def pull_request_merge_commit(remote: dict[str, Any]) -> str | None:
+    """Return the merge commit from gh's scalar or object representation."""
+    value = remote.get("mergeCommit")
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict) and isinstance(value.get("oid"), str):
+        return value["oid"]
+    message = "pull request mergeCommit must be a commit ID, object, or null"
+    raise BookkeepingError(message)
+
+
+def parse_pull_request(value: str) -> dict[str, Any]:
+    """Parse the authoritative gh pull request observation."""
+    try:
+        remote = json.loads(value)
+    except json.JSONDecodeError as error:
+        message = f"invalid --pull-request-json: {error}"
+        raise BookkeepingError(message) from error
+    if not isinstance(remote, dict):
+        message = "--pull-request-json must contain an object"
+        raise BookkeepingError(message)
+    url = remote.get("url")
+    head = remote.get("headRefOid")
+    state = remote.get("state")
+    if not isinstance(url, str) or not url.strip():
+        message = "pull request observation requires url"
+        raise BookkeepingError(message)
+    validate_commit_id(head, "pull request observation headRefOid")
+    if not isinstance(state, str) or state.upper() not in {"OPEN", "CLOSED", "MERGED"}:
+        message = "pull request observation has invalid state"
+        raise BookkeepingError(message)
+    return remote
+
+
+def reconcile_pull_request(
+    delivery: dict[str, Any],
+    remote: dict[str, Any],
+    now: str,
+) -> str:
+    """Apply one matching authoritative pull request observation."""
+    url = remote["url"]
+    stored_url = delivery.get("pullRequestUrl")
+    if stored_url is not None and stored_url != url:
+        message = (
+            "pull request identity mismatch: "
+            f"checkpoint has {stored_url}, remote returned {url}"
+        )
+        raise BookkeepingError(message)
+    remote_state = {
+        "OPEN": "open",
+        "CLOSED": "closed-unmerged",
+        "MERGED": "merged",
+    }[remote["state"].upper()]
+    confirmed_merged = (
+        delivery.get("pullRequestState") == "merged"
+        or delivery.get("mergeCommit") is not None
+        or delivery.get("mergedAt") is not None
+    )
+    if confirmed_merged and remote_state != "merged":
+        message = "confirmed merged delivery conflicts with remote pull request state"
+        raise BookkeepingError(message)
+    merge_commit = pull_request_merge_commit(remote)
+    merged_at = remote.get("mergedAt")
+    if remote_state == "merged":
+        reconcile_merged_pull_request(
+            delivery,
+            remote,
+            merge_commit,
+            merged_at,
+            confirmed_merged=confirmed_merged,
+        )
+    elif merge_commit is not None or merged_at is not None:
+        message = "unmerged pull request observation contains merge facts"
+        raise BookkeepingError(message)
+    delivery.update(
+        {
+            "pullRequestUrl": url,
+            "pullRequestHead": remote["headRefOid"],
+            "pullRequestState": remote_state,
+            "reconciliation": {
+                "status": "matched",
+                "checkedAt": now,
+                "error": None,
+            },
+        },
+    )
+    return remote_state
+
+
+def reconcile_merged_pull_request(
+    delivery: dict[str, Any],
+    remote: dict[str, Any],
+    merge_commit: str | None,
+    merged_at: object,
+    *,
+    confirmed_merged: bool,
+) -> None:
+    """Validate and retain authoritative merge facts without downgrades."""
+    validate_commit_id(merge_commit, "merged pull request observation mergeCommit")
+    validate_utc_timestamp(merged_at, "merged pull request observation mergedAt")
+    if confirmed_merged:
+        for field, observed in (
+            ("pullRequestHead", remote["headRefOid"]),
+            ("mergeCommit", merge_commit),
+            ("mergedAt", merged_at),
+        ):
+            stored = delivery.get(field)
+            if stored is not None and stored != observed:
+                message = f"confirmed delivery {field} conflicts with remote"
+                raise BookkeepingError(message)
+    delivery["mergeCommit"] = merge_commit
+    delivery["mergedAt"] = merged_at
+
+
+def reconcile_delivery(args: argparse.Namespace) -> dict[str, Any]:
+    """Reconcile checkpoint delivery facts with one authoritative remote read."""
+    path = Path(args.checkpoint).resolve()
+    with checkpoint_lock(path):
+        checkpoint = load_object(path)
+        migrate_legacy(checkpoint)
+        validate_checkpoint(checkpoint, path, allow_unreconciled_legacy=True)
+        delivery = checkpoint["delivery"]
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        if args.failure is not None:
+            if not args.failure.strip():
+                message = "--failure must be non-empty"
+                raise BookkeepingError(message)
+            delivery["reconciliation"] = {
+                "status": "unreachable",
+                "checkedAt": now,
+                "error": args.failure,
+            }
+            result = "unreachable"
+        else:
+            remote = parse_pull_request(args.pull_request_json)
+            result = reconcile_pull_request(delivery, remote, now)
+        checkpoint["updatedAt"] = now
+        validate_checkpoint(checkpoint, path)
+        atomic_write(path, checkpoint)
+        return {
+            "checkpoint": str(path),
+            "result": result,
+            "pullRequestUrl": delivery.get("pullRequestUrl"),
+        }
 
 
 def transition_locked(args: argparse.Namespace) -> dict[str, Any]:
@@ -713,6 +985,14 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--outcome-json")
     update.add_argument("--next-action", required=True)
     update.add_argument("--revision")
+    reconciliation = commands.add_parser(
+        "reconcile-delivery",
+        help="reconcile durable delivery facts with an authoritative PR read",
+    )
+    reconciliation.add_argument("--checkpoint", required=True)
+    observation = reconciliation.add_mutually_exclusive_group(required=True)
+    observation.add_argument("--pull-request-json")
+    observation.add_argument("--failure")
     reservation = commands.add_parser(
         "reserve",
         help="spend an idempotent validation allowance before work",
@@ -768,6 +1048,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "transition":
             result = transition(args)
+        elif args.command == "reconcile-delivery":
+            result = reconcile_delivery(args)
         else:
             result = convergence_operation(args)
     except (BookkeepingError, ConvergenceError) as error:
