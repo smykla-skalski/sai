@@ -10,6 +10,7 @@ Use Python 3.11 or newer. Installed plugin directories already provide these fil
 | `scripts/validation_reuse.py` (importable library) | None |
 | `scripts/telemetry.py` | None |
 | `scripts/ci_triage.py` | None |
+| `scripts/copilot_review.py` | None |
 | `scripts/replay_failures.py` | The caller-selected corpus JSON and its case input files; adapter executables are supplied separately |
 | `scripts/delivery_benchmark.py` | The caller-selected manifest JSON; executable adapters are supplied separately |
 
