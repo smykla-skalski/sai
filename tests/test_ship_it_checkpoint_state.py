@@ -760,6 +760,122 @@ class SectionCommandTest(unittest.TestCase):
         self.assert_refused(stale, "current workflow revision")
         self.assert_refused(self.attest("--gate", "local-checks"), "gate must be")
 
+    def decide(
+        self, status: str, reason: str = "configured reviewer", **extra: object
+    ) -> subprocess.CompletedProcess[str]:
+        return self.command(
+            "set-hosted-review-decision",
+            "--decision-json",
+            {"status": status, "reason": reason, **extra},
+        )
+
+    def refuse_unchanged(
+        self, result: subprocess.CompletedProcess[str], text: str
+    ) -> None:
+        before = self.path.read_bytes()
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn(text, result.stderr)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_first_hosted_review_decision_accepts_any_status(self) -> None:
+        for status in ("not-required", "serviceable", "fallback", "blocked"):
+            with self.subTest(status=status):
+                self.write(self.document)
+                result = self.assert_ok(self.decide(status, "policy named no reviewer"))
+                self.assertEqual(result["hostedReviewDecision"], status)
+                self.assertIsNone(result["previous"])
+                decision = self.read()["hostedReviewDecision"]
+                self.assertEqual(set(decision), {"status", "reason", "decidedAt"})
+                self.assertEqual(decision["status"], status)
+                self.assertEqual(decision["reason"], "policy named no reviewer")
+                self.assertTrue(decision["decidedAt"].endswith("Z"))
+
+    def test_hosted_review_decision_keeps_an_explicit_timestamp(self) -> None:
+        stamp = "2026-01-01T00:00:00Z"
+        self.assert_ok(self.decide("serviceable", decidedAt=stamp))
+        self.assertEqual(self.read()["hostedReviewDecision"]["decidedAt"], stamp)
+
+    def test_serviceable_may_change_once_to_fallback_or_blocked(self) -> None:
+        for status in ("fallback", "blocked"):
+            with self.subTest(status=status):
+                self.write(self.document)
+                self.assert_ok(self.decide("serviceable", "copilot configured"))
+                result = self.assert_ok(self.decide(status, "quota exhausted"))
+                self.assertEqual(result["previous"], "serviceable")
+                decision = self.read()["hostedReviewDecision"]
+                self.assertEqual(decision["status"], status)
+                self.assertEqual(decision["reason"], "quota exhausted")
+                self.refuse_unchanged(self.decide(status, "again"), "already set")
+                self.refuse_unchanged(self.decide("serviceable"), "already set")
+
+    def test_every_other_hosted_review_change_is_refused(self) -> None:
+        statuses = ("not-required", "serviceable", "fallback", "blocked")
+        allowed = {("serviceable", "fallback"), ("serviceable", "blocked")}
+        for first in statuses:
+            for second in statuses:
+                if (first, second) in allowed:
+                    continue
+                with self.subTest(first=first, second=second):
+                    self.write(self.document)
+                    self.assert_ok(self.decide(first))
+                    self.refuse_unchanged(self.decide(second), "already set")
+
+    def test_invalid_hosted_review_decision_writes_nothing(self) -> None:
+        for name, payload, text in (
+            ("status", {"status": "maybe", "reason": "r"}, "status must be"),
+            ("status type", {"status": [], "reason": "r"}, "status must be"),
+            ("blank reason", {"status": "blocked", "reason": " "}, "reason"),
+            ("long reason", {"status": "blocked", "reason": "x" * 501}, "exceeds"),
+            ("missing reason", {"status": "blocked"}, "takes status"),
+            ("missing status", {"reason": "r"}, "takes status"),
+            ("unknown field", {"status": "blocked", "reason": "r", "x": 1}, "takes"),
+            (
+                "timestamp",
+                {"status": "blocked", "reason": "r", "decidedAt": "yesterday"},
+                "decidedAt",
+            ),
+            (
+                "offset",
+                {
+                    "status": "blocked",
+                    "reason": "r",
+                    "decidedAt": "2026-01-01T00:00:00+02:00",
+                },
+                "decidedAt",
+            ),
+        ):
+            with self.subTest(name=name):
+                self.refuse_unchanged(
+                    self.command(
+                        "set-hosted-review-decision", "--decision-json", payload
+                    ),
+                    text,
+                )
+                self.assertIsNone(self.read()["hostedReviewDecision"])
+
+    def test_non_object_hosted_review_decision_is_a_usage_error(self) -> None:
+        self.refuse_unchanged(
+            run(
+                "set-hosted-review-decision",
+                "--checkpoint",
+                str(self.path),
+                "--decision-json",
+                "[1]",
+            ),
+            "must contain an object",
+        )
+
+    def test_hosted_review_decision_refuses_an_unrecognized_stored_value(self) -> None:
+        self.document["hostedReviewDecision"] = "serviceable"
+        self.write(self.document)
+        self.refuse_unchanged(self.decide("fallback"), "already set")
+
+    def test_hosted_review_decision_leaves_other_state_untouched(self) -> None:
+        self.assert_ok(self.decide("serviceable"))
+        after = self.read()
+        for key in ("workflow", "risk", "releasePolicy", "gateVerdicts", "task"):
+            self.assertEqual(after[key], self.document[key], key)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -69,6 +69,7 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
     {
         "set-risk",
         "set-release-policy",
+        "set-hosted-review-decision",
         "record-gate",
         "set-findings",
         "attest-review",
@@ -1024,6 +1025,15 @@ def section_operation(args: argparse.Namespace) -> dict[str, Any]:
             Path(args.checkpoint),
             lambda checkpoint: checkpoint_state.set_release_policy(checkpoint, policy),
         )
+    if command == "set-hosted-review-decision":
+        decision = checkpoint_state.parse_object(args.decision_json, "--decision-json")
+        return mutate_checkpoint(
+            Path(args.checkpoint),
+            lambda checkpoint: checkpoint_state.set_hosted_review_decision(
+                checkpoint,
+                decision,
+            ),
+        )
     if command == "record-gate":
         verdict = checkpoint_state.parse_object(args.verdict_json, "--verdict-json")
         return mutate_checkpoint(
@@ -1202,6 +1212,11 @@ def add_state_commands(
     for name, option, text in (
         ("set-risk", "--risk-json", "set the risk selection"),
         ("set-release-policy", "--policy-json", "store the release policy"),
+        (
+            "set-hosted-review-decision",
+            "--decision-json",
+            "record the hosted-review decision",
+        ),
         ("record-gate", "--verdict-json", "record one gate verdict"),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
     ):

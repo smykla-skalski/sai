@@ -152,6 +152,7 @@ Use `python3 <skill-dir>/scripts/bookkeeping.py policy --repository <root>` once
 bookkeeping.py create --repository ROOT --identity IDENTITY --source-json SOURCE --title T --objective O --criteria-json ARRAY [--source-url U] [--default-branch B] [--branch B] [--enable FEATURES] [--grant-json GRANT]... [--checkpoint-dir DIR]
 bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
 bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
+bookkeeping.py set-hosted-review-decision --checkpoint FILE --decision-json OBJECT
 bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
 bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
 bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--gate GATE] [--command TEXT]...
@@ -160,6 +161,7 @@ bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--
 - `create` takes the canonical source object (`{sourceType, repository, issue}`, `{sourceType, site, key}` or `{sourceType, repository, objective, acceptanceCriteria}`), derives `task.canonicalSource`, the checkpoint ID and the file name, defaults `--checkpoint-dir` to the data root above and writes owner-only at phase `resolve`. An existing file for the same source is reported with `created: false` and left untouched; another source at that name stops. Claims stay `null`: their protocol writes them.
 - `set-risk` takes `level`, `diffClass`, `policySource`, `matchedRules`, `requiredGates` and optional `overrideAuthorization`; a level below the recorded one needs the override, which later calls keep.
 - `set-release-policy` takes exactly the normalized object and enums from the release contract and rejects anything else. A material change (anything but `resolvedAt`) marks passed `ci` and `hosted-review` verdicts `stale`.
+- `set-hosted-review-decision` takes `status` (`not-required|serviceable|fallback|blocked`), `reason` (at most 500 characters) and optional `decidedAt` (RFC 3339 UTC, default now), and stores exactly `status`, `reason` and `decidedAt`. The first call accepts any status. Afterward only `serviceable` to `fallback` or `blocked` is accepted, once; every other call, including a repeat of the same status, is refused and leaves the file unchanged.
 - `record-gate` takes `gate`, `status` (`passed|failed|blocked`), `revision` (the current workflow revision), `provider`, `summary` (at most 500 characters) and optional `timestamp`, `model`, `url`; it replaces a verdict with the same gate, revision and provider. It is refused while evidence is enabled, because the evidence record owns verdicts.
 - `set-findings` maps finding IDs to `open|fixed|blocked` or `{"disposition":"follow-up","followUpIssue":URL}`, which also appends the URL to `followUpIssues`; `blocked` needs a blocked workflow, and any unresolved finding marks a re-attestation `stale`.
 - `attest-review` records the `ship-it-convergence` re-attestation for the current revision from the stored findings, and is refused unless the completed review failed with findings that are all `fixed` or `follow-up`; a clean review is carried to a new head by `assess` and `reserve`.
