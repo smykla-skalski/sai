@@ -9,7 +9,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - Test plugin locally: `claude --plugin-dir plugins/{plugin-name}/`
 - Test specific skill: `claude --plugin-dir plugins/{plugin-name}/ -p "/{skill-name} test args"`
 - Validate manifests: `claude plugin validate .` and `claude plugin validate plugins/{plugin-name}`
-- Validate a portable skill: `uvx --from skills-ref agentskills validate plugins/{plugin-name}/skills/{skill-name}`
+- Validate portable skills: `scripts/validate_skills.py` (all skills) or `scripts/validate_skills.py plugins/{plugin-name}/skills/{skill-name}`. It wraps skills-ref and drops the Claude-only keys (`argument-hint`, `user-invocable`, `disable-model-invocation`, `context`, `agent`, `model`, `hooks`) that plain `agentskills validate` rejects; Claude Code reads them only at the top level of the frontmatter
 - No build step (pure markdown + scripts)
 - One-time setup per clone: `git config core.hooksPath .githooks` (enables the version bump hook)
 - Test the version bump hook: `python3 -m unittest discover -s tests`
