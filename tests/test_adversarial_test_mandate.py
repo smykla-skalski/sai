@@ -96,7 +96,11 @@ class UnresolvedBaseTest(unittest.TestCase):
         gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
         self.assertIn("Match verdicts as whole lines", gate)
         self.assertIn("never read as `Test Verdict: FAIL`", gate)
-        self.assertIn("a git error on `git diff origin/<default>...HEAD`", gate)
+        self.assertIn(
+            "or a git error on `git diff origin/<default>...HEAD` in a generic path,"
+            " is a failed gate, never a pass:",
+            gate,
+        )
         self.assertIn("record a failed result (evidence, or `gateVerdicts`", gate)
         self.assertIn("set `status: blocked` with its `Gate failure:` line as `blocker`", gate)
         self.assertIn("start no fix pass", gate)

@@ -150,7 +150,11 @@ class VerdictFormatTest(unittest.TestCase):
 
     def test_ship_it_records_failed_gate_without_a_fix_pass(self) -> None:
         gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
-        self.assertIn("a git error on `git diff origin/<default>...HEAD`", gate)
+        self.assertIn(
+            "or a git error on `git diff origin/<default>...HEAD` in a generic path,"
+            " is a failed gate, never CLEAN:",
+            gate,
+        )
         self.assertIn("record a failed result (evidence, or `gateVerdicts`", gate)
         self.assertIn("set `status: blocked` with its `Gate failure:` line as `blocker`", gate)
         self.assertIn("start no fix pass", gate)
