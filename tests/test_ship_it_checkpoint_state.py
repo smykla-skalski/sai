@@ -435,6 +435,16 @@ class SectionCommandTest(unittest.TestCase):
             ("requiredReviewers", [{**reviewer, "kind": "robot"}]),
             ("requiredReviewers", [reviewer, reviewer]),
             ("unknownField", "x"),
+            ("issueClosure", []),
+            ("branchCleanup", {}),
+            ("merge", {"method": [], "strategy": "squash", "botComment": None}),
+            ("merge", {"method": "github", "strategy": {}, "botComment": None}),
+            ("requiredReviewers", [{**reviewer, "kind": []}]),
+            (
+                "requiredReviewers",
+                [{**reviewer, "request": "team-reviewer", "actor": "alice"}],
+            ),
+            ("requiredReviewers", [{**reviewer, "request_target": None}]),
             ("activatedFallbacks", [{"gate": "hosted-review"}]),
         ):
             with self.subTest(field=field):
@@ -576,6 +586,11 @@ class SectionCommandTest(unittest.TestCase):
         for name, updates, text in (
             ("unknown id", {"F9": "fixed"}, "unknown finding"),
             ("bad disposition", {"F1": "done"}, "invalid disposition"),
+            (
+                "unhashable disposition",
+                {"F1": {"disposition": []}},
+                "invalid disposition",
+            ),
             ("follow-up without url", {"F1": "follow-up"}, "followUpIssue"),
             ("blocked while active", {"F1": "blocked"}, "blocked workflow"),
             ("empty", {}, "at least one finding"),

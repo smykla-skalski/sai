@@ -109,6 +109,11 @@ def parse_object(text: str, option: str) -> dict[str, Any]:
     return value
 
 
+def one_of(value: object, allowed: frozenset[str]) -> bool:
+    """Report membership without hashing arbitrary JSON values."""
+    return isinstance(value, str) and value in allowed
+
+
 def non_empty(value: object, field: str) -> str:
     """Require a non-blank string."""
     require(
@@ -338,9 +343,12 @@ def validate_release_merge(merge: object) -> None:
         isinstance(merge, dict) and set(merge) == RELEASE_MERGE_FIELDS,
         "releasePolicy merge requires exactly method, strategy and botComment",
     )
-    require(merge["method"] in RELEASE_METHODS, "releasePolicy merge method is invalid")
     require(
-        merge["strategy"] in RELEASE_STRATEGIES,
+        one_of(merge["method"], RELEASE_METHODS),
+        "releasePolicy merge method is invalid",
+    )
+    require(
+        one_of(merge["strategy"], RELEASE_STRATEGIES),
         "releasePolicy merge strategy is invalid",
     )
     comment = merge["botComment"]
@@ -364,9 +372,19 @@ def validate_release_reviewers(reviewers: list[Any]) -> None:
         require(identity not in identities, "releasePolicy reviewer ids must be unique")
         identities.add(identity)
         non_empty(reviewer.get("actor"), "releasePolicy reviewer actor")
+        request = reviewer.get("request")
+        require(
+            request != "team-reviewer" or str(reviewer["actor"]).startswith("team:"),
+            "releasePolicy team-reviewer actor must start with team:",
+        )
+        require(
+            "request_target" not in reviewer
+            or (reviewer["request_target"] is None) == (request == "automatic"),
+            "releasePolicy request_target is null only for automatic requests",
+        )
         for field, allowed in RELEASE_REVIEWER_ENUMS.items():
             require(
-                field not in reviewer or reviewer[field] in allowed,
+                field not in reviewer or one_of(reviewer[field], allowed),
                 f"releasePolicy reviewer {field} is invalid",
             )
 
@@ -391,11 +409,11 @@ def validate_release_policy(policy: dict[str, Any]) -> None:
     validate_release_merge(policy["merge"])
     validate_release_reviewers(policy["requiredReviewers"])
     require(
-        policy["issueClosure"] in RELEASE_CLOSURES,
+        one_of(policy["issueClosure"], RELEASE_CLOSURES),
         "releasePolicy issueClosure is invalid",
     )
     require(
-        policy["branchCleanup"] in RELEASE_CLEANUPS,
+        one_of(policy["branchCleanup"], RELEASE_CLEANUPS),
         "releasePolicy branchCleanup is invalid",
     )
     utc_timestamp(policy["resolvedAt"], "releasePolicy resolvedAt")
@@ -517,7 +535,7 @@ def set_dispositions(
         require(identity in findings, f"unknown finding ID: {identity}")
         disposition, url = split_disposition(update)
         require(
-            disposition in DISPOSITIONS,
+            one_of(disposition, DISPOSITIONS),
             f"finding {identity} has invalid disposition",
         )
         require(
