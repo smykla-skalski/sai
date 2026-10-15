@@ -27,16 +27,16 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the PR URL, diff file, `--base` and `--context` from the user's request |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the PR URL, diff file, `--base` and `--context` from the user's request |
 | Named agents `adversarial-review:code-adversary` / `findings-adversary` | Spawn a generic subagent with the matching mandate file from `references/` prepended (see [Spawning a clean-context subagent](#spawning-a-clean-context-subagent)) |
-| Subagent tool (Agent) | Codex: `spawn_agent`; opencode: `task`; Copilot CLI: its task/subagent tool. With no subagent tool at all, run both passes inline (see [Fallback](#fallback---no-subagents)) |
+| Subagent tool (Agent) | Codex: `spawn_agent`; opencode: `subagent` (`task` on opencode 1); Copilot CLI: its task/subagent tool. With no subagent tool at all, run both passes inline (see [Fallback](#fallback---no-subagents)) |
 | AskUserQuestion, `context: fork` | Not used |
 
 The two passes always run sequentially, so the skill never needs more than one extra subagent at a time.
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 | Argument | Meaning |
 | :-- | :-- |
@@ -84,7 +84,7 @@ An adversary lives for exactly one verdict. Start it with no forked or inherited
 - `wait_agent` until it finishes, then `close_agent` immediately - completed agents do not free their thread slot until closed ([openai/codex#22779](https://github.com/openai/codex/issues/22779)).
 - Agents can finish without returning a payload ([openai/codex#16051](https://github.com/openai/codex/issues/16051)). Validate the reply (below) before using it.
 
-**opencode.** Use the `task` tool. Each call creates a fresh child session, which is the clean context this skill needs.
+**opencode.** Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Each call creates a fresh child session, which is the clean context this skill needs.
 
 - If a `code-adversary` / `findings-adversary` subagent is installed (see the plugin README), use it and pass the Review assignment plus payload; the mandate is already its system prompt.
 - Otherwise use the built-in `general` subagent with the mandate prepended.

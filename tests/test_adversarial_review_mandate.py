@@ -18,6 +18,10 @@ WORKFLOW_FILE = REFERENCES_DIR / "workflow.md"
 SHIP_IT_REVIEW_GATE = (
     PLUGIN_DIR.parent / "ship-it" / "skills" / "ship-it" / "references" / "review.md"
 )
+SKILL_FILE = PLUGIN_DIR / "skills" / "adversarial-review" / "SKILL.md"
+ARGUMENT_PLACEHOLDER = "$ARGUMENTS"
+INVOCATION_LINE = "Invocation arguments: `$ARGUMENTS`"
+DOCUMENTED_ARGUMENTS = ("<pr-url>", "<diff-file>", "--base <ref>", "--context")
 ADVERSARIES = ("code-adversary", "findings-adversary")
 FRONTMATTER_FENCE = "---\n"
 CODE_VERDICT = re.compile(
@@ -157,6 +161,28 @@ class VerdictFormatTest(unittest.TestCase):
     def test_findings_guard_reply_satisfies_validator(self) -> None:
         mandate = read_mandate("findings-adversary")
         self.assertIn("write `F<n> — UPHOLD — not applicable —", mandate)
+
+
+class ArgumentDeliveryTest(unittest.TestCase):
+    def test_skill_entry_carries_the_substituted_placeholder(self) -> None:
+        skill = SKILL_FILE.read_text(encoding="utf-8")
+        self.assertEqual(skill.count(ARGUMENT_PLACEHOLDER), 1)
+        self.assertIn(INVOCATION_LINE, skill)
+
+    def test_workflow_holds_no_placeholder_no_client_substitutes(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertNotIn(ARGUMENT_PLACEHOLDER, workflow)
+
+    def test_workflow_reads_arguments_from_skill_entry_or_request(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertIn("Arguments section of SKILL.md", workflow)
+        self.assertIn("the user's request", workflow)
+
+    def test_workflow_documents_every_argument(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        for argument in DOCUMENTED_ARGUMENTS:
+            with self.subTest(argument=argument):
+                self.assertIn(argument, workflow)
 
 
 if __name__ == "__main__":
