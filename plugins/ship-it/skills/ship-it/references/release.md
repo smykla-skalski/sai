@@ -96,6 +96,22 @@ Release requirements are gate floors. Add `hosted-review` to the selected risk g
 
 Apply the legacy `copilot-review` normalization from the risk contract before this union. Store its normalized reviewer and any activated `human-review` fallback in `releasePolicy.activatedFallbacks`, so resume never depends on remembering the legacy translation.
 
+## Request hosted reviewers
+
+Run this section only when `hosted-review` is selected and the checkpoint's `hostedReviewDecision` is `serviceable`. Request every resolved reviewer whose request mode is `reviewer` or `team-reviewer`; reviewers with `automatic` are requested by repository policy. `not-required` satisfies the gate without a request. `fallback` uses the recorded fallback immediately. `blocked` is a hard stop. Never retry a request after quota, permission or unavailable-service made that reviewer unserviceable.
+
+```bash
+gh pr edit <n> --add-reviewer <request-target>
+```
+
+If the request mechanism itself fails, use the matching GitHub REST reviewer or team-reviewer field once. A quota, permission or unavailable-service response immediately changes `hostedReviewDecision` to the configured `fallback`; activate it without another request. When no fallback exists, record `blocked` with the named policy action and stop. Never leave an unserviceable reviewer pending or retry it. Do not request Copilot unless the resolved policy names it, and do not substitute an actor outside the configured fallback.
+
+## Copilot quota refusals
+
+Before treating any submitted review as satisfied, classify the complete paginated review response with `scripts/copilot_review.py` (or its `classify_reviews` function). Pass the preceding PR-scoped classifier state as `--previous`; retain its returned `refusalEvidence` and `unserviceable` status across head changes and resumes. A submitted Copilot quota refusal is unserviceable evidence, never a completed review, even when its state is `COMMENTED`. Remaining credits from a quota endpoint do not override an observed refusal.
+
+After a refusal, persist the reviewer decision as unserviceable and set `hostedReviewDecision` to the configured `fallback`, or `blocked` with the exact policy action when no fallback exists. Activate only a configured non-Copilot fallback. Send no further Copilot request and start no Copilot poll or wait for that PR. Optional Copilot never adds a wait or release requirement. General PR snapshots needed for CI, other reviewers and thread resolution may continue; they must retain genuine Copilot reviews and resolve their blocking threads according to repository policy. Use the classifier's `reviews` list for review satisfaction, and the original thread response for thread resolution; a refusal never erases a genuine review on the same PR.
+
 ## Hosted review and checks
 
 The risk gate `hosted-review` means satisfy every serviceable resolved reviewer entry; it does not mean Copilot. For `request: reviewer|team-reviewer`, pass `request_target` to the matching GitHub request field only when `hostedReviewDecision.status` is `serviceable`. For `automatic`, wait without sending a request. Match user and bot actors by exact GitHub login after normalizing the optional `[bot]` suffix; never assume the request target and review author use the same login. Satisfy `team:<slug>` only with a review from a current member verified through the GitHub team-membership API, and satisfy `any-authorized-reviewer` only when GitHub's protected-branch review decision counts that approval.
