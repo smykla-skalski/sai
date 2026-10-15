@@ -63,7 +63,7 @@ Triggers on: "review this PR", "review these changes", "staff review", "thorough
 | Claude Code | Parallel: `council:*` persona, then bundled `staff-code-review:<dimension>-reviewer`, then `general-purpose` with the mandate | Named agents `staff-code-review:code-adversary` and `:review-adversary`, `general-purpose` fallback |
 | Copilot CLI | Bundled `staff-code-review:<dimension>-reviewer` agents, one at a time | Same named agents, one at a time |
 | Codex | Inline lens passes from `references/agents/`, or one `spawn_agent` at a time | Inline, or one `spawn_agent` at a time |
-| opencode | One `task` call at a time with the built-in `general` subagent, or inline | Same |
+| opencode | One `subagent` call (`task` on opencode 1) at a time with the built-in `general` subagent, or inline | Same |
 
 Only Claude Code fans out. Codex and Copilot CLI run sequentially by default because their fan-out is unreliable at nine reviewers.
 

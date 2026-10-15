@@ -134,7 +134,7 @@ Each persona receives the full plan text **and** the Grounding Brief from Phase 
 
 **Codex.** Default to inline: adopt the Skeptic, Architect, and Verifier lenses in turn, each following its mandate file, all grounded in the same brief. Codex subagent fan-out is fragile: the default `agents.max_threads` is 6, completed subagents do not free their slot until closed ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and subagents can finish without returning a payload ([openai/codex#16051](https://github.com/openai/codex/issues/16051)). Spawn subagents only if the user asks: one `spawn_agent` per persona with the mandate prepended, sequentially, `wait_agent`, then `close_agent` as soon as it returns. Use only the native agent tools; never nested `codex exec` or shell-based orchestration.
 
-**opencode.** Use the `task` tool once per persona, sequentially. Use an installed `skeptic-reviewer` / `architect-reviewer` / `verifier-reviewer` subagent when present (see the plugin README); otherwise the built-in `general` subagent with the mandate prepended.
+**opencode.** Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Call it once per persona, sequentially. Use an installed `skeptic-reviewer` / `architect-reviewer` / `verifier-reviewer` subagent when present (see the plugin README); otherwise the built-in `general` subagent with the mandate prepended.
 
 **No subagent tool.** Adopt each persona inline, in order, as a separate labelled section that follows its mandate's output contract.
 

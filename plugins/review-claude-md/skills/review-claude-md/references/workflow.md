@@ -135,7 +135,7 @@ Re-run both validation scripts from Phase 3 against the fixed file, then get a c
 - **Claude Code:** the skill normally runs forked (`context: fork`), where no subagent tool exists, so use the inline bullet below. When a subagent tool is available, spawn the named agent `review-claude-md:claude-md-evaluator`; if the type is unknown, spawn a `general-purpose` agent with the mandate prepended.
 - **Copilot CLI:** spawn the named agent `review-claude-md:claude-md-evaluator`, or a generic subagent with the mandate prepended if it is not registered.
 - **Codex:** one `spawn_agent` call with the mandate prepended and no forked parent context; `wait_agent`, then `close_agent` right away.
-- **opencode:** the `task` tool with an installed `claude-md-evaluator` agent, or the built-in `general` subagent with the mandate prepended.
+- **opencode:** Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Use an installed `claude-md-evaluator` agent, or the built-in `general` subagent with the mandate prepended.
 - **No subagent tool, or the reply is empty or lacks its first line:** evaluate inline yourself, following the mandate, and re-open the file instead of judging from memory of your edits.
 
 Produce the post-fix report per [references/output-format.md](references/output-format.md) from that verdict. If the verdict is still not PASS, fix the remaining issues using Edit, then re-evaluate again. Stop at PASS or when no further high-value fix remains; if you stop short of PASS, list the checks that still fail and why.
