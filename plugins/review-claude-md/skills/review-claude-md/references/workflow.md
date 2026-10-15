@@ -24,7 +24,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the repo path and flags from the user's request |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the repo path and flags from the user's request |
 | `${CLAUDE_SKILL_DIR}` | If the script paths in Phase 3 show an unreplaced placeholder, resolve `scripts/` relative to this skill directory |
 | Subagent tool (Agent) | Run the Phase 2 scan and Phase 3 script run inline yourself, with the same outputs. Do this whenever no subagent tool is available, including in Claude Code inside a forked skill. On Codex, opencode and Copilot CLI always run them inline: the steps are sequential and share context, so fan-out only adds failure modes |
 | Named agent `review-claude-md:claude-md-evaluator` | Phase 8 only; see [Phase 8](#phase-8-re-evaluate-and-iterate) for the per-agent fallback |
@@ -35,7 +35,7 @@ On Codex, use the native agent tools only (`spawn_agent` / `wait_agent` / `close
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - First positional arg: path to repo root (default: current working directory)
 - `--score-only` — Report verdict without fixing; do not modify any file

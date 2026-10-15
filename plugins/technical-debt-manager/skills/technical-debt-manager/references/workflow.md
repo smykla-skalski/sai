@@ -24,7 +24,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take `--focus` and `--label` from the user's request; otherwise use the defaults |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take `--focus` and `--label` from the user's request; otherwise use the defaults |
 | AskUserQuestion | Not used. The skill runs autonomously and reports anything that needs a human decision (regressions, weak dedup matches, stale umbrellas) in the Phase 7 summary |
 | Subagent tool (Agent) | Not used. Every phase runs in the current agent loop |
 | `context: fork` | Ignored elsewhere; the skill runs in the main agent loop. In Claude Code it runs in a forked general-purpose subagent so the long exploration stays out of the main conversation |
@@ -39,7 +39,7 @@ In Codex, `gh` and web requests need network access: if the sandbox blocks them,
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - **--focus:** Optional — Narrow analysis to specific area (e.g., `error-handling`, `tests`, `dependencies`, `architecture`). Default: full scan.
 - **--label:** Optional — GitHub issue label. Default: `tech-debt`. Store it as `LABEL` (`LABEL=tech-debt` when omitted); every command below uses `"$LABEL"`, so a custom label scopes both umbrella detection and dedup

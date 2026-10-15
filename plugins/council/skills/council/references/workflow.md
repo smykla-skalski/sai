@@ -35,7 +35,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Feature | Claude Code | Copilot CLI | Codex | opencode and others |
 | :-- | :-- | :-- | :-- | :-- |
-| Arguments | Substituted into "Parse from" below | Slash-command arguments | Text after `$council` | Text after the skill trigger |
+| Arguments | Substituted into the Arguments section of SKILL.md | Slash-command arguments | Text after `$council` | Text after the skill trigger |
 | Persona agents | Named `council:<slug>` from the plugin's `agents/` | Named `council:<slug>` from the plugin's `agents/` | Not registered: generic agent with the mandate from `references/agents/<slug>.md` | Not registered: `subagent` tool (`task` on opencode 1) with the mandate from `references/agents/<slug>.md` |
 | Fan-out | Parallel Agent calls | Parallel background agents, supervised | Sequential: one reviewer at a time by default | Sequential |
 | AskUserQuestion | Debate scope only | Breadth gate and debate scope | Not available: exact stop lines | Not available: exact stop lines |
@@ -63,9 +63,9 @@ Fixed rosters (`core-eng`, `core-ux`, `core-mix`) always run all 6. `quick`, `br
 
 ### Parsing the arguments
 
-Parse from: `$ARGUMENTS`
+Parse from the `Invocation arguments` line in the Arguments section of SKILL.md.
 
-If that line shows no value or an unreplaced placeholder, take the request text after the trigger (`/council`, `$council`, `$council:council`). With no text at all, build a compact brief from the current task: the goal, the files, diffs or plans already in scope, and the constraints already discussed.
+If that line is empty or shows the unreplaced placeholder, take the request text after the trigger (`/council`, `$council`, `$council:council`). With no text at all, build a compact brief from the current task: the goal, the files, diffs or plans already in scope, and the constraints already discussed.
 
 1. Split off the first whitespace-separated token, lowercased.
 2. Map aliases: `eng` -> `core-eng`, `ux` -> `core-ux`, `mix` -> `core-mix`, `random` -> `core-mix`.
