@@ -19,6 +19,7 @@ ARGUMENT_PLACEHOLDER = "$ARGUMENTS"
 INVOCATION_SECTION = "\n## Arguments\n\nInvocation arguments: `$ARGUMENTS`\n"
 ARGUMENTS_SECTION = "Arguments section of SKILL.md"
 REQUEST_FALLBACK = "the user's request"
+FALLBACK_ROW_PREFIXES = ("| Argument substitution |", "| Arguments |")
 SKILL_ARGUMENTS = {
     "council": ("core-eng", "debate"),
     "generate-claude-md": ("--output", "--update"),
@@ -62,6 +63,13 @@ class ArgumentDeliveryTest(unittest.TestCase):
                 workflow = (skill_dir(name) / "references" / "workflow.md").read_text(
                     encoding="utf-8"
                 )
+                rows = [
+                    line
+                    for line in workflow.splitlines()
+                    if line.startswith(FALLBACK_ROW_PREFIXES)
+                ]
+                self.assertEqual(len(rows), 1)
+                self.assertIn(ARGUMENTS_SECTION, rows[0])
                 self.assertGreaterEqual(workflow.count(ARGUMENTS_SECTION), 2)
                 self.assertIn(REQUEST_FALLBACK, workflow)
 

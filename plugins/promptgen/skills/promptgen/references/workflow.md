@@ -23,7 +23,7 @@ Generate optimized, evidence-based prompts from rough human instructions. Built 
 | Claude Code feature | Fallback |
 | :-- | :-- |
 | Skill directory substitution | If the Claude Code path above is not absolute, use the directory that holds this SKILL.md as `<skill-dir>` |
-| Argument substitution | If the Phase 0 `<prompt-description>` block is empty or holds an unreplaced placeholder instead of text, take the description and flags from the user's request. Infer them from the request and local context before asking a follow-up question |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the description and flags from the user's request. Infer them from the request and local context before asking a follow-up question |
 | AskUserQuestion | Ask the question in plain text and wait for the answer |
 | Subagent tool (Task) | Run the Phase 2 analysis and Phase 3 security assessment inline against the same reference files. On Codex always run them inline, since Codex subagent fan-out is unreliable |
 | `context: fork` | Not used; the skill runs in the main agent loop |
