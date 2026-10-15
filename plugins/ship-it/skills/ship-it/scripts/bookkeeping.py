@@ -22,6 +22,7 @@ Usage:
   bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
   bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
   bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
+  bookkeeping.py add-grant --checkpoint FILE --grant-json OBJECT
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
@@ -71,6 +72,7 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "set-release-policy",
         "set-hosted-review-decision",
         "record-gate",
+        "add-grant",
         "set-findings",
         "attest-review",
     },
@@ -1040,6 +1042,12 @@ def section_operation(args: argparse.Namespace) -> dict[str, Any]:
             Path(args.checkpoint),
             lambda checkpoint: checkpoint_state.record_gate(checkpoint, verdict),
         )
+    if command == "add-grant":
+        grant = checkpoint_state.parse_object(args.grant_json, "--grant-json")
+        return mutate_checkpoint(
+            Path(args.checkpoint),
+            lambda checkpoint: checkpoint_state.add_grant(checkpoint, grant),
+        )
     if command == "set-findings":
         updates = checkpoint_state.parse_object(
             args.dispositions_json,
@@ -1218,6 +1226,7 @@ def add_state_commands(
             "record the hosted-review decision",
         ),
         ("record-gate", "--verdict-json", "record one gate verdict"),
+        ("add-grant", "--grant-json", "record one authorization grant"),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
     ):
         section = commands.add_parser(name, help=text)

@@ -494,6 +494,123 @@ class SectionCommandTest(unittest.TestCase):
             "summary exceeds",
         )
 
+    def add_grant(self, grant: dict) -> subprocess.CompletedProcess[str]:
+        return self.command("add-grant", "--grant-json", grant)
+
+    def test_add_grant_appends_to_an_existing_checkpoint(self) -> None:
+        reply = {
+            "id": "more-review",
+            "source": {
+                "kind": "user-reply",
+                "message": "yes, one more review cycle",
+                "reference": "user:2",
+                "request": "run a third review cycle?",
+            },
+            "scope": ["reviewCycles"],
+            "limits": [{"resource": "review cycles", "maximum": 1, "used": 0}],
+            "status": "active",
+        }
+        output = self.assert_ok(self.add_grant(reply))
+        self.assertEqual(output["grant"], "more-review")
+        self.assertEqual(output["grants"], 2)
+        self.assertEqual(self.read()["authorization"]["grants"], [GRANT, reply])
+
+    def test_add_grant_leaves_revoked_and_exhausted_grants_unchanged(self) -> None:
+        revoked = {**GRANT, "id": "old", "status": "revoked"}
+        exhausted = {
+            **GRANT,
+            "id": "spent",
+            "status": "exhausted",
+            "limits": [{"resource": "review cycles", "maximum": 2, "used": 2}],
+        }
+        self.document["authorization"] = {"grants": [GRANT, revoked, exhausted]}
+        self.write(self.document)
+        self.assert_ok(self.add_grant({**GRANT, "id": "fresh"}))
+        grants = self.read()["authorization"]["grants"]
+        self.assertEqual(grants, [GRANT, revoked, exhausted, {**GRANT, "id": "fresh"}])
+
+    def test_add_grant_creates_the_authorization_section_for_a_legacy_file(
+        self,
+    ) -> None:
+        del self.document["authorization"]
+        self.write(self.document)
+        self.assert_ok(self.add_grant(GRANT))
+        self.assertEqual(self.read()["authorization"], {"grants": [GRANT]})
+
+    def test_add_grant_refuses_a_recorded_id_even_when_revoked(self) -> None:
+        self.assert_refused(
+            self.add_grant({**GRANT, "scope": ["other"]}),
+            "grant ID already recorded: ship",
+        )
+        self.document["authorization"] = {
+            "grants": [{**GRANT, "status": "revoked"}],
+        }
+        self.write(self.document)
+        self.assert_refused(self.add_grant(GRANT), "grant ID already recorded: ship")
+
+    def test_add_grant_refuses_an_empty_source_message(self) -> None:
+        for source in (
+            {**GRANT["source"], "message": ""},
+            {**GRANT["source"], "message": "  "},
+            {**GRANT["source"], "message": None},
+            {key: value for key, value in GRANT["source"].items() if key != "message"},
+            "ship this",
+            None,
+        ):
+            with self.subTest(source=source):
+                self.assert_refused(
+                    self.add_grant({**GRANT, "id": "new", "source": source}),
+                    "grant source",
+                )
+
+    def test_add_grant_names_the_required_scope_shape(self) -> None:
+        shape = "grant scope must be a non-empty array of non-empty strings"
+        for scope in ("reviewCycles", [], [""], ["ok", " "], ["ok", 3], None, {"a": 1}):
+            with self.subTest(scope=scope):
+                self.assert_refused(
+                    self.add_grant({**GRANT, "id": "new", "scope": scope}), shape
+                )
+        self.assert_refused(
+            self.add_grant(
+                {
+                    key: value
+                    for key, value in GRANT.items()
+                    if key not in ("id", "scope")
+                }
+            ),
+            "grant id must be a non-empty string",
+        )
+
+    def test_add_grant_applies_the_full_grant_validation(self) -> None:
+        for field, value, text in (
+            ("status", "pending", "invalid authorization grant status"),
+            ("limits", "none", "authorization limits must be an array"),
+            (
+                "limits",
+                [{"resource": "cycles", "maximum": 1, "used": 2}],
+                "within its limit",
+            ),
+            (
+                "source",
+                {**GRANT["source"], "reference": ""},
+                "authorization source requires reference",
+            ),
+            (
+                "source",
+                {**GRANT["source"], "kind": "user-reply", "request": None},
+                "concrete pending request",
+            ),
+        ):
+            with self.subTest(field=field, value=value):
+                self.assert_refused(
+                    self.add_grant({**GRANT, "id": "new", field: value}), text
+                )
+
+    def test_add_grant_rejects_a_non_object_value(self) -> None:
+        for value in ([GRANT], "grant", 3):
+            with self.subTest(value=value):
+                self.assert_refused(self.add_grant(value), "--grant-json")
+
     def test_record_gate_is_refused_when_evidence_owns_verdicts(self) -> None:
         self.document["bookkeeping"]["evidence"] = True
         self.document["evidence"] = {
