@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/smykla-skalski/sai/ship-it/telemetry/v3",
+  "$id": "https://github.com/smykla-skalski/sai/ship-it/telemetry/v4",
   "title": "ship-it workflow telemetry event",
   "type": "object",
   "required": [
@@ -19,15 +19,16 @@
     "worker_id",
     "wait_kind",
     "metrics",
-    "outcome"
+    "outcome",
+    "usage"
   ],
   "properties": {
-    "schema_version": {"const": 3},
+    "schema_version": {"const": 4},
     "event_id": {"type": "string", "pattern": "^evt_[0-9a-f]{24}$"},
     "emitted_at": {"type": "string", "format": "date-time"},
     "run_id": {"type": "string", "pattern": "^run_[0-9a-f]{24}$"},
     "task_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$"},
-    "event": {"enum": ["run_started", "phase_started", "phase_completed", "wait_started", "wait_completed", "user_interruption", "run_finished"]},
+    "event": {"enum": ["run_started", "phase_started", "phase_completed", "wait_started", "wait_completed", "user_interruption", "run_finished", "usage_recorded"]},
     "harness": {"$ref": "#/$defs/identifier"},
     "provider": {"$ref": "#/$defs/identifier"},
     "model": {"$ref": "#/$defs/identifier"},
@@ -63,6 +64,7 @@
       },
       "additionalProperties": false
     },
+    "usage": {"oneOf":[{"type":"null"},{"type":"object","required":["tokens","prices_usd_per_million"],"properties":{"tokens":{"type":"object","required":["input","cache_write","cache_read","output"],"properties":{"input":{"type":["integer","null"],"minimum":0},"cache_write":{"type":["integer","null"],"minimum":0},"cache_read":{"type":["integer","null"],"minimum":0},"output":{"type":["integer","null"],"minimum":0}},"additionalProperties":false},"prices_usd_per_million":{"type":"object","required":["input","cache_write","cache_read","output"],"properties":{"input":{"type":["string","null"],"pattern":"^\\d+(\\.\\d+)?$"},"cache_write":{"type":["string","null"],"pattern":"^\\d+(\\.\\d+)?$"},"cache_read":{"type":["string","null"],"pattern":"^\\d+(\\.\\d+)?$"},"output":{"type":["string","null"],"pattern":"^\\d+(\\.\\d+)?$"}},"additionalProperties":false}},"additionalProperties":false}]},
     "outcome": {"type": ["string", "null"], "enum": ["accepted", "rejected", "blocked", "cancelled", "failed", null]}
   },
   "$defs": {
@@ -98,6 +100,7 @@
         }
       }
     }
+    ,{"if":{"properties":{"event":{"const":"usage_recorded"}}},"then":{"properties":{"usage":{"type":"object"},"observation_id":{"type":"string"},"wait_kind":{"type":"null"},"outcome":{"type":"null"}}},"else":{"properties":{"usage":{"type":"null"}}}}
   ],
   "additionalProperties": false
 }

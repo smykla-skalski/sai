@@ -21,12 +21,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
+import token_cost
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-SCHEMA_VERSION: Final[int] = 3
-SUPPORTED_SCHEMA_VERSIONS: Final[frozenset[int]] = frozenset({1, 2, 3})
+SCHEMA_VERSION: Final[int] = 4
+SUPPORTED_SCHEMA_VERSIONS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
 LOCK_TIMEOUT_SECONDS: Final[float] = 2.0
 ROLES: Final[tuple[str, ...]] = (
     "primary",
@@ -372,6 +374,7 @@ def emit(
         "wait_kind": wait_kind,
         "metrics": metric_values(args),
         "outcome": outcome,
+        "usage": getattr(args, "usage", None),
     }
     duplicate, record = persist_event(record)
     return {"duplicate": duplicate, "event": record, "path": str(path)}
@@ -399,6 +402,11 @@ def begin(args: argparse.Namespace) -> dict[str, Any]:
                 "model": validate_identifier("model", args.model),
                 "role": args.role,
                 "status": "active",
+                "skill_version": json.loads(
+                    (Path(__file__).resolve().parents[3] / "plugin.json").read_text(
+                        encoding="utf-8",
+                    )
+                )["version"],
             }
             private_json(runs / f"{state['run_id']}.json", state)
         else:
@@ -679,7 +687,19 @@ def build_report(run_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
         "observations_complete": has_timing_observation and incomplete == 0,
         "incomplete_observation_count": incomplete,
         "event_count": len(events),
+        "token_cost": token_cost.summarize(events),
     }
+
+
+def usage(args: argparse.Namespace) -> dict[str, Any]:
+    """Persist one disjoint host usage observation."""
+    args.usage = token_cost.validate_usage(args)
+    args.wait_kind = None
+    state = load_run(args.run_id)
+    if (args.role or state["role"]) != "primary" and args.worker_id is None:
+        message = "non-primary usage requires --worker-id"
+        raise UsageError(message)
+    return emit(state, args, "usage_recorded", None)
 
 
 def report(args: argparse.Namespace) -> dict[str, Any]:
@@ -691,8 +711,10 @@ def report(args: argparse.Namespace) -> dict[str, Any]:
         run_id = state["run_id"]
     else:
         run_id = args.run_id
-        load_run(run_id)
-    return build_report(run_id, read_events(run_id))
+        state = load_run(run_id)
+    result = build_report(run_id, read_events(run_id))
+    result["skill_version"] = state.get("skill_version")
+    return result
 
 
 def add_identity(parser: argparse.ArgumentParser, required: bool) -> None:
@@ -745,10 +767,24 @@ def parser() -> argparse.ArgumentParser:
     add_metrics(finish_parser)
     finish_parser.set_defaults(handler=finish)
 
+    usage_parser = commands.add_parser(
+        "usage", help="record one non-overlapping host usage delta",
+    )
+    usage_parser.add_argument("--run-id", required=True)
+    usage_parser.add_argument("--phase", choices=PHASES, required=True)
+    usage_parser.add_argument("--observation-id", required=True)
+    usage_parser.add_argument("--worker-id")
+    add_identity(usage_parser, required=False)
+    for category in token_cost.CATEGORIES:
+        usage_parser.add_argument(f"--{category.replace('_', '-')}-tokens", type=int)
+        usage_parser.add_argument(f"--{category.replace('_', '-')}-price", type=str)
+    usage_parser.set_defaults(handler=usage)
+
     report_parser = commands.add_parser("report", help="report one local run")
     report_source = report_parser.add_mutually_exclusive_group(required=True)
     report_source.add_argument("--run-id")
     report_source.add_argument("--task-id")
+    report_parser.add_argument("--markdown", action="store_true")
     report_parser.set_defaults(handler=report)
     return root
 
@@ -756,9 +792,15 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     try:
         args = parser().parse_args(argv)
-        print(json.dumps(args.handler(args), sort_keys=True, separators=(",", ":")))
+        result = args.handler(args)
+        if args.command == "report" and args.markdown:
+            version = result["skill_version"] or "unknown"
+            validate_opaque_identifier("plugin version", version)
+            print(token_cost.markdown(result, version))
+        else:
+            print(json.dumps(result, sort_keys=True, separators=(",", ":")))
         return 0
-    except UsageError as error:
+    except (UsageError, token_cost.UsageError) as error:
         print(f"telemetry: {error}", file=sys.stderr)
         return 2
     except OSError as error:
