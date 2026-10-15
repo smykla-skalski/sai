@@ -21,6 +21,7 @@ from validation_reuse import (
     attest,
     capture,
     digest,
+    is_ancestor,
     require,
     review_provenance_valid,
 )
@@ -178,6 +179,14 @@ def validate(checkpoint: dict[str, Any]) -> None:
     )
     for field in ("reservations", "findings", "followUpIssues"):
         require(isinstance(state[field], list), f"convergence.{field} must be an array")
+    require(
+        checkpoint["workflow"].get("status") == "blocked"
+        or not any(
+            isinstance(finding, dict) and finding.get("disposition") == "blocked"
+            for finding in state["findings"]
+        ),
+        "a blocked finding requires a blocked workflow",
+    )
     require(
         not state["reviewCycles"]
         or state["reviewedRevision"] is not None
@@ -479,6 +488,39 @@ def record_review(
         )
 
 
+def verify_completion_inputs(
+    checkpoint: dict[str, Any],
+    operation: dict[str, Any],
+) -> None:
+    """Bind a structured result to the reserved revision's captured inputs.
+
+    A fix commit may move HEAD while a receipt is pending. The result then
+    binds to the reserved revision only, which must be an ancestor of the
+    current one; it never satisfies a gate for the new head by itself.
+    """
+    reserved = operation["revision"]
+    current_revision = checkpoint["workflow"]["revision"]
+    if reserved != current_revision:
+        require(
+            is_ancestor(
+                operation["inputManifest"]["repository"],
+                reserved,
+                current_revision,
+            ),
+            "completion must target the reserved current revision or an ancestor of it",
+        )
+        return
+    current = capture(
+        operation["inputManifest"],
+        reserved,
+        checkpoint["task"].get("acceptanceCriteria", []),
+    )
+    require(
+        current == operation["inputSnapshot"],
+        "inputs changed during gate execution",
+    )
+
+
 def finish(
     checkpoint: dict[str, Any],
     identity: str,
@@ -501,19 +543,7 @@ def finish(
         if operation["kind"] == "review":
             record_review(checkpoint, operation, result)
         if "inputSnapshot" in operation:
-            require(
-                operation["revision"] == checkpoint["workflow"]["revision"],
-                "completion must target the reserved current revision",
-            )
-            current = capture(
-                operation["inputManifest"],
-                operation["revision"],
-                checkpoint["task"].get("acceptanceCriteria", []),
-            )
-            require(
-                current == operation["inputSnapshot"],
-                "inputs changed during gate execution",
-            )
+            verify_completion_inputs(checkpoint, operation)
             output = artifact(result.get("output"))
             operation["outputArtifact"] = output
         operation["status"] = "completed"

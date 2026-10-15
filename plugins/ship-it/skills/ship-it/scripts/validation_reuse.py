@@ -63,7 +63,7 @@ def digest(value: object) -> str:
 
 
 def git(repository: Path, *arguments: str) -> bytes:
-    """Read one of four fixed Git metadata commands with a timeout."""
+    """Read one of five fixed Git metadata commands with a timeout."""
     try:
         if arguments == ("rev-parse", "HEAD"):
             result = subprocess.run(
@@ -95,6 +95,14 @@ def git(repository: Path, *arguments: str) -> bytes:
                 capture_output=True,
                 timeout=30,
             )
+        elif arguments == ("rev-list", "HEAD"):
+            result = subprocess.run(
+                ["/usr/bin/env", "git", "rev-list", "HEAD"],
+                cwd=repository,
+                check=True,
+                capture_output=True,
+                timeout=30,
+            )
         elif arguments == ("ls-tree", "-r", "-z", "HEAD"):
             result = subprocess.run(
                 ["/usr/bin/env", "git", "ls-tree", "-r", "-z", "HEAD"],
@@ -111,6 +119,19 @@ def git(repository: Path, *arguments: str) -> bytes:
         raise ConvergenceError(msg) from error
     else:
         return result.stdout
+
+
+def is_ancestor(repository: str, ancestor: object, descendant: object) -> bool:
+    """Report whether a full commit ID is in the history of the checked-out HEAD."""
+    if not isinstance(ancestor, str) or not isinstance(descendant, str):
+        return False
+    root = Path(repository)
+    try:
+        head = git(root, "rev-parse", "HEAD").decode().strip()
+        history = git(root, "rev-list", "HEAD").decode().split()
+    except ConvergenceError:
+        return False
+    return head == descendant and ancestor in history
 
 
 def paths(value: object, name: str) -> list[str]:

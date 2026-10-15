@@ -15,6 +15,16 @@ Usage:
   bookkeeping.py assess --checkpoint FILE --kind KIND
       --revision SHA --inputs-json MANIFEST
   bookkeeping.py finish --checkpoint FILE --id ID --result-json OBJECT
+  bookkeeping.py create --repository PATH --identity TEXT --source-json OBJECT
+      --title TEXT --objective TEXT --criteria-json ARRAY [--source-url URL]
+      [--default-branch NAME] [--branch NAME] [--enable FEATURE,...]
+      [--grant-json OBJECT]... [--checkpoint-dir DIR]
+  bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
+  bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
+  bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
+  bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
+  bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
+      [--gate GATE] [--command TEXT]...
 
 Output is one compact JSON result on stdout. Input or validation errors are
 reported on stderr and exit 2; successful policy resolution or transition
@@ -41,8 +51,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
+import checkpoint_state
+from checkpoint_state import StateError
 from convergence import (
     ConvergenceError,
     finish,
@@ -53,6 +65,15 @@ from convergence import (
 )
 from validation_reuse import assess, capture, digest, unavailable_decision
 
+SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
+    {
+        "set-risk",
+        "set-release-policy",
+        "record-gate",
+        "set-findings",
+        "attest-review",
+    },
+)
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
 VALID_STATUSES: Final[frozenset[str]] = frozenset(
@@ -338,7 +359,7 @@ def validate_authorization(checkpoint: dict[str, Any]) -> None:
             or not scope
             or any(not isinstance(item, str) or not item.strip() for item in scope)
         ):
-            message = "authorization grant requires non-empty scope"
+            message = "authorization grant scope must be a non-empty array of strings"
             raise BookkeepingError(message)
         validate_authorization_limits(grant.get("limits"))
 
@@ -909,6 +930,127 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
         return {"checkpoint": str(path), **result}
 
 
+def mutate_checkpoint(
+    path: Path,
+    apply: Callable[[dict[str, Any]], dict[str, Any]],
+) -> dict[str, Any]:
+    """Apply one validated section change under the shared checkpoint lock."""
+    path = path.resolve()
+    with checkpoint_lock(path):
+        checkpoint = load_object(path)
+        migrate_legacy(checkpoint)
+        validate_checkpoint(checkpoint, path)
+        result = apply(checkpoint)
+        checkpoint["updatedAt"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        validate_checkpoint(checkpoint, path)
+        atomic_write(path, checkpoint)
+        return {"checkpoint": str(path), **result}
+
+
+def default_checkpoint_dir() -> Path:
+    """Resolve the documented checkpoint data root."""
+    data_home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
+    return Path(data_home) / "sai/ship-it/checkpoints"
+
+
+def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
+    """Create a checkpoint at phase resolve; never replace an existing one."""
+    source = checkpoint_state.parse_object(args.source_json, "--source-json")
+    criteria = checkpoint_state.parse_json(args.criteria_json, "--criteria-json")
+    task = {
+        "sourceUrl": args.source_url,
+        "title": args.title,
+        "objective": args.objective,
+        "acceptanceCriteria": criteria,
+    }
+    grants = [
+        checkpoint_state.parse_object(grant, "--grant-json")
+        for grant in args.grant_json
+    ]
+    policy = resolve_policy(Path(args.repository).resolve(), parse_enabled(args.enable))
+    repository = {
+        "identity": checkpoint_state.non_empty(args.identity, "--identity"),
+        "defaultBranch": args.default_branch,
+        "branch": args.branch,
+    }
+    checkpoint = checkpoint_state.new_checkpoint(
+        source=source,
+        task=task,
+        repository=repository,
+        policy=policy,
+        grants=grants,
+    )
+    directory = (
+        Path(args.checkpoint_dir) if args.checkpoint_dir else default_checkpoint_dir()
+    )
+    path = (directory / f"{checkpoint['checkpointId']}.json").resolve()
+    validate_checkpoint(checkpoint, path)
+    with checkpoint_lock(path):
+        if path.exists():
+            existing = load_object(path)
+            existing_task = existing.get("task")
+            if (
+                not isinstance(existing_task, dict)
+                or existing_task.get("canonicalSource")
+                != checkpoint["task"]["canonicalSource"]
+            ):
+                message = f"checkpoint {path} belongs to another canonical source"
+                raise BookkeepingError(message)
+            return {
+                "checkpoint": str(path),
+                "checkpointId": checkpoint["checkpointId"],
+                "created": False,
+            }
+        atomic_write(path, checkpoint)
+    return {
+        "checkpoint": str(path),
+        "checkpointId": checkpoint["checkpointId"],
+        "created": True,
+    }
+
+
+def section_operation(args: argparse.Namespace) -> dict[str, Any]:
+    """Run one checkpoint section command through the locked transaction."""
+    command = args.command
+    if command == "set-risk":
+        risk = checkpoint_state.parse_object(args.risk_json, "--risk-json")
+        return mutate_checkpoint(
+            Path(args.checkpoint),
+            lambda checkpoint: checkpoint_state.set_risk(checkpoint, risk),
+        )
+    if command == "set-release-policy":
+        policy = checkpoint_state.parse_object(args.policy_json, "--policy-json")
+        return mutate_checkpoint(
+            Path(args.checkpoint),
+            lambda checkpoint: checkpoint_state.set_release_policy(checkpoint, policy),
+        )
+    if command == "record-gate":
+        verdict = checkpoint_state.parse_object(args.verdict_json, "--verdict-json")
+        return mutate_checkpoint(
+            Path(args.checkpoint),
+            lambda checkpoint: checkpoint_state.record_gate(checkpoint, verdict),
+        )
+    if command == "set-findings":
+        updates = checkpoint_state.parse_object(
+            args.dispositions_json,
+            "--dispositions-json",
+        )
+        return mutate_checkpoint(
+            Path(args.checkpoint),
+            lambda checkpoint: checkpoint_state.set_dispositions(checkpoint, updates),
+        )
+    return mutate_checkpoint(
+        Path(args.checkpoint),
+        lambda checkpoint: checkpoint_state.attest_review(
+            checkpoint,
+            revision=args.revision,
+            summary=args.summary,
+            gate=args.gate,
+            commands=args.commands,
+        ),
+    )
+
+
 def persist_invalidations(
     before: dict[str, Any],
     attempted: dict[str, Any],
@@ -1033,7 +1175,48 @@ def build_parser() -> argparse.ArgumentParser:
     completion.add_argument("--checkpoint", required=True)
     completion.add_argument("--id", required=True)
     completion.add_argument("--result-json", required=True)
+    add_state_commands(commands)
     return parser
+
+
+def add_state_commands(
+    commands: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
+    """Register the checkpoint creation and section commands."""
+    creation = commands.add_parser(
+        "create",
+        help="create a checkpoint at phase resolve without overwriting",
+    )
+    creation.add_argument("--repository", required=True, help="repository root")
+    creation.add_argument("--identity", required=True, help="normalized identity")
+    creation.add_argument("--source-json", required=True)
+    creation.add_argument("--title", required=True)
+    creation.add_argument("--objective", required=True)
+    creation.add_argument("--criteria-json", required=True)
+    creation.add_argument("--source-url")
+    creation.add_argument("--default-branch", default="main")
+    creation.add_argument("--branch")
+    creation.add_argument("--enable", default="")
+    creation.add_argument("--grant-json", action="append", default=[])
+    creation.add_argument("--checkpoint-dir")
+    for name, option, text in (
+        ("set-risk", "--risk-json", "set the risk selection"),
+        ("set-release-policy", "--policy-json", "store the release policy"),
+        ("record-gate", "--verdict-json", "record one gate verdict"),
+        ("set-findings", "--dispositions-json", "set finding dispositions"),
+    ):
+        section = commands.add_parser(name, help=text)
+        section.add_argument("--checkpoint", required=True)
+        section.add_argument(option, required=True)
+    attestation = commands.add_parser(
+        "attest-review",
+        help="re-attest a review for the current revision",
+    )
+    attestation.add_argument("--checkpoint", required=True)
+    attestation.add_argument("--revision", required=True)
+    attestation.add_argument("--summary", required=True)
+    attestation.add_argument("--gate", default="adversarial-review")
+    attestation.add_argument("--command", dest="commands", action="append", default=[])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1050,9 +1233,13 @@ def main(argv: list[str] | None = None) -> int:
             result = transition(args)
         elif args.command == "reconcile-delivery":
             result = reconcile_delivery(args)
+        elif args.command == "create":
+            result = create_checkpoint(args)
+        elif args.command in SECTION_COMMANDS:
+            result = section_operation(args)
         else:
             result = convergence_operation(args)
-    except (BookkeepingError, ConvergenceError) as error:
+    except (BookkeepingError, ConvergenceError, StateError) as error:
         print(str(error), file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))

@@ -60,9 +60,9 @@ Capture the key, summary, description, status, and acceptance criteria.
 
 ## Durable task checkpoint
 
-Read [authorization.md](authorization.md); record original user source, scope and limits. Resolve the canonical task key and durable checkpoint before exploration or changes; pass it as gate `--context`. Use the bookkeeping helper for policy and transitions; load the full checkpoint contract only for migration, recovery or validation errors.
+Read [authorization.md](authorization.md); record original user source, scope and limits. Resolve the canonical task key and durable checkpoint before exploration or changes; pass it as gate `--context`. Write the checkpoint only through the bookkeeping helper (`create`, `transition`, `reserve`, `set-*`, `record-gate`, `attest-review`), never by editing JSON; load the full checkpoint contract only for migration, recovery or validation errors.
 
-Never overwrite an existing checkpoint: load its full contract, validate source/repository identity, then reconcile GitHub delivery before planning. A confirmed merge stays delivered while audits remain separate. Invalid, mismatched or irreconcilable state loads recovery and hard-stops with the named action.
+Never overwrite an existing checkpoint: load its full contract, validate source/repository identity, then reconcile GitHub delivery before planning. A confirmed merge stays delivered while audits remain separate.
 
 ## GitHub work claim
 
