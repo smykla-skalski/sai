@@ -103,7 +103,7 @@ def test_lifecycle_resumes_and_deduplicates() -> None:
             "run_started", "phase_started", "wait_started", "wait_completed",
             "phase_completed", "run_finished",
         ]
-        assert all(event["schema_version"] == 3 for event in events)
+        assert all(event["schema_version"] == 4 for event in events)
         assert events[0]["task_id"] == "github-159"
         assert events[1]["phase"] == "implement"
         assert events[4]["metrics"]["tool_calls"] == 4
@@ -347,7 +347,48 @@ def test_short_append_completes_record() -> None:
         assert [json.loads(line)["event"] for line in path.read_text().splitlines()] == ["one", "two"]
 
 
+def test_usage_cost_cli() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        run_id = json.loads(run(root, "begin", "--task-id", "cost-test", "--harness", "codex", "--provider", "openai", "--model", "unknown", "--role", "primary").stdout)["run_id"]
+        command = ["usage", "--run-id", run_id, "--phase", "implement", "--observation-id", "request-1", "--input-tokens", "1000000", "--cache-write-tokens", "1000000", "--cache-read-tokens", "1000000", "--output-tokens", "1000000", "--input-price", "2", "--cache-write-price", "2.5", "--cache-read-price", "0.2", "--output-price", "8"]
+        run(root, *command)
+        assert json.loads(run(root, *command).stdout)["duplicate"] is True
+        report = json.loads(run(root, "report", "--run-id", run_id).stdout)["token_cost"]
+        assert report["total"]["estimated_usd"] == "12.7"
+        assert report["by_phase"]["implement"] == report["by_role"]["primary"]
+        run(root, "usage", "--run-id", run_id, "--phase", "review", "--observation-id", "unavailable", "--role", "validator", "--worker-id", "review-1")
+        report = json.loads(run(root, "report", "--run-id", run_id).stdout)["token_cost"]
+        assert report["total"]["estimated_usd"] is None
+        assert report["total"]["known_estimated_usd"] == "12.7"
+        assert report["by_role"]["validator"]["estimated_usd"] is None
+        comment = run(root, "report", "--run-id", run_id, "--markdown").stdout
+        assert "unknown" in comment and "12.7" in comment and run_id in comment
+        assert str(root) not in comment and "openai" not in comment
+        for option, value in [("--input-tokens", "-1"), ("--input-price", "NaN"), ("--output-price", "-2"), ("--output-price", "1e5")]:
+            run(root, "usage", "--run-id", run_id, "--phase", "test", "--observation-id", "invalid", option, value, success=False)
+
+
+
+def test_mixed_history_retains_unknown_cost() -> None:
+    import token_cost
+
+    old = {"schema_version": 3, "event": "phase_completed", "phase": "implement", "role": "primary"}
+    new = {"schema_version": 4, "event": "usage_recorded", "phase": "review", "role": "validator", "worker_id": "reviewer", "usage": {"tokens": {"input": 1000000, "cache_write": 0, "cache_read": 0, "output": 0}, "prices_usd_per_million": {"input": "2", "cache_write": None, "cache_read": None, "output": None}}}
+    result = token_cost.summarize([old, old, new])
+    assert result["total"]["estimated_usd"] is None
+    assert result["total"]["known_estimated_usd"] == "2"
+    assert result["total"]["unknown_observations"] == 1
+    assert result["by_phase"]["implement"]["estimated_usd"] is None
+    assert result["by_role"]["primary"]["estimated_usd"] is None
+    current_missing = {**old, "schema_version": 4}
+    assert token_cost.summarize([current_missing, new])["total"]["estimated_usd"] is None
+
 if __name__ == "__main__":
+    test_mixed_history_retains_unknown_cost()
+    print("ok test_mixed_history_retains_unknown_cost")
+    test_usage_cost_cli()
+    print("ok test_usage_cost_cli")
     test_lifecycle_resumes_and_deduplicates()
     print("ok test_lifecycle_resumes_and_deduplicates")
     test_blocked_run_resumes_the_same_history()

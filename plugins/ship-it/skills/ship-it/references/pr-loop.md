@@ -1,8 +1,8 @@
 # ship-it PR loop: open, wait, fix, merge
 
-Resume a reconciled open PR at its current head. A merge skips this loop, push, merge and revalidation; other results stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
+Resume open PRs at their reconciled head; merged PRs go to completion. Other states stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
 
-Load the resolved release policy from the checkpoint and reconcile it with live GitHub policy before the first push and immediately before merge. A missing, stale, ambiguous or unsatisfied release policy blocks this loop with the exact required human action.
+Reconcile the resolved release policy from the checkpoint with live GitHub policy before the first push and merge. Missing, stale, ambiguous or unsatisfied policy blocks the loop; name the required human action.
 
 For GitHub work with claims enabled, verify the claim before a GitHub write and renew it only immediately before that write when due. Never renew on a timer. A conflicting, expired or unverifiable claim pauses remote writes until reconciliation succeeds.
 
@@ -35,26 +35,21 @@ Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to 
 
 ## Request hosted reviewers
 
-Run this section only when `hosted-review` is selected and the checkpoint's `hostedReviewDecision` is `serviceable`. Before requesting Copilot, inspect `scripts/copilot_quota.py status`; a remembered refusal immediately activates its configured fallback or the required policy stop. Request every resolved reviewer whose request mode is `reviewer` or `team-reviewer`; reviewers with `automatic` are requested by repository policy. `not-required` satisfies the gate without a request. `fallback` uses the recorded fallback immediately. `blocked` is a hard stop. Never retry a request after quota, permission or unavailable-service made that reviewer unserviceable.
-
-```bash
-gh pr edit <n> --add-reviewer <request-target>
-```
-
-If the request mechanism itself fails, use the matching GitHub REST reviewer or team-reviewer field once. A quota, permission or unavailable-service response immediately changes `hostedReviewDecision` to the configured `fallback`; activate it without another request. When no fallback exists, record `blocked` with the named policy action and stop. Never leave an unserviceable reviewer pending or retry it. Do not request Copilot unless the resolved policy names it, and do not substitute an actor outside the configured fallback.
+When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Check `scripts/copilot_quota.py status` before Copilot; remembered refusal activates the configured fallback or policy stop. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery. Do not request Copilot unless policy names it.
 
 ## Wait for hosted gates
 
-Before treating any submitted review as satisfied, classify the complete paginated review response with `scripts/copilot_quota.py classify` (or its `classify_and_remember` function), which delegates to `copilot_review.classify_reviews`. Pass the preceding PR-scoped classifier state as `--previous`; retain its returned `refusalEvidence` and `unserviceable` status across head changes and resumes. A submitted Copilot quota refusal is unserviceable evidence, never a completed review, even when its state is `COMMENTED`. Remaining credits from a quota endpoint do not override an observed refusal.
+Before counting reviews, apply [Copilot quota rules](release.md#copilot-quota-refusals).
 
-After a refusal, persist the reviewer decision as unserviceable and set `hostedReviewDecision` to the configured `fallback`, or `blocked` with the exact policy action when no fallback exists. Activate only a configured non-Copilot fallback. Send no further Copilot request and start no Copilot poll or wait for that PR. Optional Copilot never adds a wait or release requirement. General PR snapshots needed for CI, other reviewers and thread resolution may continue; they must retain genuine Copilot reviews and resolve their blocking threads according to repository policy. Use the classifier's `reviews` list for review satisfaction, and the original thread response for thread resolution; a refusal never erases a genuine review on the same PR.
+Run one blocking process per PR/head; it uses Python and `gh`, paginates checks/reviews/threads and emits one terminal JSON:
 
-Consume a hosted-state event instead of reading terminal panes or listing agents. On each check, review or thread change inspect:
+```bash
+python3 <skill-dir>/scripts/hosted_wait.py <owner>/<repo> <n> --head <sha> --timeout 1800 --check '<policy-check>' --reviewer '<login>:review' --thread-author '<login>'
+```
 
-- `gh pr checks <n>` when `ci` is selected.
-- Reviews and outstanding requests when `hosted-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` plus the PR's requested reviewers and teams.
-- Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments), filtered by the resolved release policy.
-- Every named policy or platform-required check on the exact PR head when `ci` is selected.
+Use `--help` for flags. Repeat policy checks and required reviewers (`review|approval`); omit reviewers without hosted review. Omit thread authors to include all unresolved non-outdated threads. Platform gates always bind. Run under one background/event waiter if foreground limits are short; never poll or restart.
+
+Only `satisfied` exits 0. Failures, head changes, closure, merge and deadline exit 1; API/input errors exit 2. Results name failed or pending requirements and observed transitions. Reconcile merged delivery or a changed head before continuing; resolve existing comments even when external review was waived.
 
 If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. A code failure is an unresolved acceptance failure under the shared convergence policy and consumes its remaining fix budget; after an internal limit, triage focused recovery under active scoped authorization. Never rerun CI without the repository policy or explicit approval required there.
 If any selected reviewer or check remains unsatisfied for roughly 30 minutes, including a continuously requested reviewer or pending check, block with that exact requirement and the human action that satisfies it; never silently skip it.
