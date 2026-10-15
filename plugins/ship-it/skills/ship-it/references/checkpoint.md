@@ -144,7 +144,7 @@ Validate these invariants in addition to field presence and types:
 
 ## Phase handoffs
 
-Optional `handoffs` retains one receipt per `draft-published` and `before-pr-loop` boundary: stable `id`, `boundary`, `status` (`pending|accepted|fallback`), `revision`, compact `brief`, plus accepted `worker` and `inputTokens` or fallback `reason`. Legacy checkpoints omit the array. Update only with `bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT`; see [handoff.md](handoff.md). Handoffs preserve all other checkpoint state and never reset budgets or verdicts.
+Optional `handoffs` retains one receipt per `draft-published` and `before-pr-loop` boundary: stable `id`, `boundary`, `status` (`pending|accepted|fallback`), `revision`, compact `brief`, `claimBinding` (existing comment ID and holder, or null), plus accepted `worker` and `inputTokens` or fallback `reason`. Legacy checkpoints omit the array. Update only with `bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT`; see [handoff.md](handoff.md). Handoffs preserve all other checkpoint state and never reset budgets or verdicts.
 
 ## Safe writes
 

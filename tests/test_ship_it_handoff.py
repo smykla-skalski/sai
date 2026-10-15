@@ -135,3 +135,72 @@ class HandoffTest(unittest.TestCase):
         before = self.path.read_bytes()
         self.assertEqual(self.invoke({**accepted, "worker": "second"}).returncode, 2)
         self.assertEqual(self.path.read_bytes(), before)
+
+    def test_claim_and_evidence_survive_both_fresh_continuations(self) -> None:
+        state = self.load()
+        state["bookkeeping"].update(claims=True, evidence=True)
+        state["claim"] = {
+            "commentId": 123,
+            "status": "active",
+            "holder": {"id": "user/sail/original-worker", "session": "original-worker"},
+            "expiresAt": "2099-01-01T00:00:00Z",
+        }
+        state["evidence"] = {
+            "revision": "a" * 40,
+            "recordPath": "/durable/evidence.json",
+            "status": "complete",
+            "updatedAt": "2026-01-01T00:00:00Z",
+        }
+        state["gateVerdicts"] = [{"gate": "review", "status": "passed"}]
+        self.path.write_text(json.dumps(state))
+        for boundary, phase in (
+            ("draft-published", "review"),
+            ("before-pr-loop", "pr"),
+        ):
+            with self.subTest(boundary=boundary):
+                current = self.load()
+                current["workflow"]["phase"] = phase
+                self.path.write_text(json.dumps(current))
+                pending = {**self.pending, "id": boundary, "boundary": boundary}
+                self.assertEqual(self.invoke(pending).returncode, 0)
+                result = self.invoke(
+                    {
+                        "id": boundary,
+                        "boundary": boundary,
+                        "status": "accepted",
+                        "worker": f"fresh-{phase}",
+                        "inputTokens": 1000,
+                    }
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                after = self.load()
+                for key in ("claim", "evidence", "gateVerdicts", "bookkeeping"):
+                    self.assertEqual(after[key], state[key], key)
+                self.assertEqual(
+                    after["handoffs"][-1]["claimBinding"],
+                    {"commentId": 123, "holder": state["claim"]["holder"]},
+                )
+
+    def test_changed_claim_holder_blocks_pending_delegation(self) -> None:
+        state = self.load()
+        state["bookkeeping"]["claims"] = True
+        state["claim"] = {
+            "commentId": 123,
+            "status": "active",
+            "holder": {"id": "first"},
+        }
+        self.path.write_text(json.dumps(state))
+        self.assertEqual(self.invoke(self.pending).returncode, 0)
+        state = self.load()
+        state["claim"]["holder"]["id"] = "other"
+        self.path.write_text(json.dumps(state))
+        result = self.invoke(
+            {
+                **self.pending,
+                "status": "accepted",
+                "worker": "fresh",
+                "inputTokens": 1000,
+            }
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("claim holder changed", result.stderr)

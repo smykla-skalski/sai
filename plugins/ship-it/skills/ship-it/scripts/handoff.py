@@ -9,6 +9,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import copy
 from typing import Any, Final
 
 from checkpoint_state import StateError, non_empty
@@ -63,6 +64,26 @@ def validate_destination(
     if existing is not None and existing["revision"] != workflow["revision"]:
         message = "pending handoff revision changed; reconcile before continuation"
         raise StateError(message)
+    if existing is not None and existing.get("claimBinding") != claim_binding(
+        checkpoint,
+    ):
+        message = (
+            "handoff claim holder changed; reconcile ownership before continuation"
+        )
+        raise StateError(message)
+
+
+def claim_binding(checkpoint: dict[str, Any]) -> dict[str, Any] | None:
+    """Bind delegation to the existing task holder without rewriting its lease."""
+    claim = checkpoint.get("claim")
+    if claim is None and not checkpoint["bookkeeping"]["claims"]:
+        return None
+    if not isinstance(claim, dict) or claim.get("status") != "active":
+        message = "handoff requires an active claim when claims are enabled"
+        raise StateError(message)
+    return copy.deepcopy(
+        {"commentId": claim.get("commentId"), "holder": claim["holder"]},
+    )
 
 
 def find_receipt(
@@ -103,14 +124,21 @@ def record_handoff(
         raise StateError(message)
     validate_destination(checkpoint, update["boundary"], existing)
     brief = non_empty(
-        update.get("brief", existing["brief"] if existing else None), "handoff.brief",
+        update.get("brief", existing["brief"] if existing else None),
+        "handoff.brief",
     )
     if len(brief.encode("utf-8")) > MAX_BRIEF_BYTES:
         message = "handoff brief must be at most 1999 UTF-8 bytes"
         raise StateError(message)
     receipt = dict(existing or {})
     receipt.update(update)
-    receipt.update({"brief": brief, "revision": checkpoint["workflow"]["revision"]})
+    receipt.update(
+        {
+            "brief": brief,
+            "revision": checkpoint["workflow"]["revision"],
+            "claimBinding": claim_binding(checkpoint),
+        },
+    )
     if existing is None:
         receipts.append(receipt)
     else:
