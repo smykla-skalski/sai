@@ -62,7 +62,7 @@ After synthesis a separate **adversary** agent stress-tests the plan: behavior p
 | Claude Code | Named agents `refactor-council:<persona>` from `agents/`, all seven in parallel, then the adversary |
 | Copilot CLI | Same named agents from `agents/`, delegated one at a time (parallel waves only on request) |
 | Codex | Inline by default: the main agent adopts each persona from `skills/refactor-council/references/agents/` in turn. Optional parallel mode with at most 5 subagents when `agents.max_threads` is raised |
-| opencode | `task` tool with the built-in `general` subagent and the persona file prepended, one at a time, or inline |
+| opencode | `subagent` tool (`task` on opencode 1) with the built-in `general` subagent and the persona file prepended, one at a time, or inline |
 
 The persona bodies in `agents/` and `skills/refactor-council/references/agents/` are identical; `tests/test_refactor_council_agents.py` fails when they drift. The root `plugin.json` has no `$schema` key on purpose: with it, Copilot CLI stops registering the plugin's `agents/` directory.
 

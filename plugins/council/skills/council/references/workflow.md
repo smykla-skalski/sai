@@ -36,7 +36,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 | Feature | Claude Code | Copilot CLI | Codex | opencode and others |
 | :-- | :-- | :-- | :-- | :-- |
 | Arguments | Substituted into "Parse from" below | Slash-command arguments | Text after `$council` | Text after the skill trigger |
-| Persona agents | Named `council:<slug>` from the plugin's `agents/` | Named `council:<slug>` from the plugin's `agents/` | Not registered: generic agent with the mandate from `references/agents/<slug>.md` | Not registered: `task` subagent with the mandate from `references/agents/<slug>.md` |
+| Persona agents | Named `council:<slug>` from the plugin's `agents/` | Named `council:<slug>` from the plugin's `agents/` | Not registered: generic agent with the mandate from `references/agents/<slug>.md` | Not registered: `subagent` tool (`task` on opencode 1) with the mandate from `references/agents/<slug>.md` |
 | Fan-out | Parallel Agent calls | Parallel background agents, supervised | Sequential: one reviewer at a time by default | Sequential |
 | AskUserQuestion | Debate scope only | Breadth gate and debate scope | Not available: exact stop lines | Not available: exact stop lines |
 | `context: fork` | Not used | Not used | Not used | Not used |
@@ -281,7 +281,7 @@ Progress lines that claim checking, verifying, retrying, closing or waiting must
 
 ## opencode and others
 
-- Spawn each persona with the `task` tool as the built-in `general` subagent (or an installed agent named after the slug), the reviewer prompt, the `<persona-mandate>` block appended, and `Dossier: none`.
+- Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Spawn each persona as the built-in `general` subagent (or an installed agent named after the slug), the reviewer prompt, the `<persona-mandate>` block appended, and `Dossier: none`.
 - Run reviewers one at a time and wait for each result before the next.
 - No AskUserQuestion: a roster above 6 needs explicit approval in the user's request; otherwise reply exactly `Council not run: broad council approval not granted.`
 - No subagent tool: run the personas inline as described under Agent compatibility.

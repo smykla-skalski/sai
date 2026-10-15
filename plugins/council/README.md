@@ -63,7 +63,7 @@ In Claude Code and Copilot CLI use `/council`, in Codex `$council`.
 | Claude Code | Named agents `council:<slug>` from `agents/`, spawned in parallel; each persona reads its dossier | Run directly |
 | Copilot CLI | Same named agents `council:<slug>`, parallel background agents supervised about once a minute | Need AskUserQuestion approval in the current run |
 | Codex | Generic `spawn_agent` reviewers at high reasoning effort, each given its mandate from `skills/council/references/agents/<slug>.md`; one at a time by default, parallel waves of at most 5 only on request | Need explicit same-turn approval |
-| opencode | `task` subagents with the same mandates, one at a time | Need explicit approval in the request |
+| opencode | `subagent` tool (`task` on opencode 1) with the same mandates, one at a time | Need explicit approval in the request |
 
 The old Codex agent definitions pinned a read-only sandbox; generic reviewers inherit the session sandbox, so the skill asks for read-only where `spawn_agent` allows it and the assignment forbids edits. Without approval, broad runs stop with exactly `Council not run: broad council approval not granted.` Without any subagent tool, the personas run inline and the synthesis says so.
 

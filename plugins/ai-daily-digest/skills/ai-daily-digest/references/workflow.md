@@ -185,7 +185,7 @@ Collect results from all research agents before proceeding to Phase 16. Do not s
 | Claude Code | As above: named agent, Phases 2-5 in parallel |
 | Copilot CLI | Named agent `ai-daily-digest:digest-research-agent` through the `agent` tool, one phase at a time, or research each phase inline. Parallel fan-out burns AI credits: only when the user asks, in waves of at most 5, checking each agent's state and reply before synthesis |
 | Codex | Sequential and inline by default: research each phase yourself, hold the findings, move on. Subagent fan-out is fragile (the default `agents.max_threads` is 6, finished subagents keep their slot until `close_agent`, and some finish without returning their payload). Only if the user asks and has raised `agents.max_threads`: `spawn_agent` independent phases with the mandate prepended, at most 5 at a time, `close_agent` each as soon as it returns, and rerun any phase that returned no sources inline. Never run nested `codex exec` |
-| opencode | The `task` tool with the built-in `general` subagent and the mandate prepended, one phase at a time, or inline |
+| opencode | The `subagent` tool (`task` on opencode 1) with the built-in `general` subagent and the mandate prepended, one phase at a time, or inline |
 
 | Phase | Topic | Skip unless focus includes |
 | --- | --- | --- |

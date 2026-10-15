@@ -28,7 +28,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 | Explore subagent (Pass 1.5) | Copilot CLI, Codex and opencode build the Research Brief inline with grep, git and file reads, once, and pass it verbatim to every reviewer |
 | Council personas `council:*` (Pass 2) | Claude Code only. Every other agent uses the bundled dimension reviewers, which emit conventional comments, so Pass 2.5 is skipped |
 | Named agents `staff-code-review:*` | Claude Code and Copilot CLI register all nine from the plugin's `agents/` directory. Codex and opencode do not; use the identical mandates in [references/agents/](references/agents/) |
-| Parallel subagents (Pass 2) | Claude Code only. Copilot CLI: one `agent` call at a time, in table order. Codex: inline lens passes (see [Pass 2 on other agents](#pass-2-on-other-agents)). opencode: one `task` call at a time, or inline |
+| Parallel subagents (Pass 2) | Claude Code only. Copilot CLI: one `agent` call at a time, in table order. Codex: inline lens passes (see [Pass 2 on other agents](#pass-2-on-other-agents)). opencode: one `subagent` call (`task` on opencode 1) at a time, or inline |
 | `context: fork` | Not used |
 
 Run sequentially everywhere except Claude Code. Copilot parallel fan-out burns credits with no reliability guarantee. Codex fan-out is fragile at this size: the default `agents.max_threads` is 6, a finished subagent keeps its slot until `close_agent` ([openai/codex#22779](https://github.com/openai/codex/issues/22779)), and subagents can finish without returning their payload ([openai/codex#16051](https://github.com/openai/codex/issues/16051)). Fan out on Copilot CLI or Codex only when the user asks for it: waves of at most 5, close each agent as it returns, and confirm every one returned a payload before Synthesis (re-run a missing one inline).
@@ -155,7 +155,7 @@ When spawning a bundled reviewer (or `general-purpose` with its mandate), the pr
 
 - **Copilot CLI:** delegate each dimension to its bundled reviewer through the `agent` tool, one at a time in table order, then the Code Adversary. Do not try `council:*`. Validate that each result starts with `## <Dimension> review` and contains conventional comments. If a result is invalid (wrong header, empty, readiness or boilerplate text), re-delegate that dimension once; if still invalid, continue and note the missing lens in Synthesis. Never surface raw reviewer output.
 - **Codex:** run the dimensions inline, in table order: read `references/agents/<reviewer>.md` (and the deep reference) and apply that lens yourself, emitting conventional comments. Then run the Code Adversary the same way from `references/agents/code-adversary.md`. To keep a clean context for one pass, you may use a single `spawn_agent` with the mandate prepended, wait for it, verify it returned a payload, and `close_agent` it before the next pass. Never keep more than one open.
-- **opencode:** one `task` call per dimension with the built-in `general` subagent and the mandate from `references/agents/<reviewer>.md` prepended, waiting for each; or run the passes inline as on Codex.
+- **opencode:** Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Make one call per dimension with the built-in `general` subagent and the mandate from `references/agents/<reviewer>.md` prepended, waiting for each; or run the passes inline as on Codex.
 
 All three skip Pass 2.5: every finding is already a conventional comment.
 

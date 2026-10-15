@@ -34,7 +34,7 @@ A fallback satisfies the same workflow gate. It does not remove, rename or weake
 | :-- | :-- | :-- |
 | Claude Code | Select the narrowest tool and permission set before the phase. | `Read`, `Glob` and `Grep` satisfy reads; `Edit` and `Write` satisfy repository writes; `Bash` satisfies process and Git capabilities; `Agent` or installed skills satisfy gate capabilities. |
 | Codex | Use the workspace sandbox for local profiles and request escalation only for the active requirement. | Filesystem and command tools satisfy local capabilities; `spawn_agent` satisfies subagent capabilities; authenticated `gh` satisfies GitHub, issue and merge capabilities. |
-| OpenCode | Apply the matching permission policy and expose only tools needed by the active profile. | Read, edit, bash and task tools map to filesystem, process, Git and subagent capabilities; authenticated `gh` supplies remote capabilities. |
+| OpenCode | Apply the matching permission policy and expose only tools needed by the active profile. | Read, edit, bash and subagent (`task` on opencode 1) tools map to filesystem, process, Git and subagent capabilities; authenticated `gh` supplies remote capabilities. |
 | Copilot CLI | Select registered tools and agents for the active profile. | Filesystem and shell tools supply local capabilities; registered adversary agents or fresh generic subagents supply gates; authenticated `gh` supplies remote capabilities. |
 | Sail | Select the profile before dispatch and verify the assigned worker and fresh gate workers can launch. | ACP filesystem, terminal and permission primitives supply local capabilities; Sail workers supply subagent capabilities; authenticated `gh` supplies remote capabilities. Missing worker or gate capability pauses the run. |
 
