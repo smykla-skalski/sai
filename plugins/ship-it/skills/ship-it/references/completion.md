@@ -23,4 +23,4 @@ Report:
 
 Judge completion by the merged pull request and resolved source issue. Review-cycle counts are diagnostic only and never justify extending a delivery whose required controls already passed.
 
-Return to the default branch and remove the task worktree only when safe and when the current harness owns that cleanup. A Sail worker reports completion and leaves its assigned worktree lifecycle to Sail.
+Return to the default branch and remove the task worktree only when safe and when the current harness owns that cleanup. Assigned workers report completion; the host owns their worktree cleanup.
