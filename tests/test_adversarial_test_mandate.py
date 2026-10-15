@@ -97,15 +97,18 @@ class UnresolvedBaseTest(unittest.TestCase):
         self.assertIn("Match verdicts as whole lines", gate)
         self.assertIn("never read as `Test Verdict: FAIL`", gate)
         self.assertIn("a git error on `git diff origin/<default>...HEAD`", gate)
-        self.assertIn("record it in `gateVerdicts`", gate)
-        self.assertIn("`blocker`", gate)
-        self.assertIn("`nextAction`", gate)
-        self.assertIn("a fix pass cannot repair a missing ref", gate)
+        self.assertIn("record a failed result (evidence, or `gateVerdicts`", gate)
+        self.assertIn("set `status: blocked` with its `Gate failure:` line as `blocker`", gate)
+        self.assertIn("start no fix pass", gate)
+        self.assertIn("`nextAction` is to fetch the base ref", gate)
 
-    def test_ship_it_records_no_test_performed_as_not_performed(self) -> None:
+    def test_ship_it_leaves_a_no_test_performed_gate_unsatisfied(self) -> None:
         gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
-        self.assertIn("`No test performed:`", gate)
-        self.assertIn("record it as not performed, not a pass", gate)
+        first_paragraph = gate.split("\n\n")[1]
+        self.assertIn("`No test performed:`", first_paragraph)
+        self.assertIn(
+            "record no pass and leave the gate unsatisfied until it is rerun", gate
+        )
 
     def test_skill_mirrors_the_unresolved_base_rule(self) -> None:
         skill = SKILL_FILE.read_text(encoding="utf-8")

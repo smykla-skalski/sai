@@ -151,15 +151,17 @@ class VerdictFormatTest(unittest.TestCase):
     def test_ship_it_records_failed_gate_without_a_fix_pass(self) -> None:
         gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
         self.assertIn("a git error on `git diff origin/<default>...HEAD`", gate)
-        self.assertIn("record it in `gateVerdicts`", gate)
-        self.assertIn("`blocker`", gate)
-        self.assertIn("`nextAction`", gate)
-        self.assertIn("a fix pass cannot repair a missing ref", gate)
+        self.assertIn("record a failed result (evidence, or `gateVerdicts`", gate)
+        self.assertIn("set `status: blocked` with its `Gate failure:` line as `blocker`", gate)
+        self.assertIn("start no fix pass", gate)
+        self.assertIn("else to rerun the gate", gate)
 
-    def test_ship_it_records_no_review_performed_as_not_performed(self) -> None:
+    def test_ship_it_leaves_a_no_review_performed_gate_unsatisfied(self) -> None:
         gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
         self.assertIn("`No review performed:`", gate)
-        self.assertIn("record it as not performed, not a pass", gate)
+        self.assertIn(
+            "record no pass and leave the gate unsatisfied until it is rerun", gate
+        )
 
     def test_workflow_checks_verdict_keyword_against_labels(self) -> None:
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
