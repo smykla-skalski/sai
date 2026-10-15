@@ -45,7 +45,7 @@ Publishing target: `--notion-page-id` or `NOTION_PARENT_PAGE_ID` for Notion; oth
 | Claude Code | Named agent `ai-daily-digest:digest-research-agent` from `agents/`, Phases 2-5 in parallel; `general-purpose` with the mandate prepended as fallback |
 | Copilot CLI | Same named agent, one phase at a time by default to save AI credits |
 | Codex | Inline and sequential by default; optional `spawn_agent` fan-out of at most 5 when asked |
-| opencode | `task` tool with the built-in `general` subagent and the mandate prepended, or inline |
+| opencode | `subagent` tool (`task` on opencode 1) with the built-in `general` subagent and the mandate prepended, or inline |
 
 ## Files
 

@@ -57,7 +57,7 @@ In Claude Code and Copilot CLI use `/plan-critic`, in Codex `$plan-critic`:
 | Claude Code | `Explore` subagent | Named agents `plan-critic:skeptic-reviewer`, `architect-reviewer`, `verifier-reviewer`, all three in parallel; `general-purpose` with the mandate prepended as fallback |
 | Copilot CLI | Inline | Same named agents, delegated one at a time (parallel only on request) |
 | Codex | Inline | Inline lenses by default; sequential `spawn_agent` calls on request, each closed after it returns |
-| opencode | Inline | `task` tool, one persona at a time, with installed persona agents or the built-in `general` subagent |
+| opencode | Inline | `subagent` tool (`task` on opencode 1), one persona at a time, with installed persona agents or the built-in `general` subagent |
 
 Every agent falls back to adopting the personas inline when subagents are unavailable.
 

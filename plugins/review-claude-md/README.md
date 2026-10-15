@@ -53,7 +53,7 @@ In Claude Code and Copilot CLI use `/review-claude-md`, in Codex `$review-claude
 | Claude Code | Inline: the skill runs forked (`context: fork`), and a forked skill has no subagent tool | Inline in the fork; the named agent `review-claude-md:claude-md-evaluator` only when a subagent tool is available |
 | Copilot CLI | Inline | Same named agent `review-claude-md:claude-md-evaluator` |
 | Codex | Inline | One `spawn_agent` call with the mandate prepended, closed after the pass |
-| opencode | Inline | `task` tool with an installed `claude-md-evaluator` agent or the built-in `general` subagent |
+| opencode | Inline | `subagent` tool (`task` on opencode 1) with an installed `claude-md-evaluator` agent or the built-in `general` subagent |
 
 Every agent falls back to an inline re-evaluation when no subagent tool is available.
 
