@@ -148,6 +148,19 @@ class VerdictFormatTest(unittest.TestCase):
         gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
         self.assertIn("unresolved base ref", gate)
 
+    def test_ship_it_records_failed_gate_without_a_fix_pass(self) -> None:
+        gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
+        self.assertIn("a git error on `git diff origin/<default>...HEAD`", gate)
+        self.assertIn("record it in `gateVerdicts`", gate)
+        self.assertIn("`blocker`", gate)
+        self.assertIn("`nextAction`", gate)
+        self.assertIn("a fix pass cannot repair a missing ref", gate)
+
+    def test_ship_it_records_no_review_performed_as_not_performed(self) -> None:
+        gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
+        self.assertIn("`No review performed:`", gate)
+        self.assertIn("record it as not performed, not a pass", gate)
+
     def test_workflow_checks_verdict_keyword_against_labels(self) -> None:
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
         self.assertIn("The keyword must agree with the labels", workflow)

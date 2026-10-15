@@ -1,10 +1,10 @@
 # Adversarial code review gate
 
-Use the installed review skill only if it honors selectors, fresh contexts, a route record for every Code and Findings worker and dispatches the Findings Adversary only after a `blocking:` or `issue:` finding. Otherwise use routed generic workers. Accept `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`; `Review Verdict: FAILED` stops, also for an unresolved base ref. Malformed verdicts get one fresh retry, then failure. Run selected gates; with none selected, advance without recording review.
+Use the installed review skill only if it honors selectors, fresh contexts, a route record for every Code and Findings worker and dispatches the Findings Adversary only after a `blocking:` or `issue:` finding. Otherwise use routed generic workers. Accept `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`; `Review Verdict: FAILED` (also an unresolved base ref, or a git error on `git diff origin/<default>...HEAD` in a generic path) is a failed gate, never CLEAN: record it in `gateVerdicts` with `blocker` the failure and `nextAction` fetching the base ref; a fix pass cannot repair a missing ref. A `CLEAN` whose second line starts `No review performed:` examined nothing: record it as not performed, not a pass. Malformed verdicts get one fresh retry, then failure. Run selected gates; with none selected, advance without recording review.
 
 With claims enabled, reconcile and renew before recording a verdict; a conflicting holder or expired claim blocks writes. Disabled claims require no comment or lease.
 
-When the risk policy selects `inline-review`, make one review pass in a fresh generic subagent context over `git diff origin/<default>...HEAD` and the acceptance criteria: label findings `blocking:`, `issue:` or `question:` with `file:line`. This legacy gate ID does not authorize current-context or inline execution. Record the fresh subagent route and verdict in `gate-inline-review`. A `NEEDS_FIXES` verdict follows the fix steps below and spends the same convergence counters.
+When the risk policy selects `inline-review`, make one review pass in a fresh generic subagent context over `git diff origin/<default>...HEAD` and the acceptance criteria: label findings `blocking:`, `issue:` or `question:` with `file:line`. Record the fresh subagent route and verdict in `gate-inline-review`. A `NEEDS_FIXES` verdict follows the fix steps below and spends the same convergence counters.
 
 Assess the manifest and reserve `review` with `bookkeeping.py reserve --inputs-json MANIFEST`; dispatch only on `dispatch: true`. Reusable results return current-head provenance without a worker. A fresh Findings Adversary runs only when the Code Adversary reports `blocking:` or `issue:` findings. With none, `Review Verdict: CLEAN` ends the gate; never dispatch the Findings Adversary for a CLEAN result.
 
@@ -15,9 +15,9 @@ For a routed generic review, supply the repository, `git diff origin/<default>..
 1. Dispatch a fresh Code Adversary to prove failures with input and `file:line`, suggest fixes, and label findings `blocking:`, `issue:` or `question:`. Blocking findings need executed reproduction or explicit interleaving. Validate `CODE_ADVERSARY_VERDICT:`; malformed output gets one fresh retry, then gate failure. Close each worker.
 2. Only after `blocking:` or `issue:` findings, dispatch a separate fresh Findings Adversary with numbered findings, never the Code worker's reasoning. Refute each against the source. Validate `FINDINGS_ADVERSARY_VERDICT:` with one fresh retry, then gate failure; close the worker.
 
-Apply [worker-events.md](worker-events.md) after each dispatch. Accept only the active dispatch's terminal event, then close that worker once.
+Apply [worker-events.md](worker-events.md) after each dispatch.
 
-The fallback verdict is `NEEDS_FIXES` when any `blocking:` or `issue:` survives refutation, otherwise `CLEAN`. With no subagent capability, block. Inline passes do not satisfy this gate. Sail always pauses when a review subagent is unavailable.
+The fallback verdict is `NEEDS_FIXES` when any `blocking:` or `issue:` survives refutation, otherwise `CLEAN`. With no subagent capability, block. Inline passes never satisfy this gate.
 
 On `NEEDS_FIXES`:
 

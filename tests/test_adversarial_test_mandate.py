@@ -92,6 +92,28 @@ class UnresolvedBaseTest(unittest.TestCase):
         gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
         self.assertIn("`Test Verdict: FAILED` (unresolved base ref)", gate)
 
+    def test_ship_it_records_failed_gate_without_a_fix_pass(self) -> None:
+        gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
+        self.assertIn("Match verdicts as whole lines", gate)
+        self.assertIn("never read as `Test Verdict: FAIL`", gate)
+        self.assertIn("a git error on `git diff origin/<default>...HEAD`", gate)
+        self.assertIn("record it in `gateVerdicts`", gate)
+        self.assertIn("`blocker`", gate)
+        self.assertIn("`nextAction`", gate)
+        self.assertIn("a fix pass cannot repair a missing ref", gate)
+
+    def test_ship_it_records_no_test_performed_as_not_performed(self) -> None:
+        gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
+        self.assertIn("`No test performed:`", gate)
+        self.assertIn("record it as not performed, not a pass", gate)
+
+    def test_skill_mirrors_the_unresolved_base_rule(self) -> None:
+        skill = SKILL_FILE.read_text(encoding="utf-8")
+        self.assertIn("`FAILED` when the base ref does not resolve", skill)
+        self.assertIn(
+            "Treat a base ref that does not resolve as `Test Verdict: FAILED`", skill
+        )
+
 
 class UntestedCriterionEvidenceTest(unittest.TestCase):
     """A PASS (partial) verdict needs an evidence state the PR gate accepts."""

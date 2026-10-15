@@ -27,7 +27,7 @@ Create or update the PR body with `## Motivation`, `## Implementation informatio
 | Jira ticket | The Jira key, as a link to the ticket, in the body (and in the title when the repository's convention puts it there). Never `Closes` |
 | Task description | No issue reference |
 
-Follow the repository's own PR template or conventions when it documents them. Capture the PR number.
+Follow the repository's own PR template or conventions when it documents them.
 
 Read the created PR body back from GitHub. For `PASS (partial)`, verify that `## Untested criteria` contains every criterion and environmental blocker from the verdict before treating PR creation as complete. A missing or altered entry returns to PR-body correction; it does not invalidate the already-valid revision result.
 
@@ -85,7 +85,7 @@ Then return to waiting. After the single fix pass, turn later non-blocking sugge
 Merge only when all of these hold:
 
 - With evidence enabled, the current evidence record is `complete`, every result with `requiredBy: merge` passed on its exact revision, and that revision equals both local `HEAD` and the PR `headRefOid`. With evidence disabled, the checkpoint's gate verdicts must record the same selected gates as passed for that exact revision and PR head.
-- The current PR head has a passing result for every selected gate. Record its `headRefOid`; after a code-changing fix or default-branch merge, recompute risk and validate the new tip under the shared convergence policy. Check `headRefOid` again just before merge. The squash merge commit will have a different SHA; compare the PR head SHA.
+- The current PR head has a passing result for every selected gate. Record its `headRefOid`; after a code-changing fix or default-branch merge, recompute risk and validate the new tip under the shared convergence policy. Check `headRefOid` again just before merge.
 - When `ci` is selected, every required CI check succeeded.
 - When `hosted-review` is selected, every resolved reviewer requirement is satisfied for the current policy. A `review` accepts a submitted no-comment review; an `approval` requires an effective approval.
 - When `hosted-review` is selected, every required reviewer's blocking comment is fixed or answered, and its thread is resolved.

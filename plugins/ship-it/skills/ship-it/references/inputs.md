@@ -11,12 +11,12 @@ Parse leading `--issue` and `--risk low|medium|high` flags in either order, stri
 | Input | Source | Example |
 | :-- | :-- | :-- |
 | Empty | Stop and ask for a task description, a GitHub issue URL, or a Jira URL | |
-| Explicitly approved complex plan | Orchestration: preserve its approved scope and acceptance criteria; resolve or create its umbrella and implementation subissues | Approved plan in the conversation or a supplied plan file |
-| GitHub umbrella issue with implementation subissues | Orchestration: read native subissues and their dependencies; reuse the umbrella | `https://github.com/owner/repo/issues/123` |
+| Explicitly approved complex plan | Orchestration: preserve its approved scope and acceptance criteria; resolve or create its umbrella and implementation subissues | |
+| GitHub umbrella issue with implementation subissues | Orchestration: read native subissues and their dependencies; reuse the umbrella | |
 | GitHub issue URL (github.com or a GitHub Enterprise host `gh` is authenticated for), `owner/repo#N`, or `#N` in the current repository | GitHub issue | `https://github.com/owner/repo/issues/123` |
 | Jira issue URL | Jira ticket | `https://<site>.atlassian.net/browse/KEY-123`, or any `atlassian.net` or Jira URL whose path ends in a `KEY-123` segment (`.../projects/KEY/issues/KEY-123`, service-desk queue links) or that has `selectedIssue=KEY-123` |
 | A lone URL or reference that matches neither (GitHub PR, commit, discussion, a host that is neither GitHub nor Jira) | Unrecognized: stop | `https://github.com/owner/repo/pull/7` |
-| Anything else | Task description | `add a --json flag to the export command` |
+| Anything else | Task description | |
 
 Edge cases:
 
