@@ -24,6 +24,8 @@ class FileDeliveryTest(unittest.TestCase):
             r"^\| `scripts/([^`]+)`[^|]* \| ([^|]+) \|$", reference, re.MULTILINE
         )
         self.assertTrue(rows)
+        import_template = re.findall(r"`python3 -c '([^']+)'`", reference)
+        self.assertEqual(len(import_template), 1)
         self.assertEqual(
             {entry for entry, _ in rows},
             {
@@ -51,9 +53,9 @@ class FileDeliveryTest(unittest.TestCase):
                 }:
                     command = [
                         sys.executable,
-                        "-I",
+                        "-E",
                         "-c",
-                        f"import sys; sys.path.insert(0, {str(bundle / 'scripts')!r}); import {Path(entry).stem}",
+                        import_template[0].replace("MODULE", Path(entry).stem),
                     ]
                 else:
                     command = [
@@ -63,7 +65,7 @@ class FileDeliveryTest(unittest.TestCase):
                     ]
                 result = subprocess.run(
                     command,
-                    cwd=root,
+                    cwd=bundle / "scripts",
                     capture_output=True,
                     text=True,
                     timeout=30,
