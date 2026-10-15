@@ -142,6 +142,10 @@ Validate these invariants in addition to field presence and types:
 - An orchestration checkpoint has one child entry for every native subissue; each dependency names another recorded child. With evidence enabled, a completed child has `evidenceStatus: complete` and its evidence revision equals its gated PR head. With evidence disabled, its evidence status is `disabled` and its checkpoint gate verdicts all pass on the gated PR head.
 - `createdAt` never changes and is not later than `updatedAt`.
 
+## Phase handoffs
+
+Optional `handoffs` retains one receipt per `draft-published` and `before-pr-loop` boundary: stable `id`, `boundary`, `status` (`pending|accepted|fallback`), `revision`, compact `brief`, plus accepted `worker` and `inputTokens` or fallback `reason`. Legacy checkpoints omit the array. Update only with `bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT`; see [handoff.md](handoff.md). Handoffs preserve all other checkpoint state and never reset budgets or verdicts.
+
 ## Safe writes
 
 Validate the complete next document before replacing state. Write it to a same-directory temporary file with owner-only permissions, flush and sync it, preserve the current valid file as `<checkpoint-id>.json.bak`, then atomically rename the temporary file over the checkpoint. Never record successful completion before its operation succeeds. Allowance reservations intentionally persist before work starts; failed/interrupted attempts retain consumption. A failed write leaves the previous checkpoint authoritative.
