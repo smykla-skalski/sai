@@ -19,6 +19,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
 DEFAULT_MAX_AGE: Final = 86400
 REASON: Final = "copilot-quota-refusal"
 REVIEWER: Final = "copilot"
+CLEARED: Final = "cleared"
 
 
 def quota_directory() -> Path:
@@ -52,7 +54,7 @@ def _locked(directory: Path) -> Iterator[None]:
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-def _read_state(path: Path, now: float) -> dict[str, Any] | None:
+def _read_state(path: Path) -> dict[str, Any] | None:
     try:
         state = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -61,20 +63,22 @@ def _read_state(path: Path, now: float) -> dict[str, Any] | None:
         not isinstance(state, dict)
         or set(state) != {"reviewer", "reason", "expiresAt"}
         or state["reviewer"] != REVIEWER
-        or state["reason"] != REASON
+        or state["reason"] not in {REASON, CLEARED}
         or type(state["expiresAt"]) not in {int, float}
         or not math.isfinite(state["expiresAt"])
     ):
         message = "invalid Copilot quota memory; inspect or clear it"
         raise ValueError(message)
-    return state if state["expiresAt"] > now else None
+    return state
 
 
 def quota_status(*, directory: Path | None = None) -> dict[str, Any]:
     """Inspect memory without requesting or waiting for a review."""
     directory = directory or quota_directory()
     with _locked(directory):
-        state = _read_state(directory / "copilot-quota.json", time.time())
+        state = _read_state(directory / "copilot-quota.json")
+        if state and (state["reason"] == CLEARED or state["expiresAt"] <= time.time()):
+            state = None
     return {"requestAllowed": state is None, "quotaMemory": state}
 
 
@@ -82,7 +86,10 @@ def clear_quota(*, directory: Path | None = None) -> dict[str, Any]:
     """Clear the refusal under the same lock used by writers."""
     directory = directory or quota_directory()
     with _locked(directory):
-        (directory / "copilot-quota.json").unlink(missing_ok=True)
+        _write_state(
+            directory / "copilot-quota.json",
+            {"reviewer": REVIEWER, "reason": CLEARED, "expiresAt": time.time()},
+        )
     return {"requestAllowed": True, "quotaMemory": None}
 
 
@@ -90,7 +97,8 @@ def remember_quota(
     *,
     max_age: int = DEFAULT_MAX_AGE,
     directory: Path | None = None,
-) -> dict[str, Any]:
+    submitted_at: float | None = None,
+) -> dict[str, Any] | None:
     """Store a refusal atomically without extending an active expiry."""
     if type(max_age) is not int or max_age <= 0:
         message = "max-age must be a positive integer number of seconds"
@@ -99,26 +107,40 @@ def remember_quota(
     with _locked(directory):
         path = directory / "copilot-quota.json"
         now = time.time()
-        state = _read_state(path, now)
-        if state is None:
-            state = {"reviewer": REVIEWER, "reason": REASON, "expiresAt": now + max_age}
-            temporary = None
-            try:
-                with tempfile.NamedTemporaryFile(
-                    mode="w",
-                    encoding="utf-8",
-                    dir=directory,
-                    delete=False,
-                ) as stream:
-                    temporary = Path(stream.name)
-                    json.dump(state, stream, sort_keys=True)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                temporary.replace(path)
-            finally:
-                if temporary is not None:
-                    temporary.unlink(missing_ok=True)
+        state = _read_state(path)
+        if state is not None:
+            if state["expiresAt"] > now:
+                return state
+            if submitted_at is None or submitted_at <= state["expiresAt"]:
+                return None
+        observed = now if submitted_at is None else min(submitted_at, now)
+        if observed + max_age > now:
+            state = {
+                "reviewer": REVIEWER,
+                "reason": REASON,
+                "expiresAt": observed + max_age,
+            }
+            _write_state(path, state)
     return state
+
+
+def _write_state(path: Path, state: dict[str, Any]) -> None:
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            json.dump(state, stream, sort_keys=True)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def classify_and_remember(
@@ -135,8 +157,22 @@ def classify_and_remember(
     """
     result = classify_reviews(reviews, previous)
     prior = (previous or {}).get("refusalEvidence", [])
-    if any(item not in prior for item in result["refusalEvidence"]):
-        remember_quota(max_age=max_age, directory=directory)
+    for item in result["refusalEvidence"]:
+        if item in prior:
+            continue
+        raw = next((review for review in reviews if review.get("id") == item["id"]), {})
+        timestamp = raw.get("submitted_at") or raw.get("submittedAt")
+        submitted_at = None
+        if timestamp:
+            if not isinstance(timestamp, str):
+                message = "review submitted timestamp must be an ISO datetime"
+                raise ValueError(message)
+            submitted = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            if submitted.tzinfo is None:
+                message = "review submitted timestamp requires a timezone"
+                raise ValueError(message)
+            submitted_at = submitted.timestamp()
+        remember_quota(max_age=max_age, directory=directory, submitted_at=submitted_at)
     result["quotaMemory"] = quota_status(directory=directory)["quotaMemory"]
     result["requestAllowed"] = (
         result["requestAllowed"] and result["quotaMemory"] is None

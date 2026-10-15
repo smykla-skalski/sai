@@ -99,7 +99,8 @@ commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100,after:$checks)
 nodes{__typename ... on CheckRun{databaseId name status conclusion checkSuite{id}
 isRequired(pullRequestNumber:$number)} ... on StatusContext{id context state
 isRequired(pullRequestNumber:$number)}} pageInfo{hasNextPage endCursor}}}}}}
-reviews(first:100,after:$reviews){nodes{databaseId state body url author{login}}
+reviews(first:100,after:$reviews){nodes{databaseId state body url submittedAt
+author{login}}
 pageInfo{hasNextPage endCursor}}
 reviewThreads(first:100,after:$threads){nodes{id isResolved isOutdated
 comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
@@ -155,6 +156,7 @@ def _submitted_reviews(collected: dict) -> list[dict]:
             "state": r["state"],
             "body": r.get("body", ""),
             "html_url": r.get("url"),
+            "submitted_at": r.get("submittedAt"),
             "user": {"login": (r.get("author") or {}).get("login", "deleted")},
         }
         for r in collected["reviews"]

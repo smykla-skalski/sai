@@ -62,7 +62,10 @@ class QuotaMemoryTest(unittest.TestCase):
                 self.assertIsNone(repeated["quotaMemory"])
                 self.assertFalse(repeated["requestAllowed"])
             clear_quota(directory=directory)
-            self.assertFalse((directory / "copilot-quota.json").exists())
+            self.assertEqual(
+                json.loads((directory / "copilot-quota.json").read_text())["reason"],
+                "cleared",
+            )
 
     def test_active_expiry_never_extended_and_real_reviews_survive(self) -> None:
         with tempfile.TemporaryDirectory() as root:
@@ -139,6 +142,40 @@ class QuotaMemoryTest(unittest.TestCase):
             pr["reviews"]["nodes"] = []
             cleared = GitHub("o/other", 2, 9999999999).read()
             self.assertIsNone(cleared["copilotQuotaMemory"])
+
+    def test_restart_and_clear_never_restore_historical_refusal(self) -> None:
+        for timestamp in (None, "1970-01-01T00:01:40Z"):
+            with (
+                self.subTest(timestamp=timestamp),
+                tempfile.TemporaryDirectory() as root,
+            ):
+                directory = Path(root)
+                refusal = {**REFUSAL, "submitted_at": timestamp}
+                with patch("copilot_quota.time.time", return_value=100):
+                    classify_and_remember([refusal], max_age=10, directory=directory)
+                with patch("copilot_quota.time.time", return_value=111):
+                    restarted = classify_and_remember(
+                        [refusal], max_age=10, directory=directory
+                    )
+                    self.assertIsNone(restarted["quotaMemory"])
+                    self.assertEqual(
+                        json.loads((directory / "copilot-quota.json").read_text())[
+                            "expiresAt"
+                        ],
+                        110,
+                    )
+                    clear_quota(directory=directory)
+                    self.assertTrue(quota_status(directory=directory)["requestAllowed"])
+                with patch("copilot_quota.time.time", return_value=112):
+                    self.assertIsNone(
+                        classify_and_remember([refusal], directory=directory)[
+                            "quotaMemory"
+                        ]
+                    )
+                    new = {**refusal, "id": 2, "submitted_at": "1970-01-01T00:01:52Z"}
+                    self.assertIsNotNone(
+                        classify_and_remember([new], directory=directory)["quotaMemory"]
+                    )
 
     def test_invalid_age_and_corrupt_state_fail_without_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as root:
