@@ -159,9 +159,9 @@ bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--
 
 - `create` takes the canonical source object (`{sourceType, repository, issue}`, `{sourceType, site, key}` or `{sourceType, repository, objective, acceptanceCriteria}`), derives `task.canonicalSource`, the checkpoint ID and the file name, defaults `--checkpoint-dir` to the data root above and writes owner-only at phase `resolve`. An existing file for the same source is reported with `created: false` and left untouched; another source at that name stops. Claims stay `null`: their protocol writes them.
 - `set-risk` takes `level`, `diffClass`, `policySource`, `matchedRules`, `requiredGates` and optional `overrideAuthorization`; a level below the recorded one needs the override, which later calls keep.
-- `set-release-policy` takes the normalized object from the release contract. A material change (anything but `resolvedAt`) marks passed `ci` and `hosted-review` verdicts `stale`.
+- `set-release-policy` takes exactly the normalized object and enums from the release contract and rejects anything else. A material change (anything but `resolvedAt`) marks passed `ci` and `hosted-review` verdicts `stale`.
 - `record-gate` takes `gate`, `status` (`passed|failed|blocked`), `revision` (the current workflow revision), `provider`, `summary` (at most 500 characters) and optional `timestamp`, `model`, `url`; it replaces a verdict with the same gate, revision and provider. It is refused while evidence is enabled, because the evidence record owns verdicts.
-- `set-findings` maps finding IDs to `open|fixed|blocked` or `{"disposition":"follow-up","followUpIssue":URL}`, which also appends the URL to `followUpIssues`; `blocked` needs a blocked workflow.
+- `set-findings` maps finding IDs to `open|fixed|blocked` or `{"disposition":"follow-up","followUpIssue":URL}`, which also appends the URL to `followUpIssues`; `blocked` needs a blocked workflow, and any unresolved finding marks a re-attestation `stale`.
 - `attest-review` records the `ship-it-convergence` re-attestation for the current revision from the stored findings, and is refused unless the completed review failed with findings that are all `fixed` or `follow-up`; a clean review is carried to a new head by `assess` and `reserve`.
 
 ## Creation and resume

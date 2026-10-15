@@ -180,6 +180,14 @@ def validate(checkpoint: dict[str, Any]) -> None:
     for field in ("reservations", "findings", "followUpIssues"):
         require(isinstance(state[field], list), f"convergence.{field} must be an array")
     require(
+        checkpoint["workflow"].get("status") == "blocked"
+        or not any(
+            isinstance(finding, dict) and finding.get("disposition") == "blocked"
+            for finding in state["findings"]
+        ),
+        "a blocked finding requires a blocked workflow",
+    )
+    require(
         not state["reviewCycles"]
         or state["reviewedRevision"] is not None
         or any(

@@ -988,8 +988,10 @@ def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
     with checkpoint_lock(path):
         if path.exists():
             existing = load_object(path)
+            existing_task = existing.get("task")
             if (
-                existing.get("task", {}).get("canonicalSource")
+                not isinstance(existing_task, dict)
+                or existing_task.get("canonicalSource")
                 != checkpoint["task"]["canonicalSource"]
             ):
                 message = f"checkpoint {path} belongs to another canonical source"

@@ -42,6 +42,33 @@ RELEASE_LISTS: Final[tuple[str, ...]] = (
     "requiredChecks",
     "activatedFallbacks",
 )
+RELEASE_FIELDS: Final[frozenset[str]] = frozenset(
+    {
+        "schemaVersion",
+        "sources",
+        "requiredReviewers",
+        "requiredChecks",
+        "merge",
+        "issueClosure",
+        "branchCleanup",
+        "activatedFallbacks",
+        "resolvedAt",
+    },
+)
+RELEASE_MERGE_FIELDS: Final[frozenset[str]] = frozenset(
+    {"method", "strategy", "botComment"},
+)
+RELEASE_METHODS: Final[frozenset[str]] = frozenset({"github", "bot-comment"})
+RELEASE_STRATEGIES: Final[frozenset[str]] = frozenset({"merge", "squash", "rebase"})
+RELEASE_CLOSURES: Final[frozenset[str]] = frozenset(
+    {"pull-request-keyword", "manual-after-merge", "unchanged"},
+)
+RELEASE_CLEANUPS: Final[frozenset[str]] = frozenset({"delete", "preserve"})
+RELEASE_REVIEWER_ENUMS: Final[dict[str, frozenset[str]]] = {
+    "kind": frozenset({"human", "automated"}),
+    "requirement": frozenset({"review", "approval"}),
+    "request": frozenset({"reviewer", "team-reviewer", "automatic"}),
+}
 LEGACY_FALLBACK: Final[dict[str, str]] = {
     "gate": "hosted-review",
     "fromMechanism": "copilot-review",
@@ -294,38 +321,89 @@ def material_release_change(old: object, new: dict[str, Any]) -> bool:
     }
 
 
+def unique_strings(values: object, field: str, *, allow_empty: bool) -> None:
+    """Require an array of unique non-empty strings."""
+    require(
+        isinstance(values, list)
+        and all(isinstance(item, str) and item.strip() for item in values)
+        and len(set(values)) == len(values)
+        and (allow_empty or bool(values)),
+        f"releasePolicy {field} must be unique non-empty strings",
+    )
+
+
+def validate_release_merge(merge: object) -> None:
+    """Validate the normalized merge mechanism."""
+    require(
+        isinstance(merge, dict) and set(merge) == RELEASE_MERGE_FIELDS,
+        "releasePolicy merge requires exactly method, strategy and botComment",
+    )
+    require(merge["method"] in RELEASE_METHODS, "releasePolicy merge method is invalid")
+    require(
+        merge["strategy"] in RELEASE_STRATEGIES,
+        "releasePolicy merge strategy is invalid",
+    )
+    comment = merge["botComment"]
+    require(
+        (merge["method"] == "bot-comment")
+        == (isinstance(comment, str) and bool(comment.strip())),
+        "releasePolicy merge botComment is set only for bot-comment",
+    )
+    require(
+        comment is None or isinstance(comment, str),
+        "releasePolicy merge botComment must be a string or null",
+    )
+
+
+def validate_release_reviewers(reviewers: list[Any]) -> None:
+    """Validate reviewer entries without fixing their optional extra fields."""
+    identities: set[str] = set()
+    for reviewer in reviewers:
+        require(isinstance(reviewer, dict), "releasePolicy reviewers must be objects")
+        identity = non_empty(reviewer.get("id"), "releasePolicy reviewer id")
+        require(identity not in identities, "releasePolicy reviewer ids must be unique")
+        identities.add(identity)
+        non_empty(reviewer.get("actor"), "releasePolicy reviewer actor")
+        for field, allowed in RELEASE_REVIEWER_ENUMS.items():
+            require(
+                field not in reviewer or reviewer[field] in allowed,
+                f"releasePolicy reviewer {field} is invalid",
+            )
+
+
 def validate_release_policy(policy: dict[str, Any]) -> None:
     """Validate the normalized release policy object."""
-    require(policy.get("schemaVersion") == 1, "releasePolicy schemaVersion must be 1")
+    require(
+        set(policy) == RELEASE_FIELDS,
+        "releasePolicy requires exactly: " + ", ".join(sorted(RELEASE_FIELDS)),
+    )
+    require(
+        type(policy["schemaVersion"]) is int and policy["schemaVersion"] == 1,
+        "releasePolicy schemaVersion must be 1",
+    )
     for field in RELEASE_LISTS:
         require(
-            isinstance(policy.get(field), list),
+            isinstance(policy[field], list),
             f"releasePolicy {field} must be an array",
         )
+    unique_strings(policy["sources"], "sources", allow_empty=False)
+    unique_strings(policy["requiredChecks"], "requiredChecks", allow_empty=True)
+    validate_release_merge(policy["merge"])
+    validate_release_reviewers(policy["requiredReviewers"])
     require(
-        all(isinstance(item, str) and item.strip() for item in policy["sources"])
-        and bool(policy["sources"]),
-        "releasePolicy sources must be non-empty strings",
+        policy["issueClosure"] in RELEASE_CLOSURES,
+        "releasePolicy issueClosure is invalid",
     )
     require(
-        all(
-            isinstance(item, str) and item.strip() for item in policy["requiredChecks"]
-        ),
-        "releasePolicy requiredChecks must be non-empty strings",
+        policy["branchCleanup"] in RELEASE_CLEANUPS,
+        "releasePolicy branchCleanup is invalid",
     )
-    require(
-        isinstance(policy.get("merge"), dict),
-        "releasePolicy merge must be an object",
-    )
-    for field in ("issueClosure", "branchCleanup"):
-        non_empty(policy.get(field), f"releasePolicy {field}")
-    utc_timestamp(policy.get("resolvedAt"), "releasePolicy resolvedAt")
+    utc_timestamp(policy["resolvedAt"], "releasePolicy resolvedAt")
     fallbacks = policy["activatedFallbacks"]
     require(len(fallbacks) <= 1, "releasePolicy allows at most one activated fallback")
     if fallbacks:
         any_reviewer = any(
-            isinstance(reviewer, dict)
-            and reviewer.get("actor") == "any-authorized-reviewer"
+            reviewer.get("actor") == "any-authorized-reviewer"
             for reviewer in policy["requiredReviewers"]
         )
         require(
@@ -410,6 +488,23 @@ def split_disposition(update: object) -> tuple[object, object]:
     return None, None
 
 
+def stale_review_attestations(checkpoint: dict[str, Any]) -> None:
+    """Stale helper-made re-attestations while a finding is unresolved."""
+    if all(
+        finding["disposition"] in ("fixed", "follow-up")
+        for finding in checkpoint["convergence"]["findings"]
+    ):
+        return
+    invalidation = {"reason": "finding-reopened", "at": now_utc()}
+    for verdict in checkpoint["gateVerdicts"]:
+        if (
+            verdict.get("provider") == "ship-it-convergence"
+            and verdict.get("gate") in REVIEW_GATES
+            and verdict.get("status") == "passed"
+        ):
+            verdict.update(status="stale", invalidation=invalidation)
+
+
 def set_dispositions(
     checkpoint: dict[str, Any],
     updates: dict[str, Any],
@@ -442,6 +537,7 @@ def set_dispositions(
             if url not in state["followUpIssues"]:
                 state["followUpIssues"].append(url)
         findings[identity]["disposition"] = disposition
+    stale_review_attestations(checkpoint)
     return {"findings": {k: v["disposition"] for k, v in findings.items()}}
 
 

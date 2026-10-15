@@ -241,6 +241,13 @@ class CheckpointCreationTest(unittest.TestCase):
                 self.assertNotIn("Traceback", result.stderr)
                 self.assertFalse((self.root / "checkpoints").exists())
 
+    def test_non_object_task_in_an_existing_file_is_a_mismatch(self) -> None:
+        path = Path(json.loads(self.create().stdout)["checkpoint"])
+        path.write_text('{"task": 5}', encoding="utf-8")
+        result = self.create()
+        self.assertEqual(result.returncode, 2)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_invalid_grant_is_rejected_before_writing(self) -> None:
         result = self.create(
             None, None, "--grant-json", json.dumps({**GRANT, "scope": "x"})
@@ -352,6 +359,21 @@ class SectionCommandTest(unittest.TestCase):
                     "risk",
                 )
 
+    def test_bot_comment_release_policy_is_accepted(self) -> None:
+        policy = {
+            **RELEASE_POLICY,
+            "merge": {
+                "method": "bot-comment",
+                "strategy": "squash",
+                "botComment": "squash",
+            },
+            "requiredReviewers": [
+                {"id": "r", "kind": "human", "actor": "team:x", "request": "reviewer"}
+            ],
+        }
+        self.assert_ok(self.command("set-release-policy", "--policy-json", policy))
+        self.assertEqual(self.read()["releasePolicy"], policy)
+
     def test_set_release_policy_and_material_change_stales_hosted_verdicts(
         self,
     ) -> None:
@@ -384,11 +406,35 @@ class SectionCommandTest(unittest.TestCase):
         self.assertEqual(verdicts[1]["status"], "passed")
 
     def test_invalid_release_policy_is_refused(self) -> None:
+        reviewer = {
+            "id": "r",
+            "kind": "human",
+            "actor": "team:x",
+            "request": "reviewer",
+        }
         for field, value in (
             ("schemaVersion", 2),
+            ("schemaVersion", True),
             ("sources", []),
             ("resolvedAt", "yesterday"),
             ("merge", "squash"),
+            ("merge", {}),
+            (
+                "merge",
+                {"method": "bot-comment", "strategy": "squash", "botComment": None},
+            ),
+            (
+                "merge",
+                {"method": "github", "strategy": "squash", "botComment": "squash"},
+            ),
+            ("merge", {"method": "github", "strategy": "fast", "botComment": None}),
+            ("issueClosure", "typo"),
+            ("branchCleanup", "maybe"),
+            ("requiredChecks", ["a", "a"]),
+            ("requiredReviewers", [1]),
+            ("requiredReviewers", [{**reviewer, "kind": "robot"}]),
+            ("requiredReviewers", [reviewer, reviewer]),
+            ("unknownField", "x"),
             ("activatedFallbacks", [{"gate": "hosted-review"}]),
         ):
             with self.subTest(field=field):
@@ -589,6 +635,71 @@ class SectionCommandTest(unittest.TestCase):
                 self.assert_refused(self.attest(), "failed review receipt")
         self.reviewed_document("blocked")
         self.assert_refused(self.attest(), "failed review receipt")
+
+    def test_reopening_a_finding_stales_the_re_attestation(self) -> None:
+        self.reviewed_document()
+        self.assert_ok(
+            self.command(
+                "set-findings", "--dispositions-json", {"F1": "fixed", "F2": "fixed"}
+            )
+        )
+        self.assert_ok(self.attest())
+        self.assert_ok(
+            self.command("set-findings", "--dispositions-json", {"F1": "open"})
+        )
+        verdict = self.read()["gateVerdicts"][0]
+        self.assertEqual(verdict["status"], "stale")
+        self.assertEqual(verdict["invalidation"]["reason"], "finding-reopened")
+        reserve = run(
+            "reserve",
+            "--checkpoint",
+            str(self.path),
+            "--id",
+            "test-1",
+            "--kind",
+            "test",
+            "--revision",
+            REVISION,
+            "--inputs",
+            "affected:one",
+        )
+        self.assertEqual(reserve.returncode, 2)
+
+    def test_blocked_finding_cannot_outlive_the_blocked_workflow(self) -> None:
+        self.reviewed_document()
+        self.assert_ok(
+            run(
+                "transition",
+                "--checkpoint",
+                str(self.path),
+                "--phase",
+                "review",
+                "--status",
+                "blocked",
+                "--blocker",
+                "human decision",
+                "--next-action",
+                "ask",
+            )
+        )
+        self.assert_ok(
+            self.command("set-findings", "--dispositions-json", {"F1": "blocked"})
+        )
+        before = self.path.read_bytes()
+        result = run(
+            "transition",
+            "--checkpoint",
+            str(self.path),
+            "--phase",
+            "review",
+            "--status",
+            "active",
+            "--next-action",
+            "go",
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("blocked finding", result.stderr)
+        self.assertEqual(self.path.read_bytes(), before)
 
     def test_attested_review_unlocks_the_broad_test_reservation(self) -> None:
         self.reviewed_document()
