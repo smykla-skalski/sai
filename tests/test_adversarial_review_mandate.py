@@ -15,6 +15,9 @@ PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins" / "adversarial-r
 AGENTS_DIR = PLUGIN_DIR / "agents"
 REFERENCES_DIR = PLUGIN_DIR / "skills" / "adversarial-review" / "references"
 WORKFLOW_FILE = REFERENCES_DIR / "workflow.md"
+SHIP_IT_REVIEW_GATE = (
+    PLUGIN_DIR.parent / "ship-it" / "skills" / "ship-it" / "references" / "review.md"
+)
 SKILL_FILE = PLUGIN_DIR / "skills" / "adversarial-review" / "SKILL.md"
 ARGUMENT_PLACEHOLDER = "$ARGUMENTS"
 INVOCATION_LINE = "Invocation arguments: `$ARGUMENTS`"
@@ -128,6 +131,22 @@ class VerdictFormatTest(unittest.TestCase):
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
         self.assertIn("Review Verdict: FAILED", workflow)
         self.assertIn("A second malformed reply is a gate failure", workflow)
+
+    def test_unresolved_base_fails_the_gate_not_clean(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertIn('git rev-parse --verify --quiet "<ref>^{commit}"', workflow)
+        self.assertIn("stop with `Review Verdict: FAILED`", workflow)
+        self.assertIn("An unresolved base is never an empty diff", workflow)
+        self.assertIn("base ref '<ref>' does not resolve", workflow)
+
+    def test_empty_diff_is_distinguishable_from_a_real_clean(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertIn("No review performed: empty diff", workflow)
+        self.assertNotIn("Nothing to review: empty diff.", workflow)
+
+    def test_ship_it_stops_on_unresolved_base(self) -> None:
+        gate = SHIP_IT_REVIEW_GATE.read_text(encoding="utf-8")
+        self.assertIn("unresolved base ref", gate)
 
     def test_workflow_checks_verdict_keyword_against_labels(self) -> None:
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")

@@ -50,11 +50,11 @@ Parse from the invocation arguments, given in the Arguments section of SKILL.md 
 
 Do not run or read the product yourself; the subagent does. Resolve only what it needs:
 
-- **Local (`--base` or none):** resolve the default branch with `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `origin/main`). `BASE=$(git merge-base <ref> HEAD)`. Run location: the repository root. Diff command: `git diff <BASE sha>`. Files: `git diff --name-only <BASE sha>` plus untracked files (`git ls-files --others --exclude-standard`).
+- **Local (`--base` or none):** resolve the default branch with `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `origin/main`). `BASE=$(git merge-base <ref> HEAD)`. If `<ref>` does not resolve (`git rev-parse --verify --quiet "<ref>^{commit}"` fails, as with no `origin/main` in the clone) or has no merge-base with `HEAD`, stop with `Test Verdict: FAILED` and `Gate failure: base ref '<ref>' does not resolve to a merge-base with HEAD; fetch it or pass --base <ref>`. An unresolved base is never an empty diff. Run location: the repository root. Diff command: `git diff <BASE sha>`. Files: `git diff --name-only <BASE sha>` plus untracked files (`git ls-files --others --exclude-standard`).
 - **PR URL:** `gh pr view <url> --json number,headRefOid,baseRefName,title,body`. If local `HEAD` is `headRefOid` and the tree is clean, run from the repository root. Otherwise `git fetch origin pull/<number>/head` and `git worktree add --detach <tmpdir> <headRefOid>`; run from that worktree and remove it after Phase 3. Diff command: `gh pr diff <url>`. Use the PR title and body as context when `--context` is absent.
 - **Evidence dir:** `${XDG_DATA_HOME:-$HOME/.local/share}/sai/adversarial-test/<short base or head sha>-<UTC timestamp>`; `mkdir -p` it. It outlives the run and holds the screenshots the verdict cites.
 
-If the file list is empty, output `Test Verdict: PASS` followed by `Nothing to test: empty diff.` and stop.
+If the base resolved and the file list is empty, output `Test Verdict: PASS` followed by `No test performed: empty diff, nothing to test.` and stop. That second line, not the verdict, tells a caller nothing was exercised.
 
 If no context was given and none can be derived (no PR body), proceed; the subagent derives criteria from the diff and says so.
 
@@ -136,10 +136,16 @@ Test Verdict: FAIL
 Test Verdict: BLOCKED
 ```
 
+```
+Test Verdict: FAILED
+Gate failure: base ref '<ref>' does not resolve to a merge-base with HEAD
+```
+
 - **PASS** - every criterion passed on the real surface and no reproduction survived Phase 3.
 - **PASS (partial)** - no reproduction survived and at least one criterion is UNTESTED for an environmental reason; the second line lists each with its blocker. Callers treat it as passing and carry the `Untested:` line into the PR.
 - **FAIL** - at least one surviving reproduction, whatever else is UNTESTED.
 - **BLOCKED** - a product precondition that only a human can supply is missing; the next line names the exact human action.
+- **FAILED** - the gate could not run because the base ref does not resolve. It is a gate failure, never a pass; the next line is the `Gate failure:` line and no criteria follow.
 
 Then the criteria table from the subagent, the surface and evidence lines (screenshot paths with image pixels and runtime content-viewport measurement proof), and the surviving reproductions, strongest first:
 
@@ -165,6 +171,7 @@ If the agent has no subagent tool or both spawn attempts fail, run the pass inli
 - Leaving servers, containers, or worktrees running after the verdict
 - Returning BLOCKED for a sandbox, tooling, or build failure - that is UNTESTED with the blocker, and the verdict is PASS (partial) or FAIL
 - Screenshotting a UI change below 2560x1440, or passing a UI criterion without a screenshot
+- Treating a base ref that does not resolve as an empty diff and returning `PASS`
 - Any prose above the `Test Verdict:` line
 
 ## Example invocations

@@ -1,6 +1,6 @@
 # Adversarial code review gate
 
-Use the installed review skill only if it honors selectors, fresh contexts, a route record for every Code and Findings worker and dispatches the Findings Adversary only after a `blocking:` or `issue:` finding. Otherwise use routed generic workers. Accept `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`; `Review Verdict: FAILED` stops. Malformed verdicts get one fresh retry, then failure. Run selected gates; with none selected, advance without recording review.
+Use the installed review skill only if it honors selectors, fresh contexts, a route record for every Code and Findings worker and dispatches the Findings Adversary only after a `blocking:` or `issue:` finding. Otherwise use routed generic workers. Accept `Review Verdict: CLEAN` or `Review Verdict: NEEDS_FIXES`; `Review Verdict: FAILED` stops, also for an unresolved base ref. Malformed verdicts get one fresh retry, then failure. Run selected gates; with none selected, advance without recording review.
 
 With claims enabled, reconcile and renew before recording a verdict; a conflicting holder or expired claim blocks writes. Disabled claims require no comment or lease.
 

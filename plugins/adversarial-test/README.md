@@ -9,7 +9,7 @@ Unit tests, lint, and build output are supporting evidence only; a PASS backed b
 
 Build output is reused from `${XDG_CACHE_HOME:-$HOME/.cache}/sai/adversarial-test/builds/<repository>/<revision>/`. The tester checks for 20 GB free before a build, runs it as one blocking command and never polls it more often than once per minute.
 
-Output leads with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Verdict: FAIL`, or `Test Verdict: BLOCKED`, so callers such as `ship-it` can gate on the first line.
+Output leads with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Verdict: FAIL`, `Test Verdict: BLOCKED` or `Test Verdict: FAILED`, so callers such as `ship-it` can gate on the first line.
 
 ## Verdicts
 
@@ -19,6 +19,9 @@ Output leads with `Test Verdict: PASS`, `Test Verdict: PASS (partial)`, `Test Ve
 | `PASS (partial)` | Nothing failed, and at least one criterion is `UNTESTED` because the environment could not exercise it: a sandbox without network or a package registry, a missing or fake tool, a toolchain that does not build there, a hook false positive, an unreachable UI pane, a stop directive. The next line lists each untested criterion with its blocker. Callers treat it as passing and carry that list into the PR |
 | `FAIL` | At least one reproduction survived the rerun |
 | `BLOCKED` | A product precondition that only a human can supply is missing (credentials, hardware, an approval, data). The next line names the exact human action |
+| `FAILED` | The gate could not run because the base ref does not resolve. A gate failure, never a pass; the next line names the ref |
+
+A resolved base with an empty diff reports `PASS` with a second line `No test performed: empty diff, nothing to test.`
 
 A UI change (web page, desktop or webview pane) needs a screenshot of the changed surface at a content viewport of at least 2560x1440. Screenshots land in the evidence directory `${XDG_DATA_HOME:-$HOME/.local/share}/sai/adversarial-test/<run>/`, which outlives the run; the report lists each path with its image pixels and a runtime client/content-area measurement. Image pixels, launch flags and outer-window bounds alone do not prove viewport size.
 

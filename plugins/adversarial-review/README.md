@@ -7,7 +7,7 @@ Fast two-pass adversarial code review. It answers one question - is this change 
 
 Each adversary starts in a fresh context, is closed after its verdict and is never reused for a fix or another change. The skill checks every verdict line against the documented format: a malformed reply gets one retry with a fresh subagent, then the gate fails.
 
-Output leads with `Review Verdict: CLEAN`, `Review Verdict: NEEDS_FIXES` or `Review Verdict: FAILED` (a pass returned a malformed verdict twice), so callers such as `ship-it` can gate on the first line. Only `CLEAN` passes.
+Output leads with `Review Verdict: CLEAN`, `Review Verdict: NEEDS_FIXES` or `Review Verdict: FAILED` (a pass returned a malformed verdict twice, or the base ref does not resolve), so callers such as `ship-it` can gate on the first line. Only `CLEAN` passes. A resolved base with an empty diff reports `CLEAN` with a second line `No review performed: empty diff, nothing to review.`
 
 For architecture, conventions, and cross-team impact, use `staff-code-review` instead.
 
