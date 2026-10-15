@@ -253,6 +253,62 @@ class ValidationReuseTest(unittest.TestCase):
         self.assert_denied(result)
         self.assertEqual(self.path.read_bytes(), original)
 
+    def move_head(self, name: str = "src/behavior", text: str = "fix") -> str:
+        original = self.revision
+        (self.repository / name).write_text(text)
+        self.commit()
+        return original
+
+    def test_pending_receipt_finishes_at_its_reserved_revision_after_head_moves(
+        self,
+    ) -> None:
+        self.assert_ok(self.structured())
+        reserved = self.move_head()
+        before = self.read()["convergence"]["reviewCycles"]
+        self.assert_ok(
+            self.finish(
+                "initial",
+                {"verdict": "passed", "findings": [], "output": str(self.output)},
+            )
+        )
+        document = self.read()
+        receipt = document["convergence"]["reservations"][0]
+        self.assertEqual(receipt["status"], "completed")
+        self.assertEqual(receipt["revision"], reserved)
+        self.assertEqual(document["convergence"]["reviewCycles"], before)
+        self.assertEqual(document["convergence"]["reviewedRevision"], reserved)
+        self.assertEqual(document["gateVerdicts"][-1]["revision"], reserved)
+        self.assertEqual(self.assess()["status"], "invalid")
+        self.assert_denied(self.structured("test-1", "test"))
+
+    def test_unrelated_fix_after_pending_receipt_carries_the_result(self) -> None:
+        self.assert_ok(self.structured())
+        self.move_head("unrelated", "changed documentation")
+        self.assert_ok(
+            self.finish(
+                "initial",
+                {"verdict": "passed", "findings": [], "output": str(self.output)},
+            )
+        )
+        receipt = self.assert_ok(self.structured("current"))
+        self.assertFalse(receipt["dispatch"])
+        verdicts = self.read()["gateVerdicts"]
+        self.assertEqual(verdicts[-1]["revision"], self.revision)
+        self.assertEqual(verdicts[-1]["provider"], "ship-it-validation-reuse")
+
+    def test_pending_receipt_cannot_finish_from_unrelated_history(self) -> None:
+        self.assert_ok(self.structured())
+        self.git("checkout", "-q", "--orphan", "unrelated-history")
+        self.move_head()
+        original = self.path.read_bytes()
+        self.assert_denied(
+            self.finish(
+                "initial",
+                {"verdict": "passed", "findings": [], "output": str(self.output)},
+            )
+        )
+        self.assertEqual(self.path.read_bytes(), original)
+
     def test_same_identity_cannot_change_request_on_cache_hit(self) -> None:
         self.complete()
         self.assert_denied(
