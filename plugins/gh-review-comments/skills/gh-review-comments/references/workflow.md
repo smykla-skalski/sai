@@ -22,7 +22,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take `owner/repo`, the PR number, and the flags from the user's request. If either required value is still missing, ask for it before Phase 2 |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take `owner/repo`, the PR number, and the flags from the user's request. If either required value is still missing, ask for it before Phase 2 |
 | Skill directory substitution | Claude Code replaces the placeholder at the start of every script command with this skill's absolute directory. If a script path below does not start with `/`, replace everything before `/scripts/` with the absolute path of the directory holding this SKILL.md. Never search plugin caches or the working directory for the scripts |
 | AskUserQuestion | Ask the question in plain text and wait for the answer. If you cannot wait, stop and report what input is missing |
 | Subagent tool (Agent) | Run the Phase 4 verification inline: re-run `scripts/list-threads.sh` yourself and compare before/after state. On Codex always run it inline, since Codex subagent fan-out is unreliable |
@@ -32,7 +32,7 @@ In Codex, run `gh auth status` before the first script call. If it or a later `g
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - First positional arg: `owner/repo` (e.g., `smykla-skalski/sai`) — **required**
 - Second positional arg: PR number — **required**
@@ -152,7 +152,7 @@ Create and submit a PR review with line-level comments in one REST call.
 
 ### Phase 1: Parse Arguments
 
-1. Parse `$ARGUMENTS` for `owner/repo`, PR number, and flags
+1. Parse the invocation arguments for `owner/repo`, PR number, and flags
 2. Split `owner/repo` into separate `OWNER` and `REPO` variables
 3. Validate: both `owner/repo` and PR number are required
 4. When `--reply` or `--resolve` is set, auto-enable `--unresolved-only`

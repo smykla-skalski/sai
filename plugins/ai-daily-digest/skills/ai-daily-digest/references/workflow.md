@@ -23,7 +23,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the flags from the user's request |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the flags from the user's request |
 | Preprocessed context | If the values under Preprocessed context are unexpanded commands, run each command with the shell and use its output |
 | AskUserQuestion | Ask the same question in plain text, end your turn, and wait for the reply |
 | `disable-model-invocation` | Run only when the user asks for the digest by name or clearly asks for an AI news digest. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`). Copilot CLI honors the key: the skill loads from `/ai-daily-digest` in an interactive session, not from plain requests or `copilot -p` |
@@ -36,7 +36,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - `--focus [technical|business|engineering|leadership|all]` — Default: all
 - `--notion-page-id [UUID]` — Notion parent page ID for digest publishing (overrides env var)
