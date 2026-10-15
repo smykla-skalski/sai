@@ -1,8 +1,8 @@
 # ship-it PR loop: open, wait, fix, merge
 
-Resume a reconciled open PR at its current head. A merge skips this loop, push, merge and revalidation; other results stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
+Resume open PRs at their reconciled head; merged PRs go to completion. Other states stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
 
-Load the resolved release policy from the checkpoint and reconcile it with live GitHub policy before the first push and immediately before merge. A missing, stale, ambiguous or unsatisfied release policy blocks this loop with the exact required human action.
+Reconcile checkpoint release policy with live GitHub policy before the first push and merge. Missing, stale, ambiguous or unsatisfied policy blocks the loop; name the required human action.
 
 For GitHub work with claims enabled, verify the claim before a GitHub write and renew it only immediately before that write when due. Never renew on a timer. A conflicting, expired or unverifiable claim pauses remote writes until reconciliation succeeds.
 
@@ -35,19 +35,11 @@ Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to 
 
 ## Request hosted reviewers
 
-Run this section only when `hosted-review` is selected and the checkpoint's `hostedReviewDecision` is `serviceable`. Request every resolved reviewer whose request mode is `reviewer` or `team-reviewer`; reviewers with `automatic` are requested by repository policy. `not-required` satisfies the gate without a request. `fallback` uses the recorded fallback immediately. `blocked` is a hard stop. Never retry a request after quota, permission or unavailable-service made that reviewer unserviceable.
-
-```bash
-gh pr edit <n> --add-reviewer <request-target>
-```
-
-If the request mechanism itself fails, use the matching GitHub REST reviewer or team-reviewer field once. A quota, permission or unavailable-service response immediately changes `hostedReviewDecision` to the configured `fallback`; activate it without another request. When no fallback exists, record `blocked` with the named policy action and stop. Never leave an unserviceable reviewer pending or retry it. Do not request Copilot unless the resolved policy names it, and do not substitute an actor outside the configured fallback.
+When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery.
 
 ## Wait for hosted gates
 
-Before treating any submitted review as satisfied, classify the complete paginated review response with `scripts/copilot_review.py` (or its `classify_reviews` function). Pass the preceding PR-scoped classifier state as `--previous`; retain its returned `refusalEvidence` and `unserviceable` status across head changes and resumes. A submitted Copilot quota refusal is unserviceable evidence, never a completed review, even when its state is `COMMENTED`. Remaining credits from a quota endpoint do not override an observed refusal.
-
-After a refusal, persist the reviewer decision as unserviceable and set `hostedReviewDecision` to the configured `fallback`, or `blocked` with the exact policy action when no fallback exists. Activate only a configured non-Copilot fallback. Send no further Copilot request and start no Copilot poll or wait for that PR. Optional Copilot never adds a wait or release requirement. General PR snapshots needed for CI, other reviewers and thread resolution may continue; they must retain genuine Copilot reviews and resolve their blocking threads according to repository policy. Use the classifier's `reviews` list for review satisfaction, and the original thread response for thread resolution; a refusal never erases a genuine review on the same PR.
+Before counting reviews, apply [Copilot quota rules](release.md#copilot-quota-refusals).
 
 
 Use one blocking process for the PR/head dispatch; do not spend model turns polling. The portable command uses only Python and authenticated `gh`, paginates reviews/checks/threads, checks the exact head, and emits one compact JSON terminal result:

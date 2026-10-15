@@ -17,15 +17,11 @@ ship-it is written for Claude Code. On Codex, opencode or Copilot CLI, or when a
 | Explicit invocation | ship-it pushes, merges and closes issues, so it runs only when the user invokes it by name. Codex enforces this through `agents/openai.yaml` (`allow_implicit_invocation: false`). On other agents, start only when the user asked to ship a change or invoked `/ship-it` or `$ship-it` |
 | Durable checkpoint | Every harness reads and writes the same JSON contract under the XDG data directory. Do not translate it into harness session state, conversation memory or a temporary file |
 | Scoped authorization | Every harness preserves original user requests and clear approvals of concrete pending requests in checkpoint `authorization.grants`; handoffs retain scope, limits, consumed allowances and status. No special approval wording is required. Internal limits trigger authorized focused acceptance triage under [authorization.md](authorization.md), not renewed permission |
-| Convergence budget | Every harness and Sail worker reads `convergence-policy.json` directly and updates the same checkpoint counters. Harness defaults never widen or reset the budget; neither does a coordinator, worker-rules file, spawn prompt or compaction summary |
+| Convergence budget | Every harness reads `convergence-policy.json` directly and updates the same checkpoint counters. Harness defaults never widen or reset the budget; neither does a coordinator, worker-rules file, spawn prompt or compaction summary |
 
 ## Sandboxed agents
 
 On agents with a command sandbox (Codex), the user's request to ship the change authorizes normal branch, commit, push, PR, review-reply, merge and issue-close actions in the target repository. If a networked `git`, `gh`, `acli` or `jira` command fails because of the sandbox, rerun it with escalation and a one-line justification. After each state-changing step, inspect the git or GitHub state before continuing.
-
-## Sail worker and gate availability
-
-An explicit Sail-managed worktree or worker assignment establishes Sail mode. An orchestration parent must use actual Sail worker sessions and their assigned worktrees. A single-issue Sail worker stays on its assigned branch. Before dispatch or gate execution, confirm the required native subagent capability is available. A failed launch pauses the affected work with the missing capability named; never run implementation in the parent or either review/test gate inline. Independent workers may be concurrent; the Code and Findings Adversaries within one review remain sequential.
 
 ## Codex parallel dispatch
 

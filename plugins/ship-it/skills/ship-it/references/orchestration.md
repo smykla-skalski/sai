@@ -37,7 +37,7 @@ Workers inherit the original user authorization record and its scope, limits, co
 
 ## Agent availability and pause
 
-Check that a worker can launch before dispatch. In Sail, check that fresh review and manual-test subagents can launch before treating a worker as runnable. If any required agent tool or session is unavailable, pause the run and report the exact unavailable capability and affected issues. Do not implement a child in the parent, run either gate inline, or treat automated tests as a manual-test substitute. Resume only when the required agent is available; keep completed children recorded.
+Check that a worker can launch before dispatch. Check that the selected fresh review and manual-test subagents can launch before treating a worker as runnable. If any required agent tool or session is unavailable, pause the run and report the exact unavailable capability and affected issues. Do not implement a child in the parent, run either gate inline, or treat automated tests as a manual-test substitute. Resume only when the required agent is available; keep completed children recorded.
 
 The review's Code and Findings Adversaries remain sequential. The manual-test adversary starts after a clean review. This gate ordering applies within each worker; independent workers may run concurrently up to the pool limit.
 
