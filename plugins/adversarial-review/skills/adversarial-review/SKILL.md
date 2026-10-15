@@ -50,5 +50,6 @@ Paths in the workflow are relative to this skill directory. If argument substitu
 - Follow repository instructions and the user's authorized scope.
 - Preserve validation, state-update, deduplication, adversarial-check, and output requirements exactly as defined in the workflow.
 - Check every adversary's final verdict line against the workflow's documented format: one retry with a fresh subagent, then `Review Verdict: FAILED`.
+- Treat a base ref that does not resolve as `Review Verdict: FAILED`, never as an empty diff or `CLEAN`.
 - Never dispatch the Findings Adversary when no finding is labelled `blocking:` or `issue:`, and never reuse an adversary after its verdict.
 - Stop at every hard stop named by the workflow and state the required next action.

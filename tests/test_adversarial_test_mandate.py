@@ -69,6 +69,26 @@ class VerdictVocabularyTest(unittest.TestCase):
                     self.assertRegex(text, pattern)
 
 
+class UnresolvedBaseTest(unittest.TestCase):
+    """A base ref that does not resolve must fail the gate, never pass it."""
+
+    def test_unresolved_base_fails_the_gate_not_pass(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertIn('git rev-parse --verify --quiet "<ref>^{commit}"', workflow)
+        self.assertIn("stop with `Test Verdict: FAILED`", workflow)
+        self.assertIn("An unresolved base is never an empty diff", workflow)
+        self.assertIn("base ref '<ref>' does not resolve", workflow)
+
+    def test_empty_diff_is_distinguishable_from_a_real_pass(self) -> None:
+        workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
+        self.assertIn("No test performed: empty diff", workflow)
+        self.assertNotIn("Nothing to test: empty diff.", workflow)
+
+    def test_ship_it_stops_on_failed_verdict(self) -> None:
+        gate = SHIP_IT_TEST_GATE.read_text(encoding="utf-8")
+        self.assertIn("`Test Verdict: FAILED` (unresolved base ref)", gate)
+
+
 class UntestedCriterionEvidenceTest(unittest.TestCase):
     """A PASS (partial) verdict needs an evidence state the PR gate accepts."""
 

@@ -50,11 +50,11 @@ Parse from `$ARGUMENTS`:
 
 Do not read the full diff into your own context; the subagents fetch it themselves. Resolve only what they need:
 
-- **Local (`--base` or none):** resolve the default branch with `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `origin/main`). `BASE=$(git merge-base <ref> HEAD)`. Diff command: `git diff <BASE sha>`. Files: `git diff --name-only <BASE sha>`. Untracked files (`git ls-files --others --exclude-standard`) are not in the diff; list them separately so the subagents read them whole.
+- **Local (`--base` or none):** resolve the default branch with `git symbolic-ref --short refs/remotes/origin/HEAD` (fallback `origin/main`). `BASE=$(git merge-base <ref> HEAD)`. If `<ref>` does not resolve (`git rev-parse --verify --quiet "<ref>^{commit}"` fails, as with no `origin/main` in the clone) or has no merge-base with `HEAD`, stop with `Review Verdict: FAILED` and `Gate failure: base ref '<ref>' does not resolve to a merge-base with HEAD; fetch it or pass --base <ref>`. An unresolved base is never an empty diff. Diff command: `git diff <BASE sha>`. Files: `git diff --name-only <BASE sha>`. Untracked files (`git ls-files --others --exclude-standard`) are not in the diff; list them separately so the subagents read them whole.
 - **PR URL:** `gh pr view <url> --json number,headRefOid,baseRefName,title,body`. Diff command: `gh pr diff <url>`. If local `HEAD` is not `headRefOid`, run `git fetch origin pull/<number>/head` and tell the subagents to read changed files with `git show <headRefOid>:<path>` instead of the working tree. Use the PR title and body as context when `--context` is absent.
 - **Diff file:** diff command `cat <file>`; files from its `+++ b/` headers.
 
-If the file list is empty, output `Review Verdict: CLEAN` followed by `Nothing to review: empty diff.` and stop.
+If the base resolved and the file list is empty, output `Review Verdict: CLEAN` followed by `No review performed: empty diff, nothing to review.` and stop. That second line, not the verdict, tells a caller no change was examined.
 
 Assemble one **Review assignment** block, reused verbatim in both phases:
 
@@ -135,7 +135,7 @@ or
 Review Verdict: NEEDS_FIXES
 ```
 
-or, only after a pass returned a malformed verdict twice,
+or, after a pass returned a malformed verdict twice or the base ref did not resolve,
 
 ```
 Review Verdict: FAILED
@@ -143,7 +143,7 @@ Review Verdict: FAILED
 
 - **CLEAN** - no surviving `blocking:` or `issue:`. Suggestions and questions alone stay CLEAN.
 - **NEEDS_FIXES** - at least one surviving `blocking:` or `issue:`.
-- **FAILED** - a gate failure, never a pass: the second line is `Gate failure: <Code|Findings> Adversary returned no valid verdict after one retry`, no findings follow, and callers treat it as a failed gate rather than as CLEAN.
+- **FAILED** - a gate failure, never a pass: the second line is `Gate failure: <Code|Findings> Adversary returned no valid verdict after one retry` or `Gate failure: base ref '<ref>' does not resolve to a merge-base with HEAD`, no findings follow, and callers treat it as a failed gate rather than as CLEAN.
 
 Then the surviving findings, strongest first, in conventional-comment format, high-confidence ones tagged `(verified)`; a `blocking:` keeps its proof line:
 
