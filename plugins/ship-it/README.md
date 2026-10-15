@@ -87,7 +87,7 @@ In Claude Code and Copilot CLI use `/ship-it`, in Codex `$ship-it`:
 | `--risk low\|medium\|high` + any source | Sets an explicit minimum risk; repository rules may raise it |
 | GitHub issue URL | Ships the issue; the PR body has `Closes #N`, so merging closes it |
 | Jira URL | Reads the ticket through Atlassian MCP tools, `acli`, or the `jira` CLI, whichever is available, and asks you to paste it when none is. The Jira key goes in the PR title or body. The ticket is never transitioned, commented on, or edited unless you ask |
-| Approved complex plan or umbrella issue | Reuses or creates a ☂️ umbrella and independent subissues, then dispatches up to three eligible workers. Dependencies wait for prerequisite PRs to merge. The parent only coordinates |
+| Approved complex plan or umbrella issue | Reuses or creates a ☂️ umbrella and independent subissues, then dispatches eligible workers up to available runtime capacity. Dependencies wait for prerequisite PRs to merge. The parent only coordinates |
 
 Input it cannot recognize or read stops with a message before any code changes.
 
@@ -100,3 +100,7 @@ The skill owns the full lifecycle and stops only for genuine ambiguity, branch-p
 ## License
 
 MIT
+
+### Parallel issue execution
+
+Umbrella runs fill available runtime capacity with independent issue workers in isolated worktrees before waiting. There is no fixed three-worker cap. Ready review/test gates receive capacity first, and at least one slot is reserved for selected nested gates. Each issue worker owns its full lifecycle; the coordinator schedules capacity and dependencies. Gate passes within one issue retain their required ordering. A host with four total slots supports two issue workers and one gate alongside the coordinator.
