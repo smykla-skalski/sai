@@ -45,12 +45,15 @@ If the request mechanism itself fails, use the matching GitHub REST reviewer or 
 
 ## Wait for hosted gates
 
-Consume a hosted-state event instead of reading terminal panes or listing agents. On each check, review or thread change inspect:
+Use one blocking process for the PR/head dispatch; do not spend model turns polling. The portable command uses only Python and authenticated `gh`, paginates reviews/checks/threads, checks the exact head, and emits one compact JSON terminal result:
 
-- `gh pr checks <n>` when `ci` is selected.
-- Reviews and outstanding requests when `hosted-review` is selected: `gh api repos/<owner>/<repo>/pulls/<n>/reviews` plus the PR's requested reviewers and teams.
-- Required unresolved, non-outdated review threads via GraphQL `repository.pullRequest.reviewThreads` (`isResolved`, `isOutdated`, comments), filtered by the resolved release policy.
-- Every named policy or platform-required check on the exact PR head when `ci` is selected.
+```bash
+python3 <skill-dir>/scripts/hosted_wait.py <owner>/<repo> <n> --head <sha> --timeout 1800 --check '<policy-check>' --reviewer '<login>:review' --thread-author '<login>'
+```
+
+Repeat `--check` for policy checks and `--reviewer` for resolved reviewer requirements (`review` or `approval`). GitHub-required checks and platform review decisions always bind. Omit `--reviewer` when hosted review is not selected; pass every required thread author, or omit `--thread-author` to include all non-outdated unresolved threads. Never invent a reviewer requirement. Keep the process in the host's background/event waiter when a foreground tool has a shorter time limit; wait on its completion, never restart or read its output repeatedly.
+
+`satisfied` exits 0; `failed`, `head-changed`, `closed`, `merged`, and `deadline` exit 1. API/input errors exit 2. Only `satisfied` passes hosted gates. `merged` routes to delivery reconciliation. A failed/cancelled named or platform-required check returns immediately with its name; a deadline preserves the exact pending requirements and never passes. `changed` names requirement transitions observed since the initial snapshot. A changed head requires a new dispatch after validation reconciliation. Resolve existing comments even when external review was waived.
 
 If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. A code failure is an unresolved acceptance failure under the shared convergence policy and consumes its remaining fix budget; after an internal limit, triage focused recovery under active scoped authorization. Never rerun CI without the repository policy or explicit approval required there.
 If any selected reviewer or check remains unsatisfied for roughly 30 minutes, including a continuously requested reviewer or pending check, block with that exact requirement and the human action that satisfies it; never silently skip it.
