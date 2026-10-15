@@ -30,7 +30,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 | Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the PR URL and flags from the user's request |
 | AskUserQuestion | Not used; the skill never stops for input |
 | Named agent `adversarial-test:test-adversary` | Claude Code and Copilot CLI register it from the plugin's `agents/` directory. Codex and opencode do not; there, or whenever the type is unknown, spawn a generic subagent with the full mandate from [references/test-adversary.md](references/test-adversary.md) prepended (see Phase 2) |
-| Subagent tool (Agent) | Codex: one `spawn_agent` call, waited on and closed before Phase 3. opencode: the `task` tool. No subagent tool, or both spawn attempts fail: run the pass inline yourself (see Fallback) |
+| Subagent tool (Agent) | Codex: one `spawn_agent` call, waited on and closed before Phase 3. opencode: the `subagent` tool (`task` on opencode 1). No subagent tool, or both spawn attempts fail: run the pass inline yourself (see Fallback) |
 | `context: fork` | Not used |
 
 The skill spawns at most one subagent at a time, so it runs sequentially on every agent.
@@ -94,7 +94,7 @@ The instruction for the subagent is: *"Prove this change does not satisfy the ta
 - Agents can finish without returning a payload ([openai/codex#16051](https://github.com/openai/codex/issues/16051)). Validate the reply (below) before using it.
 - Starting servers, binding ports, and network access may need sandbox escalation. Request it with a concise justification rather than downgrading to static evidence.
 
-**opencode.** Use the `task` tool; each call creates a fresh child session, which is the clean context this skill needs. If a `test-adversary` subagent is installed (see the plugin README), use it with the Test assignment and the instruction. Otherwise use the built-in `general` subagent with the mandate prepended.
+**opencode.** Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Each call creates a fresh child session, which is the clean context this skill needs. If a `test-adversary` subagent is installed (see the plugin README), use it with the Test assignment and the instruction. Otherwise use the built-in `general` subagent with the mandate prepended.
 
 **Validation and retry.** The reply must have a `Criteria:` list, an `Untested:` line whenever a criterion is UNTESTED, and end with a `TEST_ADVERSARY_VERDICT:` line. If it is empty or malformed, spawn a fresh subagent once more; if that fails too, run the pass inline (see Fallback).
 

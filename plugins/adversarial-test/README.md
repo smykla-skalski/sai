@@ -70,7 +70,7 @@ In Claude Code and Copilot CLI use `/adversarial-test`, in Codex `$adversarial-t
 | Claude Code | Named agent `adversarial-test:test-adversary` from `agents/`; `general-purpose` with the mandate prepended as fallback |
 | Copilot CLI | Same named agent `adversarial-test:test-adversary`; `general-purpose` fallback |
 | Codex | One `spawn_agent` call with the mandate prepended, closed after the pass |
-| opencode | `task` tool with an installed `test-adversary` agent or the built-in `general` subagent |
+| opencode | `subagent` tool (`task` on opencode 1) with an installed `test-adversary` agent or the built-in `general` subagent |
 
 Every agent falls back to an inline pass when subagents are unavailable or twice decline a runnable surface. Only one subagent runs at a time.
 
