@@ -47,6 +47,10 @@ If the request mechanism itself fails, use the matching GitHub REST reviewer or 
 
 ## Wait for hosted gates
 
+Before treating any submitted review as satisfied, classify the complete paginated review response with `scripts/copilot_review.py` (or its `classify_reviews` function). Pass the preceding PR-scoped classifier state as `--previous`; retain its returned `refusalEvidence` and `unserviceable` status across head changes and resumes. A submitted Copilot quota refusal is unserviceable evidence, never a completed review, even when its state is `COMMENTED`. Remaining credits from a quota endpoint do not override an observed refusal.
+
+After a refusal, persist the reviewer decision as unserviceable and set `hostedReviewDecision` to the configured `fallback`, or `blocked` with the exact policy action when no fallback exists. Activate only a configured non-Copilot fallback. Send no further Copilot request and start no Copilot poll or wait for that PR. Optional Copilot never adds a wait or release requirement. General PR snapshots needed for CI, other reviewers and thread resolution may continue; they must retain genuine Copilot reviews and resolve their blocking threads according to repository policy. Use the classifier's `reviews` list for review satisfaction, and the original thread response for thread resolution; a refusal never erases a genuine review on the same PR.
+
 Consume a hosted-state event instead of reading terminal panes or listing agents. On each check, review or thread change inspect:
 
 - `gh pr checks <n>` when `ci` is selected.
