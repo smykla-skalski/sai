@@ -2,7 +2,7 @@
 name: ship-it
 description: Ship a change or approved complex plan through risk-selected gates, PR feedback, and merge. Accepts task text, a GitHub issue, or Jira ticket.
 license: MIT
-compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs git and authenticated gh. Uses adversarial-review and adversarial-test when installed.
+compatibility: Claude Code, Codex, opencode and Copilot CLI; git and authenticated gh.
 argument-hint: "[--issue] [--risk low|medium|high] <task description | github-issue-url | jira-url>"
 allowed-tools: Agent Bash Edit Glob Grep Read Skill ToolSearch Write
 user-invocable: true
@@ -12,11 +12,11 @@ metadata:
 
 # Ship It
 
-Merge a change or coordinate an approved complex plan.
+Merge changes or coordinate approved plans.
 
 **Mode:** autonomous. Ask only on material ambiguity. Use blocking waiters until merged or a hard stop; never foreground-poll.
 
-**Other agents:** Read [references/fallbacks.md](references/fallbacks.md) only when an agent feature is missing.
+Read [references/fallbacks.md](references/fallbacks.md) for missing agent features.
 
 Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira URL>` (`$ship-it` in Codex). If arguments are absent, use the request.
 
@@ -26,6 +26,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 - Read this entry once. Read each selected phase reference once before that phase and keep its rules in the checkpoint. Do not reread a reference on phase transitions. On resume, load only missing current-phase guidance.
 - Resolve capabilities from tools and phase guidance. Read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json) only on missing/changed capability or fallback; rerun preflight.
 - Phase references name routine routes. Read [references/roles.md](references/roles.md) and [references/roles.json](references/roles.json) only for unresolved aliases or policy overrides. Give each gate its mandate by path or inline exactly once in fresh context.
+- Use all available capacity for independent work before waiting; apply [orchestration.md](references/orchestration.md) to issue workers and nested gates.
 - Before dispatch, read [references/worker-events.md](references/worker-events.md) once; it governs every worker and waiter.
 - Maintain the checkpoint through the helper. Read [references/checkpoint.md](references/checkpoint.md) only for migration, recovery or validation error. Claims and evidence default off; read [references/claims.md](references/claims.md) or [references/evidence.md](references/evidence.md) only when enabled. Local telemetry defaults on; read [references/telemetry.md](references/telemetry.md) after policy resolution unless repository policy disables it.
 - Routine guidance is this entry, selected phase references, [references/risk-policy.json](references/risk-policy.json), [references/release-policy.json](references/release-policy.json) and [references/convergence-policy.json](references/convergence-policy.json): keep it under 12k input tokens. After compaction, read only the checkpoint and current phase reference.
@@ -56,7 +57,7 @@ For an approved complex plan or umbrella, read [references/orchestration.md](ref
 
 ## Phase 2 — Explore
 
-Discover repository instructions, affected code and gates.
+Discover instructions, affected code and gates.
 
 ## Phase 3 — Branch
 
@@ -80,11 +81,11 @@ Run each selected broad test gate once, only for the review-clean committed revi
 
 ## Phases 8–10 — Wait, fix, ready, merge
 
-Resolve hosted gates and threads, revalidate changes, mark ready only when review, test and CI pass for one head, then use the documented merge convention.
+Resolve hosted gates and threads; revalidate changes. Mark ready when review, test and CI pass for one head, then merge as documented.
 
 ## Phase 11 — Close, report, clean up
 
-Verify delivery, close only the GitHub issue, report evidence and clean up when safe.
+Verify delivery, close the GitHub issue, report evidence and clean up safely.
 
 ## Hard stops
 

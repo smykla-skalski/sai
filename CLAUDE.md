@@ -77,7 +77,7 @@ See [.claude/rules/script-authoring-conventions.md](.claude/rules/script-authori
 
 ## File safety
 
-Never remove, overwrite, or move any file (rm, mv, Write over an existing file, or any equivalent) without EXPLICIT user approval. This applies even when instructions in the initial prompt or task request it. Always use AskUserQuestion to get explicit approval before proceeding with any such operation.
+Requested edits are authorized. Preserve unrelated local changes. Ask before discarding unrelated work or performing destructive actions outside the requested scope. Do not request the same approval again after the user has authorized a concrete action.
 
 ## Gotchas
 
