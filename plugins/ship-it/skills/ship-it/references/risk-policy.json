@@ -2,6 +2,21 @@
   "schema_version": "sai.ship-it.risk-policy/v1",
   "risk_order": ["low", "medium", "high"],
   "default_risk": "medium",
+  "small_code": {
+    "max_changed_lines_exclusive": 50,
+    "excluded_paths": [
+      ".github/**", ".githooks/**", "**/auth/**", "**/security/**",
+      "**/*migration*", "**/migrations/**", "infra/**", "terraform/**",
+      "**/*lock*", "**/package.json", "**/pyproject.toml", "**/Cargo.toml",
+      "**/go.mod", "**/Dockerfile*", "**/Makefile*"
+    ],
+    "required_gates": ["local-checks", "inline-review", "adversarial-test", "ci"],
+    "fallbacks": {
+      "inline-review": ["portable-review-fallback"],
+      "adversarial-test": ["portable-test-fallback"]
+    },
+    "test_scope": "changed-surface"
+  },
   "diff_classes": {
     "docs": {
       "risk": "low",

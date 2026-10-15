@@ -76,6 +76,20 @@ Before the first commit there is no committed change set: leave `risk.level`, `r
 
 ## Deterministic selection
 
+### Small code profile
+
+The bundled-only `small_code` profile keeps risk `medium` and diff class `code`, but selects one fresh `inline-review` pass plus `adversarial-test` limited to the changed surface. Every code change still requires a manual test; a failing acceptance reproduction still blocks delivery. Reject repository policies containing `small_code`; repositories raise requirements through existing defaults, rules and gate sets.
+
+Eligibility requires a non-empty committed code diff with **fewer than 50 added plus deleted lines**, summed across the entire change set, including documentation and tests. Measure from the merge-base with the current default branch using `git diff --numstat --no-renames <merge-base> HEAD`; exactly 50 lines uses ordinary gates. Count renames as deletion plus addition and check both old and new paths. Binary entries, unreadable statistics, mode changes, symlinks, submodules or uncommitted changes disqualify the profile. Never estimate size from the last commit or just production files.
+
+Disqualify any path matching bundled `small_code.excluded_paths`, any repository path rule, or any identified security, authorization, credential, data-loss, destructive-concurrency, migration, release or infrastructure risk, even when its path has an innocuous name. A repository policy with `default_risk` at least `medium`, any explicit `--risk medium|high`, or a prior ordinary-code/full-gate selection also disqualifies it. A repository selected gate set cannot remove bundled requirements: union it with bundled profile or ordinary class gates, with `adversarial-review` superseding `inline-review`. Thus a repository may raise validation and never lower it.
+
+For an eligible initial selection use `small_code.required_gates` and its declared fallbacks; otherwise keep ordinary level gates. Preserve selected full gates and broad test scope on later revisions; becoming smaller does not grant a downgrade. Recompute eligibility after every commit or default-branch integration; loss of eligibility restores ordinary gates, invalidates affected evidence and broadens test scope before delivery. Keep hosted release requirements as additional floors.
+
+Record the profile decision in `risk.matchedRules` as an object with `profile` (`small-code` or `ordinary`), `changedLines`, `testScope` (`changed-surface` or `broad`) and `reason`. Include these facts in each review/test input manifest `policyFacts` and in gate mandates, so a profile change invalidates reuse. Report `Profile`, `Changed lines`, `Manual test scope` and the eligibility or exclusion reason before validation alongside the report below. A failed size read reports `unknown` and ordinary gates.
+
+### Level and gates
+
 1. Load the repository policy, or the bundled policy when it is absent. Diff classes always come from the bundled policy.
 2. Classify the change set and start at its bundled class level: `low` for `docs`, `medium` for `code`. Raise it to a repository policy's `default_risk` when that is higher. Raise it to the highest risk from every matching path rule.
 3. Treat `--risk <level>` from the original user request as another floor. An agent may raise this result for an identified risk and record its reason.

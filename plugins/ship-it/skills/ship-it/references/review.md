@@ -6,6 +6,8 @@ With claims enabled, reconcile and renew before recording a verdict; a conflicti
 
 When the risk policy selects `inline-review`, make one review pass in a fresh generic subagent context over `git diff origin/<default>...HEAD` and the acceptance criteria: label findings `blocking:`, `issue:` or `question:` with `file:line`. Record the fresh subagent route and verdict in `gate-inline-review`. A `NEEDS_FIXES` verdict follows the fix steps below and spends the same convergence counters.
 
+The eligible `small-code` profile uses the same one-pass `inline-review` route with no Findings Adversary, while retaining its changed-surface manual test. Include the profile decision and measured size in the review manifest and mandate. It does not waive any acceptance finding or failing test.
+
 Assess the manifest and reserve `review` with `bookkeeping.py reserve --inputs-json MANIFEST`; dispatch only on `dispatch: true`. Reusable results return current-head provenance without a worker. A fresh Findings Adversary runs only when the Code Adversary reports `blocking:` or `issue:` findings. With none, `Review Verdict: CLEAN` ends the gate; never dispatch the Findings Adversary for a CLEAN result.
 
 Record each review invocation before dispatch. Reject inline or reused implementation context. Each pass and retry needs a fresh subagent execution and a stable dispatch ID.
