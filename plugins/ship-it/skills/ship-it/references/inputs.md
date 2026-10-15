@@ -11,12 +11,12 @@ Parse leading `--issue` and `--risk low|medium|high` flags in either order, stri
 | Input | Source | Example |
 | :-- | :-- | :-- |
 | Empty | Stop and ask for a task description, a GitHub issue URL, or a Jira URL | |
-| Explicitly approved complex plan | Orchestration: preserve its approved scope and acceptance criteria; resolve or create its umbrella and implementation subissues | Approved plan in the conversation or a supplied plan file |
-| GitHub umbrella issue with implementation subissues | Orchestration: read native subissues and their dependencies; reuse the umbrella | `https://github.com/owner/repo/issues/123` |
+| Explicitly approved complex plan | Orchestration: preserve its approved scope and acceptance criteria; resolve or create its umbrella and implementation subissues | |
+| GitHub umbrella issue with implementation subissues | Orchestration: read native subissues and their dependencies; reuse the umbrella | |
 | GitHub issue URL (github.com or a GitHub Enterprise host `gh` is authenticated for), `owner/repo#N`, or `#N` in the current repository | GitHub issue | `https://github.com/owner/repo/issues/123` |
 | Jira issue URL | Jira ticket | `https://<site>.atlassian.net/browse/KEY-123`, or any `atlassian.net` or Jira URL whose path ends in a `KEY-123` segment (`.../projects/KEY/issues/KEY-123`, service-desk queue links) or that has `selectedIssue=KEY-123` |
 | A lone URL or reference that matches neither (GitHub PR, commit, discussion, a host that is neither GitHub nor Jira) | Unrecognized: stop | `https://github.com/owner/repo/pull/7` |
-| Anything else | Task description | `add a --json flag to the export command` |
+| Anything else | Task description | |
 
 Edge cases:
 
@@ -43,7 +43,7 @@ Parse the owner, repository and issue number, then inspect the issue with `gh is
 
 ## Jira ticket
 
-Extract the key case-insensitively (`[A-Za-z][A-Za-z0-9_]+-[0-9]+`; Jira accepts `/browse/proj-123`), uppercase it (`PROJ-123`), and take the site (the URL's host). Use only sources that target that site: the same key can exist on another site, so a source logged into a different site would read the wrong ticket. Read the ticket with the first site-matching source that works, moving to the next on a missing tool, an auth error, or a not-found answer (Jira returns the same not-found for a ticket the account cannot see):
+Extract the key case-insensitively (`[A-Za-z][A-Za-z0-9_]+-[0-9]+`; Jira accepts `/browse/proj-123`), uppercase it (`PROJ-123`), and take the site (the URL's host). Use only sources that target that site. Read the ticket with the first site-matching source that works, moving to the next on a missing tool, an auth error, or a not-found answer:
 
 1. Atlassian MCP tools. In Claude Code load them with ToolSearch (query `atlassian jira`); on Codex, Copilot CLI and opencode use them only when the session already lists them. Skip them when the site is not among the sites they can reach (for example `getAccessibleAtlassianResources`); otherwise use the issue-read tool (for example `getJiraIssue`) with the key and that site.
 2. `acli jira workitem view <KEY>` when `command -v acli` succeeds and `acli jira auth status` shows the URL's site.
