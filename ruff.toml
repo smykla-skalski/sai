@@ -15,7 +15,7 @@ ignore = [
 "plugins/refactor-council/skills/refactor-council/scripts/**" = [
     "S603", # subprocess is intentional: wraps git with a fixed arg list, no shell, no untrusted input
 ]
-"tests/**" = [
+"{tests/**,**/test_*.py}" = [
     "D1",     # docstrings not required in test files
     "E501",   # test strings are naturally long; wrapping hurts readability
     "COM812", # trailing comma style not enforced in tests
