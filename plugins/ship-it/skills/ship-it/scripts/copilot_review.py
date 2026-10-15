@@ -24,7 +24,8 @@ QUOTA: Final = re.compile(
     re.IGNORECASE,
 )
 REFUSAL: Final = re.compile(
-    r"(?:^|[.!?]\s+)(?:copilot\s+|i(?:\s+am|\s+was|'m)?\s+)?"
+    r"(?:^|[.!?]\s+)(?:copilot(?:\s+is|\s+was)?\s+"
+    r"|i(?:\s+am|\s+was|'m)?\s+)?"
     r"(?:unable|cannot|can't|could not|couldn't)\s+"
     r"(?:to\s+)?review\b"
     r"|\byou(?:'ve|\s+have)?\s+(?:exceeded|exhausted|reached|used up)\b"

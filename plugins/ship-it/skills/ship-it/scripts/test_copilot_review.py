@@ -28,6 +28,8 @@ class CopilotReviewTest(unittest.TestCase):
             "You've reached your monthly limit for Copilot code reviews.",
             "Unable to review: premium request allowance exhausted.",
             "Copilot couldn't review because the review request limit was reached.",
+            "Copilot was unable to review this pull request because the monthly code review limit was exceeded.",
+            "Copilot is unable to review this pull request because the quota was exceeded.",
         ):
             with self.subTest(body=body):
                 result = classify_reviews([review(body)])
