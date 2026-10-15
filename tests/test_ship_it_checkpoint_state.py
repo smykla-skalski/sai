@@ -214,6 +214,33 @@ class CheckpointCreationTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 2, result.stdout)
                 self.assertFalse((self.root / "checkpoints").exists())
 
+    def test_malformed_json_and_source_types_exit_with_usage_errors(self) -> None:
+        for name, source, criteria in (
+            ("criteria", None, "not json"),
+            ("source type", {"sourceType": []}, None),
+        ):
+            with self.subTest(name):
+                result = run(
+                    "create",
+                    "--repository",
+                    str(self.root),
+                    "--identity",
+                    "github.com/smykla-skalski/sai",
+                    "--source-json",
+                    json.dumps(source or GITHUB_SOURCE),
+                    "--title",
+                    "t",
+                    "--objective",
+                    "o",
+                    "--criteria-json",
+                    criteria or '["c"]',
+                    "--checkpoint-dir",
+                    str(self.root / "checkpoints"),
+                )
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+                self.assertFalse((self.root / "checkpoints").exists())
+
     def test_invalid_grant_is_rejected_before_writing(self) -> None:
         result = self.create(
             None, None, "--grant-json", json.dumps({**GRANT, "scope": "x"})
@@ -292,6 +319,24 @@ class SectionCommandTest(unittest.TestCase):
         lowered = {**RISK, "overrideAuthorization": override}
         self.assert_ok(self.command("set-risk", "--risk-json", lowered))
         self.assert_ok(self.command("set-risk", "--risk-json", RISK))
+        self.assertEqual(self.read()["risk"]["overrideAuthorization"], override)
+
+    def test_explicit_null_override_keeps_the_recorded_authorization(self) -> None:
+        override = "user: ship at medium"
+        self.assert_ok(
+            self.command(
+                "set-risk",
+                "--risk-json",
+                {**RISK, "level": "high", "overrideAuthorization": override},
+            )
+        )
+        self.assert_ok(
+            self.command(
+                "set-risk",
+                "--risk-json",
+                {**RISK, "overrideAuthorization": None},
+            )
+        )
         self.assertEqual(self.read()["risk"]["overrideAuthorization"], override)
 
     def test_invalid_risk_is_refused(self) -> None:
@@ -413,10 +458,22 @@ class SectionCommandTest(unittest.TestCase):
             self.command("record-gate", "--verdict-json", verdict), "evidence record"
         )
 
-    def reviewed_document(self) -> None:
+    def reviewed_document(self, verdict: str = "failed") -> None:
         convergence = self.document["convergence"]
         convergence.update(
             {
+                "reservations": [
+                    {
+                        "id": "review-1",
+                        "kind": "review",
+                        "revision": "c" * 40,
+                        "inputs": "affected:one",
+                        "reservedAt": "2026-01-01T00:00:00Z",
+                        "ordinal": 1,
+                        "status": "completed",
+                        "result": {"verdict": verdict},
+                    }
+                ],
                 "reviewCycles": 1,
                 "startedAt": "2026-01-01T00:00:00Z",
                 "reviewedRevision": "c" * 40,
@@ -519,6 +576,19 @@ class SectionCommandTest(unittest.TestCase):
         self.assertEqual(verdict["reviewedRevision"], "c" * 40)
         self.assertEqual(verdict["commands"], ["python3 -m unittest"])
         self.assertEqual([f["id"] for f in verdict["findings"]], ["F1", "F2"])
+
+    def test_attest_review_requires_a_failed_review_with_findings(self) -> None:
+        self.reviewed_document("passed")
+        self.assert_refused(self.attest(), "failed review receipt")
+        for verdict in ("failed", "blocked"):
+            with self.subTest(verdict=verdict):
+                self.reviewed_document(verdict)
+                convergence = self.document["convergence"]
+                convergence["findings"] = []
+                self.write(self.document)
+                self.assert_refused(self.attest(), "failed review receipt")
+        self.reviewed_document("blocked")
+        self.assert_refused(self.attest(), "failed review receipt")
 
     def test_attested_review_unlocks_the_broad_test_reservation(self) -> None:
         self.reviewed_document()

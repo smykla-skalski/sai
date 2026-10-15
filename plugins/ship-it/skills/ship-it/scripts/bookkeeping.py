@@ -956,7 +956,7 @@ def default_checkpoint_dir() -> Path:
 def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
     """Create a checkpoint at phase resolve; never replace an existing one."""
     source = checkpoint_state.parse_object(args.source_json, "--source-json")
-    criteria = json.loads(args.criteria_json)
+    criteria = checkpoint_state.parse_json(args.criteria_json, "--criteria-json")
     task = {
         "sourceUrl": args.source_url,
         "title": args.title,

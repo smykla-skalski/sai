@@ -66,13 +66,18 @@ def now_utc() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
-def parse_object(text: str, option: str) -> dict[str, Any]:
-    """Parse a JSON object option."""
+def parse_json(text: str, option: str) -> object:
+    """Parse a JSON option."""
     try:
-        value = json.loads(text)
+        return json.loads(text)
     except json.JSONDecodeError as error:
         message = f"invalid {option}: {error}"
         raise StateError(message) from error
+
+
+def parse_object(text: str, option: str) -> dict[str, Any]:
+    """Parse a JSON object option."""
+    value = parse_json(text, option)
     require(isinstance(value, dict), f"{option} must contain an object")
     return value
 
@@ -114,7 +119,7 @@ def canonical_source(source: dict[str, Any]) -> str:
     """Validate a task source and serialize it exactly as the identity contract."""
     source_type = source.get("sourceType")
     require(
-        source_type in SOURCE_FIELDS,
+        isinstance(source_type, str) and source_type in SOURCE_FIELDS,
         "source sourceType must be github, jira or description",
     )
     expected = SOURCE_FIELDS[str(source_type)]
@@ -261,7 +266,9 @@ def set_risk(checkpoint: dict[str, Any], risk: dict[str, Any]) -> dict[str, Any]
         and len(set(gates)) == len(gates),
         "risk requiredGates must be unique non-empty strings",
     )
-    override = risk.get("overrideAuthorization", current.get("overrideAuthorization"))
+    override = risk.get("overrideAuthorization") or current.get(
+        "overrideAuthorization",
+    )
     require(
         override is None or (isinstance(override, str) and override.strip()),
         "risk overrideAuthorization must be the exact user authorization or null",
@@ -458,6 +465,23 @@ def attest_review(
     require(
         state["reviewCycles"] > 0 and state["reviewedRevision"] is not None,
         "re-attestation requires a completed review cycle",
+    )
+    review = next(
+        (
+            receipt
+            for receipt in state["reservations"]
+            if receipt["kind"] == "review"
+            and receipt["status"] == "completed"
+            and receipt["revision"] == state["reviewedRevision"]
+        ),
+        None,
+    )
+    require(
+        review is not None
+        and review["result"]["verdict"] == "failed"
+        and bool(state["findings"]),
+        "re-attestation requires a failed review receipt with recorded findings; "
+        "carry a clean review to a new head with assess and reserve",
     )
     require(
         all(
