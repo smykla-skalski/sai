@@ -18,7 +18,13 @@ Review whether a change should exist, fits the system, survives failure, and rem
 
 Before reviewing, read [references/workflow.md](references/workflow.md) completely. It is the authoritative procedure for input resolution, research, every review lens, synthesis, adversarial verification, humanization, persistence, GitHub posting, output format, and severity calibration. Follow its phases in order and load every deeper reference it names at the stated gate.
 
-Paths in the guidance are relative to this skill directory. On agents without Claude features, use the compatibility fallbacks in its `Agent compatibility` section. Take an unresolved `$ARGUMENTS` value from the user's request.
+Paths in the guidance are relative to this skill directory. On agents without Claude features, use the compatibility fallbacks in its `Agent compatibility` section.
+
+## Arguments
+
+Invocation arguments: `$ARGUMENTS`
+
+These are the PR URL, file paths or diff and the `--no-adversary` flag the user gave on invocation. The workflow reads them from here, not from its own text. If the line above is empty or still shows the literal placeholder, the client passed none: take the same values from the user's request.
 
 ## Core flow
 

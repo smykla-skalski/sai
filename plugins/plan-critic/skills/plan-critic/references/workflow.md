@@ -22,7 +22,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the plan path, pasted plan, or `--from-conversation` from the user's request |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the plan path, pasted plan, or `--from-conversation` from the user's request |
 | AskUserQuestion | Ask the same question in plain text with the same options and wait for the answer |
 | Explore subagent (Phase 2) | Build the Grounding Brief inline with grep/read. Do this on Codex, opencode and Copilot CLI, and in Claude Code whenever the Explore agent is unavailable |
 | Named agents `plan-critic:skeptic-reviewer` / `architect-reviewer` / `verifier-reviewer` | Claude Code and Copilot CLI register them from the plugin's `agents/` directory. Codex and opencode do not; there, or whenever the type is unknown, use a generic subagent with the matching mandate from `references/` prepended (see [Spawning persona reviewers](#spawning-persona-reviewers)) |
@@ -31,7 +31,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 | Argument | Type | Description |
 | :-- | :-- | :-- |

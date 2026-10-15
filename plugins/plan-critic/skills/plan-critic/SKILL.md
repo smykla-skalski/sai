@@ -21,7 +21,13 @@ Critique a Claude implementation plan **before** any code is written. The cost o
 
 Before taking any action, read [references/workflow.md](references/workflow.md) completely. It is the authoritative procedure and preserves every platform fallback, decision rule, template, command, validation step, and output contract. Follow its sections in order and load the deeper references it names only at their stated gates.
 
-Paths in the workflow are relative to this skill directory. If argument substitution is unavailable or unresolved, take the input and flags from the user's request. When a named tool, agent, or interaction primitive is unavailable, use the workflow's compatibility fallback; never silently skip the behavior.
+Paths in the workflow are relative to this skill directory. When a named tool, agent, or interaction primitive is unavailable, use the workflow's compatibility fallback; never silently skip the behavior.
+
+## Arguments
+
+Invocation arguments: `$ARGUMENTS`
+
+These are the plan file path, pasted plan or `--from-conversation` the user gave on invocation. The workflow reads them from here, not from its own text. If the line above is empty or still shows the literal placeholder, the client passed none: take the same values from the user's request.
 
 ## Core flow
 

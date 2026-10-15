@@ -22,7 +22,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Input shows no value or an unreplaced placeholder, take the target and `--no-adversary` from the user's request. If no target is resolvable, ask which PR, diff or files to review; do not invent one |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the target and `--no-adversary` from the user's request. If no target is resolvable, ask which PR, diff or files to review; do not invent one |
 | Skill directory substitution | Claude Code replaces the placeholder at the start of every script command with this skill's absolute directory. If a script path below does not start with `/`, replace everything before `/scripts/` with the absolute path of the directory holding this SKILL.md |
 | AskUserQuestion | Not used |
 | Explore subagent (Pass 1.5) | Copilot CLI, Codex and opencode build the Research Brief inline with grep, git and file reads, once, and pass it verbatim to every reviewer |
@@ -37,7 +37,7 @@ On Codex, use native agent tools (`spawn_agent` / `wait_agent` / `close_agent`) 
 
 ## Input
 
-Parse from: $ARGUMENTS
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none).
 
 Accept any of:
 - GitHub PR URL → use `gh pr diff <url>` and `gh pr view <url>` to fetch

@@ -47,7 +47,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the target and flags from the user's request and local context |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the target and flags from the user's request and local context |
 | Skill directory substitution | If a command or path below shows an unreplaced placeholder instead of an absolute path, use this skill's directory (`scripts/`, `references/`) |
 | Named persona agents (`refactor-council:<persona>`) | Claude Code and Copilot CLI register them from the plugin's `agents/`. Elsewhere, or when the type is unknown, spawn a generic subagent with [references/agents/](references/agents/)`<persona>.md` prepended to the briefing, or adopt that file's instructions inline |
 | Parallel persona fan-out | Claude Code only. Codex, Copilot CLI and opencode run the personas sequentially by default (see [Sequential mode](#sequential-mode-codex-copilot-cli-opencode)) |
@@ -56,7 +56,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 1. Read flags first: `--no-scan`, `--no-adversary`, `--since <value>` (default `12.month`), `--personas <comma-list>` (subset of the seven; default all seven).
 2. The remaining text is the **target**. Resolve it:
