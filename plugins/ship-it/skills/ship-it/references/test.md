@@ -6,7 +6,7 @@ Start testing only after the selected review gate is CLEAN for the exact current
 
 Bundled policy selects `adversarial-test` for `medium` and `high` only. Low risk selects no manual test: record no skipped or blocked result.
 
-For the eligible `small-code` profile recorded in `risk.matchedRules`, pass `testScope: changed-surface` to a fresh tester. Exercise each changed behavior through its real entry point, one happy path and the relevant boundary or error path, plus directly affected callers. Limit malformed-input, repetition, concurrency and adjacent-flow probes to behavior implicated by the diff or acceptance criteria; do not explore unrelated surfaces. Include changed-surface scope in the test manifest and result. This is a manual test, never source inspection or automated tests alone. Keep the same failure, reproduction, blocking and fresh-context rules below. Ordinary code profiles retain the broad mandate.
+For `small-code`, read [risk.md](risk.md) for the `testScope: changed-surface` mandate. Ordinary code profiles retain the broad mandate.
 
 For GitHub work with claims enabled, verify and renew the claim when due before writing the manual-test result. A verdict from another holder or after expiry does not satisfy the gate until ownership is reconciled.
 

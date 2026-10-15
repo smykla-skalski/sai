@@ -78,7 +78,7 @@ Before the first commit there is no committed change set: leave `risk.level`, `r
 
 ### Small code profile
 
-The bundled-only `small_code` profile keeps risk `medium` and diff class `code`, but selects one fresh `inline-review` pass plus `adversarial-test` limited to the changed surface. Every code change still requires a manual test; a failing acceptance reproduction still blocks delivery. Reject repository policies containing `small_code`; repositories raise requirements through existing defaults, rules and gate sets.
+Load [small-code-policy.json](small-code-policy.json) when `risk-policy.json.small_code` selects it. The bundled-only `small_code` profile keeps risk `medium` and diff class `code`, but selects one fresh `inline-review` pass plus `adversarial-test` limited to the changed surface. Every code change still requires a manual test; a failing acceptance reproduction still blocks delivery. Reject repository policies containing `small_code`; repositories raise requirements through existing defaults, rules and gate sets.
 
 Eligibility requires a non-empty committed code diff with **fewer than 50 added plus deleted lines**, summed across the entire change set, including documentation and tests. Measure from the merge-base with the current default branch using `git diff --numstat --no-renames <merge-base> HEAD`; exactly 50 lines uses ordinary gates. Count renames as deletion plus addition and check both old and new paths. Binary entries, unreadable statistics, mode changes, symlinks, submodules or uncommitted changes disqualify the profile. Never estimate size from the last commit or just production files.
 
@@ -87,6 +87,8 @@ Disqualify any path matching bundled `small_code.excluded_paths`, any repository
 For an eligible initial selection use `small_code.required_gates` and its declared fallbacks; otherwise keep ordinary level gates. Preserve selected full gates and broad test scope on later revisions; becoming smaller does not grant a downgrade. Recompute eligibility after every commit or default-branch integration; loss of eligibility restores ordinary gates, invalidates affected evidence and broadens test scope before delivery. Keep hosted release requirements as additional floors.
 
 Record the profile decision in `risk.matchedRules` as an object with `profile` (`small-code` or `ordinary`), `changedLines`, `testScope` (`changed-surface` or `broad`) and `reason`. Include these facts in each review/test input manifest `policyFacts` and in gate mandates, so a profile change invalidates reuse. Report `Profile`, `Changed lines`, `Manual test scope` and the eligibility or exclusion reason before validation alongside the report below. A failed size read reports `unknown` and ordinary gates.
+
+For the eligible `small-code` profile recorded in `risk.matchedRules`, pass `testScope: changed-surface` to a fresh tester. Exercise each changed behavior through its real entry point, one happy path and the relevant boundary or error path, plus directly affected callers. Limit malformed-input, repetition, concurrency and adjacent-flow probes to behavior implicated by the diff or acceptance criteria; do not explore unrelated surfaces. Include changed-surface scope in the test manifest and result. This is a manual test, never source inspection or automated tests alone. Keep the same failure, reproduction, blocking and fresh-context rules below. Ordinary code profiles retain the broad mandate.
 
 ### Level and gates
 

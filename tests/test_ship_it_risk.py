@@ -184,7 +184,7 @@ class ShipItRiskContractTest(unittest.TestCase):
                 self.assertIn(expected, self.guidance)
 
     def test_small_code_retains_manual_test_and_one_fresh_review(self) -> None:
-        profile = self.policy["small_code"]
+        profile = json.loads((SKILL_DIR / "references" / self.policy["small_code"]).read_text(encoding="utf-8"))
         self.assertEqual(profile["max_changed_lines_exclusive"], 50)
         self.assertEqual(profile["test_scope"], "changed-surface")
         self.assertEqual(profile["required_gates"], [
@@ -209,10 +209,9 @@ class ShipItRiskContractTest(unittest.TestCase):
             self.assertIn(required, self.guidance)
         test = TEST_REFERENCE.read_text(encoding="utf-8")
         self.assertIn("testScope: changed-surface", test)
-        self.assertIn("real entry point", test)
+        self.assertIn("real entry point", self.guidance)
         self.assertIn("Ordinary code profiles retain the broad mandate", test)
-        review = REVIEW_REFERENCE.read_text(encoding="utf-8")
-        self.assertIn("no Findings Adversary", review)
+        self.assertIn("It dispatches no Findings Adversary", self.guidance)
 
     def test_context_isolation_applies_to_every_review_gate(self) -> None:
         roles = json.loads(
