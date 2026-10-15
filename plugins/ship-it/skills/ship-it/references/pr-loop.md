@@ -37,7 +37,7 @@ Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to 
 
 ## Request hosted reviewers
 
-When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery. Do not request Copilot unless policy names it.
+When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Check `scripts/copilot_quota.py status` before Copilot; refusal activates fallback or stops. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery. Do not request Copilot unless policy names it.
 
 ## Wait for hosted gates
 
