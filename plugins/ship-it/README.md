@@ -109,7 +109,7 @@ Umbrella runs fill available runtime capacity with independent issue workers in 
 
 Before requesting Copilot, inspect `python3 <skill-dir>/scripts/copilot_quota.py status`. After reading submitted reviews, run `copilot_quota.py classify REVIEWS.json --previous PR_STATE.json` and retain its returned PR state across snapshots. The wrapper preserves genuine reviews and remembers new refusal evidence for other runs by the same OS user. It never requests a review or bypasses configured fallback policy.
 
-Memory expires after **24 hours (86,400 seconds)** by default, so restored monthly quota is retried within a day. Override the lifetime when observing a refusal with `classify --max-age SECONDS` or Python `classify_and_remember(..., max_age=SECONDS)`. Use a positive integer; concurrent observations do not extend an active expiry. Expiry and clearing affect future requests on other PRs, never a refusal already retained in a PR decision.
+Memory expires after **24 hours (86,400 seconds)** by default, so restored monthly quota is retried within a day. Override the lifetime when observing a refusal with `classify --max-age SECONDS` or Python `classify_and_remember(..., max_age=SECONDS)`. The hosted waiter uses the same memory automatically and accepts `--quota-max-age SECONDS`. Use a positive integer; concurrent observations do not extend an active expiry. Expiry and clearing affect future requests on other PRs, never a refusal already retained in a PR decision.
 
 - Inspect: `python3 <skill-dir>/scripts/copilot_quota.py status`
 - Clear: `python3 <skill-dir>/scripts/copilot_quota.py clear`

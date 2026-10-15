@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import multiprocessing
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +18,7 @@ from copilot_quota import (
     quota_status,
     remember_quota,
 )
+from hosted_wait import GitHub, evaluate
 
 REFUSAL = {
     "user": {"login": "copilot"},
@@ -92,6 +94,51 @@ class QuotaMemoryTest(unittest.TestCase):
             self.assertEqual(
                 set(state["quotaMemory"]), {"reviewer", "reason", "expiresAt"}
             )
+
+    def test_waiter_remembers_refusal_for_later_pr_and_preserves_reviews(self) -> None:
+        head = "a" * 40
+        pr = {
+            "headRefOid": head,
+            "state": "OPEN",
+            "merged": False,
+            "reviewDecision": None,
+            "baseRef": None,
+            "commits": {"nodes": [{"commit": {"statusCheckRollup": None}}]},
+            "reviews": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            "reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+        }
+        response = {"data": {"repository": {"pullRequest": pr}}}
+        refusal = {
+            "databaseId": 1,
+            "state": "COMMENTED",
+            "author": {"login": "copilot"},
+            "body": REFUSAL["body"],
+        }
+        with (
+            tempfile.TemporaryDirectory() as root,
+            patch.dict(os.environ, {"XDG_DATA_HOME": root}),
+            patch("hosted_wait.GitHub._request", return_value=response),
+        ):
+            pr["reviews"]["nodes"] = [refusal]
+            first = GitHub("o/r", 1, 9999999999).read()
+            self.assertTrue(first["copilotUnserviceable"])
+            pr["reviews"]["nodes"] = []
+            later = GitHub("o/other", 2, 9999999999).read()
+            result = evaluate(later, head, [], {"copilot": "review"}, [])
+            self.assertEqual(result["status"], "failed")
+            self.assertIn("unserviceable", str(result))
+            pr["reviews"]["nodes"] = [
+                {**refusal, "databaseId": 2, "body": "Looks good", "state": "APPROVED"}
+            ]
+            real = GitHub("o/other", 2, 9999999999).read()
+            self.assertEqual(
+                evaluate(real, head, [], {"copilot": "approval"}, [])["status"],
+                "satisfied",
+            )
+            clear_quota()
+            pr["reviews"]["nodes"] = []
+            cleared = GitHub("o/other", 2, 9999999999).read()
+            self.assertIsNone(cleared["copilotQuotaMemory"])
 
     def test_invalid_age_and_corrupt_state_fail_without_overwrite(self) -> None:
         with tempfile.TemporaryDirectory() as root:
