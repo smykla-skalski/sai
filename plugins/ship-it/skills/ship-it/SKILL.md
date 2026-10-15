@@ -22,18 +22,19 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 
 ## Workflow contract
 
-- Run phases in order; a missing preferred tool never skips a gate.
-- Read this entry once. Read each selected phase reference once before that phase and keep its rules in the checkpoint. Do not reread a reference on phase transitions. On resume, load only missing current-phase guidance.
+- Run phases in order; never skip gates.
+- Read this entry once and each selected phase reference once before its phase; checkpoint its rules. Do not reread a reference on phase transitions. On resume, load missing guidance only.
 - Resolve capabilities from tools and phase guidance. Read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json) only on missing/changed capability or fallback; rerun preflight.
 - Phase references name routine routes. Read [references/roles.md](references/roles.md) and [references/roles.json](references/roles.json) only for unresolved aliases or policy overrides. Give each gate its mandate by path or inline exactly once in fresh context.
-- Use all available capacity for independent work before waiting; apply [orchestration.md](references/orchestration.md) to issue workers and nested gates.
+- Use available capacity before waiting; apply [orchestration.md](references/orchestration.md) to issue workers and nested gates.
 - Before dispatch, read [references/worker-events.md](references/worker-events.md) once; it governs every worker and waiter.
-- Maintain the checkpoint through the helper. Read [references/checkpoint.md](references/checkpoint.md) only for migration, recovery or validation error. Claims and evidence default off; read [references/claims.md](references/claims.md) or [references/evidence.md](references/evidence.md) only when enabled. Local telemetry defaults on; read [references/telemetry.md](references/telemetry.md) after policy resolution unless repository policy disables it.
-- Routine guidance is this entry, selected phase references, [references/risk-policy.json](references/risk-policy.json), [references/release-policy.json](references/release-policy.json) and [references/convergence-policy.json](references/convergence-policy.json): keep it under 12k input tokens. After compaction, read only the checkpoint and current phase reference.
+- Maintain the checkpoint through the helper. Read [references/checkpoint.md](references/checkpoint.md) only for migration, recovery or validation error. Claims/evidence default off; read [references/claims.md](references/claims.md) or [references/evidence.md](references/evidence.md) only when enabled. Telemetry defaults on; read [references/telemetry.md](references/telemetry.md) after policy resolution unless repository policy disables it.
+- Routine guidance includes selected phase references, [references/risk-policy.json](references/risk-policy.json), [references/release-policy.json](references/release-policy.json) and [references/convergence-policy.json](references/convergence-policy.json): keep it under 12k input tokens. After compaction, read only the checkpoint and current phase reference.
 - Read [references/risk.md](references/risk.md) or [references/release.md](references/release.md) only on override/ambiguity; read [references/convergence.md](references/convergence.md) only after failure, recovery or exhaustive opt-in. Checkpoint gates, release policy and budget before validation.
-- Assess gate inputs before validation or integration; read [validation-reuse.md](references/validation-reuse.md). Reuse only verified results with current-head provenance.
+- Before validation or integration read [validation-reuse.md](references/validation-reuse.md). Reuse only verified results with current-head provenance.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
-- In Sail mode, missing worker or gate subagents pause the run; never replace them with inline work.
+- If connected tools expose Sail, read [references/sail.md](references/sail.md) before resolution. Otherwise do not load it.
+- For file-by-file helper delivery, read [references/helper-loading.md](references/helper-loading.md).
 
 ## Phase reference index
 
@@ -53,7 +54,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 
 Resolve the source, criteria and scoped authorization, then create or resume the checkpoint before changes.
 
-For an approved complex plan or umbrella, read [references/orchestration.md](references/orchestration.md); the parent never implements a child. Ordinary issues use the phases below. In Sail, missing workers or gates pause the run.
+For an approved complex plan or umbrella, read [references/orchestration.md](references/orchestration.md); the parent never implements a child. Ordinary issues follow the phases below.
 
 ## Phase 2 — Explore
 
@@ -61,7 +62,7 @@ Discover instructions, affected code and gates.
 
 ## Phase 3 — Branch
 
-Use an isolated branch from the current default branch or assigned Sail worktree.
+Use an isolated branch from the current default branch or assigned host worktree.
 
 ## Phase 4 — Implement
 
