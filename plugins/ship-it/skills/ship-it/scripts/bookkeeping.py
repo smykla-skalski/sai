@@ -64,6 +64,7 @@ from convergence import (
 from convergence import (
     validate as validate_convergence,
 )
+from handoff import record_handoff
 from validation_reuse import assess, capture, digest, unavailable_decision
 
 SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
@@ -1208,6 +1209,7 @@ def add_state_commands(
     creation.add_argument("--grant-json", action="append", default=[])
     creation.add_argument("--checkpoint-dir")
     for name, option, text in (
+        ("handoff", "--handoff-json", "prepare or acknowledge a phase handoff"),
         ("set-risk", "--risk-json", "set the risk selection"),
         ("set-release-policy", "--policy-json", "store the release policy"),
         ("record-gate", "--verdict-json", "record one gate verdict"),
@@ -1244,6 +1246,12 @@ def main(argv: list[str] | None = None) -> int:
             result = reconcile_delivery(args)
         elif args.command == "create":
             result = create_checkpoint(args)
+        elif args.command == "handoff":
+            update = checkpoint_state.parse_object(args.handoff_json, "--handoff-json")
+            result = mutate_checkpoint(
+                Path(args.checkpoint),
+                lambda checkpoint: record_handoff(checkpoint, update),
+            )
         elif args.command in SECTION_COMMANDS:
             result = section_operation(args)
         else:

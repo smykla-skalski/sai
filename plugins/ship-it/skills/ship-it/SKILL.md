@@ -70,7 +70,7 @@ Implement the smallest complete change with behavior tests and signed convention
 
 ## Phase 5 — Publish draft PR
 
-After the first committed revision passes local checks, push it and open a draft PR so CI starts. The draft remains pending review and test gates.
+After local checks, push the committed revision and open a draft PR. Apply [handoffs](references/handoff.md).
 
 ## Phase 6 — Review
 
