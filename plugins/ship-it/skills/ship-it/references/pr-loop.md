@@ -1,5 +1,7 @@
 # ship-it PR loop: open, wait, fix, merge
 
+Apply [handoff.md](handoff.md) before first entry (`before-pr-loop`).
+
 Resume open PRs at their reconciled head; merged PRs go to completion. Other states stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
 
 Reconcile the resolved release policy from the checkpoint with live GitHub policy before the first push and merge. Missing, stale, ambiguous or unsatisfied policy blocks the loop; name the required human action.

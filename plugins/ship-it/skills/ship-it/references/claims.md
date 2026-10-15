@@ -49,6 +49,10 @@ Renew the same comment only immediately before a repository or GitHub write when
 
 On resume, reread the issue and the checkpoint's claim comment before changing repository or remote state. Continue only when the comment is active, unexpired and owned by the checkpoint holder. If another active holder exists, stop with its identity. If this holder's claim expired, use the takeover flow; never silently reactivate it.
 
+## Cooperative continuation
+
+A fresh lifecycle continuation following [handoff.md](handoff.md) resumes the checkpoint's existing logical task holder, even when the new execution has another session or Sail worker identity. This is an explicit exception to choosing a new worker-based holder during initial acquisition. Before acknowledgment, reconcile the live active, unexpired claim and pending receipt's `claimBinding` with the checkpoint. The outgoing worker delegates that same holder by dispatching the pending continuation, stops writes when it accepts, and records the fresh execution as receipt `worker`. The accepted successor alone may renew or release the existing holder's claim. Keep the comment ID, holder, evidence binding and completed verdicts unchanged; this is not takeover and never resets results. A changed holder, expired lease or unverified predecessor stops delegation and follows the existing reconciliation/takeover rules. Never assume delegation solely from possession of a checkpoint.
+
 ## Audited takeover
 
 Before replacing an expired claim, treat the matching expired comment with the greatest numeric GitHub comment database ID as the previous claim and retain every older comment as history:
