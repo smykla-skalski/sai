@@ -31,7 +31,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the file path, text, and flags from the user's request |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the file path, text, and flags from the user's request |
 | AskUserQuestion | Ask the question in plain text and wait for the answer. If you cannot wait (for example you run as a forked subagent), stop and report what input is missing |
 | Subagent tool (Agent) | Run the Phase 2 scan inline: read the catalog yourself and build the same JSON hit list. Do this whenever no subagent tool is available, including in Claude Code inside a forked skill. On Codex always run it inline, since Codex subagent fan-out is unreliable |
 | `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
@@ -40,7 +40,7 @@ In Codex, if the sandbox blocks writing the target file, request escalation with
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 | Flag | Default | Purpose |
 | :-- | :-- | :-- |
@@ -68,7 +68,7 @@ Read [references/elements-of-style.md](references/elements-of-style.md) for comp
 
 ### Phase 1: Input discovery
 
-1. Parse `$ARGUMENTS` for file path and flags (see [Agent compatibility](#agent-compatibility) when it is empty).
+1. Parse the invocation arguments for file path and flags (see [Agent compatibility](#agent-compatibility) when they are empty).
 2. If no file path or text is provided, use AskUserQuestion to get the target file or text.
 3. Read the target file. If the input is raw text (not a file path), store it for processing.
 4. Determine the text's intended tone and audience from context (technical docs, blog post, PR description, commit message, etc.).

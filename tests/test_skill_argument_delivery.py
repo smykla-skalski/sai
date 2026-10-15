@@ -16,16 +16,22 @@ from pathlib import Path
 
 PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
 ARGUMENT_PLACEHOLDER = "$ARGUMENTS"
-INVOCATION_LINE = "Invocation arguments: `$ARGUMENTS`"
+INVOCATION_SECTION = "\n## Arguments\n\nInvocation arguments: `$ARGUMENTS`\n"
 ARGUMENTS_SECTION = "Arguments section of SKILL.md"
 REQUEST_FALLBACK = "the user's request"
 SKILL_ARGUMENTS = {
     "council": ("core-eng", "debate"),
+    "generate-claude-md": ("--output", "--update"),
+    "humanize": ("--score-only", "--dry-run"),
+    "kubecon-cfp": ("--track", "--format"),
     "plan-critic": ("--from-conversation",),
+    "promptgen": ("--for", "--research"),
     "refactor-council": ("--no-scan", "--personas"),
     "review-claude-md": ("--score-only", "--fix"),
     "staff-code-review": ("--no-adversary",),
+    "staff-resume": ("--job-url", "--mode"),
     "technical-debt-manager": ("--focus", "--label"),
+    "test-writer": ("--review", "--lang"),
 }
 
 
@@ -39,7 +45,7 @@ class ArgumentDeliveryTest(unittest.TestCase):
             with self.subTest(skill=name):
                 skill = (skill_dir(name) / "SKILL.md").read_text(encoding="utf-8")
                 self.assertEqual(skill.count(ARGUMENT_PLACEHOLDER), 1)
-                self.assertIn(INVOCATION_LINE, skill)
+                self.assertIn(INVOCATION_SECTION, skill)
 
     def test_references_hold_no_placeholder_no_client_substitutes(self) -> None:
         for name in SKILL_ARGUMENTS:
@@ -56,7 +62,7 @@ class ArgumentDeliveryTest(unittest.TestCase):
                 workflow = (skill_dir(name) / "references" / "workflow.md").read_text(
                     encoding="utf-8"
                 )
-                self.assertIn(ARGUMENTS_SECTION, workflow)
+                self.assertGreaterEqual(workflow.count(ARGUMENTS_SECTION), 2)
                 self.assertIn(REQUEST_FALLBACK, workflow)
 
     def test_workflow_documents_every_argument(self) -> None:
