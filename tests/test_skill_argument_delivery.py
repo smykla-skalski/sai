@@ -21,8 +21,11 @@ ARGUMENTS_SECTION = "Arguments section of SKILL.md"
 REQUEST_FALLBACK = "the user's request"
 FALLBACK_ROW_PREFIXES = ("| Argument substitution |", "| Arguments |")
 SKILL_ARGUMENTS = {
+    "ai-daily-digest": ("--focus", "--no-notion"),
     "council": ("core-eng", "debate"),
     "generate-claude-md": ("--output", "--update"),
+    "gh-review-comments": ("--author", "--resolve"),
+    "git-stage-hunk": ("--hunk", "--verify"),
     "humanize": ("--score-only", "--dry-run"),
     "kubecon-cfp": ("--track", "--format"),
     "plan-critic": ("--from-conversation",),
@@ -56,6 +59,12 @@ class ArgumentDeliveryTest(unittest.TestCase):
                 ):
                     text = reference.read_text(encoding="utf-8")
                     self.assertNotIn(ARGUMENT_PLACEHOLDER, text)
+
+    def test_no_skill_reference_holds_a_placeholder(self) -> None:
+        for reference in sorted(PLUGINS_DIR.glob("*/skills/*/references/**/*.md")):
+            with self.subTest(reference=reference.relative_to(PLUGINS_DIR).as_posix()):
+                text = reference.read_text(encoding="utf-8")
+                self.assertNotIn(ARGUMENT_PLACEHOLDER, text)
 
     def test_workflow_reads_arguments_from_skill_entry_or_request(self) -> None:
         for name in SKILL_ARGUMENTS:

@@ -55,7 +55,7 @@ The workflow is written for Claude Code; on other agents, or when a Claude featu
 | Claude Code feature | Fallback |
 | :-- | :-- |
 | Skill directory substitution | If the Claude Code path in the paragraph above is not absolute, use the directory that holds this SKILL.md as `<skill-dir>` |
-| Argument substitution | If the "Parse from" line under Arguments shows no flags or an unreplaced placeholder, take the mode and flags from the user's request; with none, default to `--list` |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the mode and flags from the user's request; with none, default to `--list` |
 | Shell preprocessing (Preprocessed context) | If the OS line below shows a command instead of a value, run `uname -s` yourself before Phase 2 |
 | AskUserQuestion | Ask the question in plain text and wait for the answer |
 | Subagents, `context: fork` | Not used; the skill runs in the main agent loop |
@@ -68,7 +68,7 @@ In Codex the skill is explicit-invocation only (`agents/openai.yaml` sets `allow
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 | Flag | Default | Purpose |
 | :-- | :-- | :-- |
@@ -94,7 +94,7 @@ Primary workflow: `--list` then `--hunk` (see Quick workflow above). Other modes
 
 ### Phase 1: Setup
 
-1. Parse `$ARGUMENTS` for mode flags and options.
+1. Parse the invocation arguments for mode flags and options.
 
 ### Phase 2: Dependency check
 
