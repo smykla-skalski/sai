@@ -19,6 +19,8 @@ import subprocess
 import time
 from typing import Final
 
+from copilot_review import classify_reviews
+
 MAX_TIMEOUT: Final = 86400
 MAX_INTERVAL: Final = 600
 
@@ -87,7 +89,7 @@ commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100,after:$checks)
 nodes{__typename ... on CheckRun{databaseId name status conclusion checkSuite{id}
 isRequired(pullRequestNumber:$number)} ... on StatusContext{id context state
 isRequired(pullRequestNumber:$number)}} pageInfo{hasNextPage endCursor}}}}}}
-reviews(first:100,after:$reviews){nodes{databaseId state author{login}}
+reviews(first:100,after:$reviews){nodes{databaseId state body url author{login}}
 pageInfo{hasNextPage endCursor}}
 reviewThreads(first:100,after:$threads){nodes{id isResolved isOutdated
 comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
@@ -196,11 +198,15 @@ def _normalize(pr: dict, collected: dict) -> dict:
         {
             "id": r["databaseId"],
             "state": r["state"],
+            "body": r.get("body", ""),
+            "html_url": r.get("url"),
             "user": {"login": (r.get("author") or {}).get("login", "deleted")},
         }
         for r in collected["reviews"]
     ]
+    serviceability = classify_reviews(reviews)
     return {
+        "copilotUnserviceable": serviceability["unserviceable"],
         "head": pr["headRefOid"],
         "state": pr["state"],
         "merged": pr["merged"],
@@ -208,7 +214,7 @@ def _normalize(pr: dict, collected: dict) -> dict:
         "threads": collected["threads"],
         "checks": checks,
         "statuses": statuses,
-        "reviews": reviews,
+        "reviews": serviceability["reviews"],
         "required": required,
     }
 
@@ -307,6 +313,12 @@ def _review_requirements(
         ):
             effective[review["user"]["login"].casefold()] = review
     for login, requirement in reviewers.items():
+        if login.casefold() in {
+            "copilot-pull-request-reviewer",
+            "copilot-pull-request-reviewer[bot]",
+        } and snapshot.get("copilotUnserviceable"):
+            failed.append(f"review:{login}:unserviceable:activate-configured-fallback")
+            continue
         review = effective.get(login.casefold())
         if not review or review["state"] == "DISMISSED":
             pending.append(f"review:{login}:missing")

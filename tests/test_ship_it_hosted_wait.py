@@ -13,6 +13,7 @@ PATH = (
     Path(__file__).resolve().parents[1]
     / "plugins/ship-it/skills/ship-it/scripts/hosted_wait.py"
 )
+sys.path.insert(0, str(PATH.parent))
 spec = importlib.util.spec_from_file_location("hosted_wait", PATH)
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
@@ -193,11 +194,14 @@ class WaitTests(unittest.TestCase):
             result = module.wait(forge, HEAD, ([], {}, []))
         self.assertEqual(result["status"], "deadline")
         self.assertEqual(result["pending"], ["check:build:pending"])
-        with patch.object(
-            module.subprocess,
-            "run",
-            side_effect=module.subprocess.TimeoutExpired("gh", 1),
-        ), self.assertRaises(TimeoutError):
+        with (
+            patch.object(
+                module.subprocess,
+                "run",
+                side_effect=module.subprocess.TimeoutExpired("gh", 1),
+            ),
+            self.assertRaises(TimeoutError),
+        ):
             module._gh_json({}, 1)
         with (
             patch.object(module, "_gh_json", side_effect=TimeoutError),
@@ -215,6 +219,15 @@ class WaitTests(unittest.TestCase):
             snapshot(reviews=reviews), reviewers={"Alice": "approval"}
         )
         self.assertEqual(result["status"], "satisfied")
+
+    def test_refusal_never_satisfies_required_copilot(self) -> None:
+        state = snapshot(copilotUnserviceable=True)
+        result = self.evaluate(
+            state, reviewers={"copilot-pull-request-reviewer[bot]": "review"}
+        )
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("unserviceable", str(result["failed"]))
+        self.assertEqual(self.evaluate(state)["status"], "satisfied")
 
 
 if __name__ == "__main__":
