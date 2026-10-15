@@ -2,7 +2,7 @@
 
 Resume open PRs at their reconciled head; merged PRs go to completion. Other states stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
 
-Reconcile checkpoint release policy with live GitHub policy before the first push and merge. Missing, stale, ambiguous or unsatisfied policy blocks the loop; name the required human action.
+Reconcile the resolved release policy from the checkpoint with live GitHub policy before the first push and merge. Missing, stale, ambiguous or unsatisfied policy blocks the loop; name the required human action.
 
 For GitHub work with claims enabled, verify the claim before a GitHub write and renew it only immediately before that write when due. Never renew on a timer. A conflicting, expired or unverifiable claim pauses remote writes until reconciliation succeeds.
 
@@ -35,22 +35,21 @@ Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to 
 
 ## Request hosted reviewers
 
-When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery.
+When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery. Do not request Copilot unless policy names it.
 
 ## Wait for hosted gates
 
 Before counting reviews, apply [Copilot quota rules](release.md#copilot-quota-refusals).
 
-
-Use one blocking process for the PR/head dispatch; do not spend model turns polling. The portable command uses only Python and authenticated `gh`, paginates reviews/checks/threads, checks the exact head, and emits one compact JSON terminal result:
+Run one blocking process per PR/head; it uses Python and `gh`, paginates checks/reviews/threads and emits one terminal JSON:
 
 ```bash
 python3 <skill-dir>/scripts/hosted_wait.py <owner>/<repo> <n> --head <sha> --timeout 1800 --check '<policy-check>' --reviewer '<login>:review' --thread-author '<login>'
 ```
 
-Repeat `--check` for policy checks and `--reviewer` for resolved reviewer requirements (`review` or `approval`). GitHub-required checks and platform review decisions always bind. Omit `--reviewer` when hosted review is not selected; pass every required thread author, or omit `--thread-author` to include all non-outdated unresolved threads. Never invent a reviewer requirement. Keep the process in the host's background/event waiter when a foreground tool has a shorter time limit; wait on its completion, never restart or read its output repeatedly.
+Use `--help` for flags. Repeat policy checks and required reviewers (`review|approval`); omit reviewers without hosted review. Omit thread authors to include all unresolved non-outdated threads. Platform gates always bind. Run under one background/event waiter if foreground limits are short; never poll or restart.
 
-`satisfied` exits 0; `failed`, `head-changed`, `closed`, `merged`, and `deadline` exit 1. API/input errors exit 2. Only `satisfied` passes hosted gates. `merged` routes to delivery reconciliation. A failed/cancelled named or platform-required check returns immediately with its name; a deadline preserves the exact pending requirements and never passes. `changed` names requirement transitions observed since the initial snapshot. A changed head requires a new dispatch after validation reconciliation. Resolve existing comments even when external review was waived.
+Only `satisfied` exits 0. Failures, head changes, closure, merge and deadline exit 1; API/input errors exit 2. Results name failed or pending requirements and observed transitions. Reconcile merged delivery or a changed head before continuing; resolve existing comments even when external review was waived.
 
 If selected CI fails, read [ci-triage.md](ci-triage.md) before retrieving logs. Deduplicate the revision/workflow/job/attempt, bound and redact failing sections, classify the failure with evidence, then route only code failures back to implementation. A code failure is an unresolved acceptance failure under the shared convergence policy and consumes its remaining fix budget; after an internal limit, triage focused recovery under active scoped authorization. Never rerun CI without the repository policy or explicit approval required there.
 If any selected reviewer or check remains unsatisfied for roughly 30 minutes, including a continuously requested reviewer or pending check, block with that exact requirement and the human action that satisfies it; never silently skip it.

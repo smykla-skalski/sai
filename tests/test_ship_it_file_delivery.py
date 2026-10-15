@@ -50,6 +50,7 @@ class FileDeliveryTest(unittest.TestCase):
                     "checkpoint_state.py",
                     "convergence.py",
                     "validation_reuse.py",
+                    "token_cost.py",
                 }:
                     command = [
                         sys.executable,
