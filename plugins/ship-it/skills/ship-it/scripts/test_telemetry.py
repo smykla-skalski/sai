@@ -369,7 +369,24 @@ def test_usage_cost_cli() -> None:
             run(root, "usage", "--run-id", run_id, "--phase", "test", "--observation-id", "invalid", option, value, success=False)
 
 
+
+def test_mixed_history_retains_unknown_cost() -> None:
+    import token_cost
+
+    old = {"schema_version": 3, "event": "phase_completed", "phase": "implement", "role": "primary"}
+    new = {"schema_version": 4, "event": "usage_recorded", "phase": "review", "role": "validator", "worker_id": "reviewer", "usage": {"tokens": {"input": 1000000, "cache_write": 0, "cache_read": 0, "output": 0}, "prices_usd_per_million": {"input": "2", "cache_write": None, "cache_read": None, "output": None}}}
+    result = token_cost.summarize([old, old, new])
+    assert result["total"]["estimated_usd"] is None
+    assert result["total"]["known_estimated_usd"] == "2"
+    assert result["total"]["unknown_observations"] == 1
+    assert result["by_phase"]["implement"]["estimated_usd"] is None
+    assert result["by_role"]["primary"]["estimated_usd"] is None
+    current_missing = {**old, "schema_version": 4}
+    assert token_cost.summarize([current_missing, new])["total"]["estimated_usd"] is None
+
 if __name__ == "__main__":
+    test_mixed_history_retains_unknown_cost()
+    print("ok test_mixed_history_retains_unknown_cost")
     test_usage_cost_cli()
     print("ok test_usage_cost_cli")
     test_lifecycle_resumes_and_deduplicates()

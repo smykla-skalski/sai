@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     import argparse
 
 CATEGORIES: Final[tuple[str, ...]] = ("input", "cache_write", "cache_read", "output")
+USAGE_SCHEMA_VERSION: Final[int] = 4
 PRICE: Final[re.Pattern[str]] = re.compile(r"^\d{1,12}(?:\.\d{1,12})?$")
 
 
@@ -76,6 +77,18 @@ def aggregate(events: list[dict[str, Any]]) -> dict[str, Any]:
 def summarize(events: list[dict[str, Any]]) -> dict[str, Any]:
     """Group estimated cost by phase and execution role."""
     usage_events = [event for event in events if event.get("event") == "usage_recorded"]
+    covered = {
+        (event["phase"], event["role"], event.get("worker_id"))
+        for event in usage_events
+    }
+    missing = {}
+    for event in events:
+        if event.get("event") != "phase_completed":
+            continue
+        key = (event["phase"], event["role"], event.get("worker_id"))
+        if event.get("schema_version", 1) < USAGE_SCHEMA_VERSION or key not in covered:
+            missing[key] = {**event, "usage": None}
+    usage_events.extend(missing.values())
     return {
         "currency": "USD",
         "basis": "host usage deltas; caller-supplied USD prices per million tokens",
