@@ -1,4 +1,7 @@
-"""Validate ship-it's portable risk-derived gate contract."""
+"""Validate ship-it's portable risk-derived gate contract.
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
 
 from __future__ import annotations
 
