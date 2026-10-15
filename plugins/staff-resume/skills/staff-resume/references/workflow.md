@@ -20,7 +20,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the resume path and flags from the user's request. If the request names no resume, ask for the path; never pick a file on your own |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the resume path and flags from the user's request. If the request names no resume, ask for the path; never pick a file on your own |
 | AskUserQuestion | Ask the question in plain text and wait for the answer. If you cannot wait for an answer, stop and report what input is missing |
 | WebSearch, WebFetch | If web tools are missing or the network is blocked, skip the Phase 2 web searches and rely on the reference file, and ask the user to paste the job posting text instead of fetching the URL. In Codex, request escalation with a short reason before giving up on the network |
 | Subagent tool (Agent) | Not used |
@@ -32,7 +32,7 @@ In Codex, if the sandbox blocks writing the resume or the companion analysis, re
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - **resume-path:** Path to LaTeX or markdown resume file (required — ask if not provided)
 - **--job-url:** Optional — URL of specific job posting to tailor for

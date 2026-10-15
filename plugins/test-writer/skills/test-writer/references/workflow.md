@@ -24,7 +24,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the target, `--review` and `--lang` from the user's request and local context |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the target, `--review` and `--lang` from the user's request and local context |
 | AskUserQuestion | Not used. When the target is missing, ask in plain text and wait. If you cannot wait (for example you run as a forked subagent), stop and report that a target is needed |
 | Subagent tool (Agent) | Not used. The whole workflow runs in one agent loop |
 | `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
@@ -33,7 +33,7 @@ In Codex, run the narrowest relevant test command after adding or changing tests
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 - **target** — file path, function name, or module to test
 - `--review` — review existing tests for anti-patterns instead of writing new ones
 - `--lang` — override language detection (go, python, ts, java, rust)

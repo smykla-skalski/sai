@@ -24,7 +24,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 | Claude Code feature | Fallback |
 | :-- | :-- |
 | Explicit-only invocation (`disable-model-invocation`) | Codex honors it through `agents/openai.yaml` (`allow_implicit_invocation: false`). Elsewhere, run this skill only when the user names it explicitly |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the topic and flags from the user's request |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the topic and flags from the user's request |
 | AskUserQuestion | Ask the Phase 3 and Phase 4 questions in plain text and wait for the answers before moving on |
 | Subagent tool (Agent) | Run the Phase 9 competitive analysis inline with web search if available; otherwise compare against [references/talk-patterns.md](references/talk-patterns.md) and say no live search was done. On Codex always run it inline, since Codex subagent fan-out is unreliable |
 
@@ -32,7 +32,7 @@ In Codex, if the sandbox blocks saving the submission file in Phase 10, request 
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - **Topic/idea:** Required — rough talk concept (e.g., "API gateway migration to Gateway API at scale")
 - **--track:** Optional — target track (AI, Security, Platform, Observability, Operations, Connectivity, etc.)

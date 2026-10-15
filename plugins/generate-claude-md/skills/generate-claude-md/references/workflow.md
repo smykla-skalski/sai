@@ -40,7 +40,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
-| Argument substitution | If the "Parse from" line under Arguments shows no value or an unreplaced placeholder, take the repo root and flags from the user's request and local context (default: current working directory, no flags) |
+| Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the repo root and flags from the user's request and local context (default: current working directory, no flags) |
 | Skill directory substitution | If the Phase 7 validator command shows an unreplaced placeholder instead of an absolute path, run `scripts/validate-claude-md.py` from this skill's directory |
 | AskUserQuestion | Not used. The skill never blocks on questions: missing input falls back to the defaults above, and an existing CLAUDE.md is protected by Write safety |
 | Subagent tool (Explore agent) | Run the Phase 2 scan inline: follow [references/scan-spec.md](references/scan-spec.md) yourself and build the same summary. Do this whenever no subagent tool is available, including in Claude Code inside a forked skill. On Codex always run it inline, since Codex subagent fan-out is unreliable |
@@ -50,7 +50,7 @@ In Codex, if the sandbox blocks the validator or writing the target file, rerun 
 
 ## Arguments
 
-Parse from `$ARGUMENTS`:
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none):
 
 - First positional arg: repo root (default: current working directory)
 - `--output PATH` — write to PATH instead of `<repo>/CLAUDE.md`
