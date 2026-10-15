@@ -153,6 +153,7 @@ bookkeeping.py create --repository ROOT --identity IDENTITY --source-json SOURCE
 bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
 bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
 bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
+bookkeeping.py add-grant --checkpoint FILE --grant-json OBJECT
 bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
 bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--gate GATE] [--command TEXT]...
 ```
@@ -161,6 +162,7 @@ bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--
 - `set-risk` takes `level`, `diffClass`, `policySource`, `matchedRules`, `requiredGates` and optional `overrideAuthorization`; a level below the recorded one needs the override, which later calls keep.
 - `set-release-policy` takes exactly the normalized object and enums from the release contract and rejects anything else. A material change (anything but `resolvedAt`) marks passed `ci` and `hosted-review` verdicts `stale`.
 - `record-gate` takes `gate`, `status` (`passed|failed|blocked`), `revision` (the current workflow revision), `provider`, `summary` (at most 500 characters) and optional `timestamp`, `model`, `url`; it replaces a verdict with the same gate, revision and provider. It is refused while evidence is enabled, because the evidence record owns verdicts.
+- `add-grant` appends one complete grant (same object as `create --grant-json`) to an existing checkpoint for a resumed run or a later user reply. It refuses an ID already recorded, an empty `source.message` and a `scope` that is not a non-empty array of non-empty strings, and leaves every recorded grant, revoked or exhausted included, unchanged.
 - `set-findings` maps finding IDs to `open|fixed|blocked` or `{"disposition":"follow-up","followUpIssue":URL}`, which also appends the URL to `followUpIssues`; `blocked` needs a blocked workflow, and any unresolved finding marks a re-attestation `stale`.
 - `attest-review` records the `ship-it-convergence` re-attestation for the current revision from the stored findings, and is refused unless the completed review failed with findings that are all `fixed` or `follow-up`; a clean review is carried to a new head by `assess` and `reserve`.
 

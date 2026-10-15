@@ -317,6 +317,28 @@ def set_risk(checkpoint: dict[str, Any], risk: dict[str, Any]) -> dict[str, Any]
     return {"risk": checkpoint["risk"]["level"], "previous": previous}
 
 
+def add_grant(checkpoint: dict[str, Any], grant: dict[str, Any]) -> dict[str, Any]:
+    """Append one grant; recorded grants, including revoked ones, stay as they are."""
+    identity = non_empty(grant.get("id"), "grant id")
+    grants = checkpoint["authorization"]["grants"]
+    require(
+        all(existing.get("id") != identity for existing in grants),
+        f"grant ID already recorded: {identity}",
+    )
+    source = grant.get("source")
+    require(isinstance(source, dict), "grant source must be an object")
+    non_empty(source.get("message"), "grant source message")
+    scope = grant.get("scope")
+    require(
+        isinstance(scope, list)
+        and bool(scope)
+        and all(isinstance(item, str) and item.strip() for item in scope),
+        "grant scope must be a non-empty array of non-empty strings",
+    )
+    grants.append(grant)
+    return {"grant": identity, "grants": len(grants)}
+
+
 def material_release_change(old: object, new: dict[str, Any]) -> bool:
     """Report whether the normalized release policy changed, ignoring resolvedAt."""
     if not isinstance(old, dict):
