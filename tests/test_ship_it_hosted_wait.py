@@ -58,8 +58,20 @@ class WaitTests(unittest.TestCase):
 
     def test_check_rerun_uses_latest_attempt(self) -> None:
         checks = [
-            {"id": 1, "name": "build", "status": "completed", "conclusion": "failure"},
-            {"id": 2, "name": "build", "status": "completed", "conclusion": "success"},
+            {
+                "id": 1,
+                "suite": "s1",
+                "name": "build",
+                "status": "completed",
+                "conclusion": "failure",
+            },
+            {
+                "id": 2,
+                "suite": "s1",
+                "name": "build",
+                "status": "completed",
+                "conclusion": "success",
+            },
         ]
         self.assertEqual(
             self.evaluate(snapshot(checks=checks), ["build"])["status"], "satisfied"
@@ -84,7 +96,7 @@ class WaitTests(unittest.TestCase):
         )
         state["threads"][0]["isOutdated"] = True
         self.assertEqual(
-            self.evaluate(state, reviewers={"alice": "approval"})["status"], "satisfied"
+            self.evaluate(state, reviewers={"Alice": "approval"})["status"], "satisfied"
         )
 
     def test_comment_does_not_revoke_approval(self) -> None:
@@ -136,6 +148,73 @@ class WaitTests(unittest.TestCase):
             result = module.wait(forge, HEAD, ([], {}, []))
         self.assertEqual(result["status"], "failed")
         sleep.assert_not_called()
+
+    def test_independent_same_name_failure_survives_normalization(self) -> None:
+        pr = {
+            "headRefOid": HEAD,
+            "state": "OPEN",
+            "merged": False,
+            "reviewDecision": None,
+            "baseRef": None,
+        }
+        items = [
+            {
+                "__typename": "CheckRun",
+                "databaseId": 1,
+                "name": "build",
+                "status": "COMPLETED",
+                "conclusion": "FAILURE",
+                "isRequired": True,
+                "checkSuite": {"id": "required-suite"},
+            },
+            {
+                "__typename": "CheckRun",
+                "databaseId": 2,
+                "name": "build",
+                "status": "COMPLETED",
+                "conclusion": "SUCCESS",
+                "isRequired": False,
+                "checkSuite": {"id": "other-suite"},
+            },
+        ]
+        state = module._normalize(pr, {"checks": items, "reviews": [], "threads": []})
+        result = self.evaluate(state, ["build"])
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("check:build:fail", result["failed"])
+
+    def test_deadline_during_gh_preserves_previous_pending(self) -> None:
+        forge = module.GitHub("owner/repo", 1, 10)
+        state = snapshot(required=[{"name": "build", "bucket": "pending"}])
+        with (
+            patch.object(forge, "read", side_effect=[state, TimeoutError]),
+            patch.object(module.time, "monotonic", return_value=1),
+            patch.object(module.time, "sleep"),
+        ):
+            result = module.wait(forge, HEAD, ([], {}, []))
+        self.assertEqual(result["status"], "deadline")
+        self.assertEqual(result["pending"], ["check:build:pending"])
+        with patch.object(
+            module.subprocess,
+            "run",
+            side_effect=module.subprocess.TimeoutExpired("gh", 1),
+        ), self.assertRaises(TimeoutError):
+            module._gh_json({}, 1)
+        with (
+            patch.object(module, "_gh_json", side_effect=TimeoutError),
+            patch.object(module.time, "monotonic", side_effect=[9, 10]),
+            self.assertRaises(TimeoutError),
+        ):
+            forge._request({})
+
+    def test_review_requirement_login_is_case_insensitive(self) -> None:
+        reviews = [
+            {"id": 1, "user": {"login": "alice"}, "state": "APPROVED"},
+            {"id": 2, "user": {"login": "alice"}, "state": "COMMENTED"},
+        ]
+        result = self.evaluate(
+            snapshot(reviews=reviews), reviewers={"Alice": "approval"}
+        )
+        self.assertEqual(result["status"], "satisfied")
 
 
 if __name__ == "__main__":

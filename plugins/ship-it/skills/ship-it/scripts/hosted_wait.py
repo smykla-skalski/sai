@@ -37,7 +37,9 @@ def _gh_json(payload: dict, timeout: float) -> dict:
             timeout=timeout,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired) as error:
+    except subprocess.TimeoutExpired as error:
+        raise TimeoutError from error
+    except OSError as error:
         raise ForgeError(str(error)) from error
     if result.returncode:
         raise ForgeError(result.stderr.strip() or "gh failed")
@@ -62,6 +64,18 @@ class GitHub:
         self.number = number
         self.deadline = deadline
 
+    def _request(self, payload: dict) -> dict:
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError
+        try:
+            return _gh_json(payload, min(60, remaining))
+        except TimeoutError:
+            if time.monotonic() >= self.deadline:
+                raise
+            message = "gh request timed out before the overall deadline"
+            raise ForgeError(message) from None
+
     def read(self) -> dict:
         """Read every page with one fixed gh command and JSON stdin."""
         owner, name = self.repository.split("/")
@@ -70,7 +84,7 @@ $checks:String,$reviews:String,$threads:String){repository(owner:$owner,name:$na
 pullRequest(number:$number){headRefOid state merged reviewDecision
 baseRef{branchProtectionRule{requiredStatusCheckContexts}}
 commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100,after:$checks){
-nodes{__typename ... on CheckRun{databaseId name status conclusion
+nodes{__typename ... on CheckRun{databaseId name status conclusion checkSuite{id}
 isRequired(pullRequestNumber:$number)} ... on StatusContext{id context state
 isRequired(pullRequestNumber:$number)}} pageInfo{hasNextPage endCursor}}}}}}
 reviews(first:100,after:$reviews){nodes{databaseId state author{login}}
@@ -83,13 +97,7 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
         finished: set[str] = set()
         observed_head = None
         while len(finished) < len(collected):
-            remaining = self.deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError
-            response = _gh_json(
-                {"query": query, "variables": variables},
-                min(60, remaining),
-            )
+            response = self._request({"query": query, "variables": variables})
             if response.get("errors"):
                 message = "GitHub GraphQL returned errors"
                 raise ForgeError(message)
@@ -126,12 +134,17 @@ def _normalize(pr: dict, collected: dict) -> dict:
     checks = []
     statuses = []
     required = []
-    latest: dict[tuple[str, str], dict] = {}
+    latest: dict[tuple[str, str, str], dict] = {}
     for item in collected["checks"]:
-        key = (item["__typename"], item.get("name", item.get("context")))
+        key = (
+            item["__typename"],
+            item.get("name", item.get("context")),
+            item["checkSuite"]["id"] if item["__typename"] == "CheckRun" else "",
+        )
         previous = latest.get(key)
         if previous is None or item.get("databaseId", 0) > previous.get(
-            "databaseId", 0,
+            "databaseId",
+            0,
         ):
             latest[key] = item
     for item in latest.values():
@@ -139,6 +152,7 @@ def _normalize(pr: dict, collected: dict) -> dict:
             checks.append(
                 {
                     "id": item["databaseId"],
+                    "suite": item["checkSuite"]["id"],
                     "name": item["name"],
                     "status": item["status"].lower(),
                     "conclusion": (item["conclusion"] or "").lower(),
@@ -238,9 +252,9 @@ def _check_requirements(
     pending: list[str],
     failed: list[str],
 ) -> None:
-    latest: dict[str, dict] = {}
+    latest: dict[tuple[str, str], dict] = {}
     for check in sorted(snapshot["checks"], key=lambda c: c["id"]):
-        latest[check["name"]] = check
+        latest[(check["name"], check["suite"])] = check
     statuses: dict[str, dict] = {}
     for status in sorted(snapshot["statuses"], key=lambda c: c["id"]):
         statuses[status["context"]] = status
@@ -250,11 +264,13 @@ def _check_requirements(
         elif required["bucket"] not in {"pass", "skipping"}:
             pending.append(f"check:{required['name']}:pending")
     for name in checks:
-        check = latest.get(name)
+        matching = [check for (label, _), check in latest.items() if label == name]
         status = statuses.get(name)
-        if not check and not status:
+        if not matching and not status:
             pending.append(f"check:{name}:missing")
-        _named_check(name, check, status, pending, failed)
+        for check in matching:
+            _named_check(name, check, None, pending, failed)
+        _named_check(name, None, status, pending, failed)
 
 
 def _named_check(
@@ -282,10 +298,11 @@ def _review_requirements(
     pending: list[str],
     failed: list[str],
 ) -> None:
+    requirements = {login.casefold(): value for login, value in reviewers.items()}
     effective: dict[str, dict] = {}
     for review in sorted(snapshot["reviews"], key=lambda r: r["id"]):
         if review["state"] not in {"PENDING", "COMMENTED"} or (
-            reviewers.get(review["user"]["login"], "review") == "review"
+            requirements.get(review["user"]["login"].casefold(), "review") == "review"
             and review["state"] == "COMMENTED"
         ):
             effective[review["user"]["login"].casefold()] = review
