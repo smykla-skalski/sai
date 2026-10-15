@@ -18,9 +18,10 @@ never modified.
 Usage:
     scripts/validate_skills.py [SKILL_DIR_OR_SKILL_MD ...]
 
-Without arguments it validates every 'plugins/*/skills/*' directory of the
-repository. Run it with 'uv run --quiet --script scripts/validate_skills.py'
-when the executable bit is not honored.
+It needs uv on PATH. Without arguments it validates every 'plugins/*/skills/*'
+directory of the repository. Run it with
+'uv run --quiet --script scripts/validate_skills.py' when the executable bit is
+not honored.
 
 Output:
     'Valid skill: <path>' on stdout per valid skill.
@@ -104,8 +105,10 @@ def validate_skill(skill_dir: Path) -> list[str]:
         return [f"Missing required file: {SKILL_FILE_NAME}"]
 
     try:
-        content = skill_md.read_text(encoding="utf-8", errors="replace")
+        content = skill_md.read_text(encoding="utf-8")
         frontmatter, _ = parse_frontmatter(content)
+    except UnicodeDecodeError as error:
+        return [f"{SKILL_FILE_NAME} is not valid UTF-8: {error}"]
     except ParseError as error:
         return [str(error)]
 

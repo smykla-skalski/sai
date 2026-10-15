@@ -130,6 +130,18 @@ class ValidateSkillsCommandTest(unittest.TestCase):
             "Missing required field in frontmatter: description", result.stderr
         )
 
+    def test_rejects_invalid_utf8(self) -> None:
+        skill_dir = self.write_skill(
+            "demo", f"name: demo\ndescription: {VALID_DESCRIPTION}\n"
+        )
+        with (skill_dir / "SKILL.md").open("ab") as handle:
+            handle.write(b"\xff\xfe")
+
+        result = self.run_script(skill_dir)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("is not valid UTF-8", result.stderr)
+
     def test_reports_every_failing_skill_and_keeps_going(self) -> None:
         good = self.write_skill(
             "good", f"name: good\ndescription: {VALID_DESCRIPTION}\n"
