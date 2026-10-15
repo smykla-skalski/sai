@@ -8,6 +8,8 @@ Cancellation and terminal failure are durable terminal outcomes. After releasing
 
 Finalize the durable checkpoint only after those checks succeed, release-policy closure and branch cleanup are verified, and any enabled GitHub claim is released. With evidence enabled, its pointer must identify the complete record for the gated PR head. With evidence disabled, the checkpoint must contain every selected gate verdict bound to that exact head. Set `phase` to `complete`, `status` to `completed`, clear `blocker` and `unresolvedQuestions`, set `nextAction` to `none`, and atomically write the final `outcome` with `bookkeeping.py transition --outcome-json`.
 
+When telemetry is enabled, finish the run and attach its privacy-safe cost aggregate to the merged PR as specified in the already-loaded telemetry guidance. Include the plugin version so cost per merged PR can be compared across skill versions. A publication failure is a separate audit diagnostic and never rewrites confirmed delivery. With telemetry disabled, create no cost report or PR cost comment.
+
 Report:
 
 - task source and PR URL
