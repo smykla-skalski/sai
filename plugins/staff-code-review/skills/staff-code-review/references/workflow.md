@@ -313,7 +313,7 @@ Synthesis produces findings; it does not prove them. Spawn the **Findings Advers
 **Spawn protocol:**
 1. Try `subagent_type: "staff-code-review:review-adversary"` first.
 2. If the spawn fails because the subagent type is unknown (plugin loaded by a path that doesn't register agents), retry with `subagent_type: "general-purpose"` and prepend the adversary's mandate by reading [references/agents/review-adversary.md](references/agents/review-adversary.md) into the prompt.
-3. Copilot CLI delegates to the same `staff-code-review:review-adversary` agent and re-delegates once if the result does not start with `## Adversarial review of the findings`. Codex runs it inline from [references/agents/review-adversary.md](references/agents/review-adversary.md) (or one `spawn_agent`, closed after it returns); opencode uses one `task` call with that mandate, or inline.
+3. Copilot CLI delegates to the same `staff-code-review:review-adversary` agent and re-delegates once if the result does not start with `## Adversarial review of the findings`. Codex runs it inline from [references/agents/review-adversary.md](references/agents/review-adversary.md) (or one `spawn_agent`, closed after it returns); opencode uses one `subagent` call (`task` on opencode 1) with that mandate, or inline.
 
 The prompt MUST include, verbatim:
 - The full synthesized review (every finding with its severity and `*Location:*`).
