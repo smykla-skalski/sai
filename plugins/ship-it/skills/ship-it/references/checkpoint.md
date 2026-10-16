@@ -161,6 +161,9 @@ bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
 bookkeeping.py add-grant --checkpoint FILE --grant-json OBJECT
 bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
 bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--gate GATE] [--command TEXT]...
+bookkeeping.py record-ci-failure --checkpoint FILE --failure-json OBJECT
+bookkeeping.py request-ci-rerun --checkpoint FILE --request-json OBJECT
+bookkeeping.py settle-ci-rerun --checkpoint FILE --settlement-json OBJECT
 ```
 
 - `create` takes the canonical source object (`{sourceType, repository, issue}`, `{sourceType, site, key}` or `{sourceType, repository, objective, acceptanceCriteria}`), derives `task.canonicalSource`, the checkpoint ID and the file name, defaults `--checkpoint-dir` to the data root above and writes owner-only at phase `resolve`. An existing file for the same source is reported with `created: false` and left untouched; another source at that name stops. Claims stay `null`: their protocol writes them.
@@ -170,6 +173,8 @@ bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--
 - `record-gate` takes `gate`, `status` (`passed|failed|blocked`), `revision` (the current workflow revision), `provider`, `summary` (at most 500 characters) and optional `timestamp`, `model`, `url`; it replaces a verdict with the same gate, revision and provider. It is refused while evidence is enabled, because the evidence record owns verdicts.
 - `add-grant` appends one complete grant (same object as `create --grant-json`) to an existing checkpoint for a resumed run or a later user reply. It refuses an ID already recorded, an empty `source.message` and a `scope` that is not a non-empty array of non-empty strings, and leaves every recorded grant, revoked or exhausted included, unchanged.
 - `set-findings` maps finding IDs to `open|fixed|blocked` or `{"disposition":"follow-up","followUpIssue":URL}`, which also appends the URL to `followUpIssues`; `blocked` needs a blocked workflow, and any unresolved finding marks a re-attestation `stale`.
+- `record-ci-failure` takes one complete triage record (`ci-triage.schema.json`) and appends it or replaces the record with the same `failureId`. It checks required fields, enums and bounds, then runs the full-set validation of `ci_triage.py validate` and writes nothing when either fails. A resolved record is never reopened and no command deletes a record, so history stays. `rerunsUsed`, `rerunRequest` and an absent `rerunAuthorization` come from the stored rerun group; a new group starts at `rerunsUsed: 0` and `rerunRequest: null`.
+- `request-ci-rerun` takes `rerunGroupId` and optional `recordedAt` and sets `rerunRequest` (`requestedAttempt: rerunsUsed + 1`) on every record of the group, within `rerunAuthorization.maxAttempts`. `settle-ci-rerun` takes `rerunGroupId` and `outcome` (`accepted|not-accepted`), clears the request on every group record and, for `accepted`, advances `rerunsUsed` to the requested attempt. Both refuse a missing or wrong-state request. See [ci-triage.md](ci-triage.md).
 - `attest-review` records the `ship-it-convergence` re-attestation for the current revision from the stored findings, and is refused unless the completed review failed with findings that are all `fixed` or `follow-up`; a clean review is carried to a new head by `assess` and `reserve`.
 
 ## Creation and resume
