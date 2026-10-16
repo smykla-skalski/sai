@@ -5,8 +5,10 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
+import re
 import subprocess
 import tempfile
 import unittest
@@ -948,6 +950,23 @@ class BookkeepingTest(unittest.TestCase):
         self.assertIn("invalid workflow phase", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
         self.assertEqual(current, original)
+
+
+class UsageDocstringTest(unittest.TestCase):
+    def test_docstring_lists_every_command(self) -> None:
+        help_text = subprocess.run(
+            ["python3", str(SCRIPT), "--help"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        match = re.search(r"\{([a-z-]+(?:,[a-z-]+)+)\}", help_text)
+        self.assertIsNotNone(match)
+        commands = match.group(1).split(",") if match else []
+        docstring = ast.get_docstring(ast.parse(SCRIPT.read_text())) or ""
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertIn(f"  bookkeeping.py {command} ", docstring)
 
 
 if __name__ == "__main__":
