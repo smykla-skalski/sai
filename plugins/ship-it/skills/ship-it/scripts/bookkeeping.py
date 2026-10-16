@@ -19,6 +19,8 @@ Usage:
       --title TEXT --objective TEXT --criteria-json ARRAY [--source-url URL]
       [--default-branch NAME] [--branch NAME] [--enable FEATURE,...]
       [--grant-json OBJECT]... [--checkpoint-dir DIR]
+  bookkeeping.py repair-repository --checkpoint FILE --repository PATH
+      --source-json OBJECT
   bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT
   bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
   bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
