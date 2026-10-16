@@ -6,9 +6,11 @@ Copyright 2026 Smykla Skalski, MIT License.
 import copy
 import importlib.util
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 PATH = (
@@ -76,7 +78,11 @@ def read_exemption(
         "",
     )
     forge = module.GitHub("owner/repo", 1, float("inf"), merge_integration=integration)
-    with patch.object(module.subprocess, "run", return_value=completed):
+    with (
+        TemporaryDirectory() as state_directory,
+        patch.dict(os.environ, {"XDG_DATA_HOME": state_directory}),
+        patch.object(module.subprocess, "run", return_value=completed),
+    ):
         return forge.read()
 
 
