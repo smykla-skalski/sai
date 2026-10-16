@@ -399,6 +399,7 @@ def record_acceptance_recovery(
     Convergence counters and reservations stay untouched.
     """
     identity = non_empty(update.get("id"), "recovery id")
+    require(identity == identity.strip(), "recovery id must not have outer spaces")
     state = checkpoint["convergence"]
     recoveries = state.setdefault("acceptanceRecovery", [])
     require(isinstance(recoveries, list), "acceptanceRecovery must be an array")
@@ -433,7 +434,11 @@ def record_acceptance_recovery(
             f"recovery {identity} is recorded; a further attempt takes "
             "exactly: id, attempt",
         )
-        require_active_grant(checkpoint, entry["grantId"])
+        require(
+            isinstance(entry.get("attempts"), list),
+            f"recorded recovery {identity} lacks an attempts array",
+        )
+        require_active_grant(checkpoint, entry.get("grantId"))
     if "attempt" in update:
         entry["attempts"].append(recovery_attempt(update["attempt"]))
     return {"recovery": identity, "attempts": len(entry["attempts"])}

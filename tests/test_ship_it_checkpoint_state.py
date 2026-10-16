@@ -1138,6 +1138,32 @@ class SectionCommandTest(unittest.TestCase):
         for key in ("workflow", "risk", "authorization", "gateVerdicts", "task"):
             self.assertEqual(after[key], self.document[key], key)
 
+    def test_acceptance_recovery_refuses_a_whitespace_padded_id(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery()))
+        self.assert_refused(
+            self.recover(self.new_recovery(id="R1 ")), "must not have outer spaces"
+        )
+        self.assert_refused(
+            self.recover({"id": "\nR1", "attempt": self.attempt()}),
+            "must not have outer spaces",
+        )
+
+    def test_attempt_on_a_hand_recorded_entry_is_refused_not_a_crash(self) -> None:
+        for entry, text in (
+            ({"id": "R1"}, "lacks an attempts array"),
+            ({"id": "R1", "grantId": "ship"}, "lacks an attempts array"),
+            ({"id": "R1", "grantId": "ship", "attempts": "x"}, "lacks an attempts"),
+            ({"id": "R1", "grantId": "ship", "attempts": {}}, "lacks an attempts"),
+            ({"id": "R1", "attempts": []}, "requires an active grant: None"),
+        ):
+            with self.subTest(entry=entry):
+                document = self.read()
+                document["convergence"]["acceptanceRecovery"] = [entry]
+                self.write(document)
+                self.assert_refused(
+                    self.recover({"id": "R1", "attempt": self.attempt()}), text
+                )
+
     def test_acceptance_recovery_rejects_a_non_object_value(self) -> None:
         for value in ([], "text", 1):
             with self.subTest(value=value):
