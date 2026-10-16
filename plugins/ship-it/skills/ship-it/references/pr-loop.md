@@ -49,7 +49,7 @@ Run one blocking process per PR/head; it uses Python and `gh`, paginates checks/
 python3 <skill-dir>/scripts/hosted_wait.py <owner>/<repo> <n> --head <sha> --timeout 1800 --check '<policy-check>' --reviewer '<login>:review' --thread-author '<login>'
 ```
 
-Use `--help` for flags. Repeat policy checks and required reviewers (`review|approval`); omit reviewers without hosted review. Omit thread authors to include all unresolved non-outdated threads. Platform gates always bind. Run under one background/event waiter if foreground limits are short; never poll or restart.
+[Actor-specific approvals](release.md#actor-specific-approvals) govern bot flags. Repeat required checks/reviewers (`review|approval`); omit optional reviewers. Omit thread authors to include all unresolved current threads. Platform gates bind. Use one background/event waiter; never poll or restart.
 
 Only `satisfied` exits 0. Failures, head changes, closure, merge and deadline exit 1; API/input errors exit 2. Results name failed or pending requirements and observed transitions. Reconcile merged delivery or a changed head before continuing; resolve existing comments even when external review was waived.
 

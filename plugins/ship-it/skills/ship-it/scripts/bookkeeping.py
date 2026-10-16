@@ -33,6 +33,9 @@ Usage:
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
+  bookkeeping.py record-ci-failure --checkpoint FILE --failure-json OBJECT
+  bookkeeping.py request-ci-rerun --checkpoint FILE --request-json OBJECT
+  bookkeeping.py settle-ci-rerun --checkpoint FILE --settlement-json OBJECT
 
 Output is one compact JSON result on stdout. Input or validation errors are
 reported on stderr and exit 2; successful policy resolution or transition
@@ -54,7 +57,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
@@ -63,7 +66,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 import checkpoint_state
+import ci_triage
+import orchestration_state
 from checkpoint_state import StateError
+from ci_triage import TriageError
 from convergence import (
     ConvergenceError,
     finish,
@@ -75,6 +81,17 @@ from convergence import (
 from handoff import record_handoff
 from validation_reuse import assess, capture, digest, unavailable_decision
 
+
+def record_acceptance_recovery(
+    checkpoint: dict[str, Any],
+    update: dict[str, Any],
+) -> dict[str, Any]:
+    """Retain released recovery records and idempotent orchestration events."""
+    if "eventId" in update:
+        return orchestration_state.record_acceptance_recovery(checkpoint, update)
+    return checkpoint_state.record_acceptance_recovery(checkpoint, update)
+
+
 SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
     {
         "set-risk",
@@ -85,6 +102,11 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "record-acceptance-recovery",
         "set-findings",
         "attest-review",
+        "set-orchestration",
+        "record-orchestration-event",
+        "record-ci-failure",
+        "request-ci-rerun",
+        "settle-ci-rerun",
     },
 )
 JSON_SECTION_COMMANDS: Final[
@@ -100,9 +122,17 @@ JSON_SECTION_COMMANDS: Final[
     "add-grant": ("--grant-json", checkpoint_state.add_grant),
     "record-acceptance-recovery": (
         "--recovery-json",
-        checkpoint_state.record_acceptance_recovery,
+        record_acceptance_recovery,
     ),
     "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
+    "set-orchestration": (
+        "--orchestration-json",
+        orchestration_state.set_orchestration,
+    ),
+    "record-orchestration-event": ("--event-json", orchestration_state.record_event),
+    "record-ci-failure": ("--failure-json", ci_triage.record_failure),
+    "request-ci-rerun": ("--request-json", ci_triage.request_rerun),
+    "settle-ci-rerun": ("--settlement-json", ci_triage.settle_rerun),
 }
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -556,6 +586,8 @@ def outcome_fields(result: object) -> set[str]:
         }
     if result == "coordinated":
         return common | {"umbrellaUrl", "children"}
+    if result == "already-satisfied":
+        return common | {"reason", "branchCleanup", "verifiedRevision", "evidence"}
     return common | {"reason", "branchCleanup"}
 
 
@@ -589,8 +621,14 @@ def validate_outcome_values(result: object, outcome: dict[str, Any]) -> None:
 def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
     """Validate terminal outcome fields for the selected terminal status."""
     result = outcome.get("result")
-    if status == "completed" and result not in {"merged", "coordinated"}:
-        message = "completed outcome result must be merged or coordinated"
+    if status == "completed" and result not in {
+        "merged",
+        "coordinated",
+        "already-satisfied",
+    }:
+        message = (
+            "completed outcome result must be merged, coordinated or already-satisfied"
+        )
         raise BookkeepingError(message)
     if status in {"cancelled", "failed"} and result != status:
         message = f"{status} outcome result must match its status"
@@ -602,11 +640,164 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
         names = ", ".join(sorted(missing))
         message = f"terminal outcome missing required fields: {names}"
         raise BookkeepingError(message)
-    for field in required.difference({"children"}):
+    for field in required.difference({"children", "evidence"}):
         if not isinstance(outcome[field], str) or not outcome[field].strip():
             message = f"terminal outcome field {field} must be non-empty"
             raise BookkeepingError(message)
     validate_outcome_values(result, outcome)
+    if result == "already-satisfied":
+        validate_satisfied_values(outcome)
+
+
+def validate_satisfied_values(outcome: dict[str, Any]) -> None:
+    """Require explicit investigation evidence without manufactured delivery."""
+    evidence = outcome["evidence"]
+    if (
+        not isinstance(evidence, list)
+        or not evidence
+        or not all(isinstance(item, str) and item.strip() for item in evidence)
+    ):
+        message = "already-satisfied outcome requires non-empty evidence strings"
+        raise BookkeepingError(message)
+    validate_commit_id(outcome["verifiedRevision"], "verifiedRevision")
+    validate_utc_timestamp(outcome["completedAt"], "completedAt")
+    if outcome["sourceState"] != "closed" or outcome["branchCleanup"] not in {
+        "preserved",
+        "not-applicable",
+    }:
+        message = (
+            "already-satisfied outcome requires closed source and no branch deletion"
+        )
+        raise BookkeepingError(message)
+    if any(
+        outcome.get(field) is not None
+        for field in (
+            "pullRequestUrl",
+            "pullRequestHead",
+            "mergeCommit",
+        )
+    ):
+        message = "already-satisfied outcome must not claim PR delivery"
+        raise BookkeepingError(message)
+
+
+def validate_satisfied_checkpoint(checkpoint: dict[str, Any]) -> None:
+    """Bind a no-change investigation to its verified revision and selected gates."""
+    outcome = checkpoint["outcome"]
+    if outcome.get("result") != "already-satisfied":
+        return
+    revision = outcome["verifiedRevision"]
+    if checkpoint["workflow"]["revision"] != revision:
+        message = "already-satisfied verifiedRevision must match workflow revision"
+        raise BookkeepingError(message)
+    if any(value is not None for value in checkpoint["delivery"].values()):
+        message = "already-satisfied checkpoint must have null delivery state"
+        raise BookkeepingError(message)
+    required = checkpoint["risk"].get("requiredGates", [])
+    passed = (
+        satisfied_evidence_gates(checkpoint)
+        if checkpoint["bookkeeping"]["evidence"]
+        else {
+            verdict.get("gate")
+            for verdict in checkpoint["gateVerdicts"]
+            if verdict.get("status") == "passed" and verdict.get("revision") == revision
+        }
+    )
+    if not required or not set(required) <= passed:
+        message = "already-satisfied requires every selected gate on verifiedRevision"
+        raise BookkeepingError(message)
+
+
+def satisfied_evidence_gates(checkpoint: dict[str, Any]) -> set[str]:
+    """Read current, complete external evidence for an investigation outcome."""
+    evidence = checkpoint["evidence"]
+    revision = checkpoint["workflow"]["revision"]
+    if evidence.get("status") != "complete" or evidence.get("revision") != revision:
+        message = "already-satisfied requires complete evidence for verifiedRevision"
+        raise BookkeepingError(message)
+    record_path = evidence.get("recordPath")
+    if not isinstance(record_path, str) or not record_path.strip():
+        message = "already-satisfied requires an evidence recordPath"
+        raise BookkeepingError(message)
+    path = Path(record_path)
+    expected = (
+        default_checkpoint_dir().parent
+        / "evidence"
+        / checkpoint["checkpointId"]
+        / f"{revision}.json"
+    )
+    if not path.is_absolute() or path.resolve() != expected.resolve():
+        message = "evidence record path must match checkpoint and revision"
+        raise BookkeepingError(message)
+    record = load_object(path)
+    if (
+        record.get("schemaVersion") != 1
+        or record.get("checkpointId") != checkpoint["checkpointId"]
+        or record.get("revision") != revision
+        or record.get("status") != "complete"
+        or record.get("repository") != checkpoint["repository"]["identity"]
+        or record.get("invalidatedAt") is not None
+        or record.get("invalidatedByRevision") is not None
+    ):
+        message = (
+            "evidence identity, revision or completeness does not match checkpoint"
+        )
+        raise BookkeepingError(message)
+    results = record.get("results")
+    if (
+        not isinstance(results, list)
+        or not results
+        or not all(
+            isinstance(result, dict)
+            and isinstance(result.get("id"), str)
+            and result["id"].strip()
+            and type(result.get("required")) is bool
+            and result.get("sourceRevision") == revision
+            and (not result["required"] or result.get("status") == "passed")
+            for result in results
+        )
+    ):
+        message = "investigation evidence requires current passing required results"
+        raise BookkeepingError(message)
+    if len({result["id"] for result in results}) != len(results):
+        message = "evidence result IDs must be unique"
+        raise BookkeepingError(message)
+    criteria = {
+        result.get("name")
+        for result in results
+        if result.get("category") == "acceptance-criterion"
+        and result["required"]
+        and isinstance(result.get("name"), str)
+    }
+    if not set(checkpoint["task"].get("acceptanceCriteria", [])) <= criteria:
+        message = "investigation evidence is missing acceptance criteria"
+        raise BookkeepingError(message)
+    return evidence_gate_ids(checkpoint, results)
+
+
+def evidence_gate_ids(
+    checkpoint: dict[str, Any],
+    results: list[dict[str, Any]],
+) -> set[str]:
+    """Resolve selected gate IDs, including expanded local-check and CI results."""
+    passed: set[str] = set()
+    for gate in checkpoint["risk"].get("requiredGates", []):
+        category = {"local-checks": "local-check", "ci": "ci"}.get(gate)
+        matches = [
+            result
+            for result in results
+            if result["required"]
+            and (
+                result["id"] in {gate, f"gate-{gate}"}
+                or (category is not None and result.get("category") == category)
+            )
+        ]
+        if matches and all(
+            result["required"] and result.get("status") == "passed"
+            for result in matches
+        ):
+            passed.add(gate)
+    return passed
 
 
 def validate_merged_delivery(
@@ -665,6 +856,7 @@ def validate_checkpoint(
     validate_bookkeeping(checkpoint)
     validate_delivery(checkpoint)
     validate_authorization(checkpoint)
+    orchestration_state.validate_saved_state(checkpoint)
     validate_convergence(checkpoint)
     if checkpoint.get("schemaVersion") != 1:
         message = "unsupported checkpoint schemaVersion"
@@ -695,6 +887,7 @@ def validate_checkpoint(
             checkpoint["outcome"],
             allow_unreconciled_legacy=allow_unreconciled_legacy,
         )
+        validate_satisfied_checkpoint(checkpoint)
     elif status in TERMINAL_STATUSES or checkpoint["outcome"] is not None:
         message = "terminal status and outcome require phase complete"
         raise BookkeepingError(message)
@@ -1079,6 +1272,34 @@ def repair_repository(args: argparse.Namespace) -> dict[str, Any]:
     return {"checkpoint": str(path), "repaired": True}
 
 
+def relocate_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
+    """Move a validated checkpoint to its default durable path without resetting it."""
+    source = Path(args.checkpoint).resolve()
+    destination = (default_checkpoint_dir() / source.name).resolve()
+    with ExitStack() as locks:
+        for path in sorted({source, destination}):
+            locks.enter_context(checkpoint_lock(path))
+        if not source.exists() and destination.exists():
+            validate_checkpoint(load_object(destination), destination)
+            return {"checkpoint": str(destination), "relocated": False}
+        checkpoint = load_object(source)
+        validate_checkpoint(checkpoint, source)
+        if source == destination:
+            return {"checkpoint": str(destination), "relocated": False}
+        validate_checkpoint(checkpoint, destination)
+        if destination.exists():
+            if load_object(destination) != checkpoint:
+                message = "durable checkpoint already exists with different state"
+                raise BookkeepingError(message)
+        else:
+            atomic_write(destination, checkpoint)
+        if load_object(destination) != checkpoint:
+            message = "durable checkpoint verification failed; source preserved"
+            raise BookkeepingError(message)
+        source.unlink()
+    return {"checkpoint": str(destination), "relocated": True}
+
+
 def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
     """Create a checkpoint at phase resolve; never replace an existing one."""
     source = checkpoint_state.parse_object(args.source_json, "--source-json")
@@ -1322,6 +1543,11 @@ def add_state_commands(
     creation.add_argument("--enable", default="")
     creation.add_argument("--grant-json", action="append", default=[])
     creation.add_argument("--checkpoint-dir")
+    relocation = commands.add_parser(
+        "relocate-checkpoint",
+        help="move a checkpoint to the default durable root",
+    )
+    relocation.add_argument("--checkpoint", required=True)
     for name, option, text in (
         ("handoff", "--handoff-json", "prepare or acknowledge a phase handoff"),
         ("set-risk", "--risk-json", "set the risk selection"),
@@ -1339,6 +1565,19 @@ def add_state_commands(
             "record an acceptance recovery or append an attempt",
         ),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
+        (
+            "set-orchestration",
+            "--orchestration-json",
+            "initialize or extend the child graph",
+        ),
+        (
+            "record-orchestration-event",
+            "--event-json",
+            "record one validated child event",
+        ),
+        ("record-ci-failure", "--failure-json", "record or update a CI failure"),
+        ("request-ci-rerun", "--request-json", "reserve the next CI rerun attempt"),
+        ("settle-ci-rerun", "--settlement-json", "settle a pending CI rerun request"),
     ):
         section = commands.add_parser(name, help=text)
         section.add_argument("--checkpoint", required=True)
@@ -1372,6 +1611,8 @@ def main(argv: list[str] | None = None) -> int:
             result = repair_repository(args)
         elif args.command == "create":
             result = create_checkpoint(args)
+        elif args.command == "relocate-checkpoint":
+            result = relocate_checkpoint(args)
         elif args.command == "handoff":
             update = checkpoint_state.parse_object(args.handoff_json, "--handoff-json")
             result = mutate_checkpoint(
@@ -1382,7 +1623,7 @@ def main(argv: list[str] | None = None) -> int:
             result = section_operation(args)
         else:
             result = convergence_operation(args)
-    except (BookkeepingError, ConvergenceError, StateError) as error:
+    except (BookkeepingError, ConvergenceError, StateError, TriageError) as error:
         print(str(error), file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))

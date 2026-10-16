@@ -3,10 +3,14 @@
 Copyright 2026 Smykla Skalski, MIT License.
 """
 
+import copy
 import importlib.util
+import json
+import os
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 PATH = (
@@ -19,6 +23,84 @@ module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
 HEAD = "a" * 40
+
+
+def ruleset() -> tuple[list[dict], dict]:
+    detail = {
+        "databaseId": 123,
+        "enforcement": "ACTIVE",
+        "target": "BRANCH",
+        "updatedAt": "2026-10-16T00:00:00Z",
+        "bypassActors": {
+            "nodes": [
+                {
+                    "bypassMode": "EXEMPT",
+                    "actor": {
+                        "__typename": "App",
+                        "databaseId": 1197525,
+                    },
+                }
+            ],
+            "pageInfo": {"hasNextPage": False},
+        },
+    }
+    return [{"type": "PULL_REQUEST"}], detail
+
+
+def pull_request(
+    applicable: list[dict],
+    detail: dict,
+    *,
+    protection: dict | None = None,
+) -> dict:
+    return {
+        "headRefOid": HEAD,
+        "baseRefName": "release/stable",
+        "state": "OPEN",
+        "merged": False,
+        "reviewDecision": "REVIEW_REQUIRED",
+        "baseRef": {
+            "branchProtectionRule": protection,
+            "rules": {
+                "nodes": [{"repositoryRuleset": detail, **r} for r in applicable],
+                "pageInfo": {"hasNextPage": False},
+            },
+        },
+        "commits": {"nodes": [{"commit": {"statusCheckRollup": None}}]},
+        "reviews": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+        "reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+    }
+
+
+def read_responses(responses: list[dict], integration: int | None = 1197525) -> dict:
+    completed = [
+        module.subprocess.CompletedProcess(
+            [],
+            0,
+            json.dumps({"data": {"repository": {"pullRequest": pr}}}),
+            "",
+        )
+        for pr in responses
+    ]
+    forge = module.GitHub("owner/repo", 1, float("inf"), merge_integration=integration)
+    with (
+        TemporaryDirectory() as state_directory,
+        patch.dict(os.environ, {"XDG_DATA_HOME": state_directory}),
+        patch.object(module.subprocess, "run", side_effect=completed),
+    ):
+        return forge.read()
+
+
+def read_exemption(
+    applicable: list[dict],
+    detail: dict,
+    *,
+    integration: int | None = 1197525,
+    protection: dict | None = None,
+) -> dict:
+    return read_responses(
+        [pull_request(applicable, detail, protection=protection)], integration
+    )
 
 
 def snapshot(**changes: object) -> dict:
@@ -46,6 +128,218 @@ class WaitTests(unittest.TestCase):
     def test_missing_check_never_passes(self) -> None:
         result = self.evaluate(snapshot(), ["build"])
         self.assertEqual(result["pending"], ["check:build:missing"])
+
+    def test_explicit_live_same_app_exemption_satisfies_platform_approval(self) -> None:
+        applicable, detail = ruleset()
+
+        state = read_exemption(applicable, detail)
+
+        self.assertEqual(self.evaluate(state)["status"], "satisfied")
+
+    def test_absent_ambiguous_stale_and_different_actor_exemptions_block(self) -> None:
+        applicable, detail = ruleset()
+        cases = [
+            ("no resolved actor", {"integration": None}),
+            ("different actor", {"integration": 2740}),
+            ("no applicable rule", {"applicable": []}),
+            ("classic approval", {"protection": {"requiresApprovingReviews": True}}),
+        ]
+        for name, changes in cases:
+            with self.subTest(name=name):
+                arguments = {"applicable": applicable, "detail": detail, **changes}
+
+                state = read_exemption(**arguments)
+
+                self.assertEqual(
+                    self.evaluate(state)["pending"], ["platform:review-required"]
+                )
+
+    def test_non_exempt_or_stale_ruleset_details_block(self) -> None:
+        applicable, detail = ruleset()
+        cases = [
+            (
+                "no actor",
+                {"bypassActors": {"nodes": [], "pageInfo": {"hasNextPage": False}}},
+            ),
+            (
+                "admin",
+                {
+                    "bypassActors": {
+                        "nodes": [{"bypassMode": "EXEMPT", "actor": None}],
+                        "pageInfo": {"hasNextPage": False},
+                    },
+                },
+            ),
+            (
+                "ordinary bypass",
+                {
+                    "bypassActors": {
+                        "nodes": [
+                            {
+                                "bypassMode": "ALWAYS",
+                                "actor": {"__typename": "App", "databaseId": 1197525},
+                            }
+                        ],
+                        "pageInfo": {"hasNextPage": False},
+                    },
+                },
+            ),
+            ("missing ruleset", {"databaseId": None}),
+            ("inactive", {"enforcement": "EVALUATE"}),
+            ("wrong target", {"target": "TAG"}),
+            ("missing freshness", {"updatedAt": None}),
+            (
+                "incomplete actors",
+                {"bypassActors": {"nodes": [], "pageInfo": {"hasNextPage": True}}},
+            ),
+        ]
+        for name, changes in cases:
+            with self.subTest(name=name):
+                state = read_exemption(applicable, {**detail, **changes})
+
+                self.assertEqual(
+                    self.evaluate(state)["pending"], ["platform:review-required"]
+                )
+
+    def test_one_non_exempt_applicable_ruleset_keeps_approval_blocking(self) -> None:
+        applicable, detail = ruleset()
+        other = copy.deepcopy(applicable[0])
+        other["repositoryRuleset"] = {**detail, "databaseId": 456, "bypassActors": None}
+
+        state = read_exemption([*applicable, other], detail)
+
+        self.assertEqual(self.evaluate(state)["pending"], ["platform:review-required"])
+
+    def test_exempt_actor_does_not_waive_other_release_requirements(self) -> None:
+        cases = [
+            (
+                "required check",
+                {"required": [{"name": "ci", "bucket": "fail"}]},
+                {},
+                "failed",
+            ),
+            ("named reviewer", {}, {"alice": "approval"}, "pending"),
+            (
+                "changes requested",
+                {"reviewDecision": "CHANGES_REQUESTED"},
+                {},
+                "failed",
+            ),
+            (
+                "thread",
+                {
+                    "threads": [
+                        {
+                            "id": "T1",
+                            "isResolved": False,
+                            "isOutdated": False,
+                            "comments": {"nodes": []},
+                        }
+                    ]
+                },
+                {},
+                "pending",
+            ),
+        ]
+        for name, changes, reviewers, expected in cases:
+            with self.subTest(name=name):
+                state = snapshot(
+                    reviewDecision="REVIEW_REQUIRED", mergeActorReviewExempt=True
+                )
+                state.update(changes)
+
+                result = self.evaluate(state, reviewers=reviewers)
+
+                self.assertEqual(result["status"], expected)
+
+    def test_policy_changes_during_review_pagination_keep_approval_blocking(
+        self,
+    ) -> None:
+        applicable, detail = ruleset()
+        first = pull_request(applicable, detail)
+        first["reviews"] = {
+            "nodes": [
+                {"databaseId": i, "state": "COMMENTED", "author": {"login": "alice"}}
+                for i in range(1, 101)
+            ],
+            "pageInfo": {"hasNextPage": True, "endCursor": "review-100"},
+        }
+        added_rule = {
+            "type": "PULL_REQUEST",
+            "repositoryRuleset": {
+                **detail,
+                "databaseId": 456,
+                "bypassActors": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            },
+        }
+        changed_actor = copy.deepcopy(detail)
+        changed_actor["bypassActors"]["nodes"][0]["actor"]["databaseId"] = 2740
+        cases = [
+            (
+                "added nonexempt rule",
+                pull_request([*applicable, added_rule], detail),
+                "pending",
+            ),
+            ("removed rule", pull_request([], detail), "pending"),
+            ("changed actor", pull_request(applicable, changed_actor), "pending"),
+            (
+                "added classic approval",
+                pull_request(
+                    applicable, detail, protection={"requiresApprovingReviews": True}
+                ),
+                "pending",
+            ),
+            ("unchanged policy", pull_request(applicable, detail), "satisfied"),
+        ]
+        for name, final, expected in cases:
+            with self.subTest(name=name):
+                final["reviews"]["nodes"] = [
+                    {
+                        "databaseId": 101,
+                        "state": "COMMENTED",
+                        "author": {"login": "alice"},
+                    }
+                ]
+
+                state = read_responses([first, final])
+
+                self.assertEqual(self.evaluate(state)["status"], expected)
+
+    def test_incomplete_rules_page_never_establishes_exemption(self) -> None:
+        applicable, detail = ruleset()
+        pr = pull_request(applicable, detail)
+        pr["baseRef"]["rules"]["pageInfo"] = {
+            "hasNextPage": True,
+            "endCursor": "rule-100",
+        }
+
+        state = read_responses([pr])
+
+        self.assertEqual(self.evaluate(state)["pending"], ["platform:review-required"])
+
+    def test_comment_does_not_erase_changes_requested_for_exempt_actor(self) -> None:
+        state = snapshot(
+            reviewDecision="REVIEW_REQUIRED",
+            mergeActorReviewExempt=True,
+            reviews=[
+                {"id": 1, "user": {"login": "alice"}, "state": "CHANGES_REQUESTED"},
+                {"id": 2, "user": {"login": "alice"}, "state": "COMMENTED"},
+            ],
+        )
+
+        self.assertEqual(self.evaluate(state)["failed"], ["platform:changes-requested"])
+
+    def test_api_errors_cannot_establish_exemption(self) -> None:
+        forge = module.GitHub("owner/repo", 1, float("inf"), merge_integration=1197525)
+        response = module.subprocess.CompletedProcess(
+            [], 0, '{"errors":[{"message":"denied"}]}', ""
+        )
+
+        with (
+            patch.object(module.subprocess, "run", return_value=response),
+            self.assertRaises(module.ForgeError),
+        ):
+            forge.read()
 
     def test_failed_cancelled_and_pending_platform_checks(self) -> None:
         for bucket in ["fail", "cancel", "pending"]:

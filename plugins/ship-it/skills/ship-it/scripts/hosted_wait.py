@@ -68,6 +68,7 @@ class GitHub:
         deadline: float,
         *,
         quota_max_age: int = DEFAULT_MAX_AGE,
+        merge_integration: int | None = None,
     ) -> None:
         """Retain the PR identity and wait deadline."""
         self.repository = repository
@@ -75,6 +76,7 @@ class GitHub:
         self.deadline = deadline
         self.quota_max_age = quota_max_age
         self.review_state: dict | None = None
+        self.merge_integration = merge_integration
 
     def _request(self, payload: dict) -> dict:
         remaining = self.deadline - time.monotonic()
@@ -88,13 +90,55 @@ class GitHub:
             message = "gh request timed out before the overall deadline"
             raise ForgeError(message) from None
 
+    def _review_exempt(self, pr: dict) -> bool:
+        if self.merge_integration is None:
+            return False
+        protection = (pr.get("baseRef") or {}).get("branchProtectionRule")
+        if protection and protection.get("requiresApprovingReviews", True):
+            return False
+        rules = (pr.get("baseRef") or {}).get("rules") or {}
+        if rules.get("pageInfo", {}).get("hasNextPage", True):
+            return False
+        review_rules = [
+            r for r in rules.get("nodes", []) if r["type"] == "PULL_REQUEST"
+        ]
+        return bool(review_rules) and all(
+            self._ruleset_review_exempt(rule) for rule in review_rules
+        )
+
+    def _ruleset_review_exempt(self, rule: dict) -> bool:
+        detail = rule.get("repositoryRuleset") or {}
+        actors = detail.get("bypassActors") or {}
+        if (
+            type(detail.get("databaseId")) is not int
+            or detail["databaseId"] <= 0
+            or detail.get("enforcement") != "ACTIVE"
+            or detail.get("target") != "BRANCH"
+            or not detail.get("updatedAt")
+            or actors.get("pageInfo", {}).get("hasNextPage", True)
+        ):
+            return False
+        return any(
+            entry["bypassMode"] == "EXEMPT"
+            and (actor := entry.get("actor")) is not None
+            and actor.get("__typename") == "App"
+            and type(actor.get("databaseId")) is int
+            and actor["databaseId"] == self.merge_integration
+            for entry in actors.get("nodes", [])
+        )
+
     def read(self) -> dict:
         """Read every page with one fixed gh command and JSON stdin."""
         owner, name = self.repository.split("/")
         query = """query($owner:String!,$name:String!,$number:Int!,
-$checks:String,$reviews:String,$threads:String){repository(owner:$owner,name:$name){
-pullRequest(number:$number){headRefOid state merged reviewDecision
-baseRef{branchProtectionRule{requiredStatusCheckContexts}}
+$checks:String,$reviews:String,$threads:String,$mergeActor:Boolean!){
+repository(owner:$owner,name:$name){
+pullRequest(number:$number){headRefOid baseRefName state merged reviewDecision
+baseRef{branchProtectionRule{requiredStatusCheckContexts requiresApprovingReviews}
+rules(first:100) @include(if:$mergeActor){nodes{type
+repositoryRuleset{databaseId enforcement target updatedAt
+bypassActors(first:100){nodes{bypassMode actor{__typename ... on App{databaseId}}}
+pageInfo{hasNextPage}}}} pageInfo{hasNextPage endCursor}}}
 commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100,after:$checks){
 nodes{__typename ... on CheckRun{databaseId name status conclusion checkSuite{id}
 isRequired(pullRequestNumber:$number)} ... on StatusContext{id context state
@@ -105,10 +149,18 @@ pageInfo{hasNextPage endCursor}}
 reviewThreads(first:100,after:$threads){nodes{id isResolved isOutdated
 comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
 """
-        variables = {"owner": owner, "name": name, "number": self.number}
+        variables = {
+            "owner": owner,
+            "name": name,
+            "number": self.number,
+            "mergeActor": self.merge_integration is not None,
+        }
         collected = {"checks": [], "reviews": [], "threads": []}
         finished: set[str] = set()
         observed_head = None
+        observed_base = None
+        policy_snapshot: list[dict] = []
+        policy_consistent = True
         while len(finished) < len(collected):
             response = self._request({"query": query, "variables": variables})
             if response.get("errors"):
@@ -119,34 +171,63 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
             if observed_head is not None and head != observed_head:
                 return {"head": head}
             observed_head = head
+            if observed_base is not None and pr["baseRefName"] != observed_base:
+                message = "PR base branch changed during snapshot"
+                raise ForgeError(message)
+            observed_base = pr["baseRefName"]
             rollup = pr["commits"]["nodes"][0]["commit"]["statusCheckRollup"]
             connections = {
                 "checks": rollup["contexts"] if rollup else None,
                 "reviews": pr["reviews"],
                 "threads": pr["reviewThreads"],
             }
-            for key, connection in connections.items():
-                if key in finished:
-                    continue
-                if connection is None:
-                    finished.add(key)
-                    continue
-                collected[key].extend(connection["nodes"])
-                page = connection["pageInfo"]
-                if not page["hasNextPage"]:
-                    finished.add(key)
-                elif not page["endCursor"] or page["endCursor"] == variables.get(key):
-                    message = "GitHub pagination did not advance"
-                    raise ForgeError(message)
-                else:
-                    variables[key] = page["endCursor"]
+            policy_consistent &= _consistent_policy(
+                pr.get("baseRef"),
+                policy_snapshot,
+            )
+            _collect_page(connections, collected, finished, variables)
         serviceability = classify_and_remember(
             _submitted_reviews(collected),
             self.review_state,
             max_age=self.quota_max_age,
         )
         self.review_state = serviceability
-        return _normalize(pr, collected, serviceability)
+        state = _normalize(pr, collected, serviceability)
+        if pr["reviewDecision"] == "REVIEW_REQUIRED":
+            state["mergeActorReviewExempt"] = policy_consistent and self._review_exempt(
+                pr,
+            )
+        return state
+
+
+def _consistent_policy(policy: dict | None, previous: list[dict]) -> bool:
+    if policy is None or (previous and previous[0] != policy):
+        return False
+    previous[:] = [policy]
+    return True
+
+
+def _collect_page(
+    connections: dict,
+    collected: dict,
+    finished: set[str],
+    variables: dict,
+) -> None:
+    for key, connection in connections.items():
+        if key in finished:
+            continue
+        if connection is None:
+            finished.add(key)
+            continue
+        collected[key].extend(connection["nodes"])
+        page = connection["pageInfo"]
+        if not page["hasNextPage"]:
+            finished.add(key)
+        elif not page["endCursor"] or page["endCursor"] == variables.get(key):
+            message = "GitHub pagination did not advance"
+            raise ForgeError(message)
+        else:
+            variables[key] = page["endCursor"]
 
 
 def _submitted_reviews(collected: dict) -> list[dict]:
@@ -320,6 +401,15 @@ def _named_check(
             failed.append(f"status:{name}:{status['state']}")
 
 
+def _changes_requested(reviews: list[dict]) -> bool:
+    decisions = {
+        review["user"]["login"].casefold(): review["state"]
+        for review in sorted(reviews, key=lambda r: r["id"])
+        if review["state"] in {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}
+    }
+    return "CHANGES_REQUESTED" in decisions.values()
+
+
 def _review_requirements(
     snapshot: dict,
     reviewers: dict[str, str],
@@ -352,9 +442,14 @@ def _review_requirements(
             failed.append(f"review:{login}:changes-requested")
         elif requirement == "approval" and review["state"] != "APPROVED":
             pending.append(f"review:{login}:approval")
-    if snapshot["reviewDecision"] == "CHANGES_REQUESTED":
+    if snapshot["reviewDecision"] == "CHANGES_REQUESTED" or _changes_requested(
+        snapshot["reviews"],
+    ):
         failed.append("platform:changes-requested")
-    elif snapshot["reviewDecision"] == "REVIEW_REQUIRED":
+    elif snapshot["reviewDecision"] == "REVIEW_REQUIRED" and not snapshot.get(
+        "mergeActorReviewExempt",
+        False,
+    ):
         pending.append("platform:review-required")
 
 
@@ -419,9 +514,19 @@ def main() -> int:
     parser.add_argument("--check", action="append", default=[])
     parser.add_argument("--reviewer", action="append", default=[])
     parser.add_argument("--thread-author", action="append", default=[])
+    parser.add_argument("--merge-integration", type=int)
+    parser.add_argument("--bot-comment")
     parser.add_argument("--timeout", type=float, default=1800)
     parser.add_argument("--interval", type=float, default=30)
     args = parser.parse_args()
+    if (args.merge_integration is None) != (args.bot_comment is None):
+        parser.error("--merge-integration and --bot-comment must be supplied together")
+    if args.merge_integration is not None and (
+        args.merge_integration <= 0 or not args.bot_comment.strip()
+    ):
+        parser.error(
+            "expected a positive integration ID and exact non-empty bot comment",
+        )
     reviewers = {}
     for item in args.reviewer:
         login, separator, requirement = item.partition(":")
@@ -444,6 +549,7 @@ def main() -> int:
                 args.number,
                 deadline,
                 quota_max_age=args.quota_max_age,
+                merge_integration=args.merge_integration,
             ),
             args.head,
             (args.check, reviewers, args.thread_author),
