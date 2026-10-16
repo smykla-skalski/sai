@@ -177,6 +177,9 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         self.assertIn("relayed approval", worker_rules)
         self.assertIn("never user authority", worker_rules)
         self.assertIn("original authorizing message verbatim", orchestration)
+        self.assertIn("goes in a file whose path replaces it", orchestration)
+        self.assertIn("transition --status blocked --blocker", worker_rules)
+        self.assertIn("reconciles against the recorded grants", worker_rules)
 
     def test_unserviceable_hosted_review_is_not_requested(self) -> None:
         release = read(REFERENCES / "release.md")
