@@ -7,7 +7,7 @@
 | kind | data |
 | :-- | :-- |
 | `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation; `owner` is null before launch (or the native worker ID for an already observed owner); `deadlineAt` is a later UTC instant |
-| `bind-owner` | `owner` with the native worker ID; must match the existing child owner for an orchestration dispatch |
+| `bind-owner` | `owner` with the native worker ID; atomically fills a null orchestration child worker, otherwise must match that existing owner |
 | `started` | `{}` |
 | `result` | `eventId`, `status: completed\|blocked\|failed`, `checkpointPath` |
 | `acknowledge` | `eventId` matching the durable result |

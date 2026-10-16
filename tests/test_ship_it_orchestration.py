@@ -130,7 +130,9 @@ class OrchestrationTest(unittest.TestCase):
         )
         return event
 
-    def initialize(self, *, dependencies: bool = False) -> None:
+    def initialize(
+        self, *, dependencies: bool = False, worker: str | None = "worker-1"
+    ) -> None:
         self.command(
             "set-orchestration",
             "--orchestration-json",
@@ -140,7 +142,7 @@ class OrchestrationTest(unittest.TestCase):
             "dispatch-event",
             "dispatch",
             {
-                "worker": "worker-1",
+                "worker": worker,
                 "worktree": str(self.root / "worktree"),
                 "branch": "feat/child",
                 "revision": REVISION,
@@ -330,6 +332,42 @@ class OrchestrationTest(unittest.TestCase):
         self.assertFalse(self.reconcile_workers()["ownerHeld"])
         self.assertEqual(
             before, self.document()["orchestration"]["children"][0]["capacityLeases"]
+        )
+
+    def test_first_host_assigned_identity_binds_authoritative_child_atomically(
+        self,
+    ) -> None:
+        self.initialize(worker=None)
+        self.worker_event(
+            "register",
+            {
+                "target": {"issueUrl": FIRST},
+                "owner": None,
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+        before = self.document()
+        actual_owner = "/root/host-assigned-native-id"
+        self.worker_event("bind-owner", {"owner": actual_owner}, "2026-10-15T21:00:01Z")
+        after = self.document()
+        self.assertEqual(after["orchestration"]["children"][0]["worker"], actual_owner)
+        self.assertEqual(after["workerRecovery"][0]["owner"], actual_owner)
+        for field in ("authorization", "convergence", "gateVerdicts"):
+            self.assertEqual(before[field], after[field])
+        self.assertEqual(
+            before["orchestration"]["children"][0]["capacityLeases"],
+            after["orchestration"]["children"][0]["capacityLeases"],
+        )
+        self.assertFalse(
+            self.worker_event(
+                "bind-owner", {"owner": actual_owner}, "2026-10-15T21:00:02Z"
+            )["applied"]
+        )
+        self.worker_event(
+            "bind-owner",
+            {"owner": "competing-native-id"},
+            "2026-10-15T21:00:03Z",
+            success=False,
         )
 
     def test_worker_observations_reject_contradictory_chronology(self) -> None:

@@ -418,5 +418,12 @@ def bind_owner(
         "worker already bound to another owner",
     )
     applied = record["owner"] is None
+    if "issueUrl" in record["target"]:
+        child = next(
+            item
+            for item in checkpoint["orchestration"]["children"]
+            if item["issueUrl"] == record["target"]["issueUrl"]
+        )
+        child["worker"] = owner
     record["owner"] = owner
     return {"dispatchId": dispatch, "applied": applied}

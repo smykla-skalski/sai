@@ -349,7 +349,9 @@ def dispatch(
         ),
         "dependencies are not completed",
     )
-    for field in ("worker", "worktree", "branch"):
+    if data["worker"] is not None:
+        non_empty(data["worker"], "worker")
+    for field in ("worktree", "branch"):
         non_empty(data[field], field)
     commit_id(data["revision"], "revision")
     child.update(
