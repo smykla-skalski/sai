@@ -47,14 +47,13 @@ def ruleset() -> tuple[list[dict], dict]:
     return [{"type": "PULL_REQUEST"}], detail
 
 
-def read_exemption(
+def pull_request(
     applicable: list[dict],
     detail: dict,
     *,
-    integration: int | None = 1197525,
     protection: dict | None = None,
 ) -> dict:
-    pr = {
+    return {
         "headRefOid": HEAD,
         "baseRefName": "release/stable",
         "state": "OPEN",
@@ -71,19 +70,37 @@ def read_exemption(
         "reviews": {"nodes": [], "pageInfo": {"hasNextPage": False}},
         "reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": False}},
     }
-    completed = module.subprocess.CompletedProcess(
-        [],
-        0,
-        json.dumps({"data": {"repository": {"pullRequest": pr}}}),
-        "",
-    )
+
+
+def read_responses(responses: list[dict], integration: int | None = 1197525) -> dict:
+    completed = [
+        module.subprocess.CompletedProcess(
+            [],
+            0,
+            json.dumps({"data": {"repository": {"pullRequest": pr}}}),
+            "",
+        )
+        for pr in responses
+    ]
     forge = module.GitHub("owner/repo", 1, float("inf"), merge_integration=integration)
     with (
         TemporaryDirectory() as state_directory,
         patch.dict(os.environ, {"XDG_DATA_HOME": state_directory}),
-        patch.object(module.subprocess, "run", return_value=completed),
+        patch.object(module.subprocess, "run", side_effect=completed),
     ):
         return forge.read()
+
+
+def read_exemption(
+    applicable: list[dict],
+    detail: dict,
+    *,
+    integration: int | None = 1197525,
+    protection: dict | None = None,
+) -> dict:
+    return read_responses(
+        [pull_request(applicable, detail, protection=protection)], integration
+    )
 
 
 def snapshot(**changes: object) -> dict:
@@ -234,6 +251,71 @@ class WaitTests(unittest.TestCase):
                 result = self.evaluate(state, reviewers=reviewers)
 
                 self.assertEqual(result["status"], expected)
+
+    def test_policy_changes_during_review_pagination_keep_approval_blocking(
+        self,
+    ) -> None:
+        applicable, detail = ruleset()
+        first = pull_request(applicable, detail)
+        first["reviews"] = {
+            "nodes": [
+                {"databaseId": i, "state": "COMMENTED", "author": {"login": "alice"}}
+                for i in range(1, 101)
+            ],
+            "pageInfo": {"hasNextPage": True, "endCursor": "review-100"},
+        }
+        added_rule = {
+            "type": "PULL_REQUEST",
+            "repositoryRuleset": {
+                **detail,
+                "databaseId": 456,
+                "bypassActors": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            },
+        }
+        changed_actor = copy.deepcopy(detail)
+        changed_actor["bypassActors"]["nodes"][0]["actor"]["databaseId"] = 2740
+        cases = [
+            (
+                "added nonexempt rule",
+                pull_request([*applicable, added_rule], detail),
+                "pending",
+            ),
+            ("removed rule", pull_request([], detail), "pending"),
+            ("changed actor", pull_request(applicable, changed_actor), "pending"),
+            (
+                "added classic approval",
+                pull_request(
+                    applicable, detail, protection={"requiresApprovingReviews": True}
+                ),
+                "pending",
+            ),
+            ("unchanged policy", pull_request(applicable, detail), "satisfied"),
+        ]
+        for name, final, expected in cases:
+            with self.subTest(name=name):
+                final["reviews"]["nodes"] = [
+                    {
+                        "databaseId": 101,
+                        "state": "COMMENTED",
+                        "author": {"login": "alice"},
+                    }
+                ]
+
+                state = read_responses([first, final])
+
+                self.assertEqual(self.evaluate(state)["status"], expected)
+
+    def test_incomplete_rules_page_never_establishes_exemption(self) -> None:
+        applicable, detail = ruleset()
+        pr = pull_request(applicable, detail)
+        pr["baseRef"]["rules"]["pageInfo"] = {
+            "hasNextPage": True,
+            "endCursor": "rule-100",
+        }
+
+        state = read_responses([pr])
+
+        self.assertEqual(self.evaluate(state)["pending"], ["platform:review-required"])
 
     def test_comment_does_not_erase_changes_requested_for_exempt_actor(self) -> None:
         state = snapshot(

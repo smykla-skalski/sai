@@ -90,13 +90,18 @@ class GitHub:
             message = "gh request timed out before the overall deadline"
             raise ForgeError(message) from None
 
-    def _review_exempt(self, pr: dict, rules: list[dict]) -> bool:
+    def _review_exempt(self, pr: dict) -> bool:
         if self.merge_integration is None:
             return False
         protection = (pr.get("baseRef") or {}).get("branchProtectionRule")
         if protection and protection.get("requiresApprovingReviews", True):
             return False
-        review_rules = [r for r in rules if r["type"] == "PULL_REQUEST"]
+        rules = (pr.get("baseRef") or {}).get("rules") or {}
+        if rules.get("pageInfo", {}).get("hasNextPage", True):
+            return False
+        review_rules = [
+            r for r in rules.get("nodes", []) if r["type"] == "PULL_REQUEST"
+        ]
         return bool(review_rules) and all(
             self._ruleset_review_exempt(rule) for rule in review_rules
         )
@@ -109,6 +114,7 @@ class GitHub:
             or detail["databaseId"] <= 0
             or detail.get("enforcement") != "ACTIVE"
             or detail.get("target") != "BRANCH"
+            or not detail.get("updatedAt")
             or actors.get("pageInfo", {}).get("hasNextPage", True)
         ):
             return False
@@ -125,11 +131,11 @@ class GitHub:
         """Read every page with one fixed gh command and JSON stdin."""
         owner, name = self.repository.split("/")
         query = """query($owner:String!,$name:String!,$number:Int!,
-$checks:String,$reviews:String,$threads:String,$rules:String,$mergeActor:Boolean!){
+$checks:String,$reviews:String,$threads:String,$mergeActor:Boolean!){
 repository(owner:$owner,name:$name){
 pullRequest(number:$number){headRefOid baseRefName state merged reviewDecision
 baseRef{branchProtectionRule{requiredStatusCheckContexts requiresApprovingReviews}
-rules(first:100,after:$rules) @include(if:$mergeActor){nodes{type
+rules(first:100) @include(if:$mergeActor){nodes{type
 repositoryRuleset{databaseId enforcement target updatedAt
 bypassActors(first:100){nodes{bypassMode actor{__typename ... on App{databaseId}}}
 pageInfo{hasNextPage}}}} pageInfo{hasNextPage endCursor}}}
@@ -149,11 +155,11 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
             "number": self.number,
             "mergeActor": self.merge_integration is not None,
         }
-        collected = {"checks": [], "reviews": [], "threads": [], "rules": []}
-        finished: set[str] = set() if self.merge_integration is not None else {"rules"}
+        collected = {"checks": [], "reviews": [], "threads": []}
+        finished: set[str] = set()
         observed_head = None
         observed_base = None
-        policy_versions: dict[int, str] = {}
+        policy_snapshot: list[dict] = []
         policy_consistent = True
         while len(finished) < len(collected):
             response = self._request({"query": query, "variables": variables})
@@ -174,11 +180,10 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
                 "checks": rollup["contexts"] if rollup else None,
                 "reviews": pr["reviews"],
                 "threads": pr["reviewThreads"],
-                "rules": (pr.get("baseRef") or {}).get("rules"),
             }
             policy_consistent &= _consistent_policy(
-                connections["rules"],
-                policy_versions,
+                pr.get("baseRef"),
+                policy_snapshot,
             )
             _collect_page(connections, collected, finished, variables)
         serviceability = classify_and_remember(
@@ -191,21 +196,15 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
         if pr["reviewDecision"] == "REVIEW_REQUIRED":
             state["mergeActorReviewExempt"] = policy_consistent and self._review_exempt(
                 pr,
-                collected["rules"],
             )
         return state
 
 
-def _consistent_policy(connection: dict | None, versions: dict) -> bool:
-    consistent = True
-    for rule in (connection or {}).get("nodes", []):
-        ruleset = rule.get("repositoryRuleset") or {}
-        identity = ruleset.get("databaseId")
-        version = ruleset.get("updatedAt")
-        if not version or (identity in versions and versions[identity] != version):
-            consistent = False
-        versions[identity] = version
-    return consistent
+def _consistent_policy(policy: dict | None, previous: list[dict]) -> bool:
+    if policy is None or (previous and previous[0] != policy):
+        return False
+    previous[:] = [policy]
+    return True
 
 
 def _collect_page(
