@@ -4,6 +4,8 @@ Use this workflow when Ship It receives an explicitly approved complex plan or a
 
 Create or resume the umbrella's durable checkpoint before building or dispatching its graph. Set `phase` to `orchestrate`, set `orchestration` to an object, and keep one child record per native subissue. Reconcile every recorded child with GitHub and its worker or worktree before resuming; never recreate a worker or repeat a completed gate from checkpoint state alone.
 
+Initialize the graph with `bookkeeping.py set-orchestration` and record each dispatch, child update, capacity request/grant/release, gate verdict and terminal result with `record-orchestration-event`. Use the exact payloads in [checkpoint.md](checkpoint.md#orchestration-and-recovery-commands). Stable event IDs make transport retries idempotent; `expectedRevision` and `dispatchId` reject delayed worker updates. Record scoped corrections with `record-acceptance-recovery`. Never substitute a separate ledger or direct JSON edits for these commands.
+
 ## Build or reuse the issue graph
 
 1. Read the complete approved plan and its acceptance criteria, or the existing umbrella and native subissues. Resolve the target repository and search open issues for the same umbrella before creating one. Prefer an explicitly supplied umbrella; reuse a matching existing umbrella and its subissues. Do not adopt an unrelated issue based on a similar title.

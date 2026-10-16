@@ -48,6 +48,7 @@ class FileDeliveryTest(unittest.TestCase):
                     shutil.copyfile(SKILL / name, destination)
                 if entry in {
                     "checkpoint_state.py",
+                    "orchestration_state.py",
                     "convergence.py",
                     "validation_reuse.py",
                     "token_cost.py",
