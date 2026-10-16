@@ -19,6 +19,10 @@ from typing import Any, Final
 from convergence import DEFAULTS as CONVERGENCE_DEFAULTS
 
 FULL_COMMIT_ID: Final[re.Pattern[str]] = re.compile(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}")
+STRICT_UTC_TIMESTAMP: Final[re.Pattern[str]] = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?"
+    r"(?:Z|\+00:00)",
+)
 RISK_LEVELS: Final[tuple[str, ...]] = ("low", "medium", "high")
 DIFF_CLASSES: Final[frozenset[str]] = frozenset({"docs", "code"})
 GATE_STATUSES: Final[frozenset[str]] = frozenset({"passed", "failed", "blocked"})
@@ -141,6 +145,10 @@ def non_empty(value: object, field: str) -> str:
 def utc_timestamp(value: object, field: str) -> str:
     """Require an RFC 3339 timestamp whose offset is UTC."""
     text = non_empty(value, field)
+    require(
+        STRICT_UTC_TIMESTAMP.fullmatch(text) is not None,
+        f"{field} must be an RFC 3339 UTC timestamp",
+    )
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
     except ValueError as error:
