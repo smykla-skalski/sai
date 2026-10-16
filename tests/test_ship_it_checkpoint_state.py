@@ -108,8 +108,8 @@ class CheckpointCreationTest(unittest.TestCase):
             json.dumps(GITHUB_SOURCE if source is None else source),
         )
 
-    def prepare_repair(self, identity: str) -> tuple[Path, dict]:
-        created = self.create()
+    def prepare_repair(self, identity: str, source: dict | None = None) -> tuple[Path, dict]:
+        created = self.create(source, None, "--identity", (GITHUB_SOURCE if source is None else source)["repository"])
         self.assertEqual(created.returncode, 0, created.stderr)
         path = Path(json.loads(created.stdout)["checkpoint"])
         document = json.loads(path.read_text())
@@ -158,6 +158,19 @@ class CheckpointCreationTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertFalse(json.loads(result.stdout)["repaired"])
                 self.assertEqual(path.read_bytes(), repaired_bytes)
+
+    def test_repair_legacy_source_preserves_exact_task_and_hash(self) -> None:
+        source = {**GITHUB_SOURCE, "repository": "smykla-skalski/sai"}
+        path, before = self.prepare_repair("github:smykla-skalski/sai:277", source)
+        result = self.repair(path, source)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        after = json.loads(path.read_text())
+        self.assertEqual(after["repository"]["identity"], "github.com/smykla-skalski/sai")
+        after["repository"].pop("identityRepairs")
+        after["repository"]["identity"] = before["repository"]["identity"]
+        self.assertEqual(after, before)
+        self.assertEqual(self.repair(path, GITHUB_SOURCE).returncode, 2)
+        self.assertEqual(self.repair(path, {**source, "issue": 278}).returncode, 2)
 
     def test_repair_interrupted_replace_keeps_original_and_can_retry(self) -> None:
         path, _ = self.prepare_repair("github:smykla-skalski/sai:277")

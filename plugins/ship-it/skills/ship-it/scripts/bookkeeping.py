@@ -1025,9 +1025,15 @@ def repair_repository(args: argparse.Namespace) -> dict[str, Any]:
     if source["sourceType"] != "github":
         message = "metadata repair requires a canonical GitHub source"
         raise BookkeepingError(message)
-    expected = source["repository"]
+    source_repository = source["repository"]
+    candidate = (
+        source_repository
+        if source_repository.startswith("github.com/")
+        else f"github.com/{source_repository}"
+    )
+    expected = github_repository(candidate)
     if (
-        github_repository(expected) != expected
+        source_repository not in (expected, expected.removeprefix("github.com/"))
         or verified_origin(Path(args.repository)) != expected
     ):
         message = "canonical source and actual Git origin must match"
