@@ -423,3 +423,228 @@ class ValidationReuseTest(unittest.TestCase):
         self.complete()
 
         self.assertFalse(self.assert_ok(self.structured("repeat"))["dispatch"])
+
+    def sync_revision(self) -> None:
+        self.revision = self.git("rev-parse", "HEAD")
+        document = self.read()
+        document["workflow"]["revision"] = self.revision
+        self.write(document)
+
+    def write_file(self, name: str, text: str) -> None:
+        path = self.repository / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+    def start_change(self) -> None:
+        """Fork `base` from the fixture and commit the change on `feature`."""
+        lines = "".join(f"line {number}\n" for number in range(1, 9))
+        self.write_file("src/shared", lines)
+        self.write_file("src/old", "obsolete")
+        self.write_file("lib/helper", lines)
+        self.commit()
+        self.git("branch", "base")
+        self.git("checkout", "-q", "-b", "feature")
+        self.write_file("src/shared", lines.replace("line 1\n", "feature 1\n"))
+        self.write_file("src/added", "new behavior")
+        (self.repository / "src/old").unlink()
+        self.commit()
+        self.spec["relevance"] = {"base": "base", "reads": ["lib"]}
+        self.save_manifest()
+
+    def advance_base(self, name: str, text: str) -> None:
+        self.git("checkout", "-q", "base")
+        self.write_file(name, text)
+        self.commit()
+        self.git("checkout", "-q", "feature")
+        self.git("-c", "commit.gpgsign=false", "merge", "--no-edit", "-q", "base")
+        self.sync_revision()
+
+    def test_unrelated_main_merge_keeps_verdicts_reusable(self) -> None:
+        self.start_change()
+        self.complete()
+        self.assert_ok(self.structured("manual-test", "test"))
+        self.assert_ok(
+            self.finish(
+                "manual-test", {"verdict": "passed", "output": str(self.output)}
+            )
+        )
+        original = self.revision
+        self.advance_base("src/mainline", "unrelated upstream behavior")
+        self.assertNotEqual(self.revision, original)
+
+        decision = self.assess()
+        self.assertEqual(decision["status"], "reusable")
+        for kind in ("review", "test"):
+            receipt = self.assert_ok(self.structured(f"merged-{kind}", kind))
+            self.assertFalse(receipt["dispatch"])
+        document = self.read()
+        self.assertEqual(document["convergence"]["reviewCycles"], 1)
+        self.assertEqual(document["convergence"]["broadTestRuns"], 1)
+        carried = [
+            verdict
+            for verdict in document["gateVerdicts"]
+            if verdict["revision"] == self.revision
+        ]
+        self.assertEqual(
+            {verdict["gate"] for verdict in carried},
+            {"adversarial-review", "adversarial-test"},
+        )
+        self.assertTrue(
+            all(
+                verdict["provenance"]["originalRevision"] == original
+                for verdict in carried
+            )
+        )
+
+    def test_whole_tree_manifest_still_goes_stale_and_names_the_file(self) -> None:
+        self.start_change()
+        del self.spec["relevance"]
+        self.save_manifest()
+        self.complete()
+        self.advance_base("src/mainline", "unrelated upstream behavior")
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertEqual(decision["reasons"], ["source"])
+        self.assertEqual(
+            decision["changedFiles"],
+            [{"dimension": "source", "path": "src/mainline", "change": "added"}],
+        )
+        self.assertEqual(self.read()["gateVerdicts"][0]["status"], "stale")
+
+    def test_main_merge_touching_a_diff_file_goes_stale_and_names_it(self) -> None:
+        self.start_change()
+        self.complete()
+        lines = self.git("show", "base:src/shared") + "\n"
+        self.advance_base("src/shared", lines.replace("line 8\n", "mainline 8\n"))
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertEqual(
+            decision["changedFiles"],
+            [{"dimension": "source", "path": "src/shared", "change": "modified"}],
+        )
+        self.assertEqual(self.read()["gateVerdicts"][0]["status"], "stale")
+        self.assert_denied(self.structured("manual-test", "test"))
+
+    def test_main_merge_touching_a_read_file_goes_stale_and_names_it(self) -> None:
+        self.start_change()
+        self.complete()
+        self.advance_base("lib/helper", "rewritten upstream helper")
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertEqual(
+            decision["changedFiles"],
+            [{"dimension": "source", "path": "lib/helper", "change": "modified"}],
+        )
+
+    def test_main_merge_adding_a_file_under_a_read_directory_goes_stale(self) -> None:
+        self.start_change()
+        self.complete()
+        self.advance_base("lib/fresh", "new upstream helper")
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertEqual(
+            decision["changedFiles"],
+            [{"dimension": "source", "path": "lib/fresh", "change": "added"}],
+        )
+
+    def test_main_merge_touching_policy_or_dependency_goes_stale(self) -> None:
+        self.start_change()
+        self.complete()
+        self.advance_base("policy", "tightened upstream policy")
+
+        decision = self.assess()
+
+        self.assertEqual(decision["reasons"], ["policy"])
+        self.assertEqual(
+            decision["changedFiles"],
+            [{"dimension": "policy", "path": "policy", "change": "modified"}],
+        )
+
+    def test_a_new_commit_in_the_diff_goes_stale(self) -> None:
+        self.start_change()
+        self.complete()
+        self.write_file("src/another", "second change file")
+        self.commit()
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertEqual(
+            decision["changedFiles"],
+            [{"dimension": "source", "path": "src/another", "change": "added"}],
+        )
+
+    def test_unusable_relevance_declarations_fail_closed(self) -> None:
+        self.start_change()
+        for relevance in (
+            {"base": "missing-ref", "reads": []},
+            {"base": "feature", "reads": ["lib"]},
+            {"base": "-p", "reads": []},
+            {"base": "base with space", "reads": []},
+            {"base": "^base", "reads": []},
+            {"base": "base", "reads": ["absent-declared-path"]},
+            {"base": "base", "reads": "lib"},
+            {"base": "base"},
+        ):
+            with self.subTest(relevance=relevance):
+                self.spec["relevance"] = relevance
+                self.save_manifest()
+
+                self.assert_denied(self.structured())
+
+                document = self.read()
+                self.assertEqual(document["convergence"]["reviewCycles"], 0)
+                self.assertEqual(document["gateVerdicts"], [])
+
+    def test_unusable_relevance_invalidates_a_prior_result(self) -> None:
+        self.start_change()
+        self.complete()
+        self.spec["relevance"] = {"base": "missing-ref", "reads": ["lib"]}
+        self.save_manifest()
+
+        self.assert_denied(self.structured("repeat"))
+
+        document = self.read()
+        self.assertEqual(document["gateVerdicts"][0]["status"], "stale")
+        self.assertIn(
+            "unverifiable-inputs",
+            document["convergence"]["validityDecisions"][-1]["reasons"],
+        )
+
+    def test_relevance_symlink_read_fails_closed(self) -> None:
+        self.start_change()
+        (self.repository / "lib/link").symlink_to(self.output)
+        self.commit()
+
+        self.assert_denied(self.structured())
+
+    def test_widening_reads_changes_the_scope_and_goes_stale(self) -> None:
+        self.start_change()
+        self.complete()
+        self.spec["relevance"]["reads"] = ["lib", "policy"]
+        self.save_manifest()
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertIn("scope", decision["reasons"])
+
+    def test_identical_upstream_change_to_a_diff_file_goes_stale(self) -> None:
+        self.start_change()
+        self.complete()
+        self.advance_base("src/shared", (self.repository / "src/shared").read_text())
+
+        decision = self.assess()
+
+        self.assertEqual(decision["status"], "invalid")
+        self.assertEqual(
+            [entry["path"] for entry in decision["changedFiles"]], ["src/shared"]
+        )
