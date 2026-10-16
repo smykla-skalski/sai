@@ -16,7 +16,9 @@ Merge changes or coordinate approved plans.
 
 ## Active bundle bootstrap
 
-Before reading another reference or invoking a helper:
+First run `python3 <installed-plugin>/skills/ship-it/scripts/plugin_pins.py supported`. When it returns `supported: false` (including Windows without Unix flock and `/bin/ps`), continue the existing workflow from the installed plugin root, forward that root to consumers, and disclose that active bundle retention is unavailable on this platform. Do not invoke acquire, release or collect. Provider updates can invalidate active helpers on this fallback; avoid updating the plugin until the run ends. Other probe or acquisition failures remain blocking.
+
+On supported platforms, before reading another reference or invoking a helper:
 
 1. Locate the complete installed plugin root containing `plugin.json` and `skills/ship-it/`. Identify the long-lived host agent PID from host process metadata; never use a transient tool shell PID. Missing identity blocks startup.
 2. Run `python3 <installed-plugin>/skills/ship-it/scripts/plugin_pins.py acquire --source <installed-plugin> --owner-pid <agent-pid>`. This is the only helper initially invoked from a provider cache. Failed acquisition stops before workflow commands; never substitute one copied helper or another installed version.

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import fcntl
 import hashlib
 import json
 import os
@@ -22,6 +21,11 @@ import tempfile
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -47,6 +51,7 @@ def process_identity(pid: int) -> str:
         text=True,
         check=False,
         timeout=10,
+        env={**os.environ, "TZ": "UTC", "LC_ALL": "C"},
     )
     identities = {}
     for line in result.stdout.splitlines():
@@ -122,6 +127,9 @@ class Pins:
     @contextlib.contextmanager
     def locked(self) -> Iterator[None]:
         """Serialize acquisition, release and collection."""
+        if fcntl is None or not Path("/bin/ps").is_file():
+            msg = "bundle retention requires Unix flock and /bin/ps"
+            raise OSError(msg)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         with (self.root / ".lock").open("a+b") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
@@ -271,6 +279,7 @@ def main() -> int:
         / "sai/ship-it/plugin-pins",
     )
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("supported")
     acquire = commands.add_parser("acquire")
     acquire.add_argument("--source", type=Path, required=True)
     acquire.add_argument("--owner-pid", type=int, required=True)
@@ -279,6 +288,10 @@ def main() -> int:
     collect = commands.add_parser("collect")
     collect.add_argument("--limit", type=int, default=3)
     args = parser.parse_args()
+    if args.command == "supported":
+        supported = fcntl is not None and Path("/bin/ps").is_file()
+        print(json.dumps({"supported": supported}))
+        return 0
     try:
         pins = Pins(args.store)
         if args.command == "acquire":

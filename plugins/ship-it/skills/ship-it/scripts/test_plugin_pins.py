@@ -92,6 +92,28 @@ class PluginPinsTests(unittest.TestCase):
         self.assertEqual(list(self.pins.root.glob(".staging-*")), [])
         self.assertEqual(len(list((self.pins.root / "bundles").iterdir())), 1)
 
+    def test_timezone_change_preserves_live_consumer(self) -> None:
+        with patch.dict(os.environ, {"TZ": "UTC", "LC_ALL": "C"}):
+            first = self.acquire()
+
+        with patch.dict(os.environ, {"TZ": "Pacific/Honolulu", "LC_ALL": "POSIX"}):
+            result = self.pins.collect(3)
+
+        self.assertEqual(result["activeBundles"], 1)
+        self.assertEqual(result["removed"], [])
+        self.assertTrue(Path(first["bundle"]).is_dir())
+        self.assertTrue(
+            (self.pins.root / "leases" / f"{first['lease']}.json").is_file()
+        )
+
+    def test_unsupported_platform_returns_actionable_error(self) -> None:
+        with (
+            patch("plugin_pins.fcntl", None),
+            self.assertRaisesRegex(OSError, "requires Unix flock"),
+            self.pins.locked(),
+        ):
+            self.fail("unsupported retention must not acquire the store")
+
     def test_mutating_source_is_not_published(self) -> None:
         def changing_inventory(root: Path) -> dict:
             result = inventory(root)
