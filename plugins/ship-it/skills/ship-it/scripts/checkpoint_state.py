@@ -75,6 +75,13 @@ LEGACY_FALLBACK: Final[dict[str, str]] = {
     "mechanism": "human-review",
     "reason": "copilot unavailable",
 }
+HOSTED_DECISIONS: Final[frozenset[str]] = frozenset(
+    {"not-required", "serviceable", "fallback", "blocked"},
+)
+HOSTED_DECISION_FIELDS: Final[frozenset[str]] = frozenset(
+    {"status", "reason", "decidedAt"},
+)
+HOSTED_DECISION_CHANGES: Final[frozenset[str]] = frozenset({"fallback", "blocked"})
 SUMMARY_LIMIT: Final[int] = 500
 
 
@@ -471,6 +478,47 @@ def set_release_policy(
                 invalidated += 1
     checkpoint["releasePolicy"] = policy
     return {"materialChange": changed, "invalidatedVerdicts": invalidated}
+
+
+def set_hosted_review_decision(
+    checkpoint: dict[str, Any],
+    decision: dict[str, Any],
+) -> dict[str, Any]:
+    """Record the hosted-review decision; only serviceable may change, once."""
+    require(
+        set(decision) <= HOSTED_DECISION_FIELDS
+        and {"status", "reason"} <= set(decision),
+        "hostedReviewDecision takes status and reason, plus optional decidedAt",
+    )
+    status = decision["status"]
+    require(
+        one_of(status, HOSTED_DECISIONS),
+        "hostedReviewDecision status must be not-required, serviceable, "
+        "fallback or blocked",
+    )
+    reason = non_empty(decision["reason"], "hostedReviewDecision reason")
+    require(
+        len(reason) <= SUMMARY_LIMIT,
+        f"hostedReviewDecision reason exceeds {SUMMARY_LIMIT} characters",
+    )
+    decided_at = utc_timestamp(
+        decision.get("decidedAt") or now_utc(),
+        "hostedReviewDecision decidedAt",
+    )
+    current = checkpoint.get("hostedReviewDecision")
+    previous = current.get("status") if isinstance(current, dict) else None
+    require(
+        current is None
+        or (previous == "serviceable" and status in HOSTED_DECISION_CHANGES),
+        f"hostedReviewDecision is already set ({previous}); only serviceable may "
+        "change, once, to fallback or blocked",
+    )
+    checkpoint["hostedReviewDecision"] = {
+        "status": status,
+        "reason": reason,
+        "decidedAt": decided_at,
+    }
+    return {"hostedReviewDecision": status, "previous": previous}
 
 
 def put_verdict(checkpoint: dict[str, Any], verdict: dict[str, Any]) -> None:

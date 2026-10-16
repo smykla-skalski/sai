@@ -71,12 +71,26 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
     {
         "set-risk",
         "set-release-policy",
+        "set-hosted-review-decision",
         "record-gate",
         "add-grant",
         "set-findings",
         "attest-review",
     },
 )
+JSON_SECTION_COMMANDS: Final[
+    dict[str, tuple[str, Callable[[dict[str, Any], dict[str, Any]], dict[str, Any]]]]
+] = {
+    "set-risk": ("--risk-json", checkpoint_state.set_risk),
+    "set-release-policy": ("--policy-json", checkpoint_state.set_release_policy),
+    "set-hosted-review-decision": (
+        "--decision-json",
+        checkpoint_state.set_hosted_review_decision,
+    ),
+    "record-gate": ("--verdict-json", checkpoint_state.record_gate),
+    "add-grant": ("--grant-json", checkpoint_state.add_grant),
+    "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
+}
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
 VALID_STATUSES: Final[frozenset[str]] = frozenset(
@@ -1015,48 +1029,25 @@ def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
 def section_operation(args: argparse.Namespace) -> dict[str, Any]:
     """Run one checkpoint section command through the locked transaction."""
     command = args.command
-    if command == "set-risk":
-        risk = checkpoint_state.parse_object(args.risk_json, "--risk-json")
+    if command == "attest-review":
         return mutate_checkpoint(
             Path(args.checkpoint),
-            lambda checkpoint: checkpoint_state.set_risk(checkpoint, risk),
+            lambda checkpoint: checkpoint_state.attest_review(
+                checkpoint,
+                revision=args.revision,
+                summary=args.summary,
+                gate=args.gate,
+                commands=args.commands,
+            ),
         )
-    if command == "set-release-policy":
-        policy = checkpoint_state.parse_object(args.policy_json, "--policy-json")
-        return mutate_checkpoint(
-            Path(args.checkpoint),
-            lambda checkpoint: checkpoint_state.set_release_policy(checkpoint, policy),
-        )
-    if command == "record-gate":
-        verdict = checkpoint_state.parse_object(args.verdict_json, "--verdict-json")
-        return mutate_checkpoint(
-            Path(args.checkpoint),
-            lambda checkpoint: checkpoint_state.record_gate(checkpoint, verdict),
-        )
-    if command == "add-grant":
-        grant = checkpoint_state.parse_object(args.grant_json, "--grant-json")
-        return mutate_checkpoint(
-            Path(args.checkpoint),
-            lambda checkpoint: checkpoint_state.add_grant(checkpoint, grant),
-        )
-    if command == "set-findings":
-        updates = checkpoint_state.parse_object(
-            args.dispositions_json,
-            "--dispositions-json",
-        )
-        return mutate_checkpoint(
-            Path(args.checkpoint),
-            lambda checkpoint: checkpoint_state.set_dispositions(checkpoint, updates),
-        )
+    option, apply = JSON_SECTION_COMMANDS[command]
+    value = checkpoint_state.parse_object(
+        getattr(args, option[2:].replace("-", "_")),
+        option,
+    )
     return mutate_checkpoint(
         Path(args.checkpoint),
-        lambda checkpoint: checkpoint_state.attest_review(
-            checkpoint,
-            revision=args.revision,
-            summary=args.summary,
-            gate=args.gate,
-            commands=args.commands,
-        ),
+        lambda checkpoint: apply(checkpoint, value),
     )
 
 
@@ -1212,6 +1203,11 @@ def add_state_commands(
         ("handoff", "--handoff-json", "prepare or acknowledge a phase handoff"),
         ("set-risk", "--risk-json", "set the risk selection"),
         ("set-release-policy", "--policy-json", "store the release policy"),
+        (
+            "set-hosted-review-decision",
+            "--decision-json",
+            "record the hosted-review decision",
+        ),
         ("record-gate", "--verdict-json", "record one gate verdict"),
         ("add-grant", "--grant-json", "record one authorization grant"),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
