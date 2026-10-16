@@ -83,6 +83,14 @@ HOSTED_DECISION_FIELDS: Final[frozenset[str]] = frozenset(
 )
 HOSTED_DECISION_CHANGES: Final[frozenset[str]] = frozenset({"fallback", "blocked"})
 SUMMARY_LIMIT: Final[int] = 500
+RECOVERY_FIELDS: Final[tuple[str, ...]] = (
+    "failure",
+    "criterion",
+    "grantId",
+    "revision",
+    "correction",
+    "verification",
+)
 
 
 class StateError(ValueError):
@@ -344,6 +352,91 @@ def add_grant(checkpoint: dict[str, Any], grant: dict[str, Any]) -> dict[str, An
     )
     grants.append(grant)
     return {"grant": identity, "grants": len(grants)}
+
+
+def recovery_attempt(attempt: object) -> dict[str, Any]:
+    """Validate one recovery attempt and stamp the time it was recorded."""
+    require(isinstance(attempt, dict), "recovery attempt must be an object")
+    require(
+        set(attempt) == {"result", "revision", "summary"},
+        "recovery attempt requires exactly: result, revision, summary",
+    )
+    require(
+        one_of(attempt["result"], GATE_STATUSES),
+        "recovery attempt result must be passed, failed or blocked",
+    )
+    summary = non_empty(attempt["summary"], "recovery attempt summary")
+    require(
+        len(summary) <= SUMMARY_LIMIT,
+        f"recovery attempt summary exceeds {SUMMARY_LIMIT} characters",
+    )
+    return {
+        "result": attempt["result"],
+        "revision": commit_id(attempt["revision"], "recovery attempt revision"),
+        "summary": summary,
+        "recordedAt": now_utc(),
+    }
+
+
+def require_active_grant(checkpoint: dict[str, Any], identity: object) -> None:
+    """Refuse recovery under a grant that is unknown or not active."""
+    grants = checkpoint["authorization"]["grants"]
+    require(
+        any(
+            grant.get("id") == identity and grant.get("status") == "active"
+            for grant in grants
+        ),
+        f"acceptance recovery requires an active grant: {identity}",
+    )
+
+
+def record_acceptance_recovery(
+    checkpoint: dict[str, Any],
+    update: dict[str, Any],
+) -> dict[str, Any]:
+    """Record a focused acceptance recovery or append an attempt to one.
+
+    Convergence counters and reservations stay untouched.
+    """
+    identity = non_empty(update.get("id"), "recovery id")
+    state = checkpoint["convergence"]
+    recoveries = state.setdefault("acceptanceRecovery", [])
+    require(isinstance(recoveries, list), "acceptanceRecovery must be an array")
+    entry = next(
+        (
+            item
+            for item in recoveries
+            if isinstance(item, dict) and item.get("id") == identity
+        ),
+        None,
+    )
+    if entry is None:
+        allowed = {"id", "attempt", *RECOVERY_FIELDS}
+        require(
+            set(update) <= allowed and set(RECOVERY_FIELDS) <= set(update),
+            "new recovery requires exactly: id, "
+            f"{', '.join(RECOVERY_FIELDS)} and an optional attempt",
+        )
+        for field in RECOVERY_FIELDS:
+            non_empty(update[field], f"recovery {field}")
+        commit_id(update["revision"], "recovery revision")
+        require_active_grant(checkpoint, update["grantId"])
+        entry = {
+            "id": identity,
+            **{field: update[field] for field in RECOVERY_FIELDS},
+            "attempts": [],
+        }
+        recoveries.append(entry)
+    else:
+        require(
+            set(update) == {"id", "attempt"},
+            f"recovery {identity} is recorded; a further attempt takes "
+            "exactly: id, attempt",
+        )
+        require_active_grant(checkpoint, entry["grantId"])
+    if "attempt" in update:
+        entry["attempts"].append(recovery_attempt(update["attempt"]))
+    return {"recovery": identity, "attempts": len(entry["attempts"])}
 
 
 def material_release_change(old: object, new: dict[str, Any]) -> bool:

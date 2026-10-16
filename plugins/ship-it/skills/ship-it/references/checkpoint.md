@@ -159,6 +159,7 @@ bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
 bookkeeping.py set-hosted-review-decision --checkpoint FILE --decision-json OBJECT
 bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
 bookkeeping.py add-grant --checkpoint FILE --grant-json OBJECT
+bookkeeping.py record-acceptance-recovery --checkpoint FILE --recovery-json OBJECT
 bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
 bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--gate GATE] [--command TEXT]...
 ```
@@ -169,6 +170,7 @@ bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT [--
 - `set-hosted-review-decision` takes `status` (`not-required|serviceable|fallback|blocked`), `reason` (at most 500 characters) and optional `decidedAt` (RFC 3339 UTC, default now), and stores exactly `status`, `reason` and `decidedAt`. The first call accepts any status. Afterward only `serviceable` to `fallback` or `blocked` is accepted, once; every other call, including a repeat of the same status, is refused and leaves the file unchanged.
 - `record-gate` takes `gate`, `status` (`passed|failed|blocked`), `revision` (the current workflow revision), `provider`, `summary` (at most 500 characters) and optional `timestamp`, `model`, `url`; it replaces a verdict with the same gate, revision and provider. It is refused while evidence is enabled, because the evidence record owns verdicts.
 - `add-grant` appends one complete grant (same object as `create --grant-json`) to an existing checkpoint for a resumed run or a later user reply. It refuses an ID already recorded, an empty `source.message` and a `scope` that is not a non-empty array of non-empty strings, and leaves every recorded grant, revoked or exhausted included, unchanged.
+- `record-acceptance-recovery` appends an entry to `convergence.acceptanceRecovery`: `id`, `failure`, `criterion`, `grantId`, `revision` (full SHA), `correction`, `verification` (the focused command) and an `attempts` array. The first call takes those fields and an optional `attempt` (`result` `passed|failed|blocked`, `revision`, `summary` of at most 500 characters); a recorded `id` takes only `{id, attempt}`, which appends a timestamped attempt and changes nothing else. It refuses a `grantId` that is unknown or not `active`, including on a later attempt, and never touches a convergence counter or reservation.
 - `set-findings` maps finding IDs to `open|fixed|blocked` or `{"disposition":"follow-up","followUpIssue":URL}`, which also appends the URL to `followUpIssues`; `blocked` needs a blocked workflow, and any unresolved finding marks a re-attestation `stale`.
 - `attest-review` records the `ship-it-convergence` re-attestation for the current revision from the stored findings, and is refused unless the completed review failed with findings that are all `fixed` or `follow-up`; a clean review is carried to a new head by `assess` and `reserve`.
 
