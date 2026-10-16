@@ -8,6 +8,8 @@ Initialize the graph with `bookkeeping.py set-orchestration` and record each dis
 
 ## Build or reuse the issue graph
 
+Every dispatch carries the pinned plugin `bundle`, `skillRoot`, store and sender lease from the entry bootstrap. Before resolving a helper or accepting work, the receiver acquires its own lease against that exact bundle using its host agent PID. Failed acquisition blocks dispatch acceptance. The coordinator retains its lease through all child acquisitions; children release only their own leases at terminal hand-back. New independent runs bootstrap from the current installed bundle; active children never switch versions during an update.
+
 1. Read the complete approved plan and its acceptance criteria, or the existing umbrella and native subissues. Resolve the target repository and search open issues for the same umbrella before creating one. Prefer an explicitly supplied umbrella; reuse a matching existing umbrella and its subissues. Do not adopt an unrelated issue based on a similar title.
 2. Split the plan into the smallest independently shippable changes. Each child must have a concrete outcome, acceptance criteria, scope, and links to prerequisite children. Put shared contracts or migrations before consumers. If a child cannot merge independently, combine it with its prerequisite or define a compatible intermediate state.
 3. Present the proposed issue graph and unresolved product decisions. Stop for a decision if the plan does not establish a safe split or dependency order. Do not reinterpret approval of a plan as approval of an incompatible design.

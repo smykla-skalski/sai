@@ -4,6 +4,8 @@ Hand off after draft publication (destination `review`) and after selected revie
 
 ## Prepare
 
+- Include pinned plugin `bundle`, `skillRoot`, store and sender lease in the brief. The receiver acquires its own active-run lease before helper resolution or acceptance; the sender releases its lease only after that acquisition and accepted ownership. On launch failure or fallback the sender retains its lease. Never change checkpoint authority or budgets when pinning a continuation.
+
 - Persist phase, exact head, PR identity, next action, authorization grants and completed gate receipts through bookkeeping before dispatch. Retain claims, evidence paths, convergence counters, release policy and gate verdicts in the same checkpoint. Never create a replacement checkpoint or stale verdicts solely because the worker changes.
 - Record `bookkeeping.py handoff --checkpoint FILE --handoff-json '{"id":"draft-1","boundary":"draft-published","status":"pending","brief":"..."}'`. At the second boundary use a new stable ID and `boundary: before-pr-loop`. Retries reuse the receipt and ID. Interrupted pending receipts resume from that boundary.
 - The brief contains only checkpoint path, worktree, boundary, next action, durable artifact paths and scoped exceptions requiring attention. Keep it below 2,000 tokens. The helper enforces at most 1,999 UTF-8 bytes, a conservative tokenizer-independent limit. Original authorization stays in the checkpoint.

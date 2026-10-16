@@ -14,6 +14,18 @@ metadata:
 
 Merge changes or coordinate approved plans.
 
+## Active bundle bootstrap
+
+Before reading another reference or invoking a helper:
+
+1. Locate the complete installed plugin root containing `plugin.json` and `skills/ship-it/`. Identify the long-lived host agent PID from host process metadata; never use a transient tool shell PID. Missing identity blocks startup.
+2. Run `python3 <installed-plugin>/skills/ship-it/scripts/plugin_pins.py acquire --source <installed-plugin> --owner-pid <agent-pid>`. This is the only helper initially invoked from a provider cache. Failed acquisition stops before workflow commands; never substitute one copied helper or another installed version.
+3. Retain returned `lease`, `bundle`, `skillRoot` and `digest` in the handoff. Resolve **every** later reference, helper and imported script against this pinned `skillRoot`, including bookkeeping and gate helpers. Read its SKILL.md before continuing. Checkpoints, grants, claims, budgets and evidence retain their original locations and authority.
+4. Each worker, successor, reviewer and tester acquires its own lease from the passed pinned `bundle`, using its own long-lived agent PID, before acknowledging ownership or resolving helpers. Senders retain their lease until receivers acquire theirs. Never forward provider-cache helper paths.
+5. After acquisition, run `python3 <skillRoot>/scripts/plugin_pins.py collect --limit 3`. At terminal completion, cancellation or blocked hand-back, release only this consumer's lease with `release --lease <lease>`, then collect again through that same helper. Live owners retain bundles; exited owners are reclaimed using PID plus process-start identity. Failed process probes stop cleanup safely.
+
+The store defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/plugin-pins`. Forward an explicit `--store` unchanged to every command and consumer. Snapshots retain the complete plugin, version manifest, source path and content inventory. Updates publish separate snapshots atomically under a lock; failed or interrupted snapshots preserve existing bundles. This protects SAI consumers; provider cache cleanup remains external.
+
 **Mode:** autonomous. Ask only on material ambiguity. Use blocking waiters until merged or a hard stop; never foreground-poll.
 
 Read [references/fallbacks.md](references/fallbacks.md) for missing agent features.
