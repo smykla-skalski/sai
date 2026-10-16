@@ -42,6 +42,7 @@ GATES: Final[dict[str, str]] = {
     "test": "adversarial-test",
     "quality": "local-checks",
 }
+MAX_NAMED_FILES: Final[int] = 100
 DIMENSIONS: Final[tuple[str, ...]] = (
     "repository",
     "scope",
@@ -121,6 +122,50 @@ def git(repository: Path, *arguments: str) -> bytes:
         return result.stdout
 
 
+def git_stdin(repository: Path, topic: str, stdin: bytes) -> bytes:
+    """Read history or tree differences for revisions supplied on stdin.
+
+    Caller-controlled revisions never become command arguments.
+    """
+    try:
+        if topic == "history":
+            result = subprocess.run(
+                ["/usr/bin/env", "git", "rev-list", "--topo-order", "--stdin"],
+                cwd=repository,
+                check=True,
+                capture_output=True,
+                input=stdin,
+                timeout=30,
+            )
+        elif topic == "diff":
+            result = subprocess.run(
+                [
+                    "/usr/bin/env",
+                    "git",
+                    "diff-tree",
+                    "--stdin",
+                    "--no-commit-id",
+                    "-r",
+                    "-z",
+                    "--no-renames",
+                    "--name-only",
+                ],
+                cwd=repository,
+                check=True,
+                capture_output=True,
+                input=stdin,
+                timeout=30,
+            )
+        else:
+            msg = "unsupported Git input read"
+            raise ConvergenceError(msg)
+    except (OSError, subprocess.SubprocessError) as error:
+        msg = "cannot verify validation input repository"
+        raise ConvergenceError(msg) from error
+    else:
+        return result.stdout
+
+
 def is_ancestor(repository: str, ancestor: object, descendant: object) -> bool:
     """Report whether a full commit ID is in the history of the checked-out HEAD."""
     if not isinstance(ancestor, str) or not isinstance(descendant, str):
@@ -132,6 +177,50 @@ def is_ancestor(repository: str, ancestor: object, descendant: object) -> bool:
     except ConvergenceError:
         return False
     return head == descendant and ancestor in history
+
+
+def changed_paths(repository: Path, base: str) -> set[str]:
+    """List files the change touches against its merge base, renames split."""
+    dimension = "scope"
+    try:
+        head = git_stdin(repository, "history", b"HEAD\n").decode().split()
+        shared = set(
+            git_stdin(repository, "history", f"{base}\n".encode()).decode().split(),
+        )
+        pair = f"{next(commit for commit in head if commit in shared)} {head[0]}\n"
+        output = git_stdin(repository, "diff", pair.encode())
+    except (ConvergenceError, StopIteration, IndexError) as error:
+        msg = "cannot read the change diff against the relevance base"
+        raise InputUnavailableError(dimension, msg) from error
+    return {
+        path.decode(errors="surrogateescape") for path in output.split(b"\0") if path
+    }
+
+
+def under(roots: list[str], path: str) -> bool:
+    """Report whether a committed path lies inside any declared root."""
+    return any(root in (".", path) or path.startswith(root + "/") for root in roots)
+
+
+def relevance_scope(spec: dict[str, Any]) -> dict[str, Any] | None:
+    """Validate the optional narrowing of source files to the diff and reads."""
+    value = spec.get("relevance")
+    if value is None:
+        return None
+    require(
+        isinstance(value, dict) and set(value) == {"base", "reads"},
+        "relevance requires exactly base and reads",
+    )
+    base = value["base"]
+    require(
+        isinstance(base, str)
+        and bool(base)
+        and not base.startswith(("-", "^"))
+        and base.isprintable()
+        and not any(character.isspace() for character in base),
+        "relevance base must be one revision name",
+    )
+    return {"base": base, "reads": paths(value["reads"], "reads")}
 
 
 def paths(value: object, name: str) -> list[str]:
@@ -153,7 +242,7 @@ def capture(spec: dict[str, Any], revision: str, criteria: list[str]) -> dict[st
     """Capture committed file identities, invocation and declared runtime inputs."""
     require(isinstance(spec.get("repository"), str), "inputs require repository")
     require(
-        set(spec)
+        set(spec) - {"relevance"}
         == {
             "repository",
             "source",
@@ -165,6 +254,7 @@ def capture(spec: dict[str, Any], revision: str, criteria: list[str]) -> dict[st
         },
         "input manifest has missing or unknown fields",
     )
+    relevance = relevance_scope(spec)
     repository = Path(spec["repository"]).resolve()
     require(
         git(repository, "rev-parse", "HEAD").decode().strip() == revision,
@@ -232,12 +322,24 @@ def capture(spec: dict[str, Any], revision: str, criteria: list[str]) -> dict[st
         snapshot[name] = {
             path: content
             for path, content in sorted(entries.items())
-            if any(
-                root in (".", path) or path.startswith(root + "/") for root in selected
-            )
+            if under(selected, path)
         }
         require(
             not any(value.startswith("120000 ") for value in snapshot[name].values()),
+            "symlink inputs require explicit external content evidence; cannot reuse",
+        )
+    if relevance is not None:
+        snapshot["source"] = narrow_source(
+            repository,
+            relevance,
+            scope["source"],
+            entries,
+        )
+        snapshot["scope"] = {**scope, "relevance": {"reads": relevance["reads"]}}
+        require(
+            not any(
+                value.startswith("120000 ") for value in snapshot["source"].values()
+            ),
             "symlink inputs require explicit external content evidence; cannot reuse",
         )
     require(snapshot["source"], "source scope must contain committed files")
@@ -246,6 +348,60 @@ def capture(spec: dict[str, Any], revision: str, criteria: list[str]) -> dict[st
         "input repository changed during capture",
     )
     return snapshot
+
+
+def narrow_source(
+    repository: Path,
+    relevance: dict[str, Any],
+    roots: list[str],
+    entries: dict[str, str],
+) -> dict[str, str]:
+    """Keep diff files inside the source roots plus every declared read.
+
+    A deleted diff file stays as an explicit marker so a later re-add or an
+    identical deletion elsewhere cannot look unchanged.
+    """
+    dimension = "source"
+    reads = relevance["reads"]
+    for root in reads:
+        if not any(under([root], path) for path in entries):
+            msg = f"declared reads path has no committed files: {root}"
+            raise InputUnavailableError(dimension, msg)
+    touched = {
+        path
+        for path in changed_paths(repository, relevance["base"])
+        if under(roots, path)
+    }
+    if not touched:
+        msg = "relevance base yields no changed file inside the source scope"
+        raise InputUnavailableError(dimension, msg)
+    selected = {
+        path: content
+        for path, content in sorted(entries.items())
+        if path in touched or under(reads, path)
+    }
+    selected.update(dict.fromkeys(sorted(touched - set(entries)), "absent"))
+    return selected
+
+
+def changed_files(old: dict[str, Any], new: dict[str, Any]) -> list[dict[str, str]]:
+    """Name each file whose identity differs between two input snapshots."""
+    changes = []
+    for dimension in ("source", "dependencies", "policy"):
+        before, after = old.get(dimension), new.get(dimension)
+        if not isinstance(before, dict) or not isinstance(after, dict):
+            continue
+        for path in sorted(set(before) | set(after)):
+            if before.get(path) == after.get(path):
+                continue
+            if path not in before:
+                change = "added"
+            elif path not in after:
+                change = "removed"
+            else:
+                change = "modified"
+            changes.append({"dimension": dimension, "path": path, "change": change})
+    return changes
 
 
 def artifact(path: object) -> dict[str, str]:
@@ -297,8 +453,11 @@ def assess(
         None,
     )
     reasons = ["no-previous-result"]
+    changes: list[dict[str, str]] = []
     if previous:
         old = previous.get("inputSnapshot")
+        if isinstance(old, dict):
+            changes = changed_files(old, snapshot)
         reasons = (
             [name for name in DIMENSIONS if old.get(name) != snapshot.get(name)]
             if isinstance(old, dict)
@@ -319,6 +478,9 @@ def assess(
         "status": "invalid" if reasons else "reusable",
         "reasons": reasons,
     }
+    if changes:
+        decision["changedFileCount"] = len(changes)
+        decision["changedFiles"] = changes[:MAX_NAMED_FILES]
     store_decision(checkpoint, decision)
     return decision
 
