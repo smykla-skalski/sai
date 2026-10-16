@@ -454,7 +454,10 @@ def finish(args: argparse.Namespace) -> dict[str, Any]:
     run_path = data_dir() / "runs" / f"{args.run_id}.json"
     with exclusive_lock(run_path.with_suffix(".lock")):
         state = load_run(args.run_id)
-        if state.get("status") == "finished" and state.get("outcome") != args.outcome:
+        if (
+            state.get("status") == "finished"
+            and state.get("outcome") not in ("blocked", args.outcome)
+        ):
             raise UsageError("run already finished with a different outcome")
         result = emit(state, args, "run_finished", args.outcome)
         state["status"] = "finished"

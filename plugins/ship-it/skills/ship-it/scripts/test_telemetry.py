@@ -169,6 +169,37 @@ def test_blocked_run_resumes_the_same_history() -> None:
         ]
 
 
+def test_direct_blocked_completion_preserves_terminal_guards() -> None:
+    for outcome in ("accepted", "rejected", "cancelled", "failed"):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            started = json.loads(run(
+                root, "begin", "--task-id", "direct-resume",
+                "--harness", "codex", "--provider", "openai",
+                "--model", "unknown", "--role", "primary",
+            ).stdout)
+            run_id = started["run_id"]
+            run(root, "finish", "--run-id", run_id, "--outcome", "blocked")
+            completion = ("finish", "--run-id", run_id, "--outcome", outcome)
+            assert json.loads(run(root, *completion).stdout)["duplicate"] is False
+            assert json.loads(run(root, *completion).stdout)["duplicate"] is True
+            for conflicting in ("accepted", "rejected", "cancelled", "failed", "blocked"):
+                if conflicting != outcome:
+                    rejected = run(
+                        root, "finish", "--run-id", run_id,
+                        "--outcome", conflicting, success=False,
+                    )
+                    assert "already finished with a different outcome" in rejected.stderr
+            state_path = root / "sai/ship-it/telemetry/runs" / f"{run_id}.json"
+            assert json.loads(state_path.read_text())["outcome"] == outcome
+            event_path = root / "sai/ship-it/telemetry/events.ndjson"
+            events = [json.loads(line) for line in event_path.read_text().splitlines()]
+            assert [event["outcome"] for event in events if event["event"] == "run_finished"] == [
+                "blocked", outcome,
+            ]
+            assert sum(event["event"] == "run_started" for event in events) == 1
+
+
 def test_worker_observation_ids_are_scoped_to_the_worker() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
@@ -391,6 +422,8 @@ if __name__ == "__main__":
     print("ok test_usage_cost_cli")
     test_lifecycle_resumes_and_deduplicates()
     print("ok test_lifecycle_resumes_and_deduplicates")
+    test_direct_blocked_completion_preserves_terminal_guards()
+    print("ok test_direct_blocked_completion_preserves_terminal_guards")
     test_blocked_run_resumes_the_same_history()
     print("ok test_blocked_run_resumes_the_same_history")
     test_worker_observation_ids_are_scoped_to_the_worker()
