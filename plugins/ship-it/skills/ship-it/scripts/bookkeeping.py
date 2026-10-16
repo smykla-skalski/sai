@@ -21,6 +21,7 @@ Usage:
       [--grant-json OBJECT]... [--checkpoint-dir DIR]
   bookkeeping.py repair-repository --checkpoint FILE --repository PATH
       --source-json OBJECT
+  bookkeeping.py relocate-checkpoint --checkpoint FILE
   bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT
   bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
   bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
@@ -31,6 +32,9 @@ Usage:
   bookkeeping.py record-acceptance-recovery --checkpoint FILE
       --recovery-json OBJECT
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
+  bookkeeping.py set-orchestration --checkpoint FILE
+      --orchestration-json OBJECT
+  bookkeeping.py record-orchestration-event --checkpoint FILE --event-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
   bookkeeping.py record-ci-failure --checkpoint FILE --failure-json OBJECT
