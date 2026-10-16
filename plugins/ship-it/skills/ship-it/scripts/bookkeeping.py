@@ -19,10 +19,15 @@ Usage:
       --title TEXT --objective TEXT --criteria-json ARRAY [--source-url URL]
       [--default-branch NAME] [--branch NAME] [--enable FEATURE,...]
       [--grant-json OBJECT]... [--checkpoint-dir DIR]
+  bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT
   bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
   bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
+  bookkeeping.py set-hosted-review-decision --checkpoint FILE
+      --decision-json OBJECT
   bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
   bookkeeping.py add-grant --checkpoint FILE --grant-json OBJECT
+  bookkeeping.py record-acceptance-recovery --checkpoint FILE
+      --recovery-json OBJECT
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
@@ -79,6 +84,7 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "set-hosted-review-decision",
         "record-gate",
         "add-grant",
+        "record-acceptance-recovery",
         "set-findings",
         "attest-review",
         "record-ci-failure",
@@ -97,6 +103,10 @@ JSON_SECTION_COMMANDS: Final[
     ),
     "record-gate": ("--verdict-json", checkpoint_state.record_gate),
     "add-grant": ("--grant-json", checkpoint_state.add_grant),
+    "record-acceptance-recovery": (
+        "--recovery-json",
+        checkpoint_state.record_acceptance_recovery,
+    ),
     "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
     "record-ci-failure": ("--failure-json", ci_triage.record_failure),
     "request-ci-rerun": ("--request-json", ci_triage.request_rerun),
@@ -1221,6 +1231,11 @@ def add_state_commands(
         ),
         ("record-gate", "--verdict-json", "record one gate verdict"),
         ("add-grant", "--grant-json", "record one authorization grant"),
+        (
+            "record-acceptance-recovery",
+            "--recovery-json",
+            "record an acceptance recovery or append an attempt",
+        ),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
         ("record-ci-failure", "--failure-json", "record or update a CI failure"),
         ("request-ci-rerun", "--request-json", "reserve the next CI rerun attempt"),
