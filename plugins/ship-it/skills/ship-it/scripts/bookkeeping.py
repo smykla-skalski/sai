@@ -31,6 +31,9 @@ Usage:
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
+  bookkeeping.py record-ci-failure --checkpoint FILE --failure-json OBJECT
+  bookkeeping.py request-ci-rerun --checkpoint FILE --request-json OBJECT
+  bookkeeping.py settle-ci-rerun --checkpoint FILE --settlement-json OBJECT
 
 Output is one compact JSON result on stdout. Input or validation errors are
 reported on stderr and exit 2; successful policy resolution or transition
@@ -60,7 +63,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 import checkpoint_state
+import ci_triage
 from checkpoint_state import StateError
+from ci_triage import TriageError
 from convergence import (
     ConvergenceError,
     finish,
@@ -82,6 +87,9 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "record-acceptance-recovery",
         "set-findings",
         "attest-review",
+        "record-ci-failure",
+        "request-ci-rerun",
+        "settle-ci-rerun",
     },
 )
 JSON_SECTION_COMMANDS: Final[
@@ -100,6 +108,9 @@ JSON_SECTION_COMMANDS: Final[
         checkpoint_state.record_acceptance_recovery,
     ),
     "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
+    "record-ci-failure": ("--failure-json", ci_triage.record_failure),
+    "request-ci-rerun": ("--request-json", ci_triage.request_rerun),
+    "settle-ci-rerun": ("--settlement-json", ci_triage.settle_rerun),
 }
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -1226,6 +1237,9 @@ def add_state_commands(
             "record an acceptance recovery or append an attempt",
         ),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
+        ("record-ci-failure", "--failure-json", "record or update a CI failure"),
+        ("request-ci-rerun", "--request-json", "reserve the next CI rerun attempt"),
+        ("settle-ci-rerun", "--settlement-json", "settle a pending CI rerun request"),
     ):
         section = commands.add_parser(name, help=text)
         section.add_argument("--checkpoint", required=True)
@@ -1267,7 +1281,7 @@ def main(argv: list[str] | None = None) -> int:
             result = section_operation(args)
         else:
             result = convergence_operation(args)
-    except (BookkeepingError, ConvergenceError, StateError) as error:
+    except (BookkeepingError, ConvergenceError, StateError, TriageError) as error:
         print(str(error), file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
