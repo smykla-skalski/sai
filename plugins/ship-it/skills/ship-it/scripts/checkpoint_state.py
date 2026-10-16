@@ -313,13 +313,13 @@ def set_risk(checkpoint: dict[str, Any], risk: dict[str, Any]) -> dict[str, Any]
         and len(set(gates)) == len(gates),
         "risk requiredGates must be unique non-empty strings",
     )
-    override = risk.get("overrideAuthorization") or current.get(
-        "overrideAuthorization",
-    )
+    override = risk.get("overrideAuthorization")
     require(
         override is None or (isinstance(override, str) and override.strip()),
         "risk overrideAuthorization must be the exact user authorization or null",
     )
+    if override is None:
+        override = current.get("overrideAuthorization")
     previous = current.get("level")
     lowered = previous in RISK_LEVELS and RISK_LEVELS.index(level) < RISK_LEVELS.index(
         previous,
