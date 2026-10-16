@@ -502,7 +502,7 @@ def set_hosted_review_decision(
         f"hostedReviewDecision reason exceeds {SUMMARY_LIMIT} characters",
     )
     decided_at = utc_timestamp(
-        decision.get("decidedAt") or now_utc(),
+        decision["decidedAt"] if "decidedAt" in decision else now_utc(),
         "hostedReviewDecision decidedAt",
     )
     current = checkpoint.get("hostedReviewDecision")
@@ -561,8 +561,13 @@ def record_gate(checkpoint: dict[str, Any], verdict: dict[str, Any]) -> dict[str
         len(summary) <= SUMMARY_LIMIT,
         f"verdict summary exceeds {SUMMARY_LIMIT} characters",
     )
-    verdict = {**verdict, "timestamp": verdict.get("timestamp") or now_utc()}
-    utc_timestamp(verdict["timestamp"], "verdict timestamp")
+    verdict = {
+        **verdict,
+        "timestamp": utc_timestamp(
+            verdict["timestamp"] if "timestamp" in verdict else now_utc(),
+            "verdict timestamp",
+        ),
+    }
     put_verdict(checkpoint, verdict)
     return {"gate": gate, "status": verdict["status"], "revision": revision}
 
