@@ -912,6 +912,34 @@ class SectionCommandTest(unittest.TestCase):
         self.assert_ok(self.decide("serviceable", decidedAt=stamp))
         self.assertEqual(self.read()["hostedReviewDecision"]["decidedAt"], stamp)
 
+    def test_falsy_hosted_review_decided_at_is_refused(self) -> None:
+        for value in (0, "", None, False, []):
+            with self.subTest(value=value):
+                self.refuse_unchanged(
+                    self.decide("blocked", decidedAt=value), "decidedAt"
+                )
+                self.assertIsNone(self.read()["hostedReviewDecision"])
+
+    def test_falsy_gate_timestamp_is_refused(self) -> None:
+        verdict = {
+            "gate": "local-checks",
+            "status": "passed",
+            "revision": REVISION,
+            "provider": "local",
+            "summary": "ruff and unittest passed",
+        }
+        for value in (0, "", None, False, []):
+            with self.subTest(value=value):
+                self.refuse_unchanged(
+                    self.command(
+                        "record-gate",
+                        "--verdict-json",
+                        {**verdict, "timestamp": value},
+                    ),
+                    "timestamp",
+                )
+                self.assertEqual(self.read()["gateVerdicts"], [])
+
     def test_serviceable_may_change_once_to_fallback_or_blocked(self) -> None:
         for status in ("fallback", "blocked"):
             with self.subTest(status=status):
