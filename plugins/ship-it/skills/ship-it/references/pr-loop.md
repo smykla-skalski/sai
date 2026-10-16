@@ -49,6 +49,10 @@ Run one blocking process per PR/head; it uses Python and `gh`, paginates checks/
 python3 <skill-dir>/scripts/hosted_wait.py <owner>/<repo> <n> --head <sha> --timeout 1800 --check '<policy-check>' --reviewer '<login>:review' --thread-author '<login>'
 ```
 
+For a resolved `bot-comment` route whose merge actor is explicitly identified by its GitHub App integration ID, append `--merge-integration <id> --bot-comment '<exact-resolved-comment>'`. Preserve the exact documented comment when requesting merge; the waiter never sends it. Establish the integration identity from repository policy and live GitHub App metadata, never from admin access, a comment string or user preference. Without both flags, platform approval requirements remain blocking.
+
+The waiter reads all applicable branch rules and their current ruleset details on each `REVIEW_REQUIRED` snapshot. Only an explicit `Integration` actor with that exact numeric ID and GitHub's `exempt` mode in every applicable pull-request ruleset removes the generic platform approval wait. Ordinary `always` and `pull_request` bypass permissions are insufficient. Classic approving-review protection, missing or changed rules, API errors, mismatched actors, named reviewer requirements, required CI, changes requested and unresolved threads remain blocking. Do not pass synthetic platform approval-count reviewers for a rule that live GitHub explicitly exempts for the resolved actor; retain every non-exempt approval requirement. Never reuse a saved exemption across snapshots.
+
 Use `--help` for flags. Repeat policy checks and required reviewers (`review|approval`); omit reviewers without hosted review. Omit thread authors to include all unresolved non-outdated threads. Platform gates always bind. Run under one background/event waiter if foreground limits are short; never poll or restart.
 
 Only `satisfied` exits 0. Failures, head changes, closure, merge and deadline exit 1; API/input errors exit 2. Results name failed or pending requirements and observed transitions. Reconcile merged delivery or a changed head before continuing; resolve existing comments even when external review was waived.
