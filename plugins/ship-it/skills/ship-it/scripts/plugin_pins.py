@@ -154,7 +154,11 @@ class Pins:
                 msg = "source manifest changed during snapshot; retry acquisition"
                 raise ValueError(msg)
             manifest = json.loads(manifest_bytes)
-            if manifest.get("name") != "ship-it" or not manifest.get("version"):
+            if (
+                not isinstance(manifest, dict)
+                or manifest.get("name") != "ship-it"
+                or not manifest.get("version")
+            ):
                 msg = "source must be a complete ship-it plugin bundle"
                 raise ValueError(msg)
             if not (source / "skills/ship-it/SKILL.md").is_file():

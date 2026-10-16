@@ -114,6 +114,16 @@ class PluginPinsTests(unittest.TestCase):
         ):
             self.fail("unsupported retention must not acquire the store")
 
+    def test_non_object_manifest_preserves_existing_bundle(self) -> None:
+        first = self.acquire()
+        (self.source / "plugin.json").write_text("[]")
+
+        with self.assertRaisesRegex(ValueError, "complete ship-it plugin bundle"):
+            self.acquire()
+
+        self.assertTrue(Path(first["bundle"]).is_dir())
+        self.assertEqual(self.pins.collect(1)["removed"], [])
+
     def test_mutating_source_is_not_published(self) -> None:
         def changing_inventory(root: Path) -> dict:
             result = inventory(root)
