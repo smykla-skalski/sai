@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -28,6 +29,24 @@ MAX_LOG_SECTIONS: Final[int] = 3
 MAX_SECTION_LINES: Final[int] = 40
 MAX_LINE_CHARS: Final[int] = 125
 MAX_LABEL_CHARS: Final[int] = 200
+MAX_ACCEPTANCE_EVIDENCE: Final[int] = 20
+UTC_TIMESTAMP: Final[re.Pattern[str]] = re.compile(
+    r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)",
+)
+REVISION: Final[re.Pattern[str]] = re.compile(r"[0-9a-f]{40,64}")
+FAILURE_ID: Final[re.Pattern[str]] = re.compile(r"cif_[0-9a-f]{64}")
+GROUP_ID: Final[re.Pattern[str]] = re.compile(r"cig_[0-9a-f]{64}")
+RECURRENCE_KEY: Final[re.Pattern[str]] = re.compile(r"cir_[0-9a-f]{64}")
+KEY_FIELDS: Final[frozenset[str]] = frozenset(
+    {"revision", "workflow", "job", "attempt"},
+)
+SECTION_FIELDS: Final[frozenset[str]] = frozenset({"label", "lines"})
+AUTHORIZATION_FIELDS: Final[frozenset[str]] = frozenset(
+    {"source", "reference", "maxAttempts", "authorizedAt"},
+)
+RESOLUTION_FIELDS: Final[frozenset[str]] = frozenset(
+    {"kind", "evidence", "resolvedAt"},
+)
 REQUIRED_FIELDS: Final[tuple[str, ...]] = (
     "schemaVersion",
     "failureId",
@@ -424,8 +443,8 @@ def validate(document: object) -> list[str]:
 
 
 def is_text(value: object, limit: int) -> bool:
-    """Return whether a value is non-empty text within a character bound."""
-    return isinstance(value, str) and 0 < len(value) <= limit
+    """Return whether a value is non-empty encodable text within a bound."""
+    return isinstance(value, str) and 0 < len(value) <= limit and is_scalar_text(value)
 
 
 def is_member(value: object, allowed: frozenset[str]) -> bool:
@@ -434,8 +453,8 @@ def is_member(value: object, allowed: frozenset[str]) -> bool:
 
 
 def is_utc_timestamp(value: object) -> bool:
-    """Return whether a value is an RFC 3339 timestamp with a UTC offset."""
-    if not isinstance(value, str) or "T" not in value:
+    """Return whether a value is an RFC 3339 timestamp in UTC."""
+    if not isinstance(value, str) or UTC_TIMESTAMP.fullmatch(value) is None:
         return False
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -449,6 +468,65 @@ def now_utc() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
+def has_keys(value: object, names: frozenset[str]) -> bool:
+    """Return whether a value is an object with exactly the named keys."""
+    return isinstance(value, dict) and set(value) == names
+
+
+def matches(value: object, pattern: re.Pattern[str]) -> bool:
+    """Return whether a value is a string that fully matches a pattern."""
+    return isinstance(value, str) and pattern.fullmatch(value) is not None
+
+
+def key_errors(record: dict[str, Any]) -> list[str]:
+    """Check the identity key against its schema bounds."""
+    key = record["key"]
+    if not (
+        has_keys(key, KEY_FIELDS)
+        and matches(key["revision"], REVISION)
+        and is_text(key["workflow"], MAX_LABEL_CHARS)
+        and is_text(key["job"], MAX_LABEL_CHARS)
+        and is_attempt(key["attempt"])
+    ):
+        message = (
+            "key needs exactly revision (40 to 64 hex), workflow and job "
+            f"(1 to {MAX_LABEL_CHARS} characters) and a positive integer attempt"
+        )
+        return [message]
+    return []
+
+
+def link_errors(record: dict[str, Any]) -> list[str]:
+    """Check identifiers, recurrence fields and evidence arrays."""
+    errors: list[str] = []
+    for name, pattern, nullable in (
+        ("failureId", FAILURE_ID, False),
+        ("rerunGroupId", GROUP_ID, False),
+        ("recurrenceKey", RECURRENCE_KEY, True),
+        ("recurrenceOf", FAILURE_ID, True),
+    ):
+        if not (matches(record[name], pattern) or (nullable and record[name] is None)):
+            errors.append(f"{name} must match {pattern.pattern}")
+    count = record["recurrenceCount"]
+    if type(count) is not int or count < 0:
+        errors.append("recurrenceCount must be a non-negative integer")
+    for name, minimum, maximum in (
+        ("supportingEvidence", 1, MAX_SUPPORTING_EVIDENCE),
+        ("failedAcceptanceEvidence", 0, MAX_ACCEPTANCE_EVIDENCE),
+    ):
+        items = record[name]
+        if not (
+            isinstance(items, list)
+            and minimum <= len(items) <= maximum
+            and all(is_text(item, MAX_EVIDENCE_CHARS) for item in items)
+        ):
+            errors.append(
+                f"{name} needs {minimum} to {maximum} statements of "
+                f"1 to {MAX_EVIDENCE_CHARS} characters",
+            )
+    return errors
+
+
 def section_errors(record: dict[str, Any]) -> list[str]:
     """Check the log excerpt bounds of the schema."""
     sections = record["logSections"]
@@ -456,17 +534,20 @@ def section_errors(record: dict[str, Any]) -> list[str]:
         return [f"logSections must be an array of at most {MAX_LOG_SECTIONS}"]
     errors: list[str] = []
     for index, section in enumerate(sections):
-        lines = section.get("lines") if isinstance(section, dict) else None
         if not (
-            isinstance(lines, list)
-            and is_text(section.get("label"), MAX_LABEL_CHARS)
-            and len(lines) <= MAX_SECTION_LINES
+            has_keys(section, SECTION_FIELDS)
+            and is_text(section["label"], MAX_LABEL_CHARS)
+            and isinstance(section["lines"], list)
+            and len(section["lines"]) <= MAX_SECTION_LINES
             and all(
-                isinstance(line, str) and len(line) <= MAX_LINE_CHARS for line in lines
+                isinstance(line, str)
+                and len(line) <= MAX_LINE_CHARS
+                and is_scalar_text(line)
+                for line in section["lines"]
             )
         ):
             errors.append(
-                f"logSections[{index}] needs a label and at most "
+                f"logSections[{index}] needs exactly a label and at most "
                 f"{MAX_SECTION_LINES} lines of {MAX_LINE_CHARS} characters",
             )
     return errors
@@ -477,25 +558,29 @@ def authorization_errors(record: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     authorization = record["rerunAuthorization"]
     if authorization is not None and not (
-        isinstance(authorization, dict)
-        and is_member(authorization.get("source"), AUTHORIZATION_SOURCES)
-        and is_text(authorization.get("reference"), MAX_EVIDENCE_CHARS)
-        and is_utc_timestamp(authorization.get("authorizedAt"))
+        has_keys(authorization, AUTHORIZATION_FIELDS)
+        and is_member(authorization["source"], AUTHORIZATION_SOURCES)
+        and is_text(authorization["reference"], MAX_EVIDENCE_CHARS)
+        and is_attempt(authorization["maxAttempts"])
+        and is_utc_timestamp(authorization["authorizedAt"])
     ):
-        errors.append("rerunAuthorization needs source, reference and authorizedAt")
+        errors.append(
+            "rerunAuthorization needs exactly source, reference, "
+            "a positive integer maxAttempts and authorizedAt",
+        )
     resolution = record["resolution"]
     if resolution is not None and not (
-        isinstance(resolution, dict)
-        and is_member(resolution.get("kind"), RESOLUTION_KINDS)
-        and is_text(resolution.get("evidence"), MAX_EVIDENCE_CHARS)
-        and is_utc_timestamp(resolution.get("resolvedAt"))
+        has_keys(resolution, RESOLUTION_FIELDS)
+        and is_member(resolution["kind"], RESOLUTION_KINDS)
+        and is_text(resolution["evidence"], MAX_EVIDENCE_CHARS)
+        and is_utc_timestamp(resolution["resolvedAt"])
     ):
-        errors.append("resolution needs kind, evidence and resolvedAt")
+        errors.append("resolution needs exactly kind, evidence and resolvedAt")
     return errors
 
 
 def shape_errors(record: dict[str, Any]) -> list[str]:
-    """Check the fields of an incoming record that the relational checks skip."""
+    """Check an incoming record against the schema constraints in the contract."""
     missing = [name for name in REQUIRED_FIELDS if name not in record]
     if missing:
         return [f"record missing required fields: {', '.join(missing)}"]
@@ -505,16 +590,6 @@ def shape_errors(record: dict[str, Any]) -> list[str]:
     for name, allowed in (("classification", CLASSIFICATIONS), ("status", STATUSES)):
         if not is_member(record[name], allowed):
             errors.append(f"{name} must be one of: {', '.join(sorted(allowed))}")
-    key = record["key"]
-    if not isinstance(key, dict) or not is_attempt(key.get("attempt")):
-        errors.append("key.attempt must be a positive integer")
-    evidence = record["supportingEvidence"]
-    if not (
-        isinstance(evidence, list)
-        and 0 < len(evidence) <= MAX_SUPPORTING_EVIDENCE
-        and all(is_text(item, MAX_EVIDENCE_CHARS) for item in evidence)
-    ):
-        errors.append("supportingEvidence needs 1 to 10 bounded statements")
     if not is_text(record["nextAction"], MAX_EVIDENCE_CHARS):
         errors.append("nextAction must be bounded non-empty text")
     errors.extend(
@@ -522,7 +597,13 @@ def shape_errors(record: dict[str, Any]) -> list[str]:
         for name in ("firstObservedAt", "lastObservedAt")
         if not is_utc_timestamp(record[name])
     )
-    return [*errors, *section_errors(record), *authorization_errors(record)]
+    return [
+        *errors,
+        *key_errors(record),
+        *link_errors(record),
+        *section_errors(record),
+        *authorization_errors(record),
+    ]
 
 
 def is_attempt(value: object) -> bool:
@@ -628,6 +709,18 @@ def record_failure(
     }
 
 
+def covering_authorization(
+    failure: dict[str, Any],
+    latest: dict[str, Any],
+    attempt: int,
+) -> dict[str, Any]:
+    """Keep a record's own authorization unless it cannot cover the request."""
+    own = failure["rerunAuthorization"]
+    if isinstance(own, dict) and own["maxAttempts"] >= attempt:
+        return own
+    return latest
+
+
 def request_rerun(
     checkpoint: dict[str, Any],
     request: dict[str, Any],
@@ -636,7 +729,7 @@ def request_rerun(
     if not {"rerunGroupId"} <= set(request) <= {"rerunGroupId", "recordedAt"}:
         message = "request-ci-rerun takes rerunGroupId and optional recordedAt"
         raise TriageError(message)
-    recorded_at = request.get("recordedAt") or now_utc()
+    recorded_at = request.get("recordedAt", now_utc())
     if not is_utc_timestamp(recorded_at):
         message = "recordedAt must be an RFC 3339 UTC timestamp"
         raise TriageError(message)
@@ -663,7 +756,11 @@ def request_rerun(
     candidate = [
         {
             **failure,
-            "rerunAuthorization": authorization,
+            "rerunAuthorization": covering_authorization(
+                failure,
+                authorization,
+                used + 1,
+            ),
             "rerunRequest": dict(pending),
         }
         if failure in group

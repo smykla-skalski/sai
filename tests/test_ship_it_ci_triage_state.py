@@ -210,6 +210,85 @@ class CiTriageStateTest(unittest.TestCase):
             with self.subTest(name=name):
                 self.refused("record-ci-failure", "--failure-json", value, text)
 
+    def test_records_must_meet_the_schema_bounds(self) -> None:
+        key = make_record()["key"]
+        for name, value, text in (
+            ("revision", make_record(key={**key, "revision": "main"}), "key needs"),
+            (
+                "workflow length",
+                make_record(key={**key, "workflow": "w" * 201}),
+                "key needs",
+            ),
+            ("extra key field", make_record(key={**key, "extra": 1}), "key needs"),
+            ("recurrence key", make_record(recurrenceKey="junk"), "recurrenceKey"),
+            ("recurrence key type", make_record(recurrenceKey=5), "recurrenceKey"),
+            ("recurrence of", make_record(recurrenceOf="x"), "recurrenceOf"),
+            ("acceptance string", make_record(failedAcceptanceEvidence="a"), "failed"),
+            ("acceptance int", make_record(failedAcceptanceEvidence=5), "failed"),
+            (
+                "acceptance count",
+                make_record(failedAcceptanceEvidence=["a"] * 21),
+                "failedAcceptanceEvidence needs 0 to 20",
+            ),
+            (
+                "acceptance length",
+                make_record(failedAcceptanceEvidence=["a" * 513]),
+                "failedAcceptanceEvidence needs 0 to 20",
+            ),
+            (
+                "authorization extra",
+                make_record(rerunAuthorization={**AUTHORIZATION, "extra": 1}),
+                "rerunAuthorization needs exactly",
+            ),
+            (
+                "authorization limit",
+                make_record(rerunAuthorization={**AUTHORIZATION, "maxAttempts": 0}),
+                "rerunAuthorization needs exactly",
+            ),
+            (
+                "section extra",
+                make_record(logSections=[{"label": "x", "lines": [], "extra": 1}]),
+                "logSections[0] needs exactly",
+            ),
+            (
+                "basic timestamp",
+                make_record(lastObservedAt="20261007T090000Z"),
+                "lastObservedAt must be an RFC 3339 UTC timestamp",
+            ),
+            (
+                "timestamp without seconds",
+                make_record(lastObservedAt="2026-10-07T09:00Z"),
+                "lastObservedAt must be an RFC 3339 UTC timestamp",
+            ),
+            ("recurrence count", make_record(recurrenceCount=-1), "recurrenceCount"),
+        ):
+            with self.subTest(name=name):
+                self.refused("record-ci-failure", "--failure-json", value, text)
+
+    def test_unencodable_text_is_a_usage_error_not_a_crash(self) -> None:
+        for name, value, text in (
+            ("next action", make_record(nextAction="\ud800"), "nextAction"),
+            (
+                "supporting evidence",
+                make_record(supportingEvidence=["\ud800"]),
+                "supportingEvidence",
+            ),
+            (
+                "section label",
+                make_record(logSections=[{"label": "\ud800", "lines": []}]),
+                "logSections[0]",
+            ),
+            (
+                "authorization reference",
+                make_record(
+                    rerunAuthorization={**AUTHORIZATION, "reference": "\ud800"},
+                ),
+                "rerunAuthorization",
+            ),
+        ):
+            with self.subTest(name=name):
+                self.refused("record-ci-failure", "--failure-json", value, text)
+
     def test_a_new_group_cannot_start_with_spent_reruns(self) -> None:
         for name, value in (
             ("used", make_record(rerunsUsed=1)),
@@ -298,6 +377,51 @@ class CiTriageStateTest(unittest.TestCase):
             {"rerunGroupId": self.group},
             "already pending",
         )
+
+    def test_request_keeps_each_valid_authorization_and_fills_the_rest(self) -> None:
+        first_approval = {**AUTHORIZATION, "reference": "first approval"}
+        self.record(make_record(rerunAuthorization=first_approval))
+        self.record(
+            make_record(
+                status="resolved",
+                resolution={
+                    "kind": "provider-recovered",
+                    "evidence": "provider recovered",
+                    "resolvedAt": "2026-10-07T11:00:00Z",
+                },
+                rerunAuthorization=first_approval,
+            ),
+        )
+        second = {**AUTHORIZATION, "reference": "second approval", "maxAttempts": 3}
+        self.record(make_record(attempt=2, rerunAuthorization=second))
+        self.request()
+        first, latest = self.failures()
+        self.assertEqual(first["rerunAuthorization"], first_approval)
+        self.assertEqual(latest["rerunAuthorization"], second)
+
+    def test_request_gives_a_record_that_cannot_cover_it_the_latest_authorization(
+        self,
+    ) -> None:
+        self.record(make_record(rerunAuthorization={**AUTHORIZATION, "maxAttempts": 1}))
+        self.request()
+        self.settle("accepted")
+        second = {**AUTHORIZATION, "reference": "second approval", "maxAttempts": 3}
+        self.record(make_record(attempt=2, rerunAuthorization=second))
+        self.request()
+        first, latest = self.failures()
+        self.assertEqual(first["rerunAuthorization"], second)
+        self.assertEqual(latest["rerunAuthorization"], second)
+
+    def test_present_but_falsy_recorded_at_is_refused(self) -> None:
+        self.record(make_record())
+        for value in ("", 0, False, []):
+            with self.subTest(value=value):
+                self.refused(
+                    "request-ci-rerun",
+                    "--request-json",
+                    {"rerunGroupId": self.group, "recordedAt": value},
+                    "RFC 3339 UTC",
+                )
 
     def test_resolved_group_cannot_be_rerun(self) -> None:
         self.record(make_record())
