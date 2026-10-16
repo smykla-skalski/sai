@@ -34,6 +34,8 @@ Validation gates come from a portable risk policy. The bundled policy first clas
 | `medium` | one adversarial review cycle | one adversarial test pass | local checks, adversarial review, adversarial test, CI |
 | `high` | one adversarial review cycle | one adversarial test pass | local checks, adversarial review, adversarial test, CI, hosted review |
 
+Code diffs under 50 total added plus deleted lines use one fresh review and a manual test limited to changed behavior when no higher-risk path or policy floor applies. Exactly 50 lines, unknown size, binary or mode changes, security, migration and infrastructure risks retain ordinary gates. Every code change keeps its manual test; failed acceptance reproductions block delivery. Profile, measured size, exclusions and test scope are reported before validation. See [risk selection](skills/ship-it/references/risk.md) for exact eligibility and monotonic policy rules.
+
 Repositories can add `.sai/ship-it-risk.json` with their own low, medium and high policies plus deterministic changed-path rules that raise matched paths, for example `plugins/**` to `medium` when markdown is the product. A repository policy never lowers a diff below its class level and cannot redefine the classes; its `default_risk` raises every change set when higher. Agents may raise risk; lowering a policy or checkpoint floor needs explicit user authorization. Repository release requirements (required checks and reviewers) are added at every level. The run report and the completion report name the selected risk, the diff class and the resulting gate set.
 
 Release controls come from `.sai/ship-it-release.json`, repository instructions, live GitHub rules and a conservative bundled default. The normalized policy is stored in the task checkpoint and names required human or automated reviewers, checks, merge mechanism and strategy, issue closure and branch cleanup. Repositories can require Copilot, another reviewer, human approval or no hosted review without changing the workflow.
@@ -104,3 +106,17 @@ MIT
 ### Parallel issue execution
 
 Umbrella runs fill available runtime capacity with independent issue workers in isolated worktrees before waiting. There is no fixed three-worker cap. Ready review/test gates receive capacity first, and at least one slot is reserved for selected nested gates. Each issue worker owns its full lifecycle; the coordinator schedules capacity and dependencies. Gate passes within one issue retain their required ordering. A host with four total slots supports two issue workers and one gate alongside the coordinator.
+
+### Copilot quota memory
+
+Before requesting Copilot, inspect `python3 <skill-dir>/scripts/copilot_quota.py status`. After reading submitted reviews, run `copilot_quota.py classify REVIEWS.json --previous PR_STATE.json` and retain its returned PR state across snapshots. The wrapper preserves genuine reviews and remembers new refusal evidence for other runs by the same OS user. It never requests a review or bypasses configured fallback policy.
+
+Memory expires at most **24 hours (86,400 seconds)** after the refusal submission by default (first observation when a saved snapshot lacks a submission timestamp), so restored monthly quota is retried within a day. Override the lifetime when observing a refusal with `classify --max-age SECONDS` or Python `classify_and_remember(..., max_age=SECONDS)`. The hosted waiter uses the same memory automatically and accepts `--quota-max-age SECONDS`. Use a positive integer; concurrent observations do not extend an active expiry. Expiry and clearing affect future requests on other PRs, never a refusal already retained in a PR decision.
+
+- Inspect: `python3 <skill-dir>/scripts/copilot_quota.py status`
+- Clear: `python3 <skill-dir>/scripts/copilot_quota.py clear`
+- Storage: `${XDG_DATA_HOME:-$HOME/.local/share}/sai/ship-it/serviceability/copilot-quota.json`
+
+Clearing immediately enables future requests and retains a minimal `cleared` watermark, so replaying a historical refusal cannot recreate the cache. Expired records also act as watermarks. New refusals submitted after the watermark can be remembered; snapshots without submission timestamps never refresh an existing record.
+
+The owner-only file contains only `reviewer`, `reason`, and Unix-seconds `expiresAt`. It contains no repository, PR, review body, or credentials. A stable lock file serializes inspect, clear, and write; atomic replacement prevents partial JSON. Corrupt state fails with an inspection/clear diagnostic instead of silently requesting review.

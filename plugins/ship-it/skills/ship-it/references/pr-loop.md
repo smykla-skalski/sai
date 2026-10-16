@@ -1,5 +1,7 @@
 # ship-it PR loop: open, wait, fix, merge
 
+Apply [handoff.md](handoff.md) before first entry (`before-pr-loop`).
+
 Resume open PRs at their reconciled head; merged PRs go to completion. Other states stop under checkpoint recovery. Apply [worker-events.md](worker-events.md) with one waiter keyed by PR and head SHA and a 30-minute deadline.
 
 Reconcile the resolved release policy from the checkpoint with live GitHub policy before the first push and merge. Missing, stale, ambiguous or unsatisfied policy blocks the loop; name the required human action.
@@ -35,7 +37,7 @@ Store the PR URL and its `headRefOid` in the durable checkpoint, set `phase` to 
 
 ## Request hosted reviewers
 
-When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery. Do not request Copilot unless policy names it.
+When `hosted-review` is selected, read the [request procedure](release.md#request-hosted-reviewers) before requests. Check `scripts/copilot_quota.py status` before Copilot; refusal activates fallback or stops. Never retry a request after a service refusal: it immediately changes `hostedReviewDecision` to the configured fallback or blocked. A blocked decision stops delivery. Do not request Copilot unless policy names it.
 
 ## Wait for hosted gates
 

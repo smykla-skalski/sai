@@ -1,4 +1,7 @@
-"""Validate ship-it's portable risk-derived gate contract."""
+"""Validate ship-it's portable risk-derived gate contract.
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
 
 from __future__ import annotations
 
@@ -179,6 +182,36 @@ class ShipItRiskContractTest(unittest.TestCase):
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, self.guidance)
+
+    def test_small_code_retains_manual_test_and_one_fresh_review(self) -> None:
+        profile = json.loads((SKILL_DIR / "references" / self.policy["small_code"]).read_text(encoding="utf-8"))
+        self.assertEqual(profile["max_changed_lines_exclusive"], 50)
+        self.assertEqual(profile["test_scope"], "changed-surface")
+        self.assertEqual(profile["required_gates"], [
+            "local-checks", "inline-review", "adversarial-test", "ci",
+        ])
+        self.assertEqual(profile["fallbacks"], {
+            "inline-review": ["portable-review-fallback"],
+            "adversarial-test": ["portable-test-fallback"],
+        })
+        for path in (".github/workflows/test.yml", ".githooks/pre-commit",
+                     "src/auth/login.py", "src/security/check.go",
+                     "db/migrations/001.sql", "infra/main.tf", "go.mod",
+                     "app/package.json", "uv.lock", "Dockerfile"):
+            with self.subTest(path=path):
+                self.assertTrue(any(glob_to_regex(pattern).match(path)
+                                    for pattern in profile["excluded_paths"]))
+        for required in ("exactly 50 lines", "including documentation and tests",
+                         "--numstat --no-renames", "both old and new paths",
+                         "uncommitted changes", "any repository path rule",
+                         "never lower it", "becoming smaller does not grant a downgrade",
+                         "invalidates affected evidence", "`policyFacts`"):
+            self.assertIn(required, self.guidance)
+        test = TEST_REFERENCE.read_text(encoding="utf-8")
+        self.assertIn("testScope: changed-surface", test)
+        self.assertIn("real entry point", self.guidance)
+        self.assertIn("Ordinary code profiles retain the broad mandate", test)
+        self.assertIn("It dispatches no Findings Adversary", self.guidance)
 
     def test_context_isolation_applies_to_every_review_gate(self) -> None:
         roles = json.loads(

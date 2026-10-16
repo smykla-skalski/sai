@@ -30,7 +30,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 - Before dispatch, read [references/worker-events.md](references/worker-events.md) once; it governs every worker and waiter.
 - Maintain the checkpoint through the helper. Read [references/checkpoint.md](references/checkpoint.md) only for migration, recovery or validation error. Claims/evidence default off; read [references/claims.md](references/claims.md) or [references/evidence.md](references/evidence.md) only when enabled. Telemetry defaults on; read [references/telemetry.md](references/telemetry.md) after policy resolution unless repository policy disables it.
 - Routine guidance includes selected phase references, [references/risk-policy.json](references/risk-policy.json), [references/release-policy.json](references/release-policy.json) and [references/convergence-policy.json](references/convergence-policy.json): keep it under 12k input tokens. After compaction, read only the checkpoint and current phase reference.
-- Read [references/risk.md](references/risk.md) or [references/release.md](references/release.md) on override/ambiguity or a phase trigger; read [references/convergence.md](references/convergence.md) only after failure, recovery or exhaustive opt-in. Checkpoint gates, release policy and budget before validation.
+- Read [references/risk.md](references/risk.md) or [references/release.md](references/release.md) for small-code selection, overrides or phase triggers; read [references/convergence.md](references/convergence.md) only after failure, recovery or exhaustive opt-in. Checkpoint gates, release policy and budget before validation.
 - Before validation or integration read [validation-reuse.md](references/validation-reuse.md). Reuse only verified results with current-head provenance.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
 - If connected tools expose Sail, read [references/sail.md](references/sail.md) before resolution. Otherwise do not load it.
@@ -70,7 +70,7 @@ Implement the smallest complete change with behavior tests and signed convention
 
 ## Phase 5 — Publish draft PR
 
-After the first committed revision passes local checks, push it and open a draft PR so CI starts. The draft remains pending review and test gates.
+After local checks, push the committed revision and open a draft PR. Apply [handoffs](references/handoff.md).
 
 ## Phase 6 — Review
 

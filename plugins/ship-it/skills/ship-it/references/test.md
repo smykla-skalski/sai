@@ -6,6 +6,8 @@ Start testing only after the selected review gate is CLEAN for the exact current
 
 Bundled policy selects `adversarial-test` for `medium` and `high` only. Low risk selects no manual test: record no skipped or blocked result.
 
+For `small-code`, read [risk.md](risk.md) for the `testScope: changed-surface` mandate. Ordinary code profiles retain the broad mandate.
+
 For GitHub work with claims enabled, verify and renew the claim when due before writing the manual-test result. A verdict from another holder or after expiry does not satisfy the gate until ownership is reconciled.
 
 The tester derives acceptance criteria from the task, runs the real changed product surface in isolated state, and attacks happy paths, boundaries, malformed input, repeated or concurrent use and adjacent flows. Every reproduction rerun is a separate attempt: dispatch it to a fresh subagent execution, including checks before a fix and focused checks after a fix. Automated tests, lint, build and source inspection are supporting evidence, not manual testing.

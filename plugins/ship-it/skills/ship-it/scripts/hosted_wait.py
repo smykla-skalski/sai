@@ -19,6 +19,7 @@ import subprocess
 import time
 from typing import Final
 
+from copilot_quota import DEFAULT_MAX_AGE, classify_and_remember
 from copilot_review import classify_reviews
 
 MAX_TIMEOUT: Final = 86400
@@ -60,11 +61,20 @@ def _gh_json(payload: dict, timeout: float) -> dict:
 class GitHub:
     """Read paginated GitHub state within one monotonic deadline."""
 
-    def __init__(self, repository: str, number: int, deadline: float) -> None:
+    def __init__(
+        self,
+        repository: str,
+        number: int,
+        deadline: float,
+        *,
+        quota_max_age: int = DEFAULT_MAX_AGE,
+    ) -> None:
         """Retain the PR identity and wait deadline."""
         self.repository = repository
         self.number = number
         self.deadline = deadline
+        self.quota_max_age = quota_max_age
+        self.review_state: dict | None = None
 
     def _request(self, payload: dict) -> dict:
         remaining = self.deadline - time.monotonic()
@@ -89,7 +99,8 @@ commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100,after:$checks)
 nodes{__typename ... on CheckRun{databaseId name status conclusion checkSuite{id}
 isRequired(pullRequestNumber:$number)} ... on StatusContext{id context state
 isRequired(pullRequestNumber:$number)}} pageInfo{hasNextPage endCursor}}}}}}
-reviews(first:100,after:$reviews){nodes{databaseId state body url author{login}}
+reviews(first:100,after:$reviews){nodes{databaseId state body url submittedAt
+author{login}}
 pageInfo{hasNextPage endCursor}}
 reviewThreads(first:100,after:$threads){nodes{id isResolved isOutdated
 comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
@@ -129,10 +140,30 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
                     raise ForgeError(message)
                 else:
                     variables[key] = page["endCursor"]
-        return _normalize(pr, collected)
+        serviceability = classify_and_remember(
+            _submitted_reviews(collected),
+            self.review_state,
+            max_age=self.quota_max_age,
+        )
+        self.review_state = serviceability
+        return _normalize(pr, collected, serviceability)
 
 
-def _normalize(pr: dict, collected: dict) -> dict:
+def _submitted_reviews(collected: dict) -> list[dict]:
+    return [
+        {
+            "id": r["databaseId"],
+            "state": r["state"],
+            "body": r.get("body", ""),
+            "html_url": r.get("url"),
+            "submitted_at": r.get("submittedAt"),
+            "user": {"login": (r.get("author") or {}).get("login", "deleted")},
+        }
+        for r in collected["reviews"]
+    ]
+
+
+def _normalize(pr: dict, collected: dict, serviceability: dict | None = None) -> dict:
     checks = []
     statuses = []
     required = []
@@ -194,19 +225,10 @@ def _normalize(pr: dict, collected: dict) -> dict:
         for name in protection.get("requiredStatusCheckContexts", [])
         if name not in present
     )
-    reviews = [
-        {
-            "id": r["databaseId"],
-            "state": r["state"],
-            "body": r.get("body", ""),
-            "html_url": r.get("url"),
-            "user": {"login": (r.get("author") or {}).get("login", "deleted")},
-        }
-        for r in collected["reviews"]
-    ]
-    serviceability = classify_reviews(reviews)
+    serviceability = serviceability or classify_reviews(_submitted_reviews(collected))
     return {
         "copilotUnserviceable": serviceability["unserviceable"],
+        "copilotQuotaMemory": serviceability.get("quotaMemory"),
         "head": pr["headRefOid"],
         "state": pr["state"],
         "merged": pr["merged"],
@@ -313,13 +335,17 @@ def _review_requirements(
         ):
             effective[review["user"]["login"].casefold()] = review
     for login, requirement in reviewers.items():
-        if login.casefold() in {
+        review = effective.get(login.casefold())
+        if login.casefold().removesuffix("[bot]") in {
+            "copilot",
             "copilot-pull-request-reviewer",
             "copilot-pull-request-reviewer[bot]",
-        } and snapshot.get("copilotUnserviceable"):
+        } and (
+            snapshot.get("copilotUnserviceable")
+            or (snapshot.get("copilotQuotaMemory") and not review)
+        ):
             failed.append(f"review:{login}:unserviceable:activate-configured-fallback")
             continue
-        review = effective.get(login.casefold())
         if not review or review["state"] == "DISMISSED":
             pending.append(f"review:{login}:missing")
         elif review["state"] == "CHANGES_REQUESTED":
@@ -389,6 +415,7 @@ def main() -> int:
     parser.add_argument("repository")
     parser.add_argument("number", type=int)
     parser.add_argument("--head", required=True)
+    parser.add_argument("--quota-max-age", type=int, default=DEFAULT_MAX_AGE)
     parser.add_argument("--check", action="append", default=[])
     parser.add_argument("--reviewer", action="append", default=[])
     parser.add_argument("--thread-author", action="append", default=[])
@@ -407,15 +434,22 @@ def main() -> int:
         parser.error("--head must be a full commit SHA")
     if not 0 < args.timeout <= MAX_TIMEOUT or not 0 < args.interval <= MAX_INTERVAL:
         parser.error("timeout must be 0..86400 and interval 0..600 seconds")
+    if args.quota_max_age <= 0:
+        parser.error("--quota-max-age must be positive seconds")
     deadline = time.monotonic() + args.timeout
     try:
         result = wait(
-            GitHub(args.repository, args.number, deadline),
+            GitHub(
+                args.repository,
+                args.number,
+                deadline,
+                quota_max_age=args.quota_max_age,
+            ),
             args.head,
             (args.check, reviewers, args.thread_author),
             interval=args.interval,
         )
-    except (ForgeError, KeyError, TypeError, ValueError) as error:
+    except (ForgeError, KeyError, OSError, TypeError, ValueError) as error:
         print(json.dumps({"status": "error", "detail": str(error)}))
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))

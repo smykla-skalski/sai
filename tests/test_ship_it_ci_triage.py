@@ -147,7 +147,7 @@ class ShipItCiTriageContractTest(unittest.TestCase):
                     counter,
                     telemetry_v1_schema["properties"]["metrics"]["properties"],
                 )
-        self.assertEqual(telemetry_schema["properties"]["schema_version"]["const"], 3)
+        self.assertEqual(telemetry_schema["properties"]["schema_version"]["const"], 4)
         self.assertEqual(
             telemetry_v2_schema["properties"]["schema_version"]["const"], 2
         )
