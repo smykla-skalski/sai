@@ -1149,6 +1149,64 @@ class SectionCommandTest(unittest.TestCase):
         for key in ("workflow", "risk", "releasePolicy", "gateVerdicts", "task"):
             self.assertEqual(after[key], self.document[key], key)
 
+    def timestamp_commands(self, stamp: str) -> dict[str, tuple[str, str, dict]]:
+        verdict = {
+            "gate": "local-checks",
+            "status": "passed",
+            "revision": REVISION,
+            "provider": "local",
+            "summary": "ruff and unittest passed",
+            "timestamp": stamp,
+        }
+        policy = {**RELEASE_POLICY, "resolvedAt": stamp}
+        return {
+            "decidedAt": (
+                "set-hosted-review-decision",
+                "--decision-json",
+                {"status": "blocked", "reason": "r", "decidedAt": stamp},
+            ),
+            "timestamp": ("record-gate", "--verdict-json", verdict),
+            "resolvedAt": ("set-release-policy", "--policy-json", policy),
+        }
+
+    def test_non_strict_utc_timestamps_are_refused_unchanged(self) -> None:
+        for stamp in (
+            "20260101T000000Z",
+            "2026-01-01T00:00:00+0000",
+            "2026-01-01T00:00:00-00:00",
+            "2026-01-01T00:00:00+00",
+            "2026-01-01 00:00:00Z",
+            "2026-01-01t00:00:00z",
+            "2026-01-01T00:00:00",
+            "2026-01-01T00:00:00Z ",
+            "2026-01-01T00:00:00Z\n",
+            "2026-01-01T00:00:00.Z",
+            "2026-01-01T0:00:00Z",
+            "2026-01-01T00:00:00+02:00",
+            "\u0662026-01-01T00:00:00Z",
+        ):
+            for field, arguments in self.timestamp_commands(stamp).items():
+                with self.subTest(stamp=stamp, field=field):
+                    self.write(self.document)
+                    before = self.path.read_bytes()
+                    result = self.command(*arguments)
+                    self.assertEqual(result.returncode, 2, result.stdout)
+                    self.assertIn(field, result.stderr)
+                    self.assertEqual(self.path.read_bytes(), before)
+
+    def test_strict_utc_timestamps_are_accepted(self) -> None:
+        for stamp in (
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:00.5Z",
+            "2026-01-01T00:00:00.123456Z",
+            "2026-01-01T00:00:00+00:00",
+            "2026-01-01T00:00:00.250+00:00",
+        ):
+            for field, arguments in self.timestamp_commands(stamp).items():
+                with self.subTest(stamp=stamp, field=field):
+                    self.write(self.document)
+                    self.assert_ok(self.command(*arguments))
+
     def recover(self, update: dict) -> subprocess.CompletedProcess[str]:
         return self.command("record-acceptance-recovery", "--recovery-json", update)
 
