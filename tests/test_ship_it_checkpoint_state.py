@@ -95,6 +95,121 @@ class CheckpointCreationTest(unittest.TestCase):
             *extra,
         )
 
+    def repair(
+        self, path: Path, source: dict | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        return run(
+            "repair-repository",
+            "--checkpoint",
+            str(path),
+            "--repository",
+            str(self.root),
+            "--source-json",
+            json.dumps(GITHUB_SOURCE if source is None else source),
+        )
+
+    def prepare_repair(self, identity: str) -> tuple[Path, dict]:
+        created = self.create()
+        self.assertEqual(created.returncode, 0, created.stderr)
+        path = Path(json.loads(created.stdout)["checkpoint"])
+        document = json.loads(path.read_text())
+        document["repository"]["identity"] = identity
+        document["repository"].pop("identityRepairs", None)
+        document["unknownFutureState"] = {"counter": 83, "receipts": ["kept"]}
+        document["repository"]["unknownFutureState"] = [1, 2]
+        path.write_text(json.dumps(document))
+        subprocess.run(["git", "init", str(self.root)], check=True, capture_output=True)
+        subprocess.run(
+            ["git", "remote", "add", "origin", "git@github.com:smykla-skalski/sai.git"],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+        )
+        return path, document
+
+    def test_creation_rejects_identity_disagreement_without_writing(self) -> None:
+        result = self.create(
+            None, None, "--identity", "github.com/smykla-skalski/sai/issues/277"
+        )
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertFalse((self.root / "checkpoints").exists())
+
+    def test_repair_preserves_state_and_retry_is_byte_identical(self) -> None:
+        for identity in (
+            "github.com/smykla-skalski/sai/issues/277",
+            "github:smykla-skalski/sai:277",
+        ):
+            with self.subTest(identity=identity):
+                if (self.root / ".git").exists():
+                    subprocess.run(
+                        ["git", "remote", "remove", "origin"], cwd=self.root, check=True
+                    )
+                path, before = self.prepare_repair(identity)
+                result = self.repair(path)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                after = json.loads(path.read_text())
+                repairs = after["repository"].pop("identityRepairs")
+                self.assertEqual(len(repairs), 1)
+                self.assertEqual(repairs[0]["previousIdentity"], identity)
+                after["repository"]["identity"] = identity
+                self.assertEqual(after, before)
+                repaired_bytes = path.read_bytes()
+                result = self.repair(path)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertFalse(json.loads(result.stdout)["repaired"])
+                self.assertEqual(path.read_bytes(), repaired_bytes)
+
+    def test_repair_interrupted_replace_keeps_original_and_can_retry(self) -> None:
+        path, _ = self.prepare_repair("github:smykla-skalski/sai:277")
+        original = path.read_bytes()
+        program = """
+import argparse
+import sys
+from pathlib import Path
+from unittest.mock import patch
+sys.path.insert(0, sys.argv[1])
+import bookkeeping
+args = argparse.Namespace(checkpoint=sys.argv[2], repository=sys.argv[3], source_json=sys.argv[4])
+with patch.object(Path, "replace", side_effect=OSError("interrupted write")):
+    try:
+        bookkeeping.repair_repository(args)
+    except OSError:
+        pass
+    else:
+        raise AssertionError("expected interrupted replacement")
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", program, str(SCRIPT.parent), str(path), str(self.root), json.dumps(GITHUB_SOURCE)],
+            capture_output=True, text=True, check=False, timeout=15,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(path.read_bytes(), original)
+        self.assertEqual(path.with_suffix(".json.bak").read_bytes(), original)
+        self.assertEqual(list(path.parent.glob(".*.json.*")), [])
+        self.assertEqual(self.repair(path).returncode, 0)
+
+    def test_repair_rejects_conflicting_or_ambiguous_state(self) -> None:
+        path, before = self.prepare_repair("github:smykla-skalski/sai:278")
+        original = path.read_bytes()
+        self.assertEqual(self.repair(path).returncode, 2)
+        self.assertEqual(path.read_bytes(), original)
+        before["repository"]["identity"] = "unknown legacy identity"
+        path.write_text(json.dumps(before))
+        self.assertEqual(self.repair(path).returncode, 2)
+        before["repository"]["identity"] = "github:smykla-skalski/sai:277"
+        path.write_text(json.dumps(before))
+        original = path.read_bytes()
+        self.assertEqual(
+            self.repair(path, {**GITHUB_SOURCE, "issue": 278}).returncode, 2
+        )
+        subprocess.run(
+            ["git", "remote", "set-url", "origin", "https://github.com/other/repo.git"],
+            cwd=self.root,
+            check=True,
+        )
+        self.assertEqual(self.repair(path).returncode, 2)
+        self.assertEqual(path.read_bytes(), original)
+
     def test_create_writes_documented_identity_and_defaults(self) -> None:
         result = self.create()
         self.assertEqual(result.returncode, 0, result.stderr)

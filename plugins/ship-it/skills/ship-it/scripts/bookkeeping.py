@@ -49,6 +49,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
@@ -980,9 +981,106 @@ def default_checkpoint_dir() -> Path:
     return Path(data_home) / "sai/ship-it/checkpoints"
 
 
+def github_repository(value: str) -> str:
+    """Normalize an unambiguous GitHub repository origin."""
+    match = re.fullmatch(
+        r"(?:https://github\.com/|ssh://git@github\.com/|git@github\.com:|github\.com/)"
+        r"([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?/?",
+        value,
+    )
+    if match is None:
+        message = "expected an unambiguous GitHub repository origin"
+        raise BookkeepingError(message)
+    return f"github.com/{match[1]}/{match[2]}".lower()
+
+
+def verified_origin(repository: Path) -> str:
+    """Read the single configured Git origin with bounded execution."""
+    try:
+        result = subprocess.run(
+            ["/usr/bin/env", "git", "remote", "get-url", "--all", "origin"],
+            cwd=repository,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        message = "cannot verify repository Git origin"
+        raise BookkeepingError(message) from error
+    origins = result.stdout.splitlines()
+    if len(origins) != 1:
+        message = "repository requires exactly one origin URL"
+        raise BookkeepingError(message)
+    return github_repository(origins[0])
+
+
+def repair_repository(args: argparse.Namespace) -> dict[str, Any]:
+    """Repair recognized same-task metadata mistakes after Git origin proof."""
+    path = Path(args.checkpoint).resolve()
+    source = checkpoint_state.parse_object(args.source_json, "--source-json")
+    canonical = checkpoint_state.canonical_source(source)
+    if source["sourceType"] != "github":
+        message = "metadata repair requires a canonical GitHub source"
+        raise BookkeepingError(message)
+    expected = source["repository"]
+    if (
+        github_repository(expected) != expected
+        or verified_origin(Path(args.repository)) != expected
+    ):
+        message = "canonical source and actual Git origin must match"
+        raise BookkeepingError(message)
+    with checkpoint_lock(path):
+        checkpoint = load_object(path)
+        validate_checkpoint(checkpoint, path)
+        task = checkpoint["task"]
+        if task["canonicalSource"] != canonical or task["sourceType"] != "github":
+            message = "repair cannot change the canonical task source"
+            raise BookkeepingError(message)
+        identity = checkpoint["repository"].get("identity")
+        if identity == expected:
+            return {"checkpoint": str(path), "repaired": False}
+        issue = source["issue"]
+        owner_repo = expected.removeprefix("github.com/")
+        recognized = {
+            f"{expected}/issues/{issue}",
+            f"https://{expected}/issues/{issue}",
+            f"github:{owner_repo}:{issue}",
+        }
+        if not isinstance(identity, str) or identity not in recognized:
+            message = "ambiguous or conflicting legacy repository identity"
+            raise BookkeepingError(message)
+        repository = checkpoint["repository"]
+        history = repository.setdefault("identityRepairs", [])
+        if not isinstance(history, list):
+            message = "repository.identityRepairs must be an array"
+            raise BookkeepingError(message)
+        history.append(
+            {
+                "previousIdentity": identity,
+                "identity": expected,
+                "canonicalSource": canonical,
+                "verifiedOrigin": expected,
+                "repositoryPath": str(Path(args.repository).resolve()),
+                "repairedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            },
+        )
+        repository["identity"] = expected
+        validate_checkpoint(checkpoint, path)
+        atomic_write(path, checkpoint)
+    return {"checkpoint": str(path), "repaired": True}
+
+
 def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
     """Create a checkpoint at phase resolve; never replace an existing one."""
     source = checkpoint_state.parse_object(args.source_json, "--source-json")
+    checkpoint_state.canonical_source(source)
+    if source.get("sourceType") in (
+        "github",
+        "description",
+    ) and args.identity != source.get("repository"):
+        message = "repository identity must match canonical task repository"
+        raise BookkeepingError(message)
     criteria = checkpoint_state.parse_json(args.criteria_json, "--criteria-json")
     task = {
         "sourceUrl": args.source_url,
@@ -1193,6 +1291,13 @@ def add_state_commands(
     commands: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
     """Register the checkpoint creation and section commands."""
+    repair = commands.add_parser(
+        "repair-repository", help="repair same-task repository identity",
+    )
+    repair.add_argument("--checkpoint", required=True)
+    repair.add_argument("--repository", required=True)
+    repair.add_argument("--source-json", required=True)
+
     creation = commands.add_parser(
         "create",
         help="create a checkpoint at phase resolve without overwriting",
@@ -1255,6 +1360,8 @@ def main(argv: list[str] | None = None) -> int:
             result = transition(args)
         elif args.command == "reconcile-delivery":
             result = reconcile_delivery(args)
+        elif args.command == "repair-repository":
+            result = repair_repository(args)
         elif args.command == "create":
             result = create_checkpoint(args)
         elif args.command == "handoff":
