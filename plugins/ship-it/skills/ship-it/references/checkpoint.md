@@ -7,6 +7,7 @@
 | kind | data |
 | :-- | :-- |
 | `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation; `owner` is null before launch (or the native worker ID for an already observed owner); `deadlineAt` is a later UTC instant |
+| `adopt` | Same target and owner fields for a legacy running/blocked/failed child or reserved/completed gate; `deadlineAt` must be null because no deadline observation is available. Use a stable dispatch ID; adoption does not release ownership |
 | `bind-owner` | `owner` with the native worker ID; atomically fills a null orchestration child worker, otherwise must match that existing owner |
 | `started` | `{}` |
 | `result` | `eventId`, `status: completed\|blocked\|failed`, `checkpointPath` |
@@ -14,6 +15,8 @@
 | `release-owner` | `hostStatus: completed\|done\|closed\|exited`, `observation` containing the native terminal evidence; an unbound failed launch instead requires `not-created` and explicit host failure evidence |
 
 `bookkeeping.py reconcile-workers --checkpoint FILE --observation-json '{"at":"2026-10-16T04:15:00Z"}'` returns one diagnostic per dispatch with its state, UTC deadline comparison, retained ownership and result receipt. Run once on parent resume before subsequent gates or delivery. It records only the latest reconciliation instant; it does not fabricate native delivery observations or update gates, counters, grants or orchestration results. The optional `workerRecovery` array retains one immutable result receipt per dispatch and at most 256 dispatches, including owner release evidence. Legacy checkpoints without it remain valid.
+
+An adopted legacy record additionally carries `adopted: true` and an unknown null deadline. Missing legacy owner records block child replacement and another native review/test reservation of the same kind until explicit adoption and host terminal reconciliation. Reusable completed gate results still return without dispatch. No migration fabricates a passing gate or refunds a reservation.
 
 Use one portable JSON checkpoint as the source of truth for a task across Claude Code, Codex, OpenCode, Copilot CLI and Sail. It is both resumable workflow state and the task context supplied to review and test gates.
 

@@ -413,6 +413,59 @@ class OrchestrationTest(unittest.TestCase):
         self.assertEqual(child["capacityLeases"][0]["status"], "active")
         self.assertFalse(self.reconcile_workers()["ownerHeld"])
 
+    def test_legacy_blocked_owner_requires_explicit_adoption_and_terminal_proof(
+        self,
+    ) -> None:
+        self.initialize()
+        self.event(
+            "legacy-blocked", "terminal", {"status": "blocked", "nextAction": "Resume"}
+        )
+        replacement = {
+            "worker": "worker-2",
+            "worktree": "replacement",
+            "branch": "fix/replacement",
+            "revision": REVISION,
+        }
+        self.event(
+            "legacy-replacement",
+            "dispatch",
+            replacement,
+            dispatch="dispatch-2",
+            success=False,
+        )
+        before = self.document()
+        self.worker_event(
+            "adopt", {"target": {"issueUrl": FIRST}, "owner": None, "deadlineAt": None}
+        )
+        self.assertIsNone(self.reconcile_workers()["deadlineExceeded"])
+        self.worker_event("bind-owner", {"owner": "worker-1"}, "2026-10-15T21:00:01Z")
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "running", "observation": "Native task remains running"},
+            success=False,
+        )
+        self.event(
+            "legacy-replacement",
+            "dispatch",
+            replacement,
+            dispatch="dispatch-2",
+            success=False,
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "completed", "observation": "Native task completed"},
+            "2026-10-15T21:00:02Z",
+        )
+        after = self.document()
+        for section in (
+            "authorization",
+            "convergence",
+            "gateVerdicts",
+            "orchestration",
+        ):
+            self.assertEqual(before[section], after[section])
+        self.event("legacy-replacement", "dispatch", replacement, dispatch="dispatch-2")
+
     def test_saved_worker_chronology_is_validated_before_another_write(self) -> None:
         self.register_worker()
         self.worker_event("started", {}, "2026-10-15T21:30:00Z")
@@ -578,6 +631,14 @@ class OrchestrationTest(unittest.TestCase):
         )
         self.event(
             "blocked-1", "terminal", {"status": "blocked", "nextAction": "Reconcile"}
+        )
+        self.worker_event(
+            "adopt",
+            {"target": {"issueUrl": FIRST}, "owner": "worker-1", "deadlineAt": None},
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "completed", "observation": "Prior native task completed"},
         )
         revision = "b" * 40
         self.event(

@@ -23,12 +23,19 @@ def timestamp(value: object, field: str) -> datetime:
     return datetime.fromisoformat(utc_timestamp(value, field))
 
 
-def held(checkpoint: dict[str, Any], dispatch_id: str) -> bool:
+def held(checkpoint: dict[str, Any], dispatch_id: str | None) -> bool:
     """Retain ownership until an explicit host terminal observation."""
-    return any(
-        item["dispatchId"] == dispatch_id and item["ownerReleasedAt"] is None
-        for item in checkpoint.get("workerRecovery", [])
+    if dispatch_id is None:
+        return False
+    record = next(
+        (
+            item
+            for item in checkpoint.get("workerRecovery", [])
+            if item["dispatchId"] == dispatch_id
+        ),
+        None,
     )
+    return record is None or record["ownerReleasedAt"] is None
 
 
 def validate(checkpoint: dict[str, Any]) -> None:
@@ -42,7 +49,7 @@ def validate(checkpoint: dict[str, Any]) -> None:
     for item in records:
         require(
             isinstance(item, dict)
-            and set(item)
+            and set(item).difference({"adopted"})
             == {
                 "dispatchId",
                 "target",
@@ -71,10 +78,16 @@ def validate(checkpoint: dict[str, Any]) -> None:
         for value in item["target"].values():
             non_empty(value, "worker target")
         registered = timestamp(item["registeredAt"], "registeredAt")
-        require(
-            timestamp(item["deadlineAt"], "deadlineAt") > registered,
-            "deadlineAt must follow registration",
-        )
+        require(isinstance(item.get("adopted", False), bool), "invalid adopted flag")
+        if item.get("adopted", False):
+            require(
+                item["deadlineAt"] is None, "adopted legacy deadline must be unknown",
+            )
+        else:
+            require(
+                timestamp(item["deadlineAt"], "deadlineAt") > registered,
+                "deadlineAt must follow registration",
+            )
         for field in (
             "startedAt",
             "acknowledgedAt",
@@ -170,6 +183,8 @@ def resolve_target(
     checkpoint: dict[str, Any],
     target: dict[str, Any],
     dispatch: str,
+    *,
+    allow_terminal: bool = False,
 ) -> str | None:
     """Bind recovery to an existing child dispatch or gate reservation."""
     if set(target) == {"issueUrl"}:
@@ -185,7 +200,8 @@ def resolve_target(
         require(
             child is not None
             and child["dispatchId"] == dispatch
-            and child["status"] == "running",
+            and child["status"]
+            in ({"running", "blocked", "failed"} if allow_terminal else {"running"}),
             "worker requires active child dispatch",
         )
         return child["worker"]
@@ -199,7 +215,9 @@ def resolve_target(
         None,
     )
     require(
-        receipt is not None and receipt["status"] == "reserved",
+        receipt is not None
+        and receipt["status"]
+        in ({"reserved", "completed"} if allow_terminal else {"reserved"}),
         "worker requires pending gate reservation",
     )
     return None
@@ -218,7 +236,7 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
     records = checkpoint.setdefault("workerRecovery", [])
     record = next((item for item in records if item["dispatchId"] == dispatch), None)
     kind = event["kind"]
-    if kind == "register":
+    if kind in {"register", "adopt"}:
         return register(checkpoint, event, record)
     require(record is not None, "unknown worker dispatch")
     require(
@@ -325,7 +343,9 @@ def reconcile(
             {
                 "dispatchId": record["dispatchId"],
                 "state": state,
-                "deadlineExceeded": at >= timestamp(record["deadlineAt"], "deadlineAt"),
+                "deadlineExceeded": None
+                if record["deadlineAt"] is None
+                else at >= timestamp(record["deadlineAt"], "deadlineAt"),
                 "ownerHeld": record["ownerReleasedAt"] is None,
                 "owner": record["owner"],
                 "result": copy.deepcopy(result),
@@ -342,6 +362,7 @@ def register(
 ) -> dict[str, Any]:
     """Reserve recovery state before native launch."""
     data, dispatch = event["data"], event["dispatchId"]
+    adopted = event["kind"] == "adopt"
     records = checkpoint["workerRecovery"]
     at = timestamp(event["at"], "at")
     require(
@@ -350,7 +371,10 @@ def register(
     )
     if record is not None:
         require(
-            all(record[key] == value for key, value in data.items() if key != "owner")
+            record.get("adopted", False) == adopted
+            and all(
+                record[key] == value for key, value in data.items() if key != "owner"
+            )
             and (data["owner"] is None or record["owner"] == data["owner"])
             and record["registeredAt"] == event["at"],
             "dispatch already registered with different content",
@@ -364,7 +388,9 @@ def register(
     if owner is not None:
         non_empty(owner, "owner")
     require(isinstance(data["target"], dict), "target must be an object")
-    existing_owner = resolve_target(checkpoint, data["target"], dispatch)
+    existing_owner = resolve_target(
+        checkpoint, data["target"], dispatch, allow_terminal=adopted,
+    )
     require(
         owner is None or existing_owner is None or existing_owner == owner,
         "owner does not match child dispatch",
@@ -376,10 +402,13 @@ def register(
         ),
         "target still has an active or unknown owner",
     )
-    require(
-        timestamp(data["deadlineAt"], "deadlineAt") > at,
-        "deadlineAt must follow registration",
-    )
+    if adopted:
+        require(data["deadlineAt"] is None, "legacy adoption requires unknown deadline")
+    else:
+        require(
+            timestamp(data["deadlineAt"], "deadlineAt") > at,
+            "deadlineAt must follow registration",
+        )
     records.append(
         {
             "dispatchId": dispatch,
@@ -391,6 +420,7 @@ def register(
             "ownerReleasedAt": None,
             "ownerObservation": None,
             "lastReconciledAt": None,
+            **({"adopted": True} if adopted else {}),
         },
     )
     return {"dispatchId": dispatch, "applied": True}
@@ -408,7 +438,12 @@ def bind_owner(
     if record["owner"] == owner:
         return {"dispatchId": dispatch, "applied": False}
     require(record["ownerReleasedAt"] is None, "worker owner already released")
-    expected = resolve_target(checkpoint, record["target"], dispatch)
+    expected = resolve_target(
+        checkpoint,
+        record["target"],
+        dispatch,
+        allow_terminal=record.get("adopted", False),
+    )
     require(
         expected is None or expected == owner,
         "owner does not match child dispatch",
