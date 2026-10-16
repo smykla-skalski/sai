@@ -250,3 +250,13 @@ Never infer success from an advanced phase name. Revision, PR, issue and merge f
 Validation reservations use `bookkeeping.py reserve` and `finish` under the same checkpoint lock as transitions. Do not manually change counters. `reservations` preserves request, ordinal, status and immutable completed result; `broadTestRuns` counts broad passes. Legacy checkpoints gain empty receipts without resetting any counter. A spent review lacking historical attestation requires evidence recovery. See [convergence.md](convergence.md) for receipt reconciliation and reassessment.
 
 Structured reservations retain `inputManifest`, its captured `inputSnapshot`, the canonical input fingerprint and completed `outputArtifact` path/digest. `convergence.validityDecisions` records each current-head assessment and changed dimensions without spending a gate allowance. Verified unchanged results retain their original receipt and current-head gate provenance; invalidated verdicts become stale. See [validation-reuse.md](validation-reuse.md). Never replace missing criterion evidence with a blanket passing attestation.
+
+## Repository identity recovery
+
+Creation requires the supplied repository identity to equal the canonical task repository. To recover an existing GitHub checkpoint with an issue URL or `github:owner/repo:issue` stored as its repository identity, run:
+
+```bash
+python3 scripts/bookkeeping.py repair-repository --checkpoint FILE --repository WORKTREE --source-json '{"sourceType":"github","repository":"github.com/owner/repo","issue":123}'
+```
+
+Supply the exact stored canonical source, including a legacy `owner/repo` repository when present. The helper preserves that representation and checkpoint hash while deriving the normalized GitHub repository identity, then verifies the worktree's single Git origin identifies that same repository. It rejects conflicting issue numbers, different repositories and ambiguous legacy identities. It changes only `repository.identity` and appends provenance to `repository.identityRepairs`; task data, timestamps, grants, counters, receipts and unknown state remain intact. Retrying an already repaired checkpoint performs no write. Replacement uses the existing checkpoint lock, atomic write and backup mechanism.
