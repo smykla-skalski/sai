@@ -35,6 +35,8 @@ Usage:
   bookkeeping.py set-orchestration --checkpoint FILE
       --orchestration-json OBJECT
   bookkeeping.py record-orchestration-event --checkpoint FILE --event-json OBJECT
+  bookkeeping.py record-worker-event --checkpoint FILE --event-json OBJECT
+  bookkeeping.py reconcile-workers --checkpoint FILE --observation-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
   bookkeeping.py record-ci-failure --checkpoint FILE --failure-json OBJECT

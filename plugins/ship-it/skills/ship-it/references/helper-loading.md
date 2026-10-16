@@ -13,6 +13,7 @@ Use Python 3.11 or newer. Installed plugin directories already provide these fil
 | `scripts/validation_reuse.py` (importable library) | None |
 | `scripts/telemetry.py` | `scripts/token_cost.py` |
 | `scripts/ci_triage.py` | None |
+| `scripts/plugin_pins.py` | None; acquisition requires the complete plugin root, including manifests |
 | `scripts/copilot_review.py` | None |
 | `scripts/hosted_wait.py` | `scripts/copilot_quota.py`, `scripts/copilot_review.py` |
 | `scripts/copilot_quota.py` | `scripts/copilot_review.py` |
