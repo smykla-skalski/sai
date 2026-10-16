@@ -513,7 +513,7 @@ def validate_utc_timestamp(value: object, field: str) -> None:
         message = f"{field} must be an RFC 3339 UTC timestamp"
         raise BookkeepingError(message)
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as error:
         message = f"{field} must be an RFC 3339 UTC timestamp"
         raise BookkeepingError(message) from error
