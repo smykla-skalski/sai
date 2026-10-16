@@ -98,6 +98,12 @@ Release requirements are gate floors. Add `hosted-review` to the selected risk g
 
 Apply the legacy `copilot-review` normalization from the risk contract before this union. Store its normalized reviewer and any activated `human-review` fallback in `releasePolicy.activatedFallbacks`, so resume never depends on remembering the legacy translation.
 
+## Actor-specific approvals
+
+For a resolved `bot-comment` route whose merge actor is explicitly identified by its GitHub App integration ID, append `--merge-integration <id> --bot-comment '<exact-resolved-comment>'` to the hosted waiter. Preserve the exact documented comment when requesting merge; the waiter never sends it. Establish the integration identity from repository policy and live GitHub App metadata, never from admin access, a comment string or user preference. Without both flags, platform approval requirements remain blocking.
+
+The waiter reads applicable base-ref rules and their current ruleset details on each `REVIEW_REQUIRED` snapshot. Only an explicit `App` actor with that exact numeric ID and GitHub's `EXEMPT` mode in every applicable pull-request ruleset removes the generic platform approval wait. Ordinary `ALWAYS` and `PULL_REQUEST` bypass permissions are insufficient. Classic approving-review protection, missing or inconsistent rules, API errors, mismatched actors, named reviewer requirements, required CI, changes requested and unresolved threads remain blocking. Rule and actor lists with additional unread pages are ambiguous and remain blocking. During checks/reviews/threads pagination, any change to the complete policy page keeps approvals blocking. Do not pass synthetic platform approval-count reviewers for a rule that live GitHub explicitly exempts for the resolved actor; retain every non-exempt approval requirement. Never reuse a saved exemption across snapshots.
+
 ## Request hosted reviewers
 
 Run this section only when `hosted-review` is selected and the checkpoint's `hostedReviewDecision` is `serviceable`. Request every resolved reviewer whose request mode is `reviewer` or `team-reviewer`; reviewers with `automatic` are requested by repository policy. `not-required` satisfies the gate without a request. `fallback` uses the recorded fallback immediately. `blocked` is a hard stop. Never retry a request after quota, permission or unavailable-service made that reviewer unserviceable.
