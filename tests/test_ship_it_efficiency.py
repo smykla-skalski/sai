@@ -173,13 +173,21 @@ class ShipItEfficiencyContractTest(unittest.TestCase):
         orchestration = read(REFERENCES / "orchestration.md")
         self.assertIn("Never write the checkpoint file directly", worker_rules)
         self.assertIn("stop as blocked, name the missing command", worker_rules)
-        self.assertIn("`create --grant-json` or `add-grant`", worker_rules)
+        self.assertIn(
+            "`create --grant-json` when the checkpoint does not exist yet, otherwise `add-grant`",
+            worker_rules,
+        )
         self.assertIn("relayed approval", worker_rules)
         self.assertIn("never user authority", worker_rules)
         self.assertIn("original authorizing message verbatim", orchestration)
         self.assertIn("goes in a file whose path replaces it", orchestration)
-        self.assertIn("transition --status blocked --blocker", worker_rules)
-        self.assertIn("reconciles against the recorded grants", worker_rules)
+        self.assertIn(
+            "transition --phase <current phase> --status blocked", worker_rules
+        )
+        self.assertIn(
+            "`create` on an existing checkpoint leaves the file untouched", worker_rules
+        )
+        self.assertIn("never records the same message under a new ID", worker_rules)
 
     def test_unserviceable_hosted_review_is_not_requested(self) -> None:
         release = read(REFERENCES / "release.md")
