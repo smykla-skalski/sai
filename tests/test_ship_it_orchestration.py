@@ -130,7 +130,9 @@ class OrchestrationTest(unittest.TestCase):
         )
         return event
 
-    def initialize(self, *, dependencies: bool = False) -> None:
+    def initialize(
+        self, *, dependencies: bool = False, worker: str | None = "worker-1"
+    ) -> None:
         self.command(
             "set-orchestration",
             "--orchestration-json",
@@ -140,7 +142,7 @@ class OrchestrationTest(unittest.TestCase):
             "dispatch-event",
             "dispatch",
             {
-                "worker": "worker-1",
+                "worker": worker,
                 "worktree": str(self.root / "worktree"),
                 "branch": "feat/child",
                 "revision": REVISION,
@@ -159,6 +161,332 @@ class OrchestrationTest(unittest.TestCase):
         self.assertEqual(before["convergence"], after["convergence"])
         event["data"]["worker"] = "replacement"
         self.command("record-orchestration-event", "--event-json", event, success=False)
+
+    def worker_event(
+        self,
+        kind: str,
+        data: dict,
+        at: str = "2026-10-15T21:00:00Z",
+        *,
+        success: bool = True,
+    ) -> dict:
+        result = self.command(
+            "record-worker-event",
+            "--event-json",
+            {
+                "dispatchId": "dispatch-1",
+                "kind": kind,
+                "at": at,
+                "data": data,
+            },
+            success=success,
+        )
+        return json.loads(result.stdout) if success else {}
+
+    def register_worker(self) -> None:
+        self.initialize()
+        self.worker_event(
+            "register",
+            {
+                "target": {"issueUrl": FIRST},
+                "owner": "worker-1",
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+
+    def reconcile_workers(self) -> dict:
+        result = self.command(
+            "reconcile-workers", "--observation-json", {"at": "2026-10-16T04:15:00Z"}
+        )
+        return json.loads(result.stdout)["workers"][0]
+
+    def test_resume_recovers_worker_receipt_without_native_delivery(self) -> None:
+        self.register_worker()
+        before = self.document()
+        queued = self.reconcile_workers()
+        self.assertEqual(queued["state"], "queued-unobserved")
+        self.assertTrue(queued["deadlineExceeded"])
+        self.assertTrue(queued["ownerHeld"])
+        self.worker_event("started", {}, "2026-10-15T21:01:00Z")
+        self.assertEqual(self.reconcile_workers()["state"], "executing-observed")
+        receipt = {
+            "eventId": "worker-result-1",
+            "status": "blocked",
+            "checkpointPath": str(self.checkpoint),
+        }
+        self.worker_event("result", receipt, "2026-10-15T21:30:00Z")
+        recovered = self.reconcile_workers()
+        self.assertEqual(recovered["state"], "completed-but-undelivered")
+        self.assertEqual(recovered["result"]["status"], "blocked")
+        self.assertFalse(
+            self.worker_event("result", receipt, "2026-10-15T21:30:00Z")["applied"]
+        )
+        self.worker_event("acknowledge", {"eventId": "wrong"}, success=False)
+        acknowledgement = {"eventId": "worker-result-1"}
+        self.worker_event("acknowledge", acknowledgement, "2026-10-16T04:15:00Z")
+        self.assertFalse(
+            self.worker_event("acknowledge", acknowledgement, "2026-10-16T04:15:00Z")[
+                "applied"
+            ]
+        )
+        self.assertEqual(self.reconcile_workers()["state"], "acknowledged")
+        after = self.document()
+        for section in (
+            "authorization",
+            "convergence",
+            "gateVerdicts",
+            "orchestration",
+        ):
+            self.assertEqual(before[section], after[section])
+
+    def test_expired_worker_cannot_be_replaced_even_after_blocked_terminal(
+        self,
+    ) -> None:
+        self.register_worker()
+        self.reconcile_workers()
+        self.event(
+            "blocked-worker",
+            "terminal",
+            {"status": "blocked", "nextAction": "Recover owner"},
+        )
+        replacement = {
+            "worker": "worker-2",
+            "worktree": "replacement",
+            "branch": "fix/replacement",
+            "revision": REVISION,
+        }
+        self.event(
+            "replacement", "dispatch", replacement, dispatch="dispatch-2", success=False
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "unknown", "observation": "No response"},
+            success=False,
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "exited", "observation": "Host reports worker-1 exited"},
+            "2026-10-16T04:16:00Z",
+        )
+        self.event("replacement", "dispatch", replacement, dispatch="dispatch-2")
+
+    def test_invalid_worker_receipt_preserves_checkpoint(self) -> None:
+        self.register_worker()
+        for event in (
+            {"eventId": "result", "status": "passed", "checkpointPath": "checkpoint"},
+            {"eventId": "result", "status": "completed", "checkpointPath": ""},
+        ):
+            self.worker_event("result", event, success=False)
+        self.worker_event("started", {}, "2026-10-15T20:00:00Z", success=False)
+        self.command(
+            "reconcile-workers",
+            "--observation-json",
+            {"at": "2026-10-16T04:15:00+01:00"},
+            success=False,
+        )
+
+    def test_prelaunch_registration_survives_fast_worker_before_parent_binding(
+        self,
+    ) -> None:
+        self.initialize()
+        self.worker_event(
+            "register",
+            {
+                "target": {"issueUrl": FIRST},
+                "owner": None,
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+        self.worker_event("started", {}, "2026-10-15T21:00:01Z", success=False)
+        self.worker_event("bind-owner", {"owner": "worker-1"}, "2026-10-15T21:00:01Z")
+        self.worker_event("started", {}, "2026-10-15T21:00:02Z")
+        self.worker_event(
+            "result",
+            {
+                "eventId": "fast-result",
+                "status": "blocked",
+                "checkpointPath": str(self.checkpoint),
+            },
+            "2026-10-15T21:00:03Z",
+        )
+        self.event(
+            "fast-terminal",
+            "terminal",
+            {"status": "blocked", "nextAction": "Inspect result"},
+        )
+        self.assertFalse(
+            self.worker_event(
+                "bind-owner", {"owner": "worker-1"}, "2026-10-15T21:00:04Z"
+            )["applied"]
+        )
+        self.assertEqual(self.reconcile_workers()["state"], "completed-but-undelivered")
+        before = self.document()["orchestration"]["children"][0]["capacityLeases"]
+        self.worker_event(
+            "release-owner",
+            {
+                "hostStatus": "completed",
+                "observation": "native task completed",
+            },
+            "2026-10-15T21:00:05Z",
+        )
+        self.assertFalse(self.reconcile_workers()["ownerHeld"])
+        self.assertEqual(
+            before, self.document()["orchestration"]["children"][0]["capacityLeases"]
+        )
+
+    def test_first_host_assigned_identity_binds_authoritative_child_atomically(
+        self,
+    ) -> None:
+        self.initialize(worker=None)
+        self.worker_event(
+            "register",
+            {
+                "target": {"issueUrl": FIRST},
+                "owner": None,
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+        before = self.document()
+        actual_owner = "/root/host-assigned-native-id"
+        self.worker_event("bind-owner", {"owner": actual_owner}, "2026-10-15T21:00:01Z")
+        after = self.document()
+        self.assertEqual(after["orchestration"]["children"][0]["worker"], actual_owner)
+        self.assertEqual(after["workerRecovery"][0]["owner"], actual_owner)
+        for field in ("authorization", "convergence", "gateVerdicts"):
+            self.assertEqual(before[field], after[field])
+        self.assertEqual(
+            before["orchestration"]["children"][0]["capacityLeases"],
+            after["orchestration"]["children"][0]["capacityLeases"],
+        )
+        self.assertFalse(
+            self.worker_event(
+                "bind-owner", {"owner": actual_owner}, "2026-10-15T21:00:02Z"
+            )["applied"]
+        )
+        self.worker_event(
+            "bind-owner",
+            {"owner": "competing-native-id"},
+            "2026-10-15T21:00:03Z",
+            success=False,
+        )
+
+    def test_worker_observations_reject_contradictory_chronology(self) -> None:
+        self.register_worker()
+        self.worker_event("started", {}, "2026-10-15T21:30:00Z")
+        result = {
+            "eventId": "chronology",
+            "status": "completed",
+            "checkpointPath": "cp",
+        }
+        self.worker_event("result", result, "2026-10-15T21:20:00Z", success=False)
+        self.worker_event("result", result, "2026-10-15T21:40:00Z")
+        self.worker_event(
+            "release-owner",
+            {
+                "hostStatus": "exited",
+                "observation": "native process exit",
+            },
+            "2026-10-15T21:01:00Z",
+            success=False,
+        )
+        self.command(
+            "reconcile-workers",
+            "--observation-json",
+            {"at": "2026-10-15T21:10:00Z"},
+            success=False,
+        )
+
+    def test_native_task_completion_keeps_active_capacity_lease(self) -> None:
+        self.register_worker()
+        lease = {"leaseId": "occupied-native-thread", "gate": "review"}
+        self.event("request-capacity", "capacity-request", lease)
+        self.event("grant-capacity", "capacity-grant", lease)
+        self.worker_event(
+            "release-owner",
+            {
+                "hostStatus": "done",
+                "observation": "native task done; thread remains open",
+            },
+            "2026-10-15T21:20:00Z",
+        )
+        child = self.document()["orchestration"]["children"][0]
+        self.assertEqual(child["capacityLeases"][0]["status"], "active")
+        self.assertFalse(self.reconcile_workers()["ownerHeld"])
+
+    def test_legacy_blocked_owner_requires_explicit_adoption_and_terminal_proof(
+        self,
+    ) -> None:
+        self.initialize()
+        self.event(
+            "legacy-blocked", "terminal", {"status": "blocked", "nextAction": "Resume"}
+        )
+        replacement = {
+            "worker": "worker-2",
+            "worktree": "replacement",
+            "branch": "fix/replacement",
+            "revision": REVISION,
+        }
+        self.event(
+            "legacy-replacement",
+            "dispatch",
+            replacement,
+            dispatch="dispatch-2",
+            success=False,
+        )
+        before = self.document()
+        self.worker_event(
+            "adopt", {"target": {"issueUrl": FIRST}, "owner": None, "deadlineAt": None}
+        )
+        self.assertIsNone(self.reconcile_workers()["deadlineExceeded"])
+        self.worker_event("bind-owner", {"owner": "worker-1"}, "2026-10-15T21:00:01Z")
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "running", "observation": "Native task remains running"},
+            success=False,
+        )
+        self.event(
+            "legacy-replacement",
+            "dispatch",
+            replacement,
+            dispatch="dispatch-2",
+            success=False,
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "completed", "observation": "Native task completed"},
+            "2026-10-15T21:00:02Z",
+        )
+        after = self.document()
+        for section in (
+            "authorization",
+            "convergence",
+            "gateVerdicts",
+            "orchestration",
+        ):
+            self.assertEqual(before[section], after[section])
+        self.event("legacy-replacement", "dispatch", replacement, dispatch="dispatch-2")
+
+    def test_saved_worker_chronology_is_validated_before_another_write(self) -> None:
+        self.register_worker()
+        self.worker_event("started", {}, "2026-10-15T21:30:00Z")
+        self.worker_event(
+            "result",
+            {
+                "eventId": "saved-result",
+                "status": "completed",
+                "checkpointPath": "cp",
+            },
+            "2026-10-15T21:40:00Z",
+        )
+        document = self.document()
+        document["workerRecovery"][0]["result"]["recordedAt"] = "2026-10-15T21:20:00Z"
+        self.checkpoint.write_text(json.dumps(document), encoding="utf-8")
+        self.command(
+            "reconcile-workers",
+            "--observation-json",
+            {"at": "2026-10-16T04:15:00Z"},
+            success=False,
+        )
 
     def test_missing_cyclic_and_changed_dispatched_dependencies_rejected(self) -> None:
         for dependencies in (["https://github.com/o/r/issues/99"], [FIRST], [SECOND]):
@@ -303,6 +631,14 @@ class OrchestrationTest(unittest.TestCase):
         )
         self.event(
             "blocked-1", "terminal", {"status": "blocked", "nextAction": "Reconcile"}
+        )
+        self.worker_event(
+            "adopt",
+            {"target": {"issueUrl": FIRST}, "owner": "worker-1", "deadlineAt": None},
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "completed", "observation": "Prior native task completed"},
         )
         revision = "b" * 40
         self.event(

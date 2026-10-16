@@ -14,6 +14,7 @@ import re
 from typing import Any, Final
 
 from checkpoint_state import commit_id, non_empty, one_of, require
+from worker_recovery import held
 
 ISSUE_URL: Final[re.Pattern[str]] = re.compile(
     r"https://[^/]+/[^/]+/[^/]+/issues/[1-9][0-9]*",
@@ -319,6 +320,10 @@ def dispatch(
     """Start one fresh worker after all prerequisites are delivered."""
     data = event["data"]
     require(
+        not held(checkpoint, child["dispatchId"]),
+        "prior dispatch still has an active or unknown owner",
+    )
+    require(
         child["dispatchId"] is None or child["status"] in {"blocked", "failed"},
         "child already dispatched",
     )
@@ -344,7 +349,9 @@ def dispatch(
         ),
         "dependencies are not completed",
     )
-    for field in ("worker", "worktree", "branch"):
+    if data["worker"] is not None:
+        non_empty(data["worker"], "worker")
+    for field in ("worktree", "branch"):
         non_empty(data[field], field)
     commit_id(data["revision"], "revision")
     child.update(

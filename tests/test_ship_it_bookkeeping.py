@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -86,7 +87,7 @@ def merged_delivery() -> dict[str, object]:
 class BookkeepingTest(unittest.TestCase):
     def run_script(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["python3", str(SCRIPT), *arguments],
+            [sys.executable, str(SCRIPT), *arguments],
             check=False,
             capture_output=True,
             text=True,
@@ -955,7 +956,7 @@ class BookkeepingTest(unittest.TestCase):
 class UsageDocstringTest(unittest.TestCase):
     def test_docstring_lists_every_command(self) -> None:
         help_text = subprocess.run(
-            ["python3", str(SCRIPT), "--help"],
+            [sys.executable, str(SCRIPT), "--help"],
             check=True,
             capture_output=True,
             text=True,

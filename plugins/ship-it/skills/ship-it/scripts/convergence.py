@@ -86,7 +86,7 @@ def timestamp(value: object) -> datetime:
         msg = "convergence timestamp must be a string"
         raise ConvergenceError(msg)
     try:
-        result = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        result = datetime.fromisoformat(value)
     except ValueError as error:
         msg = "invalid convergence timestamp"
         raise ConvergenceError(msg) from error
@@ -422,6 +422,32 @@ def reserve(
         )
     if existing:
         return {"dispatch": False, "reservation": existing}
+    active_reservations = {
+        worker["target"].get("reservationId")
+        for worker in checkpoint.get("workerRecovery", [])
+        if worker["ownerReleasedAt"] is None
+    }
+    recorded_reservations = {
+        worker["target"].get("reservationId")
+        for worker in checkpoint.get("workerRecovery", [])
+    }
+    require(
+        request["kind"] not in {"review", "test"}
+        or not any(
+            operation["kind"] == request["kind"]
+            and operation["id"] not in recorded_reservations
+            for operation in state["reservations"]
+        ),
+        "legacy gate owner unknown; adopt and reconcile before replacement",
+    )
+    require(
+        not any(
+            operation["id"] in active_reservations
+            and operation["kind"] == request["kind"]
+            for operation in state["reservations"]
+        ),
+        "prior gate still has an active or unknown owner",
+    )
     check_dispatch(checkpoint, request)
     check_rerun(state, request)
     spend_allowance(checkpoint, request, now)

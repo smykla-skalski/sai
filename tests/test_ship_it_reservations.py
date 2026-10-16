@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 
 from test_ship_it_bookkeeping import SCRIPT, checkpoint_document, checkpoint_path
 
@@ -78,7 +79,7 @@ class ReservationTest(unittest.TestCase):
         )
 
     def finish(self, identity: str, result: dict) -> subprocess.CompletedProcess[str]:
-        return self.cli(
+        outcome = self.cli(
             "finish",
             "--checkpoint",
             str(self.path),
@@ -87,6 +88,53 @@ class ReservationTest(unittest.TestCase):
             "--result-json",
             json.dumps(result),
         )
+        state = self.read()
+        receipt = next(
+            item
+            for item in state["convergence"]["reservations"]
+            if item["id"] == identity
+        )
+        if (
+            outcome.returncode == 0
+            and receipt["kind"] in {"review", "test"}
+            and not any(
+                item["target"].get("reservationId") == identity
+                for item in state.get("workerRecovery", [])
+            )
+        ):
+            ReservationTest.settle_command_only_fixture(self, identity)
+        return outcome
+
+    def settle_command_only_fixture(self, identity: str) -> None:
+        at = datetime.now(UTC).isoformat()
+        for kind, data in (
+            (
+                "adopt",
+                {
+                    "target": {"reservationId": identity},
+                    "owner": None,
+                    "deadlineAt": None,
+                },
+            ),
+            (
+                "release-owner",
+                {
+                    "hostStatus": "not-created",
+                    "observation": "CLI unit fixture launches no native worker",
+                },
+            ),
+        ):
+            self.assert_ok(
+                self.cli(
+                    "record-worker-event",
+                    "--checkpoint",
+                    str(self.path),
+                    "--event-json",
+                    json.dumps(
+                        {"dispatchId": identity, "kind": kind, "at": at, "data": data}
+                    ),
+                )
+            )
 
     def assert_ok(self, result: subprocess.CompletedProcess[str]) -> dict:
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -103,6 +151,74 @@ class ReservationTest(unittest.TestCase):
         self.assertEqual(sum(receipt["dispatch"] for receipt in receipts), 1)
         self.assertEqual(self.read()["convergence"]["reviewCycles"], 1)
         self.assertEqual(len(self.read()["convergence"]["reservations"]), 1)
+
+    def test_finished_gate_cannot_redispatch_while_worker_owner_is_unknown(
+        self,
+    ) -> None:
+        self.assert_ok(self.reserve("review-one"))
+        event = {
+            "dispatchId": "gate-worker-one",
+            "kind": "register",
+            "at": "2026-10-15T21:00:00Z",
+            "data": {
+                "target": {"reservationId": "review-one"},
+                "owner": "native-reviewer-one",
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        }
+        self.assert_ok(
+            self.cli(
+                "record-worker-event",
+                "--checkpoint",
+                str(self.path),
+                "--event-json",
+                json.dumps(event),
+            )
+        )
+        self.assert_ok(self.finish("review-one", {"verdict": "passed", "findings": []}))
+        self.assert_denied(
+            self.reserve(
+                "review-two",
+                "review",
+                "changed-inputs",
+                "--reason",
+                "changed acceptance inputs",
+            )
+        )
+        self.assertFalse(self.assert_ok(self.reserve("review-one"))["dispatch"])
+
+    def test_legacy_gate_needs_native_owner_reconciliation_before_another_attempt(
+        self,
+    ) -> None:
+        self.assert_ok(self.reserve("legacy-review"))
+        self.assert_ok(
+            self.cli(
+                "finish",
+                "--checkpoint",
+                str(self.path),
+                "--id",
+                "legacy-review",
+                "--result-json",
+                '{"verdict":"passed","findings":[]}',
+            )
+        )
+        retry = (
+            "next-review",
+            "review",
+            "changed",
+            "--reason",
+            "Changed inputs",
+            "--trigger",
+            "security",
+        )
+        before = self.read()
+        self.assert_denied(self.reserve(*retry))
+        self.assertEqual(before, self.read())
+        self.settle_command_only_fixture("legacy-review")
+        reconciled = self.read()
+        for field in ("authorization", "gateVerdicts", "convergence"):
+            self.assertEqual(before[field], reconciled[field])
+        self.assertTrue(self.assert_ok(self.reserve(*retry))["dispatch"])
 
     def test_concurrent_distinct_fix_batches_cannot_spend_twice(self) -> None:
         with ThreadPoolExecutor(max_workers=8) as pool:

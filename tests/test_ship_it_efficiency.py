@@ -17,6 +17,7 @@ ROUTINE_GUIDANCE = (
     *(
         REFERENCES / name
         for name in (
+            "bootstrap.md",
             "inputs.md",
             "authorization.md",
             "explore.md",
