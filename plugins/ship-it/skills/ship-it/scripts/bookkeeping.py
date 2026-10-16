@@ -664,14 +664,110 @@ def validate_satisfied_checkpoint(checkpoint: dict[str, Any]) -> None:
         message = "already-satisfied checkpoint must have null delivery state"
         raise BookkeepingError(message)
     required = checkpoint["risk"].get("requiredGates", [])
-    passed = {
-        verdict.get("gate")
-        for verdict in checkpoint["gateVerdicts"]
-        if verdict.get("status") == "passed" and verdict.get("revision") == revision
-    }
+    passed = (
+        satisfied_evidence_gates(checkpoint)
+        if checkpoint["bookkeeping"]["evidence"]
+        else {
+            verdict.get("gate")
+            for verdict in checkpoint["gateVerdicts"]
+            if verdict.get("status") == "passed" and verdict.get("revision") == revision
+        }
+    )
     if not required or not set(required) <= passed:
         message = "already-satisfied requires every selected gate on verifiedRevision"
         raise BookkeepingError(message)
+
+
+def satisfied_evidence_gates(checkpoint: dict[str, Any]) -> set[str]:
+    """Read current, complete external evidence for an investigation outcome."""
+    evidence = checkpoint["evidence"]
+    revision = checkpoint["workflow"]["revision"]
+    if evidence.get("status") != "complete" or evidence.get("revision") != revision:
+        message = "already-satisfied requires complete evidence for verifiedRevision"
+        raise BookkeepingError(message)
+    record_path = evidence.get("recordPath")
+    if not isinstance(record_path, str) or not record_path.strip():
+        message = "already-satisfied requires an evidence recordPath"
+        raise BookkeepingError(message)
+    path = Path(record_path)
+    expected = (
+        default_checkpoint_dir().parent
+        / "evidence"
+        / checkpoint["checkpointId"]
+        / f"{revision}.json"
+    )
+    if not path.is_absolute() or path.resolve() != expected.resolve():
+        message = "evidence record path must match checkpoint and revision"
+        raise BookkeepingError(message)
+    record = load_object(path)
+    if (
+        record.get("schemaVersion") != 1
+        or record.get("checkpointId") != checkpoint["checkpointId"]
+        or record.get("revision") != revision
+        or record.get("status") != "complete"
+        or record.get("repository") != checkpoint["repository"]["identity"]
+        or record.get("invalidatedAt") is not None
+        or record.get("invalidatedByRevision") is not None
+    ):
+        message = (
+            "evidence identity, revision or completeness does not match checkpoint"
+        )
+        raise BookkeepingError(message)
+    results = record.get("results")
+    if (
+        not isinstance(results, list)
+        or not results
+        or not all(
+            isinstance(result, dict)
+            and isinstance(result.get("id"), str)
+            and result["id"].strip()
+            and type(result.get("required")) is bool
+            and result.get("sourceRevision") == revision
+            and (not result["required"] or result.get("status") == "passed")
+            for result in results
+        )
+    ):
+        message = "investigation evidence requires current passing required results"
+        raise BookkeepingError(message)
+    if len({result["id"] for result in results}) != len(results):
+        message = "evidence result IDs must be unique"
+        raise BookkeepingError(message)
+    criteria = {
+        result.get("name")
+        for result in results
+        if result.get("category") == "acceptance-criterion"
+        and result["required"]
+        and isinstance(result.get("name"), str)
+    }
+    if not set(checkpoint["task"].get("acceptanceCriteria", [])) <= criteria:
+        message = "investigation evidence is missing acceptance criteria"
+        raise BookkeepingError(message)
+    return evidence_gate_ids(checkpoint, results)
+
+
+def evidence_gate_ids(
+    checkpoint: dict[str, Any],
+    results: list[dict[str, Any]],
+) -> set[str]:
+    """Resolve selected gate IDs, including expanded local-check and CI results."""
+    passed: set[str] = set()
+    for gate in checkpoint["risk"].get("requiredGates", []):
+        category = {"local-checks": "local-check", "ci": "ci"}.get(gate)
+        matches = [
+            result
+            for result in results
+            if result["required"]
+            and (
+                result["id"] in {gate, f"gate-{gate}"}
+                or (category is not None and result.get("category") == category)
+            )
+        ]
+        if matches and all(
+            result["required"] and result.get("status") == "passed"
+            for result in matches
+        ):
+            passed.add(gate)
+    return passed
 
 
 def validate_merged_delivery(

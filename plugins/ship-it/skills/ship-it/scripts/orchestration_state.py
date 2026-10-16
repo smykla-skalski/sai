@@ -324,7 +324,12 @@ def dispatch(
     )
     siblings = checkpoint["orchestration"]["children"]
     require(
-        all(item["dispatchId"] != event["dispatchId"] for item in siblings),
+        all(item["dispatchId"] != event["dispatchId"] for item in siblings)
+        and all(
+            item["dispatchId"] != event["dispatchId"]
+            for item in checkpoint["orchestration"]["events"]
+            if item["kind"] == "dispatch"
+        ),
         "dispatchId already used",
     )
     require(
@@ -346,6 +351,16 @@ def dispatch(
         gateVerdicts=[],
         capacityLeases=[],
         gatedHead=None,
+        evidenceRevision=None,
+        evidenceRecordPath=None,
+        evidenceStatus="missing"
+        if checkpoint["bookkeeping"]["evidence"]
+        else "disabled",
+        pullRequestUrl=None,
+        mergeCommit=None,
+        issueState=None,
+        unresolvedThreadCount=None,
+        investigation=None,
     )
 
 

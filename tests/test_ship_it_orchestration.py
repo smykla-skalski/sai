@@ -283,6 +283,104 @@ class OrchestrationTest(unittest.TestCase):
         self.assertIsNone(child["mergeCommit"])
         self.assertEqual(child["status"], "completed")
 
+    def test_redispatch_clears_delivery_facts_and_rejects_historical_identity(
+        self,
+    ) -> None:
+        self.initialize()
+        self.event(
+            "old-delivery",
+            "child-update",
+            {
+                "pullRequestUrl": "https://github.com/o/r/pull/4",
+                "mergeCommit": "c" * 40,
+                "gatedHead": REVISION,
+                "issueState": "closed",
+                "unresolvedThreadCount": 0,
+                "evidenceRevision": REVISION,
+                "evidenceRecordPath": "old-evidence.json",
+                "evidenceStatus": "complete",
+            },
+        )
+        self.event(
+            "blocked-1", "terminal", {"status": "blocked", "nextAction": "Reconcile"}
+        )
+        revision = "b" * 40
+        self.event(
+            "dispatch-2",
+            "dispatch",
+            {
+                "worker": "worker-2",
+                "worktree": str(self.root / "second"),
+                "branch": "feat/child",
+                "revision": revision,
+            },
+            dispatch="dispatch-2",
+        )
+        child = self.document()["orchestration"]["children"][0]
+        for field in (
+            "pullRequestUrl",
+            "mergeCommit",
+            "gatedHead",
+            "issueState",
+            "unresolvedThreadCount",
+            "evidenceRevision",
+            "evidenceRecordPath",
+        ):
+            self.assertIsNone(child[field], field)
+        self.event(
+            "current-head",
+            "child-update",
+            {"gatedHead": revision, "requiredGates": ["local-checks"]},
+            revision=revision,
+            dispatch="dispatch-2",
+        )
+        self.event(
+            "current-gate",
+            "gate",
+            {
+                "gate": "local-checks",
+                "status": "passed",
+                "revision": revision,
+                "leaseId": None,
+            },
+            revision=revision,
+            dispatch="dispatch-2",
+        )
+        self.event(
+            "not-delivered",
+            "terminal",
+            {"status": "completed", "nextAction": "Done"},
+            revision=revision,
+            dispatch="dispatch-2",
+            success=False,
+        )
+        self.event(
+            "stale-update",
+            "child-update",
+            {"nextAction": "Stale worker"},
+            revision=revision,
+            success=False,
+        )
+        self.event(
+            "blocked-2",
+            "terminal",
+            {"status": "blocked", "nextAction": "Reconcile"},
+            revision=revision,
+            dispatch="dispatch-2",
+        )
+        self.event(
+            "dispatch-old-identity",
+            "dispatch",
+            {
+                "worker": "worker-3",
+                "worktree": str(self.root / "third"),
+                "branch": "feat/child",
+                "revision": revision,
+            },
+            revision=revision,
+            success=False,
+        )
+
     def test_scoped_recovery_is_idempotent_and_preserves_counters(self) -> None:
         result = self.run_cli(
             "transition",
@@ -462,6 +560,116 @@ class OrchestrationTest(unittest.TestCase):
         result = complete(outcome)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.document()["outcome"], outcome)
+
+    def test_already_satisfied_reads_complete_enabled_evidence(self) -> None:
+        result = self.run_cli(
+            "transition",
+            "--checkpoint",
+            str(self.checkpoint),
+            "--phase",
+            "implement",
+            "--status",
+            "active",
+            "--revision",
+            REVISION,
+            "--next-action",
+            "Verify existing behavior",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.command(
+            "set-risk",
+            "--risk-json",
+            {
+                "level": "low",
+                "diffClass": "docs",
+                "policySource": "test",
+                "matchedRules": [],
+                "requiredGates": ["local-checks"],
+            },
+        )
+        document = self.document()
+        evidence_path = (
+            self.root
+            / "durable/sai/ship-it/evidence"
+            / document["checkpointId"]
+            / f"{REVISION}.json"
+        )
+        document["bookkeeping"]["evidence"] = True
+        document["evidence"] = {
+            "revision": REVISION,
+            "recordPath": str(evidence_path),
+            "status": "complete",
+            "updatedAt": "2026-10-16T12:00:00Z",
+        }
+        self.checkpoint.write_text(json.dumps(document))
+        results = [
+            {
+                "id": "ac-1",
+                "name": "Children are delivered",
+                "category": "acceptance-criterion",
+                "required": True,
+                "status": "passed",
+                "sourceRevision": REVISION,
+            },
+            {
+                "id": "local-tests",
+                "category": "local-check",
+                "required": True,
+                "status": "passed",
+                "sourceRevision": REVISION,
+            },
+            {
+                "id": "optional-diagnostic",
+                "category": "local-check",
+                "required": False,
+                "status": "failed",
+                "sourceRevision": REVISION,
+            },
+        ]
+        evidence = {
+            "schemaVersion": 1,
+            "checkpointId": document["checkpointId"],
+            "repository": "github.com/o/r",
+            "revision": REVISION,
+            "status": "complete",
+            "invalidatedAt": None,
+            "invalidatedByRevision": None,
+            "results": results,
+        }
+        evidence_path.parent.mkdir(parents=True)
+        evidence_path.write_text(json.dumps(evidence))
+        outcome = {
+            "result": "already-satisfied",
+            "reason": "Existing implementation verified",
+            "verifiedRevision": REVISION,
+            "evidence": ["External complete evidence record"],
+            "sourceState": "closed",
+            "branchCleanup": "preserved",
+            "completedAt": "2026-10-16T12:00:00Z",
+        }
+        args = (
+            "transition",
+            "--checkpoint",
+            str(self.checkpoint),
+            "--phase",
+            "complete",
+            "--status",
+            "completed",
+            "--next-action",
+            "Report investigation",
+            "--outcome-json",
+            json.dumps(outcome),
+        )
+        for invalid in (
+            {**evidence, "revision": "b" * 40},
+            {**evidence, "status": "stale"},
+            {**evidence, "results": results[1:]},
+        ):
+            evidence_path.write_text(json.dumps(invalid))
+            self.assertEqual(self.run_cli(*args).returncode, 2)
+        evidence_path.write_text(json.dumps(evidence))
+        result = self.run_cli(*args)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":
