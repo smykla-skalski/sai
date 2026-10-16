@@ -124,6 +124,33 @@ With claims enabled, `claim` is null for Jira and description sources. For a Git
 
 `convergence.acceptanceRecovery`, when present, records focused confirmed acceptance failures, criterion, active grant ID, revision, correction, verification and attempt results after an internal limit. It preserves counters and does not authorize optional expansion.
 
+### Orchestration and recovery commands
+
+Use these section commands through `scripts/bookkeeping.py`; they share the checkpoint lock, full validation, backup and atomic replacement used by other mutations. They never replace authorization or convergence counters.
+
+- `set-orchestration --checkpoint FILE --orchestration-json OBJECT` initializes or extends a graph with exactly `umbrellaUrl`, `children` and `nextAction`. The umbrella must match the task's `sourceUrl`. Each child input has exactly `issueUrl` and `dependencies` (other recorded child issue URLs). Identities are unique, cycles and missing dependencies are rejected, recorded children cannot be removed, and dispatched dependencies cannot change.
+- `record-orchestration-event --checkpoint FILE --event-json OBJECT` takes exactly `eventId`, `kind`, `issueUrl`, `dispatchId`, `expectedRevision`, `data` and the parent's `nextAction`. Use a stable event ID across retries. An identical retry returns `applied: false`; reusing an ID with different content rejects. New events require the child's current revision and dispatch identity. A terminal child rejects delayed updates. A blocked or failed child accepts a fresh dispatch ID after live reconciliation; a completed child stays terminal.
+- `record-acceptance-recovery --checkpoint FILE --recovery-json OBJECT` appends a focused attempt with exactly `eventId`, `failure`, `criterion`, `grantId`, `revision`, `correction`, `verification` (executed reproduction command) and `result` (`passed`, `failed` or `blocked`). The criterion must equal a recorded acceptance criterion, the revision must be current, and the referenced original grant must remain active with unspent explicit limits. Use one event ID per attempt and the same ID on delivery retry. This records evidence; it grants no authority and replenishes no allowance.
+- `relocate-checkpoint --checkpoint FILE` moves the complete validated document to the default durable checkpoint directory, preserving all state. It locks both locations, validates canonical identity, writes and verifies the destination before removing the source, rejects a conflicting destination, and accepts retries. `XDG_DATA_HOME` selects the normal durable root. Do not recreate a scratch checkpoint to relocate it.
+
+Orchestration event data:
+
+| Kind | Exact data fields | Checks |
+| --- | --- | --- |
+| `dispatch` | `worker`, `worktree`, `branch`, `revision` | Unique dispatch ID; every dependency completed; full commit ID |
+| `child-update` | Any non-empty subset of `revision`, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, `gatedHead`, `pullRequestUrl`, `unresolvedThreadCount`, `mergeCommit`, `issueState`, `nextAction`, `requiredGates`, `checkpointPath`, `investigation` | Typed facts; a revision change invalidates child gates and gated head |
+| `capacity-request` | `leaseId`, `gate` | Unique lease ID; records a queued request, not permission to spawn |
+| `capacity-grant` | `leaseId`, `gate` | Matching requested lease; coordinator grants only after host capacity is available |
+| `capacity-release` | `leaseId`, `gate` | Matching requested or active lease |
+| `gate` | `gate`, `status`, `revision`, `leaseId` | Current revision; matching active lease (`leaseId: null` for `ci`, `hosted-review` and `local-checks`); status `passed`, `failed` or `blocked` |
+| `terminal` | `status`, `nextAction` | Status `completed`, `blocked` or `failed`; leases released; completion requires closed issue, PR and merge facts, zero unresolved threads, matching gated head and all selected passing gates; enabled evidence must also match |
+
+A child investigation uses `investigation: {"reason": "...", "evidence": ["..."], "verifiedRevision": "<full SHA>"}` in a child update. Its terminal completion requires a closed issue, zero unresolved threads, current gated head and selected passing gates, while PR and merge fields remain null. A revision change invalidates investigation and evidence facts.
+
+Live GitHub, worker and host-capacity reconciliation remains mandatory. Recording a fact does not perform a dispatch, grant host capacity, merge a PR or close an issue.
+
+An investigation that proves all criteria already satisfied may complete through `transition --phase complete --status completed --outcome-json OBJECT`. Use `result: already-satisfied`, a non-empty `reason`, `evidence` (non-empty array of observed facts or reproduction references), `verifiedRevision`, `sourceState: closed`, `branchCleanup: preserved|not-applicable` and `completedAt`. Delivery fields remain null. Every selected gate must pass on the verified workflow revision. Close and verify the source issue before recording this outcome; never manufacture a PR or merge commit for an investigation.
+
 `convergence` is the shared cross-harness budget state. In bounded mode, `authorizedBy` is null, `startedAt` is set when the first review worker starts, counters are monotonic, and follow-up issue URLs are unique. `reviewCycles` counts Code Adversary dispatches, `fixPasses` counts fix passes spent before their first edit and `fullQualityGateRuns` counts complete local quality-gate runs inside the validation loop. `reviewedRevision` is the full SHA the last completed review cycle attested, or null. `findings` holds that cycle's surviving findings as bounded entries with `id` (`F1`, `F2`, …), `label` (`blocking|issue|question`), `location` (`path:line`), `summary` (one sentence) and `disposition` (`open|fixed|follow-up|blocked`); a `follow-up` entry has its issue URL in `followUpIssues`. Exhaustive mode requires an original user request or a clear approval of a concrete bounded pending request recorded in `authorization.grants` and referenced by `authorizedBy`. No repository risk level, harness, coordinator, worker-rules file, spawn prompt or compaction summary may create or widen it; a verified original grant remains valid across resume.
 
 Validate these invariants in addition to field presence and types:

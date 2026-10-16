@@ -46,7 +46,7 @@ import re
 import shutil
 import sys
 import tempfile
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 import checkpoint_state
+import orchestration_state
 from checkpoint_state import StateError
 from convergence import (
     ConvergenceError,
@@ -76,6 +77,9 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "add-grant",
         "set-findings",
         "attest-review",
+        "set-orchestration",
+        "record-orchestration-event",
+        "record-acceptance-recovery",
     },
 )
 JSON_SECTION_COMMANDS: Final[
@@ -90,6 +94,15 @@ JSON_SECTION_COMMANDS: Final[
     "record-gate": ("--verdict-json", checkpoint_state.record_gate),
     "add-grant": ("--grant-json", checkpoint_state.add_grant),
     "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
+    "set-orchestration": (
+        "--orchestration-json",
+        orchestration_state.set_orchestration,
+    ),
+    "record-orchestration-event": ("--event-json", orchestration_state.record_event),
+    "record-acceptance-recovery": (
+        "--recovery-json",
+        orchestration_state.record_acceptance_recovery,
+    ),
 }
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -543,6 +556,8 @@ def outcome_fields(result: object) -> set[str]:
         }
     if result == "coordinated":
         return common | {"umbrellaUrl", "children"}
+    if result == "already-satisfied":
+        return common | {"reason", "branchCleanup", "verifiedRevision", "evidence"}
     return common | {"reason", "branchCleanup"}
 
 
@@ -576,8 +591,14 @@ def validate_outcome_values(result: object, outcome: dict[str, Any]) -> None:
 def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
     """Validate terminal outcome fields for the selected terminal status."""
     result = outcome.get("result")
-    if status == "completed" and result not in {"merged", "coordinated"}:
-        message = "completed outcome result must be merged or coordinated"
+    if status == "completed" and result not in {
+        "merged",
+        "coordinated",
+        "already-satisfied",
+    }:
+        message = (
+            "completed outcome result must be merged, coordinated or already-satisfied"
+        )
         raise BookkeepingError(message)
     if status in {"cancelled", "failed"} and result != status:
         message = f"{status} outcome result must match its status"
@@ -589,11 +610,68 @@ def validate_outcome(status: str, outcome: dict[str, Any]) -> None:
         names = ", ".join(sorted(missing))
         message = f"terminal outcome missing required fields: {names}"
         raise BookkeepingError(message)
-    for field in required.difference({"children"}):
+    for field in required.difference({"children", "evidence"}):
         if not isinstance(outcome[field], str) or not outcome[field].strip():
             message = f"terminal outcome field {field} must be non-empty"
             raise BookkeepingError(message)
     validate_outcome_values(result, outcome)
+    if result == "already-satisfied":
+        validate_satisfied_values(outcome)
+
+
+def validate_satisfied_values(outcome: dict[str, Any]) -> None:
+    """Require explicit investigation evidence without manufactured delivery."""
+    evidence = outcome["evidence"]
+    if (
+        not isinstance(evidence, list)
+        or not evidence
+        or not all(isinstance(item, str) and item.strip() for item in evidence)
+    ):
+        message = "already-satisfied outcome requires non-empty evidence strings"
+        raise BookkeepingError(message)
+    validate_commit_id(outcome["verifiedRevision"], "verifiedRevision")
+    validate_utc_timestamp(outcome["completedAt"], "completedAt")
+    if outcome["sourceState"] != "closed" or outcome["branchCleanup"] not in {
+        "preserved",
+        "not-applicable",
+    }:
+        message = (
+            "already-satisfied outcome requires closed source and no branch deletion"
+        )
+        raise BookkeepingError(message)
+    if any(
+        outcome.get(field) is not None
+        for field in (
+            "pullRequestUrl",
+            "pullRequestHead",
+            "mergeCommit",
+        )
+    ):
+        message = "already-satisfied outcome must not claim PR delivery"
+        raise BookkeepingError(message)
+
+
+def validate_satisfied_checkpoint(checkpoint: dict[str, Any]) -> None:
+    """Bind a no-change investigation to its verified revision and selected gates."""
+    outcome = checkpoint["outcome"]
+    if outcome.get("result") != "already-satisfied":
+        return
+    revision = outcome["verifiedRevision"]
+    if checkpoint["workflow"]["revision"] != revision:
+        message = "already-satisfied verifiedRevision must match workflow revision"
+        raise BookkeepingError(message)
+    if any(value is not None for value in checkpoint["delivery"].values()):
+        message = "already-satisfied checkpoint must have null delivery state"
+        raise BookkeepingError(message)
+    required = checkpoint["risk"].get("requiredGates", [])
+    passed = {
+        verdict.get("gate")
+        for verdict in checkpoint["gateVerdicts"]
+        if verdict.get("status") == "passed" and verdict.get("revision") == revision
+    }
+    if not required or not set(required) <= passed:
+        message = "already-satisfied requires every selected gate on verifiedRevision"
+        raise BookkeepingError(message)
 
 
 def validate_merged_delivery(
@@ -652,6 +730,7 @@ def validate_checkpoint(
     validate_bookkeeping(checkpoint)
     validate_delivery(checkpoint)
     validate_authorization(checkpoint)
+    orchestration_state.validate_saved_state(checkpoint)
     validate_convergence(checkpoint)
     if checkpoint.get("schemaVersion") != 1:
         message = "unsupported checkpoint schemaVersion"
@@ -682,6 +761,7 @@ def validate_checkpoint(
             checkpoint["outcome"],
             allow_unreconciled_legacy=allow_unreconciled_legacy,
         )
+        validate_satisfied_checkpoint(checkpoint)
     elif status in TERMINAL_STATUSES or checkpoint["outcome"] is not None:
         message = "terminal status and outcome require phase complete"
         raise BookkeepingError(message)
@@ -970,6 +1050,34 @@ def default_checkpoint_dir() -> Path:
     return Path(data_home) / "sai/ship-it/checkpoints"
 
 
+def relocate_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
+    """Move a validated checkpoint to its default durable path without resetting it."""
+    source = Path(args.checkpoint).resolve()
+    destination = (default_checkpoint_dir() / source.name).resolve()
+    with ExitStack() as locks:
+        for path in sorted({source, destination}):
+            locks.enter_context(checkpoint_lock(path))
+        if not source.exists() and destination.exists():
+            validate_checkpoint(load_object(destination), destination)
+            return {"checkpoint": str(destination), "relocated": False}
+        checkpoint = load_object(source)
+        validate_checkpoint(checkpoint, source)
+        if source == destination:
+            return {"checkpoint": str(destination), "relocated": False}
+        validate_checkpoint(checkpoint, destination)
+        if destination.exists():
+            if load_object(destination) != checkpoint:
+                message = "durable checkpoint already exists with different state"
+                raise BookkeepingError(message)
+        else:
+            atomic_write(destination, checkpoint)
+        if load_object(destination) != checkpoint:
+            message = "durable checkpoint verification failed; source preserved"
+            raise BookkeepingError(message)
+        source.unlink()
+    return {"checkpoint": str(destination), "relocated": True}
+
+
 def create_checkpoint(args: argparse.Namespace) -> dict[str, Any]:
     """Create a checkpoint at phase resolve; never replace an existing one."""
     source = checkpoint_state.parse_object(args.source_json, "--source-json")
@@ -1199,6 +1307,11 @@ def add_state_commands(
     creation.add_argument("--enable", default="")
     creation.add_argument("--grant-json", action="append", default=[])
     creation.add_argument("--checkpoint-dir")
+    relocation = commands.add_parser(
+        "relocate-checkpoint",
+        help="move a checkpoint to the default durable root",
+    )
+    relocation.add_argument("--checkpoint", required=True)
     for name, option, text in (
         ("handoff", "--handoff-json", "prepare or acknowledge a phase handoff"),
         ("set-risk", "--risk-json", "set the risk selection"),
@@ -1211,6 +1324,21 @@ def add_state_commands(
         ("record-gate", "--verdict-json", "record one gate verdict"),
         ("add-grant", "--grant-json", "record one authorization grant"),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
+        (
+            "set-orchestration",
+            "--orchestration-json",
+            "initialize or extend the child graph",
+        ),
+        (
+            "record-orchestration-event",
+            "--event-json",
+            "record one validated child event",
+        ),
+        (
+            "record-acceptance-recovery",
+            "--recovery-json",
+            "record one focused acceptance correction",
+        ),
     ):
         section = commands.add_parser(name, help=text)
         section.add_argument("--checkpoint", required=True)
@@ -1242,6 +1370,8 @@ def main(argv: list[str] | None = None) -> int:
             result = reconcile_delivery(args)
         elif args.command == "create":
             result = create_checkpoint(args)
+        elif args.command == "relocate-checkpoint":
+            result = relocate_checkpoint(args)
         elif args.command == "handoff":
             update = checkpoint_state.parse_object(args.handoff_json, "--handoff-json")
             result = mutate_checkpoint(
