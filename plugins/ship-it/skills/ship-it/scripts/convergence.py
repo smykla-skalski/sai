@@ -422,6 +422,19 @@ def reserve(
         )
     if existing:
         return {"dispatch": False, "reservation": existing}
+    active_reservations = {
+        worker["target"].get("reservationId")
+        for worker in checkpoint.get("workerRecovery", [])
+        if worker["ownerReleasedAt"] is None
+    }
+    require(
+        not any(
+            operation["id"] in active_reservations
+            and operation["kind"] == request["kind"]
+            for operation in state["reservations"]
+        ),
+        "prior gate still has an active or unknown owner",
+    )
     check_dispatch(checkpoint, request)
     check_rerun(state, request)
     spend_allowance(checkpoint, request, now)

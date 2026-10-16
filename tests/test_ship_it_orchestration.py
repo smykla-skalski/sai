@@ -160,6 +160,129 @@ class OrchestrationTest(unittest.TestCase):
         event["data"]["worker"] = "replacement"
         self.command("record-orchestration-event", "--event-json", event, success=False)
 
+    def worker_event(
+        self,
+        kind: str,
+        data: dict,
+        at: str = "2026-10-15T21:00:00Z",
+        *,
+        success: bool = True,
+    ) -> dict:
+        result = self.command(
+            "record-worker-event",
+            "--event-json",
+            {
+                "dispatchId": "dispatch-1",
+                "kind": kind,
+                "at": at,
+                "data": data,
+            },
+            success=success,
+        )
+        return json.loads(result.stdout) if success else {}
+
+    def register_worker(self) -> None:
+        self.initialize()
+        self.worker_event(
+            "register",
+            {
+                "target": {"issueUrl": FIRST},
+                "owner": "worker-1",
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+
+    def reconcile_workers(self) -> dict:
+        result = self.command(
+            "reconcile-workers", "--observation-json", {"at": "2026-10-16T04:15:00Z"}
+        )
+        return json.loads(result.stdout)["workers"][0]
+
+    def test_resume_recovers_worker_receipt_without_native_delivery(self) -> None:
+        self.register_worker()
+        before = self.document()
+        queued = self.reconcile_workers()
+        self.assertEqual(queued["state"], "queued-unobserved")
+        self.assertTrue(queued["deadlineExceeded"])
+        self.assertTrue(queued["ownerHeld"])
+        self.worker_event("started", {}, "2026-10-15T21:01:00Z")
+        self.assertEqual(self.reconcile_workers()["state"], "executing-observed")
+        receipt = {
+            "eventId": "worker-result-1",
+            "status": "blocked",
+            "checkpointPath": str(self.checkpoint),
+        }
+        self.worker_event("result", receipt, "2026-10-15T21:30:00Z")
+        recovered = self.reconcile_workers()
+        self.assertEqual(recovered["state"], "completed-but-undelivered")
+        self.assertEqual(recovered["result"]["status"], "blocked")
+        self.assertFalse(
+            self.worker_event("result", receipt, "2026-10-15T21:30:00Z")["applied"]
+        )
+        self.worker_event("acknowledge", {"eventId": "wrong"}, success=False)
+        acknowledgement = {"eventId": "worker-result-1"}
+        self.worker_event("acknowledge", acknowledgement, "2026-10-16T04:15:00Z")
+        self.assertFalse(
+            self.worker_event("acknowledge", acknowledgement, "2026-10-16T04:15:00Z")[
+                "applied"
+            ]
+        )
+        self.assertEqual(self.reconcile_workers()["state"], "acknowledged")
+        after = self.document()
+        for section in (
+            "authorization",
+            "convergence",
+            "gateVerdicts",
+            "orchestration",
+        ):
+            self.assertEqual(before[section], after[section])
+
+    def test_expired_worker_cannot_be_replaced_even_after_blocked_terminal(
+        self,
+    ) -> None:
+        self.register_worker()
+        self.reconcile_workers()
+        self.event(
+            "blocked-worker",
+            "terminal",
+            {"status": "blocked", "nextAction": "Recover owner"},
+        )
+        replacement = {
+            "worker": "worker-2",
+            "worktree": "replacement",
+            "branch": "fix/replacement",
+            "revision": REVISION,
+        }
+        self.event(
+            "replacement", "dispatch", replacement, dispatch="dispatch-2", success=False
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "unknown", "observation": "No response"},
+            success=False,
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "exited", "observation": "Host reports worker-1 exited"},
+            "2026-10-16T04:16:00Z",
+        )
+        self.event("replacement", "dispatch", replacement, dispatch="dispatch-2")
+
+    def test_invalid_worker_receipt_preserves_checkpoint(self) -> None:
+        self.register_worker()
+        for event in (
+            {"eventId": "result", "status": "passed", "checkpointPath": "checkpoint"},
+            {"eventId": "result", "status": "completed", "checkpointPath": ""},
+        ):
+            self.worker_event("result", event, success=False)
+        self.worker_event("started", {}, "2026-10-15T20:00:00Z", success=False)
+        self.command(
+            "reconcile-workers",
+            "--observation-json",
+            {"at": "2026-10-16T04:15:00+01:00"},
+            success=False,
+        )
+
     def test_missing_cyclic_and_changed_dispatched_dependencies_rejected(self) -> None:
         for dependencies in (["https://github.com/o/r/issues/99"], [FIRST], [SECOND]):
             graph = self.graph()

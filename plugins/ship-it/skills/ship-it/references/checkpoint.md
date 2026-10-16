@@ -1,5 +1,19 @@
 # Durable ship-it checkpoint
 
+## Worker recovery commands
+
+`bookkeeping.py record-worker-event --checkpoint FILE --event-json OBJECT` accepts exactly `dispatchId`, `kind`, `at` (RFC 3339 UTC) and `data`. Register after native launch and before waiting. Persist a worker's result before native messaging; retain the same event ID and timestamp on retries.
+
+| kind | data |
+| :-- | :-- |
+| `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation; `owner` is the native worker ID; `deadlineAt` is a later UTC instant |
+| `started` | `{}` |
+| `result` | `eventId`, `status: completed\|blocked\|failed`, `checkpointPath` |
+| `acknowledge` | `eventId` matching the durable result |
+| `release-owner` | `hostStatus: closed\|exited`, `observation` containing the host evidence |
+
+`bookkeeping.py reconcile-workers --checkpoint FILE --observation-json '{"at":"2026-10-16T04:15:00Z"}'` returns one diagnostic per dispatch with its state, UTC deadline comparison, retained ownership and result receipt. Run once on parent resume before subsequent gates or delivery. It records only the latest reconciliation instant; it does not fabricate native delivery observations or update gates, counters, grants or orchestration results. The optional `workerRecovery` array retains one immutable result receipt per dispatch and at most 256 dispatches, including owner release evidence. Legacy checkpoints without it remain valid.
+
 Use one portable JSON checkpoint as the source of truth for a task across Claude Code, Codex, OpenCode, Copilot CLI and Sail. It is both resumable workflow state and the task context supplied to review and test gates.
 
 ## Location and identity

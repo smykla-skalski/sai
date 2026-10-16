@@ -104,6 +104,41 @@ class ReservationTest(unittest.TestCase):
         self.assertEqual(self.read()["convergence"]["reviewCycles"], 1)
         self.assertEqual(len(self.read()["convergence"]["reservations"]), 1)
 
+    def test_finished_gate_cannot_redispatch_while_worker_owner_is_unknown(
+        self,
+    ) -> None:
+        self.assert_ok(self.reserve("review-one"))
+        event = {
+            "dispatchId": "gate-worker-one",
+            "kind": "register",
+            "at": "2026-10-15T21:00:00Z",
+            "data": {
+                "target": {"reservationId": "review-one"},
+                "owner": "native-reviewer-one",
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        }
+        self.assert_ok(
+            self.cli(
+                "record-worker-event",
+                "--checkpoint",
+                str(self.path),
+                "--event-json",
+                json.dumps(event),
+            )
+        )
+        self.assert_ok(self.finish("review-one", {"verdict": "passed", "findings": []}))
+        self.assert_denied(
+            self.reserve(
+                "review-two",
+                "review",
+                "changed-inputs",
+                "--reason",
+                "changed acceptance inputs",
+            )
+        )
+        self.assertFalse(self.assert_ok(self.reserve("review-one"))["dispatch"])
+
     def test_concurrent_distinct_fix_batches_cannot_spend_twice(self) -> None:
         with ThreadPoolExecutor(max_workers=8) as pool:
             results = list(

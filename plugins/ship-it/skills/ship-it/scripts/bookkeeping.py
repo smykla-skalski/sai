@@ -72,6 +72,7 @@ if TYPE_CHECKING:
 import checkpoint_state
 import ci_triage
 import orchestration_state
+import worker_recovery
 from checkpoint_state import StateError
 from ci_triage import TriageError
 from convergence import (
@@ -108,6 +109,8 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "attest-review",
         "set-orchestration",
         "record-orchestration-event",
+        "record-worker-event",
+        "reconcile-workers",
         "record-ci-failure",
         "request-ci-rerun",
         "settle-ci-rerun",
@@ -134,6 +137,8 @@ JSON_SECTION_COMMANDS: Final[
         orchestration_state.set_orchestration,
     ),
     "record-orchestration-event": ("--event-json", orchestration_state.record_event),
+    "record-worker-event": ("--event-json", worker_recovery.record_event),
+    "reconcile-workers": ("--observation-json", worker_recovery.reconcile),
     "record-ci-failure": ("--failure-json", ci_triage.record_failure),
     "request-ci-rerun": ("--request-json", ci_triage.request_rerun),
     "settle-ci-rerun": ("--settlement-json", ci_triage.settle_rerun),
@@ -861,6 +866,7 @@ def validate_checkpoint(
     validate_delivery(checkpoint)
     validate_authorization(checkpoint)
     orchestration_state.validate_saved_state(checkpoint)
+    worker_recovery.validate(checkpoint)
     validate_convergence(checkpoint)
     if checkpoint.get("schemaVersion") != 1:
         message = "unsupported checkpoint schemaVersion"
@@ -1525,7 +1531,8 @@ def add_state_commands(
 ) -> None:
     """Register the checkpoint creation and section commands."""
     repair = commands.add_parser(
-        "repair-repository", help="repair same-task repository identity",
+        "repair-repository",
+        help="repair same-task repository identity",
     )
     repair.add_argument("--checkpoint", required=True)
     repair.add_argument("--repository", required=True)
@@ -1580,6 +1587,8 @@ def add_state_commands(
             "record one validated child event",
         ),
         ("record-ci-failure", "--failure-json", "record or update a CI failure"),
+        ("record-worker-event", "--event-json", "persist a worker recovery transition"),
+        ("reconcile-workers", "--observation-json", "reconcile workers after resume"),
         ("request-ci-rerun", "--request-json", "reserve the next CI rerun attempt"),
         ("settle-ci-rerun", "--settlement-json", "settle a pending CI rerun request"),
     ):
