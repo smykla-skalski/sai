@@ -19,13 +19,21 @@ Usage:
       --title TEXT --objective TEXT --criteria-json ARRAY [--source-url URL]
       [--default-branch NAME] [--branch NAME] [--enable FEATURE,...]
       [--grant-json OBJECT]... [--checkpoint-dir DIR]
+  bookkeeping.py handoff --checkpoint FILE --handoff-json OBJECT
   bookkeeping.py set-risk --checkpoint FILE --risk-json OBJECT
   bookkeeping.py set-release-policy --checkpoint FILE --policy-json OBJECT
+  bookkeeping.py set-hosted-review-decision --checkpoint FILE
+      --decision-json OBJECT
   bookkeeping.py record-gate --checkpoint FILE --verdict-json OBJECT
   bookkeeping.py add-grant --checkpoint FILE --grant-json OBJECT
+  bookkeeping.py record-acceptance-recovery --checkpoint FILE
+      --recovery-json OBJECT
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
   bookkeeping.py attest-review --checkpoint FILE --revision SHA --summary TEXT
       [--gate GATE] [--command TEXT]...
+  bookkeeping.py record-ci-failure --checkpoint FILE --failure-json OBJECT
+  bookkeeping.py request-ci-rerun --checkpoint FILE --request-json OBJECT
+  bookkeeping.py settle-ci-rerun --checkpoint FILE --settlement-json OBJECT
 
 Output is one compact JSON result on stdout. Input or validation errors are
 reported on stderr and exit 2; successful policy resolution or transition
@@ -55,8 +63,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
 import checkpoint_state
+import ci_triage
 import orchestration_state
 from checkpoint_state import StateError
+from ci_triage import TriageError
 from convergence import (
     ConvergenceError,
     finish,
@@ -68,6 +78,17 @@ from convergence import (
 from handoff import record_handoff
 from validation_reuse import assess, capture, digest, unavailable_decision
 
+
+def record_acceptance_recovery(
+    checkpoint: dict[str, Any],
+    update: dict[str, Any],
+) -> dict[str, Any]:
+    """Retain released recovery records and idempotent orchestration events."""
+    if "eventId" in update:
+        return orchestration_state.record_acceptance_recovery(checkpoint, update)
+    return checkpoint_state.record_acceptance_recovery(checkpoint, update)
+
+
 SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
     {
         "set-risk",
@@ -75,11 +96,14 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "set-hosted-review-decision",
         "record-gate",
         "add-grant",
+        "record-acceptance-recovery",
         "set-findings",
         "attest-review",
         "set-orchestration",
         "record-orchestration-event",
-        "record-acceptance-recovery",
+        "record-ci-failure",
+        "request-ci-rerun",
+        "settle-ci-rerun",
     },
 )
 JSON_SECTION_COMMANDS: Final[
@@ -93,16 +117,19 @@ JSON_SECTION_COMMANDS: Final[
     ),
     "record-gate": ("--verdict-json", checkpoint_state.record_gate),
     "add-grant": ("--grant-json", checkpoint_state.add_grant),
+    "record-acceptance-recovery": (
+        "--recovery-json",
+        record_acceptance_recovery,
+    ),
     "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
     "set-orchestration": (
         "--orchestration-json",
         orchestration_state.set_orchestration,
     ),
     "record-orchestration-event": ("--event-json", orchestration_state.record_event),
-    "record-acceptance-recovery": (
-        "--recovery-json",
-        orchestration_state.record_acceptance_recovery,
-    ),
+    "record-ci-failure": ("--failure-json", ci_triage.record_failure),
+    "request-ci-rerun": ("--request-json", ci_triage.request_rerun),
+    "settle-ci-rerun": ("--settlement-json", ci_triage.settle_rerun),
 }
 FEATURES: Final[tuple[str, ...]] = ("claims", "evidence", "telemetry")
 POLICY_PATH: Final[Path] = Path(".sai/ship-it-bookkeeping.json")
@@ -1419,6 +1446,11 @@ def add_state_commands(
         ),
         ("record-gate", "--verdict-json", "record one gate verdict"),
         ("add-grant", "--grant-json", "record one authorization grant"),
+        (
+            "record-acceptance-recovery",
+            "--recovery-json",
+            "record an acceptance recovery or append an attempt",
+        ),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
         (
             "set-orchestration",
@@ -1430,11 +1462,9 @@ def add_state_commands(
             "--event-json",
             "record one validated child event",
         ),
-        (
-            "record-acceptance-recovery",
-            "--recovery-json",
-            "record one focused acceptance correction",
-        ),
+        ("record-ci-failure", "--failure-json", "record or update a CI failure"),
+        ("request-ci-rerun", "--request-json", "reserve the next CI rerun attempt"),
+        ("settle-ci-rerun", "--settlement-json", "settle a pending CI rerun request"),
     ):
         section = commands.add_parser(name, help=text)
         section.add_argument("--checkpoint", required=True)
@@ -1478,7 +1508,7 @@ def main(argv: list[str] | None = None) -> int:
             result = section_operation(args)
         else:
             result = convergence_operation(args)
-    except (BookkeepingError, ConvergenceError, StateError) as error:
+    except (BookkeepingError, ConvergenceError, StateError, TriageError) as error:
         print(str(error), file=sys.stderr)
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))

@@ -460,6 +460,63 @@ class OrchestrationTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertFalse(json.loads(result.stdout)["relocated"])
 
+    def test_recovery_event_and_released_record_schemas_share_history(self) -> None:
+        result = self.run_cli(
+            "transition",
+            "--checkpoint",
+            str(self.checkpoint),
+            "--phase",
+            "implement",
+            "--status",
+            "active",
+            "--revision",
+            REVISION,
+            "--next-action",
+            "Recover acceptance",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        before = self.document()
+        common = {
+            "failure": "Interrupted update",
+            "criterion": "Children are delivered",
+            "grantId": "user-grant",
+            "revision": REVISION,
+            "correction": "Persist atomically",
+            "verification": "focused reproduction",
+        }
+        attempt = {
+            "result": "passed",
+            "revision": REVISION,
+            "summary": "Focused verification passed",
+        }
+        self.command(
+            "record-acceptance-recovery",
+            "--recovery-json",
+            {"id": "released-record", **common, "attempt": attempt},
+        )
+        event = {"eventId": "recovery-event", **common, "result": "passed"}
+        self.command("record-acceptance-recovery", "--recovery-json", event)
+        retry = self.command("record-acceptance-recovery", "--recovery-json", event)
+        self.assertFalse(json.loads(retry.stdout)["applied"])
+        self.command(
+            "record-acceptance-recovery",
+            "--recovery-json",
+            {"id": "released-record", "attempt": attempt},
+        )
+        self.command(
+            "record-acceptance-recovery",
+            "--recovery-json",
+            {**event, "id": "ambiguous"},
+            success=False,
+        )
+        after = self.document()
+        history = after["convergence"].pop("acceptanceRecovery")
+        self.assertEqual(len(history), 2)
+        self.assertEqual(len(history[0]["attempts"]), 2)
+        self.assertEqual(history[1], event)
+        self.assertEqual(after["authorization"], before["authorization"])
+        self.assertEqual(after["convergence"], before["convergence"])
+
     def test_atomic_failure_preserves_previous_graph(self) -> None:
         self.initialize()
         before = self.checkpoint.read_bytes()

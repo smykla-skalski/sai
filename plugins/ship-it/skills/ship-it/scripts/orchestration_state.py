@@ -251,7 +251,11 @@ def new_child(identity: str) -> dict[str, Any]:
 def replay(events: list[dict[str, Any]], event: dict[str, Any]) -> bool:
     """Accept identical retries and reject reuse of an event ID with new data."""
     identity = non_empty(event.get("eventId"), "eventId")
-    previous = next((item for item in events if item["eventId"] == identity), None)
+    require(
+        all(isinstance(item, dict) for item in events),
+        "recorded events must be objects",
+    )
+    previous = next((item for item in events if item.get("eventId") == identity), None)
     require(
         previous is None or previous == event,
         "eventId already has different content",

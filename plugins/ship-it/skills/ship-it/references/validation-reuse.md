@@ -20,6 +20,23 @@ Write one JSON manifest per review, test or local quality gate outside the workt
 
 The helper captures committed contents from a clean worktree at the checkpoint revision, hashes declared environment variable values without retaining secrets, and binds the task's acceptance criteria. Every declared source, dependency or policy root must match committed files; a missing or misspelled root refuses capture and records invalidity without spending an allowance. An empty dependency list explicitly declares no repository dependencies. It does not execute `command`. Symlink scopes fail closed because the committed link cannot prove its target contents. External inputs require explicit content or version facts; an inaccessible, mutable or unknown dependency makes the result unverifiable. Never omit an input merely to obtain a cache hit.
 
+## Keep verdicts across unrelated default-branch merges
+
+A directory in `source` makes every upstream change under it stale. To carry a verdict across a merge of the default branch, add the optional `relevance` object:
+
+```json
+"relevance": {"base": "origin/main", "reads": ["tests", "plugins/ship-it/skills/ship-it/references"]}
+```
+
+- `base` is one revision name (no whitespace, no leading `-` or `^`). The helper computes the change's diff from the merge base of `base` and `HEAD`, and narrows `source` to the diff files inside the declared `source` roots plus every committed file under `reads`. A deleted diff file stays as an `absent` marker.
+- `reads` lists every file or directory the gate read beyond the diff: callers, shared code, fixtures, the whole test tree a test command runs. The helper cannot observe reads, so an undeclared read is not covered. When the gate's reads are unknown, omit `relevance`; the whole `source` scope then applies.
+- A merge that changes no diff file and nothing under `reads` leaves the narrowed `source` identical, so the verdict stays reusable. `dependencies`, `policy`, `command`, `environment`, `policyFacts` and the acceptance criteria still compare in full.
+- Refusals fail closed and mark the prior verdict stale: an unresolvable `base`, a `base` with no shared history, a diff with no file inside `source`, a `reads` path without committed files, or a symlink in the narrowed set.
+- An upstream change that duplicates a diff file's content removes it from the diff, which changes the narrowed `source` and reports stale.
+- Re-assess with the same `relevance` after each merge. Changing `reads` changes `scope` and reports stale.
+
+A stale `assess` or `reserve` decision names each file that differs in `changedFiles` (`dimension`, `path`, `change`: `added`, `removed` or `modified`), up to 100, with the total in `changedFileCount`. A change to the declared roots, `command`, `environment` or `policyFacts` lists no file and appears only in `reasons`. Manifests without `relevance` and legacy opaque `--inputs` fingerprints keep their earlier behavior.
+
 ## Assess, reserve, finish
 
 ```text

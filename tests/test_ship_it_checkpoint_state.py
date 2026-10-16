@@ -912,6 +912,34 @@ class SectionCommandTest(unittest.TestCase):
         self.assert_ok(self.decide("serviceable", decidedAt=stamp))
         self.assertEqual(self.read()["hostedReviewDecision"]["decidedAt"], stamp)
 
+    def test_falsy_hosted_review_decided_at_is_refused(self) -> None:
+        for value in (0, "", None, False, []):
+            with self.subTest(value=value):
+                self.refuse_unchanged(
+                    self.decide("blocked", decidedAt=value), "decidedAt"
+                )
+                self.assertIsNone(self.read()["hostedReviewDecision"])
+
+    def test_falsy_gate_timestamp_is_refused(self) -> None:
+        verdict = {
+            "gate": "local-checks",
+            "status": "passed",
+            "revision": REVISION,
+            "provider": "local",
+            "summary": "ruff and unittest passed",
+        }
+        for value in (0, "", None, False, []):
+            with self.subTest(value=value):
+                self.refuse_unchanged(
+                    self.command(
+                        "record-gate",
+                        "--verdict-json",
+                        {**verdict, "timestamp": value},
+                    ),
+                    "timestamp",
+                )
+                self.assertEqual(self.read()["gateVerdicts"], [])
+
     def test_serviceable_may_change_once_to_fallback_or_blocked(self) -> None:
         for status in ("fallback", "blocked"):
             with self.subTest(status=status):
@@ -992,6 +1020,182 @@ class SectionCommandTest(unittest.TestCase):
         after = self.read()
         for key in ("workflow", "risk", "releasePolicy", "gateVerdicts", "task"):
             self.assertEqual(after[key], self.document[key], key)
+
+    def recover(self, update: dict) -> subprocess.CompletedProcess[str]:
+        return self.command("record-acceptance-recovery", "--recovery-json", update)
+
+    def new_recovery(self, **changes: object) -> dict:
+        return {
+            "id": "R1",
+            "failure": "criterion 2 failed after the fix pass",
+            "criterion": "A command refuses an inactive grant",
+            "grantId": "ship",
+            "revision": REVISION,
+            "correction": "reject revoked grants",
+            "verification": "python3 -m unittest tests.test_x",
+            **changes,
+        }
+
+    def attempt(self, result: str = "failed", revision: str = REVISION) -> dict:
+        return {"result": result, "revision": revision, "summary": f"{result} run"}
+
+    def test_acceptance_recovery_records_an_entry_with_its_first_attempt(
+        self,
+    ) -> None:
+        update = self.new_recovery(attempt=self.attempt("failed"))
+        output = self.assert_ok(self.recover(update))
+        self.assertEqual(output["recovery"], "R1")
+        self.assertEqual(output["attempts"], 1)
+        (entry,) = self.read()["convergence"]["acceptanceRecovery"]
+        self.assertEqual(entry["grantId"], "ship")
+        self.assertEqual(entry["verification"], update["verification"])
+        (attempt,) = entry["attempts"]
+        self.assertEqual(attempt["result"], "failed")
+        self.assertEqual(attempt["revision"], REVISION)
+        self.assertTrue(attempt["recordedAt"].endswith("Z"))
+
+    def test_acceptance_recovery_entry_can_precede_its_first_attempt(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery()))
+        (entry,) = self.read()["convergence"]["acceptanceRecovery"]
+        self.assertEqual(entry["attempts"], [])
+
+    def test_further_attempt_appends_and_never_touches_counters(self) -> None:
+        self.document["convergence"].update(
+            reviewCycles=2, fixPasses=1, fullQualityGateRuns=1, broadTestRuns=1
+        )
+        self.document["convergence"]["reviewedRevision"] = REVISION
+        self.document["convergence"]["findings"] = []
+        self.document["convergence"]["startedAt"] = "2026-01-01T00:00:00Z"
+        self.write(self.document)
+        before = self.read()["convergence"]
+        self.assert_ok(self.recover(self.new_recovery(attempt=self.attempt("failed"))))
+        later = "b" * 40
+        output = self.assert_ok(
+            self.recover({"id": "R1", "attempt": self.attempt("passed", later)})
+        )
+        self.assertEqual(output["attempts"], 2)
+        after = self.read()["convergence"]
+        entry = after.pop("acceptanceRecovery")[0]
+        self.assertEqual(
+            [item["result"] for item in entry["attempts"]], ["failed", "passed"]
+        )
+        self.assertEqual(entry["attempts"][1]["revision"], later)
+        for key in (
+            "reviewCycles",
+            "fixPasses",
+            "fullQualityGateRuns",
+            "reviewedRevision",
+            "startedAt",
+            "findings",
+        ):
+            self.assertEqual(after[key], before[key], key)
+        self.assertEqual(after["broadTestRuns"], 1)
+        self.assertEqual(after["reservations"], [])
+
+    def test_acceptance_recovery_keeps_separate_entries(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery()))
+        self.assert_ok(self.recover(self.new_recovery(id="R2")))
+        ids = [item["id"] for item in self.read()["convergence"]["acceptanceRecovery"]]
+        self.assertEqual(ids, ["R1", "R2"])
+
+    def test_acceptance_recovery_refuses_a_grant_that_is_not_active(self) -> None:
+        self.document["authorization"]["grants"] = [
+            GRANT,
+            {**GRANT, "id": "old", "status": "revoked"},
+            {**GRANT, "id": "spent", "status": "exhausted"},
+            {**GRANT, "id": "vague", "status": "ambiguous"},
+        ]
+        self.write(self.document)
+        for grant in ("old", "spent", "vague", "missing"):
+            with self.subTest(grant=grant):
+                self.assert_refused(
+                    self.recover(self.new_recovery(grantId=grant)),
+                    f"acceptance recovery requires an active grant: {grant}",
+                )
+
+    def test_attempt_is_refused_once_the_recorded_grant_is_revoked(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery()))
+        document = self.read()
+        document["authorization"]["grants"][0]["status"] = "revoked"
+        self.write(document)
+        self.assert_refused(
+            self.recover({"id": "R1", "attempt": self.attempt()}),
+            "requires an active grant: ship",
+        )
+
+    def test_acceptance_recovery_refuses_malformed_input(self) -> None:
+        full = self.new_recovery()
+        cases = (
+            ({**full, "id": " "}, "recovery id"),
+            ({k: v for k, v in full.items() if k != "criterion"}, "new recovery"),
+            ({**full, "extra": 1}, "new recovery"),
+            ({**full, "failure": ""}, "recovery failure"),
+            ({**full, "revision": "abc"}, "recovery revision"),
+            ({**full, "attempt": {"result": "passed"}}, "recovery attempt requires"),
+            (
+                {**full, "attempt": {**self.attempt(), "result": "maybe"}},
+                "result must be",
+            ),
+            (
+                {**full, "attempt": {**self.attempt(), "revision": "abc"}},
+                "attempt revision",
+            ),
+            (
+                {**full, "attempt": {**self.attempt(), "summary": "x" * 501}},
+                "exceeds 500",
+            ),
+            ({**full, "attempt": "passed"}, "attempt must be an object"),
+        )
+        for update, text in cases:
+            with self.subTest(text=text):
+                self.assert_refused(self.recover(update), text)
+
+    def test_recorded_entry_is_immutable_apart_from_attempts(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery()))
+        for update in (
+            self.new_recovery(attempt=self.attempt()),
+            {"id": "R1", "attempt": self.attempt(), "correction": "other"},
+            {"id": "R1"},
+        ):
+            with self.subTest(keys=sorted(update)):
+                self.assert_refused(self.recover(update), "a further attempt takes")
+
+    def test_acceptance_recovery_leaves_other_state_untouched(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery(attempt=self.attempt())))
+        after = self.read()
+        for key in ("workflow", "risk", "authorization", "gateVerdicts", "task"):
+            self.assertEqual(after[key], self.document[key], key)
+
+    def test_acceptance_recovery_refuses_a_whitespace_padded_id(self) -> None:
+        self.assert_ok(self.recover(self.new_recovery()))
+        self.assert_refused(
+            self.recover(self.new_recovery(id="R1 ")), "must not have outer spaces"
+        )
+        self.assert_refused(
+            self.recover({"id": "\nR1", "attempt": self.attempt()}),
+            "must not have outer spaces",
+        )
+
+    def test_attempt_on_a_hand_recorded_entry_is_refused_not_a_crash(self) -> None:
+        for entry, text in (
+            ({"id": "R1"}, "lacks an attempts array"),
+            ({"id": "R1", "grantId": "ship"}, "lacks an attempts array"),
+            ({"id": "R1", "grantId": "ship", "attempts": "x"}, "lacks an attempts"),
+            ({"id": "R1", "grantId": "ship", "attempts": {}}, "lacks an attempts"),
+            ({"id": "R1", "attempts": []}, "requires an active grant: None"),
+        ):
+            with self.subTest(entry=entry):
+                document = self.read()
+                document["convergence"]["acceptanceRecovery"] = [entry]
+                self.write(document)
+                self.assert_refused(
+                    self.recover({"id": "R1", "attempt": self.attempt()}), text
+                )
+
+    def test_acceptance_recovery_rejects_a_non_object_value(self) -> None:
+        for value in ([], "text", 1):
+            with self.subTest(value=value):
+                self.assert_refused(self.recover(value), "--recovery-json")
 
 
 if __name__ == "__main__":
