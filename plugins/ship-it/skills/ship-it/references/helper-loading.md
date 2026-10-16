@@ -4,8 +4,9 @@ Use Python 3.11 or newer. Installed plugin directories already provide these fil
 
 | Entry point | Required files in addition to that entry point |
 | :-- | :-- |
-| `scripts/bookkeeping.py` | `scripts/handoff.py`, `scripts/checkpoint_state.py`, `scripts/orchestration_state.py`, `scripts/ci_triage.py`, `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |
-| `scripts/orchestration_state.py` (importable library) | `scripts/checkpoint_state.py`, `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |
+| `scripts/bookkeeping.py` | `scripts/handoff.py`, `scripts/checkpoint_state.py`, `scripts/orchestration_state.py`, `scripts/worker_recovery.py`, `scripts/ci_triage.py`, `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |
+| `scripts/orchestration_state.py` (importable library) | `scripts/worker_recovery.py`, `scripts/checkpoint_state.py`, `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |
+| `scripts/worker_recovery.py` (importable library) | `scripts/checkpoint_state.py`, `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |
 | `scripts/checkpoint_state.py` (importable library) | `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |
 | `scripts/convergence.py` (importable library) | `scripts/validation_reuse.py`, `references/convergence-policy.json` |
 | `scripts/handoff.py` (importable library) | `scripts/checkpoint_state.py`, `scripts/convergence.py`, `scripts/validation_reuse.py`, `references/convergence-policy.json` |

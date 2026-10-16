@@ -6,6 +6,8 @@ Create or resume the umbrella's durable checkpoint before building or dispatchin
 
 Initialize the graph with `bookkeeping.py set-orchestration` and record each dispatch, child update, capacity request/grant/release, gate verdict and terminal result with `record-orchestration-event`. Use the exact payloads in [checkpoint.md](checkpoint.md#orchestration-and-recovery-commands). Stable event IDs make transport retries idempotent; `expectedRevision` and `dispatchId` reject delayed worker updates. Record scoped corrections with `record-acceptance-recovery`. Never substitute a separate ledger or direct JSON edits for these commands.
 
+Before native launch, register worker recovery against the same dispatch ID with an unknown owner, then have the worker bind its native identity before recording entry or a result. Follow [worker-events.md](worker-events.md) on parent resume: reconcile UTC deadlines and durable receipts before downstream work. A blocked terminal result does not release active or unknown native ownership; only a recorded host terminal observation permits replacement. Task ownership and occupied thread capacity remain separate.
+
 ## Build or reuse the issue graph
 
 1. Read the complete approved plan and its acceptance criteria, or the existing umbrella and native subissues. Resolve the target repository and search open issues for the same umbrella before creating one. Prefer an explicitly supplied umbrella; reuse a matching existing umbrella and its subissues. Do not adopt an unrelated issue based on a similar title.

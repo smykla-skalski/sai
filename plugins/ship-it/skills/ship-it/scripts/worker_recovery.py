@@ -20,7 +20,7 @@ MAX_RECORDS: Final[int] = 256
 
 def timestamp(value: object, field: str) -> datetime:
     """Parse a strict UTC instant."""
-    return datetime.fromisoformat(utc_timestamp(value, field).replace("Z", "+00:00"))
+    return datetime.fromisoformat(utc_timestamp(value, field))
 
 
 def held(checkpoint: dict[str, Any], dispatch_id: str) -> bool:
@@ -61,7 +61,8 @@ def validate(checkpoint: dict[str, Any]) -> None:
         identity = non_empty(item["dispatchId"], "dispatchId")
         require(identity not in identities, "duplicate worker recovery dispatchId")
         identities.add(identity)
-        non_empty(item["owner"], "owner")
+        if item["owner"] is not None:
+            non_empty(item["owner"], "owner")
         require(
             isinstance(item["target"], dict)
             and set(item["target"]) in ({"issueUrl"}, {"reservationId"}),
@@ -85,44 +86,90 @@ def validate(checkpoint: dict[str, Any]) -> None:
                     timestamp(item[field], field) >= registered,
                     f"{field} precedes registration",
                 )
-        result = item["result"]
-        if result is not None:
-            require(
-                isinstance(result, dict)
-                and set(result)
-                == {
-                    "eventId",
-                    "status",
-                    "checkpointPath",
-                    "recordedAt",
-                },
-                "invalid worker result receipt",
-            )
-            for field in ("eventId", "checkpointPath"):
-                non_empty(result[field], field)
-            require(
-                isinstance(result["status"], str)
-                and result["status"] in {"completed", "failed", "blocked"},
-                "invalid worker result status",
-            )
-            require(
-                timestamp(result["recordedAt"], "recordedAt") >= registered,
-                "result precedes registration",
-            )
+        validate_observations(item, registered)
+
+
+def validate_observations(item: dict[str, Any], registered: datetime) -> None:
+    """Reject malformed receipts and contradictory causal observations."""
+    result = item["result"]
+    require(
+        item["owner"] is not None or (item["startedAt"] is None and result is None),
+        "worker observations require a bound native owner",
+    )
+    if result is not None:
         require(
-            item["acknowledgedAt"] is None or result is not None,
-            "acknowledgement requires a result receipt",
+            isinstance(result, dict)
+            and set(result)
+            == {
+                "eventId",
+                "status",
+                "checkpointPath",
+                "recordedAt",
+            },
+            "invalid worker result receipt",
+        )
+        for field in ("eventId", "checkpointPath"):
+            non_empty(result[field], field)
+        require(
+            isinstance(result["status"], str)
+            and result["status"] in {"completed", "failed", "blocked"},
+            "invalid worker result status",
         )
         require(
-            (item["ownerReleasedAt"] is None) == (item["ownerObservation"] is None),
-            "owner release requires host observation",
+            timestamp(result["recordedAt"], "recordedAt") >= registered,
+            "result precedes registration",
         )
-        if item["ownerObservation"] is not None:
-            non_empty(item["ownerObservation"], "ownerObservation")
+        if item["startedAt"] is not None:
+            require(
+                timestamp(result["recordedAt"], "recordedAt")
+                >= timestamp(item["startedAt"], "startedAt"),
+                "result precedes execution observation",
+            )
+    require(
+        item["acknowledgedAt"] is None or result is not None,
+        "acknowledgement requires a result receipt",
+    )
+    require(
+        (item["ownerReleasedAt"] is None) == (item["ownerObservation"] is None),
+        "owner release requires host observation",
+    )
+    if item["ownerObservation"] is not None:
+        non_empty(item["ownerObservation"], "ownerObservation")
+    if item["acknowledgedAt"] is not None:
+        require(
+            timestamp(item["acknowledgedAt"], "acknowledgedAt")
+            >= timestamp(result["recordedAt"], "recordedAt"),
+            "acknowledgement precedes result",
+        )
+    if item["ownerReleasedAt"] is not None:
+        for instant in worker_instants(item, include_release=False):
+            require(
+                timestamp(item["ownerReleasedAt"], "ownerReleasedAt") >= instant,
+                "owner release precedes known worker facts",
+            )
+
+
+def worker_instants(
+    record: dict[str, Any],
+    *,
+    include_release: bool = True,
+) -> list[datetime]:
+    """Return causal observations, excluding diagnostic read timestamps."""
+    fields = ["registeredAt", "startedAt", "acknowledgedAt"]
+    if include_release:
+        fields.append("ownerReleasedAt")
+    instants = [
+        timestamp(record[field], field) for field in fields if record[field] is not None
+    ]
+    if record["result"] is not None:
+        instants.append(timestamp(record["result"]["recordedAt"], "recordedAt"))
+    return instants
 
 
 def resolve_target(
-    checkpoint: dict[str, Any], target: dict[str, Any], dispatch: str,
+    checkpoint: dict[str, Any],
+    target: dict[str, Any],
+    dispatch: str,
 ) -> str | None:
     """Bind recovery to an existing child dispatch or gate reservation."""
     if set(target) == {"issueUrl"}:
@@ -172,57 +219,17 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
     record = next((item for item in records if item["dispatchId"] == dispatch), None)
     kind = event["kind"]
     if kind == "register":
-        require(
-            set(data) == {"target", "owner", "deadlineAt"},
-            "register requires target, owner and deadlineAt",
-        )
-        if record is not None:
-            require(
-                all(record[key] == value for key, value in data.items())
-                and record["registeredAt"] == event["at"],
-                "dispatch already registered with different content",
-            )
-            return {"dispatchId": dispatch, "applied": False}
-        require(
-            len(records) < MAX_RECORDS,
-            "worker receipt storage full; archive the completed run before dispatch",
-        )
-        owner = non_empty(data["owner"], "owner")
-        require(isinstance(data["target"], dict), "target must be an object")
-        existing_owner = resolve_target(checkpoint, data["target"], dispatch)
-        require(
-            existing_owner is None or existing_owner == owner,
-            "owner does not match child dispatch",
-        )
-        require(
-            not any(
-                item["target"] == data["target"] and item["ownerReleasedAt"] is None
-                for item in records
-            ),
-            "target still has an active or unknown owner",
-        )
-        require(
-            timestamp(data["deadlineAt"], "deadlineAt") > at,
-            "deadlineAt must follow registration",
-        )
-        records.append(
-            {
-                "dispatchId": dispatch,
-                **copy.deepcopy(data),
-                "registeredAt": event["at"],
-                "startedAt": None,
-                "result": None,
-                "acknowledgedAt": None,
-                "ownerReleasedAt": None,
-                "ownerObservation": None,
-                "lastReconciledAt": None,
-            },
-        )
-        return {"dispatchId": dispatch, "applied": True}
+        return register(checkpoint, event, record)
     require(record is not None, "unknown worker dispatch")
     require(
         at >= timestamp(record["registeredAt"], "registeredAt"),
         "worker event precedes registration",
+    )
+    if kind == "bind-owner":
+        return bind_owner(checkpoint, record, data)
+    require(
+        record["owner"] is not None or kind == "release-owner",
+        "bind native owner before worker execution",
     )
     if kind == "started":
         require(not data, "started data must be empty")
@@ -258,8 +265,13 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
         require(
             set(data) == {"hostStatus", "observation"}
             and isinstance(data["hostStatus"], str)
-            and data["hostStatus"] in {"closed", "exited"},
-            "owner release requires closed or exited host status",
+            and data["hostStatus"]
+            in {"completed", "done", "closed", "exited", "not-created"},
+            "owner release requires terminal native task status",
+        )
+        require(
+            (record["owner"] is None) == (data["hostStatus"] == "not-created"),
+            "not-created status requires an unbound launch",
         )
         observation = non_empty(data["observation"], "host observation")
         require(
@@ -278,7 +290,8 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
 
 
 def reconcile(
-    checkpoint: dict[str, Any], observation: dict[str, Any],
+    checkpoint: dict[str, Any],
+    observation: dict[str, Any],
 ) -> dict[str, Any]:
     """Classify durable facts at a caller-observed UTC resume instant."""
     require(set(observation) == {"at"}, "reconcile-workers requires at")
@@ -288,6 +301,10 @@ def reconcile(
         require(
             at >= timestamp(record["registeredAt"], "registeredAt"),
             "reconciliation precedes registration",
+        )
+        require(
+            all(at >= instant for instant in worker_instants(record)),
+            "reconciliation precedes known worker facts",
         )
         if record["lastReconciledAt"] is not None:
             require(
@@ -310,8 +327,96 @@ def reconcile(
                 "state": state,
                 "deadlineExceeded": at >= timestamp(record["deadlineAt"], "deadlineAt"),
                 "ownerHeld": record["ownerReleasedAt"] is None,
+                "owner": record["owner"],
                 "result": copy.deepcopy(result),
             },
         )
         record["lastReconciledAt"] = observation["at"]
     return {"workers": diagnostics}
+
+
+def register(
+    checkpoint: dict[str, Any],
+    event: dict[str, Any],
+    record: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Reserve recovery state before native launch."""
+    data, dispatch = event["data"], event["dispatchId"]
+    records = checkpoint["workerRecovery"]
+    at = timestamp(event["at"], "at")
+    require(
+        set(data) == {"target", "owner", "deadlineAt"},
+        "register requires target, owner and deadlineAt",
+    )
+    if record is not None:
+        require(
+            all(record[key] == value for key, value in data.items() if key != "owner")
+            and (data["owner"] is None or record["owner"] == data["owner"])
+            and record["registeredAt"] == event["at"],
+            "dispatch already registered with different content",
+        )
+        return {"dispatchId": dispatch, "applied": False}
+    require(
+        len(records) < MAX_RECORDS,
+        "worker receipt storage full; archive the completed run before dispatch",
+    )
+    owner = data["owner"]
+    if owner is not None:
+        non_empty(owner, "owner")
+    require(isinstance(data["target"], dict), "target must be an object")
+    existing_owner = resolve_target(checkpoint, data["target"], dispatch)
+    require(
+        owner is None or existing_owner is None or existing_owner == owner,
+        "owner does not match child dispatch",
+    )
+    require(
+        not any(
+            item["target"] == data["target"] and item["ownerReleasedAt"] is None
+            for item in records
+        ),
+        "target still has an active or unknown owner",
+    )
+    require(
+        timestamp(data["deadlineAt"], "deadlineAt") > at,
+        "deadlineAt must follow registration",
+    )
+    records.append(
+        {
+            "dispatchId": dispatch,
+            **copy.deepcopy(data),
+            "registeredAt": event["at"],
+            "startedAt": None,
+            "result": None,
+            "acknowledgedAt": None,
+            "ownerReleasedAt": None,
+            "ownerObservation": None,
+            "lastReconciledAt": None,
+        },
+    )
+    return {"dispatchId": dispatch, "applied": True}
+
+
+def bind_owner(
+    checkpoint: dict[str, Any],
+    record: dict[str, Any],
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """Bind the actual native owner once; allow parent/child retries."""
+    dispatch = record["dispatchId"]
+    require(set(data) == {"owner"}, "bind-owner requires owner")
+    owner = non_empty(data["owner"], "owner")
+    if record["owner"] == owner:
+        return {"dispatchId": dispatch, "applied": False}
+    require(record["ownerReleasedAt"] is None, "worker owner already released")
+    expected = resolve_target(checkpoint, record["target"], dispatch)
+    require(
+        expected is None or expected == owner,
+        "owner does not match child dispatch",
+    )
+    require(
+        record["owner"] is None or record["owner"] == owner,
+        "worker already bound to another owner",
+    )
+    applied = record["owner"] is None
+    record["owner"] = owner
+    return {"dispatchId": dispatch, "applied": applied}

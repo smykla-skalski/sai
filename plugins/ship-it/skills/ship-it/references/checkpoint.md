@@ -2,15 +2,16 @@
 
 ## Worker recovery commands
 
-`bookkeeping.py record-worker-event --checkpoint FILE --event-json OBJECT` accepts exactly `dispatchId`, `kind`, `at` (RFC 3339 UTC) and `data`. Register after native launch and before waiting. Persist a worker's result before native messaging; retain the same event ID and timestamp on retries.
+`bookkeeping.py record-worker-event --checkpoint FILE --event-json OBJECT` accepts exactly `dispatchId`, `kind`, `at` (RFC 3339 UTC) and `data`. Register before native launch with `owner: null`; pass the checkpoint and dispatch ID to the worker, which binds its native identity before entry or result recording. The parent can repeat the same binding after spawn returns. Persist a worker's result before native messaging; retain the same event ID and timestamp on retries. Contradictory causal timestamps fail without changing the checkpoint.
 
 | kind | data |
 | :-- | :-- |
-| `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation; `owner` is the native worker ID; `deadlineAt` is a later UTC instant |
+| `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation; `owner` is null before launch (or the native worker ID for an already observed owner); `deadlineAt` is a later UTC instant |
+| `bind-owner` | `owner` with the native worker ID; must match the existing child owner for an orchestration dispatch |
 | `started` | `{}` |
 | `result` | `eventId`, `status: completed\|blocked\|failed`, `checkpointPath` |
 | `acknowledge` | `eventId` matching the durable result |
-| `release-owner` | `hostStatus: closed\|exited`, `observation` containing the host evidence |
+| `release-owner` | `hostStatus: completed\|done\|closed\|exited`, `observation` containing the native terminal evidence; an unbound failed launch instead requires `not-created` and explicit host failure evidence |
 
 `bookkeeping.py reconcile-workers --checkpoint FILE --observation-json '{"at":"2026-10-16T04:15:00Z"}'` returns one diagnostic per dispatch with its state, UTC deadline comparison, retained ownership and result receipt. Run once on parent resume before subsequent gates or delivery. It records only the latest reconciliation instant; it does not fabricate native delivery observations or update gates, counters, grants or orchestration results. The optional `workerRecovery` array retains one immutable result receipt per dispatch and at most 256 dispatches, including owner release evidence. Legacy checkpoints without it remain valid.
 
