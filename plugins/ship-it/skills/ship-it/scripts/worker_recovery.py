@@ -155,7 +155,11 @@ def validate_observations(item: dict[str, Any], registered: datetime) -> None:
             "acknowledgement precedes result",
         )
     if item["ownerReleasedAt"] is not None:
-        for instant in worker_instants(item, include_release=False):
+        for instant in worker_instants(
+            item,
+            include_release=False,
+            include_acknowledgement=False,
+        ):
             require(
                 timestamp(item["ownerReleasedAt"], "ownerReleasedAt") >= instant,
                 "owner release precedes known worker facts",
@@ -166,9 +170,12 @@ def worker_instants(
     record: dict[str, Any],
     *,
     include_release: bool = True,
+    include_acknowledgement: bool = True,
 ) -> list[datetime]:
     """Return causal observations, excluding diagnostic read timestamps."""
-    fields = ["registeredAt", "startedAt", "acknowledgedAt"]
+    fields = ["registeredAt", "startedAt"]
+    if include_acknowledgement:
+        fields.append("acknowledgedAt")
     if include_release:
         fields.append("ownerReleasedAt")
     instants = [

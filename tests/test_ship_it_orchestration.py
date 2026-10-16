@@ -239,6 +239,50 @@ class OrchestrationTest(unittest.TestCase):
         ):
             self.assertEqual(before[section], after[section])
 
+    def test_parent_acknowledges_receipt_after_native_worker_exit(self) -> None:
+        self.register_worker()
+        self.worker_event("started", {}, "2026-10-15T21:01:00Z")
+        self.worker_event(
+            "result",
+            {
+                "eventId": "exited-worker-result",
+                "status": "completed",
+                "checkpointPath": str(self.checkpoint),
+            },
+            "2026-10-15T21:10:00Z",
+        )
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "done", "observation": "native task finished"},
+            "2026-10-15T21:11:00Z",
+        )
+        released = self.document()
+        acknowledgement = {"eventId": "exited-worker-result"}
+        self.worker_event("acknowledge", acknowledgement, "2026-10-16T04:15:00Z")
+        self.assertFalse(
+            self.worker_event("acknowledge", acknowledgement, "2026-10-16T04:15:00Z")[
+                "applied"
+            ]
+        )
+        observed = self.reconcile_workers()
+        self.assertEqual(observed["state"], "acknowledged")
+        self.assertFalse(observed["ownerHeld"])
+        after = self.document()
+        self.assertEqual(
+            after["workerRecovery"][0]["ownerReleasedAt"],
+            "2026-10-15T21:11:00Z",
+        )
+        for section in ("authorization", "convergence", "gateVerdicts", "orchestration"):
+            self.assertEqual(released[section], after[section])
+        before_invalid = self.checkpoint.read_bytes()
+        self.command(
+            "reconcile-workers",
+            "--observation-json",
+            {"at": "2026-10-15T21:12:00Z"},
+            success=False,
+        )
+        self.assertEqual(before_invalid, self.checkpoint.read_bytes())
+
     def test_expired_worker_cannot_be_replaced_even_after_blocked_terminal(
         self,
     ) -> None:
