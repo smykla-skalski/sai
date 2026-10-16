@@ -474,6 +474,39 @@ class SectionCommandTest(unittest.TestCase):
         )
         self.assertEqual(self.read()["risk"]["overrideAuthorization"], override)
 
+    def test_present_falsy_override_is_refused_and_keeps_the_file(self) -> None:
+        override = "user: ship at medium"
+        self.assert_ok(
+            self.command(
+                "set-risk",
+                "--risk-json",
+                {**RISK, "level": "high", "overrideAuthorization": override},
+            )
+        )
+        for value in ("", "  ", 0, False, [], {}):
+            with self.subTest(value=value):
+                self.assert_refused(
+                    self.command(
+                        "set-risk",
+                        "--risk-json",
+                        {**RISK, "overrideAuthorization": value},
+                    ),
+                    "overrideAuthorization",
+                )
+        self.assertEqual(self.read()["risk"]["overrideAuthorization"], override)
+
+    def test_falsy_override_does_not_authorize_lowering_risk(self) -> None:
+        self.assert_ok(
+            self.command("set-risk", "--risk-json", {**RISK, "level": "high"})
+        )
+        self.assert_refused(
+            self.command(
+                "set-risk", "--risk-json", {**RISK, "overrideAuthorization": ""}
+            ),
+            "overrideAuthorization",
+        )
+        self.assertEqual(self.read()["risk"]["level"], "high")
+
     def test_invalid_risk_is_refused(self) -> None:
         for field, value in (
             ("level", "critical"),
