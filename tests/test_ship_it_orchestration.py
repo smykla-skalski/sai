@@ -194,6 +194,120 @@ class OrchestrationTest(unittest.TestCase):
             },
         )
 
+    def hosted_waiter(self) -> dict:
+        document = self.document()
+        document["workflow"]["revision"] = REVISION
+        document["delivery"].update(
+            pullRequestUrl="https://github.com/o/r/pull/4",
+            pullRequestHead=REVISION,
+            pullRequestState="open",
+        )
+        self.checkpoint.write_text(json.dumps(document))
+        return {
+            "target": {
+                "pullRequestUrl": document["delivery"]["pullRequestUrl"],
+                "headSha": REVISION,
+            },
+            "owner": None,
+            "deadlineAt": "2026-10-15T22:00:00Z",
+        }
+
+    def test_hosted_waiter_recovers_without_gate_allowance(self) -> None:
+        registration = self.hosted_waiter()
+        before = self.document()
+        self.worker_event("register", registration)
+        self.assertFalse(self.worker_event("register", registration)["applied"])
+        self.worker_event("bind-owner", {"owner": "waiter-1"})
+        self.worker_event("bind-owner", {"owner": "other"}, success=False)
+        self.worker_event("started", {})
+        observed = self.reconcile_workers()
+        self.assertTrue(observed["deadlineExceeded"])
+        self.assertTrue(observed["ownerHeld"])
+        duplicate = {
+            "dispatchId": "another-dispatch",
+            "kind": "register",
+            "at": "2026-10-16T04:15:00Z",
+            "data": {**registration, "deadlineAt": "2026-10-16T05:00:00Z"},
+        }
+        self.command("record-worker-event", "--event-json", duplicate, success=False)
+        self.worker_event(
+            "result",
+            {
+                "eventId": "done",
+                "status": "completed",
+                "checkpointPath": str(self.checkpoint),
+            },
+            "2026-10-16T04:15:00Z",
+        )
+        self.assertEqual(self.reconcile_workers()["state"], "completed-but-undelivered")
+        self.worker_event("acknowledge", {"eventId": "done"}, "2026-10-16T04:15:00Z")
+        self.worker_event(
+            "release-owner",
+            {"hostStatus": "closed", "observation": "native waiter closed"},
+            "2026-10-16T04:15:00Z",
+        )
+        self.assertFalse(self.reconcile_workers()["ownerHeld"])
+        after = self.document()
+        for section in (
+            "authorization",
+            "convergence",
+            "gateVerdicts",
+            "orchestration",
+        ):
+            self.assertEqual(before[section], after[section])
+
+    def test_hosted_waiter_rejects_wrong_pr_head_and_terminal_workflow(self) -> None:
+        registration = self.hosted_waiter()
+        for target in (
+            {"pullRequestUrl": "https://github.com/o/r/pull/5", "headSha": REVISION},
+            {**registration["target"], "headSha": "b" * 40},
+            {**registration["target"], "headSha": "short"},
+        ):
+            with self.subTest(target=target):
+                self.worker_event(
+                    "register", {**registration, "target": target}, success=False
+                )
+        document = self.document()
+        document["workflow"]["status"] = "blocked"
+        self.checkpoint.write_text(json.dumps(document))
+        self.worker_event("register", registration, success=False)
+
+    def test_hosted_waiter_cancellation_retains_owner_until_host_exit(self) -> None:
+        registration = self.hosted_waiter()
+        self.worker_event("register", registration)
+        self.worker_event("bind-owner", {"owner": "waiter-1"})
+        self.assertTrue(self.reconcile_workers()["ownerHeld"])
+        self.worker_event(
+            "release-owner",
+            {
+                "hostStatus": "closed",
+                "observation": "host confirmed cancelled waiter closed",
+            },
+            "2026-10-16T04:15:00Z",
+        )
+        self.assertFalse(self.reconcile_workers()["ownerHeld"])
+
+    def test_hosted_waiter_stale_head_preserves_history_but_rejects_binding(
+        self,
+    ) -> None:
+        registration = self.hosted_waiter()
+        self.worker_event("register", registration)
+        document = self.document()
+        document["workflow"]["revision"] = "b" * 40
+        document["delivery"]["pullRequestHead"] = "b" * 40
+        self.checkpoint.write_text(json.dumps(document))
+        self.worker_event("bind-owner", {"owner": "stale-waiter"}, success=False)
+        self.assertTrue(self.reconcile_workers()["ownerHeld"])
+        self.worker_event(
+            "release-owner",
+            {
+                "hostStatus": "not-created",
+                "observation": "launch cancelled before creation",
+            },
+            "2026-10-16T04:15:00Z",
+        )
+        self.assertFalse(self.reconcile_workers()["ownerHeld"])
+
     def reconcile_workers(self) -> dict:
         result = self.command(
             "reconcile-workers", "--observation-json", {"at": "2026-10-16T04:15:00Z"}
@@ -272,7 +386,12 @@ class OrchestrationTest(unittest.TestCase):
             after["workerRecovery"][0]["ownerReleasedAt"],
             "2026-10-15T21:11:00Z",
         )
-        for section in ("authorization", "convergence", "gateVerdicts", "orchestration"):
+        for section in (
+            "authorization",
+            "convergence",
+            "gateVerdicts",
+            "orchestration",
+        ):
             self.assertEqual(released[section], after[section])
         before_invalid = self.checkpoint.read_bytes()
         self.command(

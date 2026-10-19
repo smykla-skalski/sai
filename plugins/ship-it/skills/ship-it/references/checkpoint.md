@@ -6,7 +6,7 @@
 
 | kind | data |
 | :-- | :-- |
-| `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation; `owner` is null before launch (or the native worker ID for an already observed owner); `deadlineAt` is a later UTC instant |
+| `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation, or `target: {pullRequestUrl: URL, headSha: SHA}` for a hosted-state waiter matching the checkpoint’s open PR, delivery head and workflow revision while active; `owner` is null before launch (or the native worker ID for an already observed owner); `deadlineAt` is a later UTC instant |
 | `adopt` | Same target and owner fields for a legacy running/blocked/failed child or reserved/completed gate; `deadlineAt` must be null because no deadline observation is available. Use a stable dispatch ID; adoption does not release ownership |
 | `bind-owner` | `owner` with the native worker ID; atomically fills a null orchestration child worker, otherwise must match that existing owner |
 | `started` | `{}` |
@@ -15,6 +15,8 @@
 | `release-owner` | `hostStatus: completed\|done\|closed\|exited`, `observation` containing the native terminal evidence; an unbound failed launch instead requires `not-created` and explicit host failure evidence |
 
 `bookkeeping.py reconcile-workers --checkpoint FILE --observation-json '{"at":"2026-10-16T04:15:00Z"}'` returns one diagnostic per dispatch with its state, UTC deadline comparison, retained ownership and result receipt. Run once on parent resume before subsequent gates or delivery. It records only the latest reconciliation instant; it does not fabricate native delivery observations or update gates, counters, grants or orchestration results. The optional `workerRecovery` array retains one immutable result receipt per dispatch and at most 256 dispatches, including owner release evidence. Legacy checkpoints without it remain valid.
+
+Hosted-state targets require no gate reservation and consume no convergence allowance. Register with a stable dispatch ID and a future deadline, then bind the native waiter owner. Retry the same registration on resume; an unreleased target rejects another dispatch. Timeout does not release ownership: stop the waiter and record explicit native terminal evidence with `release-owner` before replacement. On cancellation, stop the waiter and record the same host evidence; never infer owner release from a deadline or result receipt. Saved targets remain valid recovery history after the PR head or workflow state changes; a fresh registration or owner binding must match the current active PR head.
 
 An adopted legacy record additionally carries `adopted: true` and an unknown null deadline. Missing legacy owner records block child replacement and another native review/test reservation of the same kind until explicit adoption and host terminal reconciliation. Reusable completed gate results still return without dispatch. No migration fabricates a passing gate or refunds a reservation.
 

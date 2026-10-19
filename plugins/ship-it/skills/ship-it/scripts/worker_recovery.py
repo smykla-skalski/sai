@@ -13,7 +13,7 @@ import copy
 from datetime import datetime
 from typing import Any, Final
 
-from checkpoint_state import StateError, non_empty, require, utc_timestamp
+from checkpoint_state import StateError, commit_id, non_empty, require, utc_timestamp
 
 MAX_RECORDS: Final[int] = 256
 
@@ -72,16 +72,24 @@ def validate(checkpoint: dict[str, Any]) -> None:
             non_empty(item["owner"], "owner")
         require(
             isinstance(item["target"], dict)
-            and set(item["target"]) in ({"issueUrl"}, {"reservationId"}),
-            "worker target requires issueUrl or reservationId",
+            and set(item["target"])
+            in (
+                {"issueUrl"},
+                {"reservationId"},
+                {"pullRequestUrl", "headSha"},
+            ),
+            "worker target requires issueUrl, reservationId or pullRequestUrl/headSha",
         )
         for value in item["target"].values():
             non_empty(value, "worker target")
+        if "headSha" in item["target"]:
+            commit_id(item["target"]["headSha"], "hosted waiter headSha")
         registered = timestamp(item["registeredAt"], "registeredAt")
         require(isinstance(item.get("adopted", False), bool), "invalid adopted flag")
         if item.get("adopted", False):
             require(
-                item["deadlineAt"] is None, "adopted legacy deadline must be unknown",
+                item["deadlineAt"] is None,
+                "adopted legacy deadline must be unknown",
             )
         else:
             require(
@@ -193,7 +201,19 @@ def resolve_target(
     *,
     allow_terminal: bool = False,
 ) -> str | None:
-    """Bind recovery to an existing child dispatch or gate reservation."""
+    """Bind recovery to a child, gate reservation or current PR head."""
+    if set(target) == {"pullRequestUrl", "headSha"}:
+        commit_id(target["headSha"], "hosted waiter headSha")
+        delivery = checkpoint["delivery"]
+        require(
+            target["pullRequestUrl"] == delivery.get("pullRequestUrl")
+            and target["headSha"] == delivery.get("pullRequestHead")
+            and target["headSha"] == checkpoint["workflow"]["revision"]
+            and delivery.get("pullRequestState") == "open"
+            and checkpoint["workflow"]["status"] == "active",
+            "hosted waiter requires the active checkpoint PR and head",
+        )
+        return None
     if set(target) == {"issueUrl"}:
         graph = checkpoint.get("orchestration") or {"children": []}
         child = next(
@@ -396,7 +416,10 @@ def register(
         non_empty(owner, "owner")
     require(isinstance(data["target"], dict), "target must be an object")
     existing_owner = resolve_target(
-        checkpoint, data["target"], dispatch, allow_terminal=adopted,
+        checkpoint,
+        data["target"],
+        dispatch,
+        allow_terminal=adopted,
     )
     require(
         owner is None or existing_owner is None or existing_owner == owner,
