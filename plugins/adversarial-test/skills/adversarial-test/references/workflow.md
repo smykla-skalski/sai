@@ -46,6 +46,12 @@ Parse from the invocation arguments, given in the Arguments section of SKILL.md 
 | (none) | Same as `--base origin/<default-branch>` |
 | `--context <file\|text>` | Task context: issue body, acceptance criteria, PR description. A path is read; anything else is used verbatim |
 
+## Caller output contract
+
+When the caller supplies a report schema or other output requirements, include that contract verbatim in the clean-context Test assignment as a separate Caller output contract field. It is task information, not the implementer's reasoning. Include the required fields and types, command-size limits when supplied, command timeout, expected-output restrictions, and the required final answer shape. The Test Adversary must produce its reproductions in that contract as well as the normal criteria and verdict. Do not leave the parent to invent the representation after testing.
+
+Before returning the final answer, parse its structured report with a standard JSON parser and check the caller's stated field, size, and expectation constraints. Expected output must come from the product behavior observed by the reproduction, not an unconditional diagnostic printed by the command. Do not encode or split expected text to evade a validator. Correct a contract violation while preserving the observed evidence; never claim that syntactically valid JSON alone satisfies the report contract.
+
 ## Phase 1 - Build the test assignment
 
 Do not run or read the product yourself; the subagent does. Resolve only what it needs:
@@ -70,6 +76,7 @@ Changed files:
 Task context:
 <context, or "none">
 Build cache: <absolute revision-keyed cache path>
+Caller output contract: <verbatim requirements from the caller, or "none">
 ```
 
 ## Persistent build cache
