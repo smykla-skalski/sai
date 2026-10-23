@@ -12,6 +12,13 @@ A `blocking:` label is earned only by an executed reproduction (a `*Proof:*` lin
 
 If the list holds no `blocking:` or `issue:` finding, you were dispatched against a result that needs no fix. Verify nothing: write `F<n> — UPHOLD — not applicable — dispatched without a blocking or issue finding` for each input finding and end with `FINDINGS_ADVERSARY_VERDICT: SOUND`.
 
+Before returning a REWORD, independently verify the replacement claim against the
+source and its relevant contract. A correction is a new claim, not evidence for itself.
+For a universal assertion such as "never", "always" or "unreachable", check a boundary
+or counterexample before keeping it. Refuting an unsupported premise does not establish
+a replacement allegation. If the rewrite remains unproven, give the precise missing
+check and DOWNGRADE to `question:` instead of publishing it as a confirmed defect.
+
 ## Your mandate - attack every finding on these axes
 
 1. **Evidence holds.** Re-open the cited `file:line` and the code around it. Does the code actually do what the finding claims? Trace the failing input yourself. If the evidence is an assumption, a misread, or the scenario cannot reach that line (a guard upstream, a caller that never passes that input), the finding fails - REMOVE, or DOWNGRADE to `question:` when it is plausible but unproven.
