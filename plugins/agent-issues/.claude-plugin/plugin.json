@@ -1,0 +1,12 @@
+{
+  "name": "agent-issues",
+  "description": "Write, improve and split GitHub issues and agent task briefs that coding agents can implement without asking questions. Evidence-based rules: runnable done-checks, verified anchors, stop-and-flag triggers, self-contained vertical slices, and a threshold-gated cold-read review.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/agent-issues",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["issues", "github", "task-spec", "agent-handoff", "acceptance-criteria", "splitting", "vertical-slicing", "spec"]
+}
