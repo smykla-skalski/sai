@@ -52,6 +52,16 @@ plugins/{name}/
 - Migrating a plugin: `git mv` `claude/{name}/.claude-plugin/`, `skills/` and `README.md` into `plugins/{name}/`, add the root `plugin.json` with the Claude version, fold any Codex-only guidance from `codex/{name}/SKILL.md` into SKILL.md, move `codex/{name}/agents/openai.yaml` to `skills/{skill}/agents/`, delete `codex/{name}/` and `plugins/{name}/.codex-plugin/`, then fix every link to the old paths (`grep -rn "claude/{name}\|codex/{name}"`). The hook bumps past the old Claude and Codex versions
 - Validate: `claude plugin validate .` and `claude plugin validate plugins/{name}`; `scripts/validate_skills.py` (or `scripts/validate_skills.py plugins/{name}/skills/{skill}`); install from the local marketplace with throwaway `CLAUDE_CONFIG_DIR`, `CODEX_HOME` and `COPILOT_HOME` directories (`codex debug prompt-input` shows whether Codex loaded the skill)
 
+#### Evaluating a skill
+
+A skill change ships with evals in `plugins/{name}/evals/`. `plugins/humanize/evals/` is the reference suite.
+
+- Cases: one directory per case with `prompt.md`, `case.yaml`, `graders/*.md`, and `files/` with a scaffold script, in the format `claude plugin eval` reads. Run `claude plugin eval plugins/{name} --scaffold --allow-tools Edit Write --judge-model sonnet`; the default Haiku judge misreads correct replies. Add `--json out.json --keep-temp` to keep the runs for a review. To compare with the previous version, run the same suite on a `git archive` snapshot of the base commit
+- Codex: `scripts/eval_codex.py plugins/{name} --codex /path/to/codex --out codex.json` runs the same cases on Codex with the plugin in an isolated Codex home, and maps the graders onto Codex's event stream. The codex binary must honor `CODEX_HOME`; a wrapper script that resets it installs the plugin into your real home
+- Review: `scripts/eval_review.py plugins/{name} final=out.json baseline=out.json@without codex=codex.json` has Jev (`~typesafe/jev-latest` on OpenRouter) judge every run against `evals/review.json`, in place of a human read-through. Each criterion is asked three ways, one of them inverted, and the summary shows how often Jev agrees with the graders. It needs `OPENROUTER_API_KEY`; a full review costs under a cent
+- Triggering: `scripts/eval_triggers.py plugins/{name}` (add `--agent codex` for Codex) runs every query in `evals/triggers.json` and checks that the skill loads only when it should. Score a new description with `--description "..."` before you commit it. skill-creator's description loop cannot measure plugin skills, because it tests a command stand-in and stops at the first tool call
+- The scripts print NDJSON and exit 1 when a run, review or query fails. Every run is a paid model call, so CI does not run them; `tests/test_eval_tools.py` covers their offline logic and every plugin's `triggers.json` and `review.json`
+
 ### Setup
 
 1. Fork the repository on GitHub

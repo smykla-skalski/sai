@@ -1,0 +1,189 @@
+{
+  "files": {
+    "pr-body.md": "We're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\n",
+    "CHANGELOG.md": "# Changelog\n\n## 3.4.0\n\n- We're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\n",
+    "RELEASE.md": "We're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\n",
+    "README.md": "# Tool\n\nIn today's fast-paced world, this tool — truly a game-changer — empowers teams.\n",
+    "docs/onboarding.md": "# Onboarding\n\nWe're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\n",
+    "drafts/kubecon-recap.md": "We're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\nThe future looks bright!\n",
+    "essay.docx": "The industrial revolution was a pivotal moment that underscores humanity's enduring ingenuity.\n",
+    "utils/parse.py": "def f(a, b):\n    tmp2 = a + b\n    return tmp2\n",
+    "config/features.yaml": "features:\n  - name: cache\n    description: A robust, scalable caching layer that seamlessly accelerates every request across services\n",
+    "docs/incident-0412.md": "# Incident 0412\n\nThe outage was mitigated by the on-call engineer. We're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\n",
+    "CONTRIBUTING.md": "# Contributing\n\nIt's worth noting that contributions seamlessly flow through our robust review process.\n",
+    "announcement.txt": "We're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\n",
+    "notes/2.0.md": "# 2.0 — a new era\n\nWe're thrilled to share this groundbreaking update, which serves as a testament to our commitment to excellence. Additionally, it seamlessly enhances the developer experience in today's rapidly evolving landscape. I hope this helps!\nIn conclusion, 2.0 is a game-changer.\n",
+    "cover-letter.md": "Dear hiring manager, I have five years of Go experience and led the migration of our billing service.\n",
+    "src/errors.go": "package src\n\nimport \"errors\"\n\nvar ErrNotFound = errors.New(\"nf\")\n"
+  },
+  "queries": [
+    {
+      "query": "can u make my PR description sound less like chatgpt wrote it? it's in pr-body.md, my lead said it reads like a marketing brochure",
+      "should_trigger": true
+    },
+    {
+      "query": "Before I post this in #platform, clean up the wording, it's way too fluffy: \"We're thrilled to share that our team has successfully completed the migration to Kubernetes 1.31, marking a pivotal milestone in our infrastructure journey and underscoring our commitment to reliability.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "rewrite the 3.4.0 section of CHANGELOG.md so it reads like a person wrote it. keep every version number and flag name exactly as is",
+      "should_trigger": true
+    },
+    {
+      "query": "my commit message is all 'enhance' 'robust' 'seamless', fix it before I push: feat(api): enhance robust rate limiting for seamless scalability across services",
+      "should_trigger": true
+    },
+    {
+      "query": "score docs/onboarding.md for AI-isms but don't edit it, I just want to see how bad it is before Thursday's docs review",
+      "should_trigger": true
+    },
+    {
+      "query": "this review comment I drafted sounds like a bot, make it sound like me: \"Great question! It's important to note that this function could potentially lead to issues in certain edge cases. Additionally, consider refactoring.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "de-slop RELEASE.md please, two customers told us our release notes read like an LLM wrote them",
+      "should_trigger": true
+    },
+    {
+      "query": "the README intro has em dashes everywhere and starts with 'In today's fast-paced world' lol. can you make it plain and direct? README.md, top section only",
+      "should_trigger": true
+    },
+    {
+      "query": "My blog post draft at drafts/kubecon-recap.md has that ChatGPT vibe, every paragraph ends with 'the future looks bright' or similar. Make it sound natural but keep my jokes and my opinions",
+      "should_trigger": true
+    },
+    {
+      "query": "Tone down this Slack announcement before I send it, it sounds AI-generated and way too corporate: \"We are pleased to inform all stakeholders that the legacy billing service will be sunset effective November 30th. Should you have any questions, please do not hesitate to reach out.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "my student handed in essay.docx and I'm pretty sure they used ChatGPT. can you tell me if it's AI-generated? I need to decide whether to report it",
+      "should_trigger": false
+    },
+    {
+      "query": "translate the Installation section of README.md into Polish, keep it natural for Polish devs",
+      "should_trigger": false
+    },
+    {
+      "query": "fix the grammar and typos only, don't change anything else: \"their going to merge it tommorow after the the review, i think its fine\"",
+      "should_trigger": false
+    },
+    {
+      "query": "make this sound more polished and professional, like a press release, it's for our investor update: \"we fixed the billing bug, signups are up 12% this month\"",
+      "should_trigger": false
+    },
+    {
+      "query": "my thesis chapter keeps getting flagged by Turnitin's AI detector. rewrite it so the detector can't tell an AI helped",
+      "should_trigger": false
+    },
+    {
+      "query": "write a commit message for my staged changes, conventional commits format",
+      "should_trigger": false
+    },
+    {
+      "query": "summarize the PR description in pr-body.md into two bullets I can read out at standup",
+      "should_trigger": false
+    },
+    {
+      "query": "rename the variables in utils/parse.py to be more human-readable, a, b, tmp2 etc are driving me nuts",
+      "should_trigger": false
+    },
+    {
+      "query": "draft a LinkedIn post announcing our Series A, 150 words, upbeat but not cringe",
+      "should_trigger": false
+    },
+    {
+      "query": "the descriptions in config/features.yaml are too long, shorten each one to under 60 chars without breaking the YAML",
+      "should_trigger": false
+    },
+    {
+      "query": "my manager said our postmortem in docs/incident-0412.md reads like an AI generated it. can you make it read like an engineer wrote it? keep the timeline exact",
+      "should_trigger": true
+    },
+    {
+      "query": "here's the email I'm about to send to the whole eng org, it's way too stiff and corporate, make it sound normal: \"Dear team, I am pleased to inform you that, effective immediately, we will be leveraging a new on-call rotation to enhance our operational excellence. Please do not hesitate to reach out with any questions.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "go over CONTRIBUTING.md and strip out the AI-sounding filler, stuff like 'it's worth noting' and 'seamlessly'",
+      "should_trigger": true
+    },
+    {
+      "query": "rate how much announcement.txt sounds like chatgpt, don't touch the file",
+      "should_trigger": true
+    },
+    {
+      "query": "the PR description below reads super generic, make it sound like a human engineer wrote it:\n\nThis PR introduces a robust and scalable solution that significantly enhances the overall performance of the system, ensuring a seamless experience for all users.",
+      "should_trigger": true
+    },
+    {
+      "query": "notes/2.0.md is full of em dashes and 'in conclusion' wrap-ups, clean it up so it sounds like us and not like a bot",
+      "should_trigger": true
+    },
+    {
+      "query": "count how many sentences in docs/incident-0412.md use passive voice and list them, don't rewrite anything",
+      "should_trigger": false
+    },
+    {
+      "query": "write release notes for v2.0 from these commits: add retry flag, drop python 3.9, fix cache eviction race",
+      "should_trigger": false
+    },
+    {
+      "query": "turn this bullet list into a short paragraph for our blog: faster builds, new cache layer, fewer flaky tests",
+      "should_trigger": false
+    },
+    {
+      "query": "proofread announcement.txt for spelling mistakes only, leave the wording and tone exactly as they are",
+      "should_trigger": false
+    },
+    {
+      "query": "I wrote this cover letter myself, is it likely to get flagged by an AI detector? cover-letter.md",
+      "should_trigger": false
+    },
+    {
+      "query": "make the error messages in src/errors.go friendlier for end users, they're too terse",
+      "should_trigger": false
+    },
+    {
+      "query": "our onboarding email template sounds like it came out of an LLM. fix the wording but keep the links and the start date: \"Welcome aboard! We are excited to embark on this journey together as you seamlessly integrate into our vibrant team.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "can you take another pass at CONTRIBUTING.md? every section ends with a cheesy wrap-up and it reads like marketing copy",
+      "should_trigger": true
+    },
+    {
+      "query": "this standup update is way too corporate for a slack thread, make it sound like a normal dev wrote it: \"I am pleased to report that significant progress has been achieved on the authentication refactor, and I remain committed to delivering value.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "how AI-sounding is docs/incident-0412.md? give me a score and the worst offenders, no edits",
+      "should_trigger": true
+    },
+    {
+      "query": "notes/2.0.md reads like a press release, can you make it plain and direct for our engineers?",
+      "should_trigger": true
+    },
+    {
+      "query": "rewrite announcement.txt as a formal letter to our enterprise customers",
+      "should_trigger": false
+    },
+    {
+      "query": "shorten the intro in README.md to two sentences, keep the tone",
+      "should_trigger": false
+    },
+    {
+      "query": "add a section to CONTRIBUTING.md about how we run integration tests locally",
+      "should_trigger": false
+    },
+    {
+      "query": "check cover-letter.md for any spelling or grammar mistakes and fix only those",
+      "should_trigger": false
+    },
+    {
+      "query": "explain what a buried lede is and give me two examples from journalism",
+      "should_trigger": false
+    }
+  ]
+}
