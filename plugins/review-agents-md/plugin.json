@@ -1,6 +1,6 @@
 {
   "name": "review-agents-md",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Audit and fix CLAUDE.md files using a tiered binary checklist, with an evaluator agent for a clean-context post-fix verdict where subagents are available.",
   "author": {
     "name": "Smykla Skalski Labs"

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "generate-agents-md",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-agents-md's critical checks.",
   "author": {
     "name": "Smykla Skalski Labs"

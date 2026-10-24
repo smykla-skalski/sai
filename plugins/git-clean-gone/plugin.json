@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "git-clean-gone",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Clean up local branches with deleted remote tracking and their worktrees",
   "author": {
     "name": "Smykla Skalski Labs"
