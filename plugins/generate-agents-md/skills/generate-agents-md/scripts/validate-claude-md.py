@@ -41,6 +41,8 @@ Exit codes:
     0  all checks passed (info/skip allowed).
     1  one or more checks failed.
     2  usage error (no readable path given).
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
 
 from __future__ import annotations
