@@ -62,6 +62,15 @@ GLYPHS: Final[dict[str, tuple[tuple[str, str], str]]] = {
             '<path d="M390 270 H634 M370 610 H654"/>'
         ),
     ),
+    "agent-issues": (
+        WRITING,
+        (
+            '<circle cx="430" cy="430" r="170"/>'
+            '<circle cx="430" cy="430" r="52" class="dot"/>'
+            '<path d="M600 720 L720 600 L780 660 L660 780 Z'
+            ' M600 720 L570 810 L660 780"/>'
+        ),
+    ),
     "ai-daily-digest": (
         DIGEST,
         (
