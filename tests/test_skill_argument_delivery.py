@@ -21,6 +21,7 @@ ARGUMENTS_SECTION = "Arguments section of SKILL.md"
 REQUEST_FALLBACK = "the user's request"
 FALLBACK_ROW_PREFIXES = ("| Argument substitution |", "| Arguments |")
 SKILL_ARGUMENTS = {
+    "agent-issues": ("--draft", "--brief"),
     "ai-daily-digest": ("--focus", "--no-notion"),
     "council": ("core-eng", "debate"),
     "generate-claude-md": ("--output", "--update"),

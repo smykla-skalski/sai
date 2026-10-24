@@ -7,12 +7,13 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `ai-daily-digest`, `council`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-claude-md`, `service-mesh-debug`, `ship-it`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `agent-issues`, `ai-daily-digest`, `council`, `generate-claude-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-claude-md`, `service-mesh-debug`, `ship-it`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
 | **adversarial-review**  | Fast two-pass adversarial code review: Code Adversary subagent hunts the bug, clean-context Findings Adversary subagent refutes false positives | `plugins/adversarial-review/` |
 | **adversarial-test**    | Adversarial manual testing: clean-context Test Adversary subagent runs the real product surface and tries to break it; reproductions are rerun before they count | `plugins/adversarial-test/`   |
+| **agent-issues**        | Write, improve and split GitHub issues and subagent briefs that coding agents can implement without asking questions: verified anchors, runnable done-checks, stop-and-flag triggers, vertical slices | `plugins/agent-issues/`       |
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `plugins/ai-daily-digest/`    |
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `plugins/council/`            |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `plugins/service-mesh-debug/` |
@@ -41,6 +42,7 @@ Codex skills:
 |:-----------------------|:---------------------------------------------------------------------------------|:-----------------------------|
 | **adversarial-review** | Two-pass adversarial code review in sequential clean-context subagents (same portable package as Claude Code) | `plugins/adversarial-review/skills/adversarial-review/` |
 | **adversarial-test**   | Adversarial manual testing of the real product surface in a clean-context subagent (same portable package as Claude Code) | `plugins/adversarial-test/skills/adversarial-test/` |
+| **agent-issues**       | Write, improve and split GitHub issues and subagent briefs for coding agents; cold-read review runs inline on Codex (same portable package as Claude Code) | `plugins/agent-issues/skills/agent-issues/` |
 | **ai-daily-digest**    | Daily AI news digest from dated, verified sources; explicit invocation only, inline research by default (same portable package as Claude Code) | `plugins/ai-daily-digest/skills/ai-daily-digest/` |
 | **council**            | Persona reviewer councils run one reviewer at a time on Codex, with strict bounded-input and output rules (same portable package as Claude Code) | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution (same portable package as Claude Code) | `plugins/refactor-council/skills/refactor-council/` |
@@ -81,6 +83,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 # Install individual plugins
 /plugin install adversarial-review@sai
 /plugin install adversarial-test@sai
+/plugin install agent-issues@sai
 /plugin install ai-daily-digest@sai
 /plugin install council@sai
 /plugin install service-mesh-debug@sai
@@ -115,6 +118,7 @@ git clone git@github.com:smykla-skalski/sai.git
 
 claude --plugin-dir /path/to/sai/plugins/adversarial-review
 claude --plugin-dir /path/to/sai/plugins/adversarial-test
+claude --plugin-dir /path/to/sai/plugins/agent-issues
 claude --plugin-dir /path/to/sai/plugins/ai-daily-digest
 claude --plugin-dir /path/to/sai/plugins/council
 claude --plugin-dir /path/to/sai/plugins/service-mesh-debug
@@ -149,6 +153,7 @@ OpenCode discovers Agent Skills from `~/.config/opencode/skills/` and `~/.agents
 ```bash
 ln -s /path/to/sai/plugins/adversarial-review/skills/adversarial-review ~/.config/opencode/skills/adversarial-review
 ln -s /path/to/sai/plugins/adversarial-test/skills/adversarial-test ~/.config/opencode/skills/adversarial-test
+ln -s /path/to/sai/plugins/agent-issues/skills/agent-issues ~/.config/opencode/skills/agent-issues
 ln -s /path/to/sai/plugins/ai-daily-digest/skills/ai-daily-digest ~/.config/opencode/skills/ai-daily-digest
 ln -s /path/to/sai/plugins/council/skills/council ~/.config/opencode/skills/council
 ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
@@ -187,6 +192,14 @@ Adversarial manual testing. A clean-context Test Adversary subagent derives acce
 **Usage**: `/adversarial-test [<pr-url> | --base <ref>] [--context <file|text>]`
 
 [Full documentation ->](./plugins/adversarial-test/README.md)
+
+### agent-issues
+
+Write, improve and split GitHub issues, and brief subagents, so that coding agents can implement the work without asking questions. Interviews for what the repo cannot answer, verifies every named path, symbol and command, states runnable done-checks, non-goals and stop-and-flag triggers, cuts oversized work into self-contained vertical slices with native sub-issue relationships, and runs a cold-read review when size or risk warrants it. Repo issue templates keep their fields; the quality bar applies inside them. Runs on Claude Code, Codex, Copilot CLI, and OpenCode from one package.
+
+**Usage**: `/agent-issues [description | issue url/number] [--draft] [--file] [--brief] [--cold-read | --no-cold-read]` (Codex: `$agent-issues`)
+
+[Full documentation ->](./plugins/agent-issues/README.md)
 
 ### ai-daily-digest
 

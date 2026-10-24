@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Issues"
+  short_description: "Write issues that coding agents can finish"
+  default_prompt: "Use $agent-issues to turn this request into a self-contained issue with runnable done-checks, verified anchors and stop-and-flag triggers, and split it if it is more than one deliverable."

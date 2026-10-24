@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agent-issues",
+  "version": "1.0.1",
+  "description": "Write, improve and split GitHub issues and agent task briefs that coding agents can implement without asking questions. Evidence-based rules: runnable done-checks, verified anchors, stop-and-flag triggers, self-contained vertical slices, and a threshold-gated cold-read review.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/agent-issues",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["issues", "github", "task-spec", "agent-handoff", "acceptance-criteria", "splitting", "vertical-slicing", "spec"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Agent Issues",
+        "shortDescription": "Write issues that coding agents can finish",
+        "longDescription": "Turns a request into a self-contained, verifiable issue or agent brief: interviews for missing facts, verifies every pointer in the repo, states runnable done-checks and stop-and-flag triggers, splits oversized work into vertical slices, and runs a cold-read review when the risk or size warrants it.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive", "Write"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/agent-issues",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $agent-issues to write an issue for this change.",
+          "Use $agent-issues to improve this issue so an agent can implement it.",
+          "Use $agent-issues to split this issue into vertical slices."
+        ],
+        "brandColor": "#2563EB"
+      }
+    }
+  }
+}

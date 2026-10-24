@@ -8,6 +8,17 @@
   },
   "plugins": [
     {
+      "name": "agent-issues",
+      "source": "./plugins/agent-issues",
+      "description": "Write, improve and split GitHub issues and agent briefs that coding agents can implement without asking questions",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["issues", "github", "task-spec", "agent-handoff", "splitting"]
+    },
+    {
       "name": "ai-daily-digest",
       "source": "./plugins/ai-daily-digest",
       "description": "Daily AI news digest covering technical advances, business news, and engineering impact",
