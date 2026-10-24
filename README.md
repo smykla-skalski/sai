@@ -261,7 +261,7 @@ Auto-review Go code for 100+ common mistakes from [100go.co](https://100go.co/).
 
 ### humanize
 
-Make text sound natural by removing AI writing patterns. Based on Wikipedia's Signs of AI Writing guide - detects 24 patterns across content, language, style, communication, and filler categories.
+Make text sound natural by removing AI writing patterns. Based on Wikipedia's Signs of AI Writing guide plus common agent habits - detects 30 patterns across content, language, style, communication, filler, and structure categories.
 
 **Usage**: `/humanize path/to/file.md [--score-only] [--dry-run]` (Codex: `$humanize`). One package for Claude Code, Codex, Copilot CLI and opencode.
 

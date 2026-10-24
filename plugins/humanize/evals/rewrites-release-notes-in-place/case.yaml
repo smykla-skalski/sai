@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: rewrites-release-notes-in-place
+expected_outcome: |
+  The skill runs in the main session, reads its pattern catalog, and edits
+  release-notes.md in place. The AI vocabulary, em dash overuse, emoji, inline-header
+  bullets and chatbot sign-off are gone. Every fact stays: version 2.4.0, the
+  --retry-limit flag with default 5, cold start 1.8s to 0.9s, Postgres 16, and
+  the removal of connect_legacy() in favor of connect(). No new facts appear.
+  The reply ends with a pattern report table.
+context:
+  scaffold_script: place-files.sh

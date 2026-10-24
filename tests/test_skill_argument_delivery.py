@@ -1,4 +1,4 @@
-"""Keep invocation arguments reaching skills whose procedure lives in a reference.
+"""Keep invocation arguments reaching skills, including those whose procedure lives in a reference.
 
 No client substitutes `$ARGUMENTS` in a file the agent reads with a tool, so each
 skill carries the placeholder once in SKILL.md and its workflow reads the values
@@ -44,6 +44,11 @@ def skill_dir(name: str) -> Path:
     return PLUGINS_DIR / name / "skills" / name
 
 
+def procedure_path(name: str) -> Path:
+    workflow = skill_dir(name) / "references" / "workflow.md"
+    return workflow if workflow.exists() else skill_dir(name) / "SKILL.md"
+
+
 class ArgumentDeliveryTest(unittest.TestCase):
     def test_skill_entry_carries_the_substituted_placeholder(self) -> None:
         for name in SKILL_ARGUMENTS:
@@ -70,9 +75,11 @@ class ArgumentDeliveryTest(unittest.TestCase):
     def test_workflow_reads_arguments_from_skill_entry_or_request(self) -> None:
         for name in SKILL_ARGUMENTS:
             with self.subTest(skill=name):
-                workflow = (skill_dir(name) / "references" / "workflow.md").read_text(
-                    encoding="utf-8"
-                )
+                procedure = procedure_path(name)
+                workflow = procedure.read_text(encoding="utf-8")
+                self.assertIn(REQUEST_FALLBACK, workflow)
+                if procedure.name == "SKILL.md":
+                    continue
                 rows = [
                     line
                     for line in workflow.splitlines()
@@ -85,9 +92,7 @@ class ArgumentDeliveryTest(unittest.TestCase):
 
     def test_workflow_documents_every_argument(self) -> None:
         for name, arguments in SKILL_ARGUMENTS.items():
-            workflow = (skill_dir(name) / "references" / "workflow.md").read_text(
-                encoding="utf-8"
-            )
+            workflow = procedure_path(name).read_text(encoding="utf-8")
             for argument in arguments:
                 with self.subTest(skill=name, argument=argument):
                     self.assertIn(argument, workflow)

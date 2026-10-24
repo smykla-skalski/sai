@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: previews-rewrite-in-chat
+expected_outcome: |
+  The skill treats the request as a dry run. It prints a rewritten changelog in
+  chat that keeps v1.7.0, the 40% drop in API calls, request IDs in logs and the
+  sync --force fix, without the AI vocabulary, em dash or inline-header bullets.
+  CHANGELOG.md is not edited.
+context:
+  scaffold_script: place-files.sh

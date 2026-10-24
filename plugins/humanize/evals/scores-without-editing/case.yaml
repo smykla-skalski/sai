@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: scores-without-editing
+expected_outcome: |
+  The skill reads --score-only from its arguments, scans announcement.md and
+  prints a pattern report: a table with one row per quoted phrase, naming every
+  pattern it shows, and a summary line with an overall severity. Nothing else
+  follows: no claims list, no disclaimer, no advice. It does not rewrite or
+  edit the file.
+context:
+  scaffold_script: place-files.sh
