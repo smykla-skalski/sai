@@ -1,5 +1,5 @@
 ---
-name: review-claude-md
+name: review-agents-md
 description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md". Not for generic markdown cleanup or for reviewing skills and agents.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. The bundled validation scripts need bash, grep, sed and awk.
@@ -27,7 +27,7 @@ Paths in this file are relative to the skill directory (the one holding this SKI
 | Argument substitution | If the `Invocation arguments` line in the Arguments section of SKILL.md is empty or shows the unreplaced placeholder, take the repo path and flags from the user's request |
 | `${CLAUDE_SKILL_DIR}` | If the script paths in Phase 3 show an unreplaced placeholder, resolve `scripts/` relative to this skill directory |
 | Subagent tool (Agent) | Run the Phase 2 scan and Phase 3 script run inline yourself, with the same outputs. Do this whenever no subagent tool is available, including in Claude Code inside a forked skill. On Codex, opencode and Copilot CLI always run them inline: the steps are sequential and share context, so fan-out only adds failure modes |
-| Named agent `review-claude-md:claude-md-evaluator` | Phase 8 only; see [Phase 8](#phase-8-re-evaluate-and-iterate) for the per-agent fallback |
+| Named agent `review-agents-md:claude-md-evaluator` | Phase 8 only; see [Phase 8](#phase-8-re-evaluate-and-iterate) for the per-agent fallback |
 | AskUserQuestion | Not used |
 | `context: fork` | Ignored elsewhere; the skill runs in the main agent loop |
 
@@ -132,8 +132,8 @@ With `--score-only`, stop after Phase 6.
 
 Re-run both validation scripts from Phase 3 against the fixed file, then get a clean-room verdict from the evaluator. Its mandate is [references/claude-md-evaluator.md](references/claude-md-evaluator.md). Pass it: the fixed CLAUDE.md path, the path to [references/rubric.md](references/rubric.md), the fresh validation-script JSON, the Phase 2 codebase summary, the repo root, and whether `--thorough` is set. Pass nothing else. Its reply starts with `## CLAUDE.md evaluation`.
 
-- **Claude Code:** the skill normally runs forked (`context: fork`), where no subagent tool exists, so use the inline bullet below. When a subagent tool is available, spawn the named agent `review-claude-md:claude-md-evaluator`; if the type is unknown, spawn a `general-purpose` agent with the mandate prepended.
-- **Copilot CLI:** spawn the named agent `review-claude-md:claude-md-evaluator`, or a generic subagent with the mandate prepended if it is not registered.
+- **Claude Code:** the skill normally runs forked (`context: fork`), where no subagent tool exists, so use the inline bullet below. When a subagent tool is available, spawn the named agent `review-agents-md:claude-md-evaluator`; if the type is unknown, spawn a `general-purpose` agent with the mandate prepended.
+- **Copilot CLI:** spawn the named agent `review-agents-md:claude-md-evaluator`, or a generic subagent with the mandate prepended if it is not registered.
 - **Codex:** one `spawn_agent` call with the mandate prepended and no forked parent context; `wait_agent`, then `close_agent` right away.
 - **opencode:** Use the `subagent` tool on opencode 2, which renamed `task`; on opencode 1 use `task`. Use whichever of the two the tool list shows. Use an installed `claude-md-evaluator` agent, or the built-in `general` subagent with the mandate prepended.
 - **No subagent tool, or the reply is empty or lacks its first line:** evaluate inline yourself, following the mandate, and re-open the file instead of judging from memory of your edits.
@@ -146,13 +146,13 @@ Read [references/examples.md](references/examples.md) for good vs bad comparison
 
 ## Example Invocations
 
-In Codex use `$review-claude-md` in place of `/review-claude-md`.
+In Codex use `$review-agents-md` in place of `/review-agents-md`.
 
 <example>
 Default audit (current directory):
 
 ```bash
-/review-claude-md
+/review-agents-md
 ```
 </example>
 
@@ -160,7 +160,7 @@ Default audit (current directory):
 Specific repo with verbose output:
 
 ```bash
-/review-claude-md /path/to/repo --verbose
+/review-agents-md /path/to/repo --verbose
 ```
 </example>
 
@@ -168,8 +168,8 @@ Specific repo with verbose output:
 Score-only and thorough modes:
 
 ```bash
-/review-claude-md --score-only
-/review-claude-md --thorough
-/review-claude-md /path/to/repo --verbose --thorough
+/review-agents-md --score-only
+/review-agents-md --thorough
+/review-agents-md /path/to/repo --verbose --thorough
 ```
 </example>

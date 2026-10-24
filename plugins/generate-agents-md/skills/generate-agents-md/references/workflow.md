@@ -1,6 +1,6 @@
 ---
-name: generate-claude-md
-description: Generate a lean, high-signal CLAUDE.md for a repository from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-claude-md (a bundled validator enforces the same critical checks). Use when the user asks to "generate CLAUDE.md", "create a CLAUDE.md", "write a CLAUDE.md", "init CLAUDE.md", "scaffold CLAUDE.md", or "bootstrap CLAUDE.md" for a project.
+name: generate-agents-md
+description: Generate a lean, high-signal CLAUDE.md for a repository from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-agents-md (a bundled validator enforces the same critical checks). Use when the user asks to "generate CLAUDE.md", "create a CLAUDE.md", "write a CLAUDE.md", "init CLAUDE.md", "scaffold CLAUDE.md", or "bootstrap CLAUDE.md" for a project.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs python3 for the bundled validator; no network access.
 argument-hint: "[path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]"
@@ -21,7 +21,7 @@ architecture map, real gotchas, and enforced boundaries — and nothing Claude
 already knows. The goal is the inverse of naive `/init` output: short, specific,
 and free of README duplication, directory trees, and generic filler.
 
-This skill is the generator counterpart to the `review-claude-md` plugin. It
+This skill is the generator counterpart to the `review-agents-md` plugin. It
 targets the same rubric the reviewer audits against. The bundled validator
 (Phase 7) deterministically gates the mechanical checks — commands present,
 length, no README duplication, no generic advice, no directory tree, bullets —
@@ -32,7 +32,7 @@ mapping, real gotchas, style deltas) is your job during synthesis. Read
 it is the source of truth for every rule below.
 
 Not for auditing an existing CLAUDE.md against a checklist (that is
-`review-claude-md`) or for generic markdown authoring.
+`review-agents-md`) or for generic markdown authoring.
 
 ## Agent compatibility
 
@@ -123,7 +123,7 @@ counter-example.
 ### Phase 5: Budget & modularization
 
 1. Count lines. Keep the root **under 150 lines** — this is the limit
-   `review-claude-md` enforces (its C2 check), so staying under it is what makes
+   `review-agents-md` enforces (its C2 check), so staying under it is what makes
    the output pass that audit. The official ceiling is 200, but 150 is the binding
    target here. Aim well below it.
 2. If over budget, or if `--rules` was passed, move topic detail into
@@ -157,7 +157,7 @@ Parse the result. For any `[FAIL]` check, fix the file and re-run. Iterate up to
 3 rounds. The validator enforces line count, README de-duplication, no generic
 advice, no directory tree, no oversized code blocks, bullet ratio, and the presence
 of build/test/lint commands plus a pre-commit gate — mirroring the same checks
-`review-claude-md` runs (its command checks skip automatically for AGENTS.md bridge
+`review-agents-md` runs (its command checks skip automatically for AGENTS.md bridge
 files). A genuinely-absent command (e.g. a project with no linter) should be
 reported honestly, not invented.
 
@@ -182,7 +182,7 @@ Return a summary:
 - **Existing CLAUDE.md and no flag**: never overwrite — use the `.generated.md`
   fallback and tell the user how to proceed.
 - **Validator keeps failing after 3 rounds**: write the best version, report the
-  remaining failing checks honestly, and suggest `/review-claude-md --fix`.
+  remaining failing checks honestly, and suggest `/review-agents-md --fix`.
 
 ## Example invocations
 
@@ -190,7 +190,7 @@ Return a summary:
 Generate for the current repo:
 
 ```bash
-/generate-claude-md
+/generate-agents-md
 ```
 </example>
 
@@ -198,7 +198,7 @@ Generate for the current repo:
 Specific repo, preview without writing:
 
 ```bash
-/generate-claude-md /path/to/repo --dry-run
+/generate-agents-md /path/to/repo --dry-run
 ```
 </example>
 
@@ -206,7 +206,7 @@ Specific repo, preview without writing:
 Refresh an existing file, preserving custom sections:
 
 ```bash
-/generate-claude-md --update
+/generate-agents-md --update
 ```
 </example>
 
@@ -214,6 +214,6 @@ Refresh an existing file, preserving custom sections:
 Force a lean rewrite and split topics into rules:
 
 ```bash
-/generate-claude-md --force --rules
+/generate-agents-md --force --rules
 ```
 </example>

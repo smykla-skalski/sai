@@ -1,11 +1,11 @@
 {
-  "name": "review-claude-md",
-  "version": "1.7.6",
+  "name": "review-agents-md",
+  "version": "2.0.0",
   "description": "Audit and fix CLAUDE.md files using a tiered binary checklist, with an evaluator agent for a clean-context post-fix verdict where subagents are available.",
   "author": {
     "name": "Smykla Skalski Labs"
   },
-  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-claude-md",
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-agents-md",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
   "keywords": ["claude-md", "audit", "checklist", "best-practices", "configuration", "linting", "scoring"],
@@ -18,13 +18,13 @@
         "developerName": "SAI",
         "category": "Developer Tools",
         "capabilities": ["Interactive"],
-        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-claude-md",
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/review-agents-md",
         "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
         "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
         "defaultPrompt": [
-          "Use $review-claude-md for this task.",
-          "Run $review-claude-md on this repository.",
-          "Run $review-claude-md --score-only on this repository."
+          "Use $review-agents-md for this task.",
+          "Run $review-agents-md on this repository.",
+          "Run $review-agents-md --score-only on this repository."
         ],
         "brandColor": "#2563EB"
       }

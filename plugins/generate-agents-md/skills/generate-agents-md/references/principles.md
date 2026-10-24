@@ -1,7 +1,7 @@
 # CLAUDE.md Generation Principles
 
 The rules a generated CLAUDE.md must follow, with the evidence behind each.
-Apply every rule during synthesis. These mirror what the `review-claude-md`
+Apply every rule during synthesis. These mirror what the `review-agents-md`
 plugin audits against, so a file built to these principles passes that audit.
 
 ## Contents
@@ -100,7 +100,7 @@ anti-patterns:
 ## Length budget
 
 - **Binding target: under 150 lines** for the root file. The official ceiling is
-  200 (Anthropic Memory docs), but the `review-claude-md` audit fails any root over
+  200 (Anthropic Memory docs), but the `review-agents-md` audit fails any root over
   150 (its C2 check), so 150 is the limit to build to — and staying under it is what
   makes generated output pass that audit. Aim well below it.
 - Strong real-world root files run 50–100 lines; HumanLayer's is under 60.

@@ -2,9 +2,9 @@
 """Validate a generated CLAUDE.md against the lean, high-signal rubric.
 
 Purpose:
-    Deterministic gate for the generate-claude-md skill. After synthesis, the
+    Deterministic gate for the generate-agents-md skill. After synthesis, the
     skill runs this over the candidate file and revises until every critical
-    check passes. The checks mirror the same best-practices the review-claude-md
+    check passes. The checks mirror the same best-practices the review-agents-md
     plugin audits against (Anthropic docs + empirical studies) - including all of
     its Critical checks - so a file that passes here cannot earn a review FAIL.
 
@@ -100,7 +100,7 @@ CHECK_ORDER: Final[tuple[str, ...]] = (
     CHECK_EMPHASIS,
 )
 
-# Map check IDs to the review-claude-md rubric tier they enforce.
+# Map check IDs to the review-agents-md rubric tier they enforce.
 CHECK_TIER: Final[dict[str, str]] = {
     CHECK_LINE_COUNT: "C2",
     CHECK_README_DUP: "C4",
@@ -152,7 +152,7 @@ EMPHASIS_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(?:IMPORTANT|YOU MUST|NEVER|ALWAYS|CRITICAL)\b",
 )
 
-# Command-family detectors. These mirror review-claude-md's validate-commands.sh
+# Command-family detectors. These mirror review-agents-md's validate-commands.sh
 # so the two plugins agree on what counts as a build/test/lint/pre-commit command.
 BUILD_RE: Final[re.Pattern[str]] = re.compile(
     r"npm run build|cargo build|go build|mvn |gradle |bazel build",
@@ -237,7 +237,7 @@ class Document:
 
     @property
     def line_count(self) -> int:
-        """Return the newline count, matching review-claude-md's `wc -l`."""
+        """Return the newline count, matching review-agents-md's `wc -l`."""
         return self.text.count("\n")
 
 
@@ -304,7 +304,7 @@ def is_bridge(lines: list[str]) -> bool:
 
 
 def check_line_count(doc: Document, max_lines: int) -> CheckRecord:
-    """Verify the file fits the length budget (matches review-claude-md C2)."""
+    """Verify the file fits the length budget (matches review-agents-md C2)."""
     n = doc.line_count
     if n <= max_lines:
         return ok(CHECK_LINE_COUNT, f"{n} lines, within the {max_lines}-line limit")

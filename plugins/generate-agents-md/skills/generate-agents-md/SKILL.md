@@ -1,6 +1,6 @@
 ---
-name: generate-claude-md
-description: Generate a lean, high-signal CLAUDE.md for a repository from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-claude-md (a bundled validator enforces the same critical checks). Use when the user asks to "generate CLAUDE.md", "create a CLAUDE.md", "write a CLAUDE.md", "init CLAUDE.md", "scaffold CLAUDE.md", or "bootstrap CLAUDE.md" for a project.
+name: generate-agents-md
+description: Generate a lean, high-signal CLAUDE.md for a repository from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-agents-md (a bundled validator enforces the same critical checks). Use when the user asks to "generate CLAUDE.md", "create a CLAUDE.md", "write a CLAUDE.md", "init CLAUDE.md", "scaffold CLAUDE.md", or "bootstrap CLAUDE.md" for a project.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. Needs python3 for the bundled validator; no network access.
 argument-hint: "[path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]"
@@ -20,7 +20,7 @@ architecture map, real gotchas, and enforced boundaries — and nothing Claude
 already knows. The goal is the inverse of naive `/init` output: short, specific,
 and free of README duplication, directory trees, and generic filler.
 
-This skill is the generator counterpart to the `review-claude-md` plugin. It
+This skill is the generator counterpart to the `review-agents-md` plugin. It
 targets the same rubric the reviewer audits against. The bundled validator
 (Phase 7) deterministically gates the mechanical checks — commands present,
 length, no README duplication, no generic advice, no directory tree, bullets —
@@ -31,7 +31,7 @@ mapping, real gotchas, style deltas) is your job during synthesis. Read
 it is the source of truth for every rule below.
 
 Not for auditing an existing CLAUDE.md against a checklist (that is
-`review-claude-md`) or for generic markdown authoring.
+`review-agents-md`) or for generic markdown authoring.
 
 ## Required guidance
 

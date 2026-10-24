@@ -1,5 +1,5 @@
 ---
-name: review-claude-md
+name: review-agents-md
 description: Audit and fix CLAUDE.md files using a tiered binary checklist based on official Anthropic best practices and community guidelines. Use when the user asks to "review CLAUDE.md", "audit CLAUDE.md", "score CLAUDE.md", "improve CLAUDE.md", or "fix CLAUDE.md". Not for generic markdown cleanup or for reviewing skills and agents.
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. The bundled validation scripts need bash, grep, sed and awk.

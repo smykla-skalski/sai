@@ -2,9 +2,11 @@
 
 Generate a lean, high-signal CLAUDE.md for a repository from codebase analysis.
 
-The generator counterpart to [`review-claude-md`](../review-claude-md/): it targets
+Renamed from `generate-claude-md` in 0.2.0, because plugin names that contain "claude" read as Anthropic's own. Reinstall it as `generate-agents-md@sai`.
+
+The generator counterpart to [`review-agents-md`](../review-agents-md/): it targets
 the same best-practices rubric the reviewer audits against. A bundled validator
-enforces review-claude-md's Critical checks (commands present, under 150 lines, no
+enforces review-agents-md's Critical checks (commands present, under 150 lines, no
 README duplication, no generic advice) plus bullets and pointer style, so a
 generated file is built to pass that audit; the workflow applies the remaining
 quality (architecture relationships, domain mapping, real gotchas). It produces
@@ -22,33 +24,33 @@ Claude Code (Copilot CLI is the same with `copilot` in place of `claude`):
 
 ```bash
 claude plugin marketplace add smykla-skalski/sai
-claude plugin install generate-claude-md@sai
+claude plugin install generate-agents-md@sai
 ```
 
 Codex:
 
 ```bash
 codex plugin marketplace add smykla-skalski/sai
-codex plugin add generate-claude-md@sai
+codex plugin add generate-agents-md@sai
 ```
 
-opencode, or any agent that reads Agent Skills, loads `skills/generate-claude-md/` directly:
+opencode, or any agent that reads Agent Skills, loads `skills/generate-agents-md/` directly:
 
 ```bash
-ln -s /path/to/sai/plugins/generate-claude-md/skills/generate-claude-md ~/.config/opencode/skills/generate-claude-md
+ln -s /path/to/sai/plugins/generate-agents-md/skills/generate-agents-md ~/.config/opencode/skills/generate-agents-md
 ```
 
-Local checkout: `claude --plugin-dir /path/to/sai/plugins/generate-claude-md/`
+Local checkout: `claude --plugin-dir /path/to/sai/plugins/generate-agents-md/`
 
 ## Usage
 
-In Claude Code and Copilot CLI use `/generate-claude-md`, in Codex
-`$generate-claude-md`, or ask in plain words ("write a CLAUDE.md for this repo").
+In Claude Code and Copilot CLI use `/generate-agents-md`, in Codex
+`$generate-agents-md`, or ask in plain words ("write a CLAUDE.md for this repo").
 Where the agent has no subagent tool, the codebase scan runs inline instead of in
 a subagent; the output is the same.
 
 ```
-/generate-claude-md [path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]
+/generate-agents-md [path/to/repo] [--output PATH] [--update] [--force] [--rules] [--dry-run]
 ```
 
 | Flag         | Default | Purpose                                                        |
@@ -77,7 +79,7 @@ tells you to diff and choose — so an existing file is never lost.
    no directory tree, no generic advice, bullet ratio, commands present) and
    iterates until it passes
 
-After generating, audit anytime with `/review-claude-md`.
+After generating, audit anytime with `/review-agents-md`.
 
 ## License
 

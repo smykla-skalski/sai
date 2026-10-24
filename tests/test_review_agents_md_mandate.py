@@ -1,4 +1,4 @@
-"""Keep the review-claude-md evaluator agent and its portable mandate in sync.
+"""Keep the review-agents-md evaluator agent and its portable mandate in sync.
 
 Run with: python3 -m unittest discover -s tests
 
@@ -11,10 +11,10 @@ import json
 import unittest
 from pathlib import Path
 
-PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins" / "review-claude-md"
+PLUGIN_DIR = Path(__file__).resolve().parent.parent / "plugins" / "review-agents-md"
 AGENT_FILE = PLUGIN_DIR / "agents" / "claude-md-evaluator.md"
 MANDATE_FILE = (
-    PLUGIN_DIR / "skills" / "review-claude-md" / "references" / "claude-md-evaluator.md"
+    PLUGIN_DIR / "skills" / "review-agents-md" / "references" / "claude-md-evaluator.md"
 )
 ROOT_MANIFEST = PLUGIN_DIR / "plugin.json"
 FRONTMATTER_FENCE = "---\n"
