@@ -1,6 +1,6 @@
 # Writing pass
 
-Apply to every title and body before showing anything. The goal is text a maintainer reads easily and an agent reads unambiguously. Humanizing helps human reviewers; it has no measured effect on agent success, so run it before the cold-read review, so the text the reviewer saw is the text that ships.
+Apply to every title and body before showing anything. The goal is text a maintainer reads easily and an agent reads unambiguously. Humanizing helps human reviewers; it has no measured effect on agent success. It runs after the cold-read review and keeps meaning unchanged, so the review findings still hold for the text that ships. If the pass touches an outcome, check or stop trigger beyond wording, treat the text as changed and re-run the self-check.
 
 ## Format rules
 

@@ -20,7 +20,7 @@ Codex note: if the sandbox blocks a `gh` call, request escalation with a short r
 
 ## Arguments
 
-Parse from the invocation arguments, or from the user's request when they are empty.
+Parse from the invocation arguments, given in the Arguments section of SKILL.md (or the user's request when that section holds none).
 
 | Flag | Default | Purpose |
 | :-- | :-- | :-- |
@@ -36,23 +36,26 @@ Parse from the invocation arguments, or from the user's request when they are em
 Pick the mode from what the user gave:
 
 - A description, pasted context or feature idea with no number: **create**.
-- An issue URL or number, or "fix", "tighten" or "make this agent-ready": **improve**.
+- An issue URL or number with "tighten", "improve" or "make this agent-ready": **improve**. A request to implement or fix the issue's code is not this skill's job; say so and stop.
 - "split", "break this down", or an issue that fails the split tells in [splitting-and-handoffs.md](splitting-and-handoffs.md): **split**.
 - `--brief`, or a request to brief, delegate to or instruct a subagent: **brief**.
 
 If it could be two modes, ask one short question.
 
-Then read the repository's own conventions once and reuse them:
+Resolve the target repository first. For an issue URL or `owner/repo#number`, the target is the repository in the reference. Use a local checkout whose `origin` matches it; if the current directory is another repository, find a matching checkout or stop and say that the code cannot be verified without one. Pass `--repo <owner>/<repo>` on every `gh` call below. For a description with no reference, the target is the current repository.
+
+Then read the target repository's own conventions once and reuse them:
 
 ```bash
 gh --version
-gh repo view --json nameWithOwner,defaultBranchRef,issueTemplates
+gh repo view <owner>/<repo> --json nameWithOwner,defaultBranchRef,issueTemplates
 git log --oneline -40
+ls .github/ISSUE_TEMPLATE
 ```
 
-Settle these before drafting:
+Run the `git` and `ls` commands in the matching checkout. Settle these before drafting:
 
-- **Templates and forms.** Read any issue template or form under `.github/ISSUE_TEMPLATE/` and its `config.yml`. Template handling is in [templates-and-forms.md](templates-and-forms.md); read it now if one exists.
+- **Templates and forms.** List `.github/ISSUE_TEMPLATE/` in the checkout; `issueTemplates` only reports markdown templates and returns an empty list for YAML issue forms. Read every template or form found, and `config.yml`. Template handling is in [templates-and-forms.md](templates-and-forms.md); read it now if any exists.
 - **Title convention.** Take types and scopes from recent commit and issue titles and any commitlint config. Squash merges often turn the title into the commit subject.
 - **Agent instruction files.** Read the root `AGENTS.md` or `CLAUDE.md` and any file they import. These already hold the repo-wide rules, so the issue must not repeat them (see [issue-rules.md](issue-rules.md), Constraints).
 - **Verification entry points.** Find the lint, test and build commands (`package.json` scripts, Makefile, contributing guide) so outcomes can name a real check.
@@ -87,6 +90,8 @@ Read the repository enough to scope and slice correctly. Then turn every fact yo
 
 Facts that stay unchecked go to the **Open items** list shown to the user. They do not go in the issue as facts.
 
+In brief mode, skip the duplicate search, the title convention and the template. Keep premise, anchors, commands and the other checks.
+
 ## Step 3: one issue or several
 
 If the work has more than one deliverable, or trips a split tell, read [splitting-and-handoffs.md](splitting-and-handoffs.md) and propose the slice set before writing any body. Splitting changes everything downstream, so resolve it first.
@@ -114,6 +119,8 @@ Show the user, in one message:
 
 Then wait for an explicit go-ahead. `--draft` stops here. `--file` proceeds after the checks pass.
 
+In brief mode nothing is filed and no go-ahead is needed: return the brief as the final reply, followed by Open items and the gate result. If the caller is another agent, the reply is the brief text only, with Open items last.
+
 To file:
 
 - Pass `--repo <owner>/<repo>` on every mutating call. Without it, a command runs against the repo in the current directory.
@@ -130,6 +137,8 @@ gh issue edit <number> --repo <owner>/<repo> --title "<title>" --body-file <scra
 
 Read numbers and URLs from the command output rather than assuming them. After a split, confirm the umbrella lists its sub-issues and that each blocking relationship landed. Remove the scratch directory.
 
+If a create call fails or times out mid-sequence, do not retry blindly. A timed-out call may still have created the issue. Search the target repository by exact title (`gh issue list --repo <owner>/<repo> --state all --search "<title> in:title"`), record the numbers created so far, then create only what is missing and attach strays with `gh issue edit <number> --repo <owner>/<repo> --parent <umbrella>`. Report the partial state to the user.
+
 ## Output
 
 - The issue text and Open items as above, then the created URLs.
@@ -139,6 +148,6 @@ Read numbers and URLs from the command output rather than assuming them. After a
 ## Hard stops
 
 - The premise is false or already fixed: report and stop.
-- The work already exists as an issue or PR: link it and stop.
+- The work already exists as an issue or PR: link it and stop. Does not apply in brief mode.
 - A required template field cannot be filled truthfully and the user is unreachable: draft only.
 - No `gh` or no auth: draft only.

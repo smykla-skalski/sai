@@ -114,7 +114,7 @@ State the signal the implementer should use, for example a final message that be
 
 ## Bug reports
 
-A bug keeps Problem and replaces Expected outcome with:
+A bug keeps Problem and replaces Expected outcome with the sections below. The rules for Expected outcome still apply inside Expected behavior: one named check per bullet, the empty, boundary and error states, and a line naming the suite that must stay green.
 
 - `## Reproduction`: an executable repro (a command, a script or a failing test) run from a clean, named state, with the output you observed. Numbered prose steps are a fallback when nothing executable exists.
 - `## Expected behavior`
@@ -173,7 +173,7 @@ A refresh token past its expiry is still exchanged for a new access token. A lea
 - An expired refresh token returns 401 with error code `token_expired`. Check: `go test ./internal/auth -run TestRefreshExpired`.
 - A valid refresh token still returns 200 with a new access token. Check: `go test ./internal/auth -run TestRefreshValid` stays green.
 - Existing session handling is preserved. Check: `make test-auth` stays green.
-- A token expiring exactly now is treated as expired.
+- A token expiring exactly now is treated as expired. Check: `go test ./internal/auth -run TestRefreshExpiredBoundary`.
 
 ## Constraints
 
