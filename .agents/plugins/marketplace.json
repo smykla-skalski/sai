@@ -137,10 +137,10 @@
       "category": "Developer Tools"
     },
     {
-      "name": "generate-claude-md",
+      "name": "generate-agents-md",
       "source": {
         "source": "local",
-        "path": "./plugins/generate-claude-md"
+        "path": "./plugins/generate-agents-md"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -149,10 +149,10 @@
       "category": "Developer Tools"
     },
     {
-      "name": "review-claude-md",
+      "name": "review-agents-md",
       "source": {
         "source": "local",
-        "path": "./plugins/review-claude-md"
+        "path": "./plugins/review-agents-md"
       },
       "policy": {
         "installation": "AVAILABLE",

@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: leads-with-the-point
+expected_outcome: |
+  The input is pasted text, so the rewrite goes to chat. Its first sentence
+  says the v3.2 rollout is blocked on DB-142. It keeps the missing index on
+  orders.created_at, Marta as owner and Thursday, and drops the preamble, the
+  "important step" conclusion, the promise to keep everyone updated (it says
+  neither when nor where) and the follow-up offer. It adds no facts,
+  opinions, feelings or typos.

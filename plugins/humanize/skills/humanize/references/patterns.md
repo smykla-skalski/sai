@@ -1,4 +1,10 @@
-# Contents
+# AI writing patterns
+
+Each pattern is an editing smell: it makes text vaguer, longer or less specific. None of them proves that a model wrote the text, because people write every one of them too. Never present a hit as evidence of AI authorship.
+
+A word or mark on a list is a hit only when it does that harm in context. "Key" in "API key", or one em dash where the author would naturally use one, is not a hit. Do not replace words or punctuation just because they appear on a list, and never fix a hit by adding typos or broken grammar.
+
+## Contents
 
 1. [Content patterns](#content-patterns)
    - [1. Significance inflation](#1-significance-inflation)
@@ -29,6 +35,13 @@
    - [22. Filler phrases](#22-filler-phrases)
    - [23. Excessive hedging](#23-excessive-hedging)
    - [24. Generic positive conclusions](#24-generic-positive-conclusions)
+6. [Structure patterns](#structure-patterns)
+   - [25. Buried point](#25-buried-point)
+   - [26. Over-completing](#26-over-completing)
+   - [27. Excessive balance](#27-excessive-balance)
+   - [28. Generic headings](#28-generic-headings)
+   - [29. Unsupported confidence](#29-unsupported-confidence)
+   - [30. Needless connectors](#30-needless-connectors)
 
 ---
 
@@ -66,7 +79,7 @@ AI chatbots tack present participle ("-ing") phrases onto sentences to add fake 
 
 ### 4. Promotional language
 
-**Words to watch:** boasts a, vibrant, rich (figurative), profound, enhancing its, showcasing, exemplifies, commitment to, natural beauty, nestled, in the heart of, groundbreaking (figurative), renowned, breathtaking, must-visit, stunning
+**Words to watch:** boasts a, vibrant, rich (figurative), profound, enhancing its, showcasing, exemplifies, commitment to, natural beauty, nestled, in the heart of, groundbreaking (figurative), renowned, breathtaking, must-visit, stunning, and adjective stacks such as "robust, seamless, scalable" or "cutting-edge"
 
 LLMs have serious problems keeping a neutral tone, especially for "cultural heritage" topics.
 
@@ -102,7 +115,7 @@ Many LLM-generated articles include formulaic "Challenges" sections.
 
 **High-frequency AI words:** Additionally, align with, crucial, delve, emphasizing, enduring, enhance, fostering, garner, highlight (verb), interplay, intricate/intricacies, key (adjective), landscape (abstract noun), pivotal, showcase, tapestry (abstract noun), testament, underscore (verb), valuable, vibrant
 
-These words appear far more frequently in post-2023 text. They often co-occur.
+These words appear far more frequently in post-2023 text. They often co-occur. Replace one only when a plainer or more specific word says the same thing. Keep it when it is the precise term.
 
 > **Before:** Additionally, a distinctive feature of Somali cuisine is the incorporation of camel meat. An enduring testament to Italian colonial influence is the widespread adoption of pasta in the local culinary landscape, showcasing how these dishes have integrated into the traditional diet.
 
@@ -144,7 +157,7 @@ AI has repetition-penalty code causing excessive synonym substitution for the sa
 
 ### 12. False ranges
 
-LLMs use "from X to Y" constructions where X and Y are not on a meaningful scale.
+LLMs use "from X to Y" constructions where X and Y are not on a meaningful scale. A real scale is not a false range: "from startups to Fortune 500 companies" (company size) or "from 1.8s to 0.9s" are fine.
 
 > **Before:** Our journey through the universe has taken us from the singularity of the Big Bang to the grand cosmic web, from the birth and death of stars to the enigmatic dance of dark matter.
 
@@ -156,7 +169,7 @@ LLMs use "from X to Y" constructions where X and Y are not on a meaningful scale
 
 ### 13. Em dash overuse
 
-LLMs use em dashes more than humans, mimicking "punchy" sales writing. Replace with commas, periods, or parentheses.
+LLMs use em dashes more than humans, mimicking "punchy" sales writing: several dashes in a short text, or a dash for a reveal ("X—not Y"). Replace the extra ones with commas, periods, colons, or parentheses. One dash where the author would naturally use one is fine. Do not strip every dash by rule. A style guide or user instruction that bans em dashes wins.
 
 > **Before:** The term is primarily promoted by Dutch institutions---not by the people themselves. You don't say "Netherlands, Europe" as an address---yet this mislabeling continues---even in official documents.
 
@@ -183,7 +196,7 @@ AI outputs lists where items start with bolded headers followed by colons. Colla
 
 ### 16. Title case in headings
 
-AI chatbots capitalize all main words in headings. Use sentence case instead.
+AI chatbots capitalize all main words in headings. Use sentence case instead, unless the project's style guide asks for title case.
 
 > **Before:** Strategic Negotiations And Global Partnerships
 
@@ -199,7 +212,7 @@ AI chatbots decorate headings or bullet points with emojis. Remove them.
 
 ### 18. Curly quotation marks
 
-ChatGPT uses curly quotes instead of straight quotes. Straighten them.
+ChatGPT carries curly quotes into Markdown, commit messages, code comments, and plain-text files, where the surrounding text uses straight quotes. Straighten them there. In typeset prose that uses curly quotes throughout, keep them.
 
 Curly: \u201c \u201d \u2018 \u2019. Straight: " " ' '.
 
@@ -213,9 +226,9 @@ Curly: \u201c \u201d \u2018 \u2019. Straight: " " ' '.
 
 ### 19. Chatbot correspondence artifacts
 
-**Words to watch:** I hope this helps, Of course!, Certainly!, You're absolutely right!, Would you like..., let me know, here is a...
+**Words to watch:** I hope this helps, Of course!, Certainly!, Sure!, You're absolutely right!, Would you like..., let me know, here is a..., below is a...
 
-Text meant as chatbot correspondence gets pasted as content. Strip these entirely.
+Text meant as chatbot correspondence gets pasted as content: openers that echo the request, and follow-up offers at the end. Strip these entirely.
 
 > **Before:** Here is an overview of the French Revolution. I hope this helps! Let me know if you'd like me to expand on any section.
 
@@ -255,6 +268,12 @@ Common substitutions:
 | In the event that | If |
 | has the ability to | can |
 | It is important to note that X | X |
+| It is worth noting that X | X |
+| When it comes to X, ... | Start with X |
+| In today's fast-paced world, ... | Cut it |
+| utilize, leverage | use |
+| facilitate | help |
+| perform an evaluation of | evaluate |
 
 ### 23. Excessive hedging
 
@@ -266,16 +285,80 @@ Over-qualifying statements. Reduce to one hedge maximum per claim.
 
 ### 24. Generic positive conclusions
 
-Vague upbeat endings. Replace with specifics or cut entirely.
+**Words to watch:** In summary, In conclusion, Overall, this marks, The future looks bright, Exciting times ahead, We'll keep you posted, We'll keep everyone updated, Stay tuned
 
-> **Before:** The future looks bright for the company. Exciting times lie ahead as they continue their journey toward excellence. This represents a major step in the right direction.
+Vague upbeat endings, a recap that repeats what the text already said, or a promise of updates that says neither when nor where. Replace with specifics from the source or cut entirely. A closing line with real information stays ("Next update at 15:00 in #releases"). End after the last fact the reader needs.
+
+> **Before:** The company plans to open two more locations next year. The future looks bright for the company. Exciting times lie ahead as they continue their journey toward excellence.
 
 > **After:** The company plans to open two more locations next year.
 
 ---
 
+## Structure patterns
+
+### 25. Buried point
+
+**Words to watch:** Following our recent discussions, After careful consideration, As you may know, I wanted to reach out
+
+The decision, request, result, or blocker comes after a preamble or at the very end. Readers should not dig for it. Move it to the first sentence.
+
+> **Before:** Following our recent discussions about the release process, the team has looked into several aspects of the pipeline. After careful consideration, the v3.2 rollout is blocked until DB-142 is fixed.
+
+> **After:** The v3.2 rollout is blocked until DB-142 is fixed.
+
+### 26. Over-completing
+
+A short answer grows a summary, implications, recommendations, and a recap that nobody asked for. Stop when the reader can act.
+
+> **Before:** The fix is in 2.8.1. In summary, this update resolves the issue. Going forward, it is recommended to keep dependencies current. Overall, this represents an important improvement in stability.
+
+> **After:** The fix is in 2.8.1.
+
+### 27. Excessive balance
+
+**Words to watch:** There are advantages and disadvantages, Both approaches have merit, Each has its own strengths, It depends on your needs
+
+Automatic, symmetrical pros and cons or caveats that do not change the decision. Keep a trade-off only when it changes what the reader should do, and never drop one the author meant to raise.
+
+> **Before:** There are advantages and disadvantages to both Redis and Postgres for locking. Each has its own strengths, and the right choice depends on your needs. We need locks across processes, so we chose Redis.
+
+> **After:** We chose Redis because we need locks across processes.
+
+### 28. Generic headings
+
+**Words to watch:** Overview, Introduction, Key Considerations, Key Takeaways, Summary, Conclusion (on short text)
+
+Headings that stand in for substance: a scaffold on a few lines of text, or the same sections on every document. Keep a heading only when it helps the reader find something.
+
+> **Before:** An "Overview" heading over one sentence, a "Key Considerations" heading over one sentence, and a "Conclusion" heading over a sentence that repeats the first.
+
+> **After:** Two sentences, no headings: "The cache now expires after 5 minutes. Restarts drop old entries."
+
+### 29. Unsupported confidence
+
+**Words to watch:** should provide a robust solution, ensures, guarantees, significantly improves, without any issues
+
+Smooth, confident claims that hide missing evidence. Keep the claim with the evidence the source gives, or cut it. Never invent a number or a test result. If an important claim has no support in the source, keep it with one hedge and flag it in the report so the author can add the evidence.
+
+> **Before:** This change should provide a robust solution and significantly improve performance. Load tests show p95 latency dropping from 180 to 122 ms.
+
+> **After:** This change cuts p95 latency from 180 to 122 ms in load tests.
+
+### 30. Needless connectors
+
+**Words to watch:** Additionally, Furthermore, Moreover, Notably, Importantly, That said, However (when nothing contrasts)
+
+Transitions added where the order of the sentences already shows the relation. Delete them. Keep a connector that carries a contrast or a cause the reader would otherwise miss.
+
+> **Before:** The deploy finished. Additionally, the error rate is flat. Furthermore, no rollbacks were needed.
+
+> **After:** The deploy finished. The error rate is flat, and no rollbacks were needed.
+
+---
+
 ## Source
 
-These patterns come from [Wikipedia:Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup. The patterns were identified from observations of thousands of instances of AI-generated text.
+Patterns 1-24 come from [Wikipedia:Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup, which identified them from thousands of instances of AI-generated text. Patterns 25-30 cover habits of AI agents that answer or edit, drawn from the Google and Microsoft technical-writing guides and published comparisons of human and model text such as HC3. All of them are tendencies across many texts, not signatures of one.
 
 Core principle: "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases."

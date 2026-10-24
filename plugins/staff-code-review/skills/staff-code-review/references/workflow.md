@@ -371,7 +371,7 @@ REVIEW TEXT:
 
 RULES:
 1. Read both reference files in full before starting.
-2. Rewrite ONLY the prose message text in comment lines. Apply fixes for all 24 AI writing patterns from the catalog regardless of severity.
+2. Rewrite ONLY the prose message text in comment lines. Apply fixes for every AI writing pattern in the catalog regardless of severity.
 3. Apply Strunk & White composition principles: active voice, concrete language, omit needless words, vary sentence structure, emphatic words at end of sentences.
 4. NEVER modify these structural elements — they are parsed by downstream scripts:
    - Label prefixes: **blocking:**, **issue:**, **question:**, **suggestion:**, **thought:**, **nit:**, **praise:**

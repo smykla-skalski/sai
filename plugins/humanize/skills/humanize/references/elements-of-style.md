@@ -1,28 +1,39 @@
 # Composition principles
 
-Distilled from William Strunk Jr.'s "The Elements of Style" (1918). Apply these during the rewrite phase after removing AI patterns. They address how to write well, not just how to avoid writing badly.
+Distilled from William Strunk Jr.'s "The Elements of Style" (1918) and current technical-writing guidance from Google and Microsoft. Apply these during the rewrite phase after removing AI patterns. They address how to write well, not just how to avoid writing badly. The target in one line: answer first, use concrete words, include only useful context, match the audience, stop.
 
 ## Contents
 
-1. [Use the active voice](#use-the-active-voice)
-2. [Put statements in positive form](#put-statements-in-positive-form)
-3. [Use concrete language](#use-concrete-language)
-4. [Omit needless words](#omit-needless-words)
-5. [Vary sentence structure](#vary-sentence-structure)
-6. [Keep related words together](#keep-related-words-together)
-7. [Place emphasis at the end](#place-emphasis-at-the-end)
-8. [One paragraph, one topic](#one-paragraph-one-topic)
-9. [Needless expressions](#needless-expressions)
+1. [Lead with the point](#lead-with-the-point)
+2. [Use the active voice](#use-the-active-voice)
+3. [Put statements in positive form](#put-statements-in-positive-form)
+4. [Use concrete language](#use-concrete-language)
+5. [Use plain words, keep needed jargon](#use-plain-words-keep-needed-jargon)
+6. [Omit needless words](#omit-needless-words)
+7. [One main idea per sentence](#one-main-idea-per-sentence)
+8. [Vary sentence structure](#vary-sentence-structure)
+9. [Keep related words together](#keep-related-words-together)
+10. [Place emphasis at the end](#place-emphasis-at-the-end)
+11. [One paragraph, one topic](#one-paragraph-one-topic)
+12. [Needless expressions](#needless-expressions)
 
 ---
+
+## Lead with the point
+
+The first sentence answers the reader's question: what happened, what they must do, or what was decided. Context and evidence follow. When the source buries the point, move it up, using only the source's own facts.
+
+> **Before:** Following our recent discussions, we have made several updates to the API. As part of this work, v1 will shut down on 15 November.
+>
+> **After:** API v1 shuts down on 15 November.
 
 ## Use the active voice
 
 The active voice is more direct and vigorous than the passive. AI text defaults to passive constructions that weaken the writing.
 
-> **Before:** A survey of this region was made in 1900.
+> **Before:** The deploy was approved by Marta after the review was completed.
 >
-> **After:** This region was surveyed in 1900.
+> **After:** Marta approved the deploy after the review.
 
 > **Before:** There were a great number of dead leaves lying on the ground.
 >
@@ -63,11 +74,23 @@ Prefer the specific to the general, the definite to the vague, the concrete to t
 | A period of unfavorable weather set in | It rained every day for a week |
 | He showed satisfaction as he took possession of his well-earned reward | He grinned as he pocketed the coin |
 
-The surest way to hold the reader's attention is being specific. When dealing with general principles, give particular instances.
+The surest way to hold the reader's attention is being specific. When dealing with general principles, give particular instances. The instances must come from the source: concrete language never means inventing a number, a name, or a result.
+
+> **Before:** Additionally, this groundbreaking framework serves as a testament to the team's commitment to fostering innovation, showcasing how modern tools can enhance developer productivity in today's rapidly evolving landscape.
+>
+> **After:** The team built this framework to help developers get more done.
+
+The source names no concrete gains, so the rewrite invents none. Adding "cuts build time by 40%" would read better and be false.
+
+## Use plain words, keep needed jargon
+
+Prefer the shortest familiar word that stays precise: "use" over "utilize", "help" over "facilitate", "benchmark" over "perform an evaluation of". Simple words read faster for everyone, including readers working in a second language.
+
+Keep a technical term when the audience would use it. "Redis" beats "a data storage intermediary", and "p95 latency" beats "how slow the slower requests are". Precision wins over artificial simplicity.
 
 ## Omit needless words
 
-A sentence should contain no unnecessary words, a paragraph no unnecessary sentences. This does not mean making all sentences short or avoiding detail - it means making every word tell.
+A sentence should contain no unnecessary words, a paragraph no unnecessary sentences. This does not mean making all sentences short or avoiding detail - it means making every word tell. Concision is less text, not less information: remove a word, and restore it only if the meaning changes.
 
 | Wordy | Concise |
 | :-- | :-- |
@@ -96,11 +119,19 @@ Revise "the fact that" out of every sentence:
 | His brother, who is a member of the same firm | His brother, a member of the same firm |
 | Trafalgar, which was Nelson's last battle | Trafalgar, Nelson's last battle |
 
-Combine choppy step-by-step sentences into one:
+Combine choppy step-by-step sentences when the relationship between them matters, as cause and sequence do here:
 
 > **Before (51 words):** Macbeth was very ambitious. This led him to wish to become king of Scotland. The witches told him that this wish of his would come true. The king of Scotland at this time was Duncan. Encouraged by his wife, Macbeth murdered Duncan. He was thus enabled to succeed Duncan as king.
 >
 > **After (26 words):** Encouraged by his wife, Macbeth achieved his ambition and realized the prediction of the witches by murdering Duncan and becoming king of Scotland in his place.
+
+## One main idea per sentence
+
+A sentence that strings independent clauses together with "and" is hard to scan. Split it, and combine clauses only when the link between them matters.
+
+> **Before:** We deployed v4, and the metrics look good, and the old worker is still available, and we will keep monitoring.
+>
+> **After:** v4 is live. Metrics look good. The old worker stays available while we monitor.
 
 ## Vary sentence structure
 
@@ -110,7 +141,7 @@ Avoid a succession of loose sentences with two co-ordinate clauses joined by a c
 
 Every sentence follows the same "X happened, and Y happened" pattern. Recast some as simple sentences, some as periodic sentences, some with semicolons. The variety should reflect the actual relationships between ideas, not a mechanical template.
 
-AI text produces this kind of structural monotony frequently. Breaking the pattern is one of the strongest signals of human writing.
+AI text produces this kind of structural monotony frequently, and it tires the reader. Vary structure because the ideas differ, not to hit a length target or to look human.
 
 ## Keep related words together
 
@@ -145,7 +176,7 @@ The end of a sentence is its most prominent position. Put the word or phrase you
 
 The beginning of a sentence is the second most prominent position. Any element other than the subject becomes emphatic when placed first.
 
-This principle applies equally to sentences within a paragraph and paragraphs within a composition. End paragraphs with your strongest point, not a trailing detail.
+This principle applies equally to sentences within a paragraph and paragraphs within a composition. End paragraphs with your strongest point, not a trailing detail. It does not move the main point of a message to the end: the first sentence still states it (see [Lead with the point](#lead-with-the-point)), and the text stops after the last fact the reader needs.
 
 ## One paragraph, one topic
 
@@ -176,4 +207,4 @@ Words and phrases that add nothing. Replace or remove.
 
 ## Source
 
-Strunk, William Jr. "The Elements of Style." 1918. Adapted from [obra/the-elements-of-style](https://github.com/obra/the-elements-of-style) skill reference.
+Strunk, William Jr. "The Elements of Style." 1918. Adapted from [obra/the-elements-of-style](https://github.com/obra/the-elements-of-style) skill reference. "Lead with the point", "Use plain words, keep needed jargon" and "One main idea per sentence" follow the [Google](https://developers.google.com/tech-writing) and [Microsoft](https://learn.microsoft.com/style-guide/welcome/) technical-writing guides.

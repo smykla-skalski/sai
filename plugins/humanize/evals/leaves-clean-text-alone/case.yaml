@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: leaves-clean-text-alone
+expected_outcome: |
+  setup.md is short, plain and specific, written with contractions and one
+  natural em dash. It has no AI writing patterns. The skill reports that it
+  found none and leaves the file as it is: one em dash is not overuse, and
+  contractions are the author's voice. The reply says so in a sentence or two
+  and stops, with no list of what it checked and no follow-up offer.
+context:
+  scaffold_script: place-files.sh

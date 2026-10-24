@@ -1,7 +1,7 @@
 {
   "name": "git-clean-gone",
   "description": "Clean up local branches with deleted remote tracking and their worktrees",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": {
     "name": "Smykla Skalski Labs"
   },

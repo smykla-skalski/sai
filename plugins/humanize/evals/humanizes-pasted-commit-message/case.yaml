@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: humanizes-pasted-commit-message
+expected_outcome: |
+  The input is raw text, so the skill prints the rewritten commit message in
+  chat and writes no file. The rewrite keeps the pool.Acquire() race fix, the
+  30s pool.Release() timeout and "Fixes #482", and drops the em dash, the AI
+  vocabulary and "I hope this helps".

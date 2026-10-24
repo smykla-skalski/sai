@@ -151,9 +151,9 @@
       "tags": ["refactoring", "code-review", "personas", "code-smells", "technical-debt", "legacy-code"]
     },
     {
-      "name": "generate-claude-md",
-      "source": "./plugins/generate-claude-md",
-      "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis; built to pass review-claude-md",
+      "name": "generate-agents-md",
+      "source": "./plugins/generate-agents-md",
+      "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis; built to pass review-agents-md",
       "author": {
         "name": "Smykla Skalski Labs"
       },
@@ -162,8 +162,8 @@
       "tags": ["claude-md", "generate", "scaffold", "best-practices"]
     },
     {
-      "name": "review-claude-md",
-      "source": "./plugins/review-claude-md",
+      "name": "review-agents-md",
+      "source": "./plugins/review-agents-md",
       "description": "Audit and fix CLAUDE.md files using tiered binary checklist",
       "author": {
         "name": "Smykla Skalski Labs"

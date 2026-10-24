@@ -26,12 +26,12 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 
 - Run phases in order; never skip gates.
 - Read this entry once and each phase reference before its phase; checkpoint rules. Do not reread a reference on phase transitions; resume loads missing guidance only.
-- On missing/changed capability or fallback, read [capabilities.md](references/capabilities.md) and [capabilities.json](references/capabilities.json), then rerun preflight.
+- On missing/changed capability or fallback, read [references/capabilities.md](references/capabilities.md) and [references/capabilities.json](references/capabilities.json), then rerun preflight.
 - Read [roles.md](references/roles.md) and [roles.json](references/roles.json) only for unresolved aliases or overrides. Give each gate its mandate by path or inline exactly once in fresh context.
 - Use capacity before waiting; follow [orchestration.md](references/orchestration.md) for workers/gates.
 - Before dispatch, read [worker-events](references/worker-events.md) for every worker/waiter.
 - Update checkpoints through the helper. Read [references/checkpoint.md](references/checkpoint.md) for migration/recovery/validation errors. Claims/evidence default off; read [references/claims.md](references/claims.md)/[references/evidence.md](references/evidence.md) when enabled. Telemetry defaults on; read [telemetry.md](references/telemetry.md) after policy resolution unless disabled by repository policy.
-- Keep routine guidance under 12k input tokens: bootstrap, selected phases, [risk-policy](references/risk-policy.json), [release-policy](references/release-policy.json), [convergence-policy](references/convergence-policy.json). After compaction, read only the checkpoint and current phase reference.
+- Keep routine guidance under 12k input tokens: bootstrap, selected phases, [risk-policy](references/risk-policy.json), [release-policy](references/release-policy.json), [references/convergence-policy.json](references/convergence-policy.json). After compaction, read only the checkpoint and current phase reference.
 - Read [references/risk.md](references/risk.md) or [references/release.md](references/release.md) for small-code selection, overrides or phase triggers; read [references/convergence.md](references/convergence.md) only after failure, recovery or exhaustive opt-in. Checkpoint gates, release policy and budget before validation.
 - Before validation or integration read [validation-reuse.md](references/validation-reuse.md). Reuse only verified results with current-head provenance.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
