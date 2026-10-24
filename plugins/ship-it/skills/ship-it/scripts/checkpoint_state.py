@@ -124,7 +124,9 @@ def parse_json(text: str, option: str) -> object:
 def parse_object(text: str, option: str) -> dict[str, Any]:
     """Parse a JSON object option."""
     value = parse_json(text, option)
-    require(isinstance(value, dict), f"{option} must contain an object")
+    if not isinstance(value, dict):
+        message = f"{option} must contain an object"
+        raise StateError(message)
     return value
 
 
@@ -349,7 +351,9 @@ def add_grant(checkpoint: dict[str, Any], grant: dict[str, Any]) -> dict[str, An
         f"grant ID already recorded: {identity}",
     )
     source = grant.get("source")
-    require(isinstance(source, dict), "grant source must be an object")
+    if not isinstance(source, dict):
+        message = "grant source must be an object"
+        raise StateError(message)
     non_empty(source.get("message"), "grant source message")
     scope = grant.get("scope")
     require(
@@ -364,7 +368,9 @@ def add_grant(checkpoint: dict[str, Any], grant: dict[str, Any]) -> dict[str, An
 
 def recovery_attempt(attempt: object) -> dict[str, Any]:
     """Validate one recovery attempt and stamp the time it was recorded."""
-    require(isinstance(attempt, dict), "recovery attempt must be an object")
+    if not isinstance(attempt, dict):
+        message = "recovery attempt must be an object"
+        raise StateError(message)
     require(
         set(attempt) == {"result", "revision", "summary"},
         "recovery attempt requires exactly: result, revision, summary",
@@ -474,10 +480,9 @@ def unique_strings(values: object, field: str, *, allow_empty: bool) -> None:
 
 def validate_release_merge(merge: object) -> None:
     """Validate the normalized merge mechanism."""
-    require(
-        isinstance(merge, dict) and set(merge) == RELEASE_MERGE_FIELDS,
-        "releasePolicy merge requires exactly method, strategy and botComment",
-    )
+    if not (isinstance(merge, dict) and set(merge) == RELEASE_MERGE_FIELDS):
+        message = "releasePolicy merge requires exactly method, strategy and botComment"
+        raise StateError(message)
     require(
         one_of(merge["method"], RELEASE_METHODS),
         "releasePolicy merge method is invalid",

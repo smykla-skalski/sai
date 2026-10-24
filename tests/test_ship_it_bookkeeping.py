@@ -14,12 +14,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "plugins/ship-it/skills/ship-it/scripts/bookkeeping.py"
 
 
-def checkpoint_document() -> dict[str, object]:
+def checkpoint_document() -> dict[str, Any]:
     canonical_source = '{"issue":198,"repository":"github.com/smykla-skalski/sai","sourceType":"github"}'
     checkpoint_id = hashlib.sha256(canonical_source.encode()).hexdigest()
     return {
@@ -496,7 +497,7 @@ class BookkeepingTest(unittest.TestCase):
             self.assertEqual(updated["authorization"], {"grants": []})
 
     def test_invalid_authority_leaves_original_checkpoint_unchanged(self) -> None:
-        cases = (
+        cases: tuple[tuple[str, dict[str, Any] | None], ...] = (
             ("null record", None),
             ("missing grants", {}),
             (

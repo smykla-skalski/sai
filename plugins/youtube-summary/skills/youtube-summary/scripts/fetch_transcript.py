@@ -29,7 +29,7 @@ import re
 import sys
 import urllib.parse
 from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 from xml.etree.ElementTree import ParseError
 
 import requests
@@ -45,6 +45,9 @@ from youtube_transcript_api import (
     VideoUnplayable,
     YouTubeTranscriptApi,
 )
+
+if TYPE_CHECKING:
+    from youtube_transcript_api import Transcript
 
 SAVE_DIR_ENV: Final[str] = "YOUTUBE_SUMMARY_DIR"
 NOTE_PREFIX: Final[str] = "YouTube - "
@@ -286,7 +289,9 @@ def fetch_snippets(video_id: str) -> tuple[Any, list[Any]]:
     """Return the fetched transcript and its non-empty snippets."""
     transcript_list = YouTubeTranscriptApi().list(video_id)
     try:
-        transcript = transcript_list.find_transcript(PREFERRED_LANGUAGES)
+        transcript: Transcript | None = transcript_list.find_transcript(
+            PREFERRED_LANGUAGES,
+        )
     except NoTranscriptFound:
         transcript = next(iter(transcript_list), None)
     if transcript is None:

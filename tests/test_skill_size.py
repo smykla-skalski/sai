@@ -1,13 +1,14 @@
-"""Keep portable skill prompts within Codex's 8,000-byte limit."""
+"""Keep portable skill prompts within Codex's 8,000-byte limit.
 
-from pathlib import Path
+Copyright 2026 Smykla Skalski, MIT License.
+"""
+
 import unittest
-
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MAX_SKILL_BYTES = 8_000
-OVERSIZED_SKILL_ALLOWLIST = {
-}
+OVERSIZED_SKILL_ALLOWLIST: set[str] = set()
 
 
 class SkillSizeTest(unittest.TestCase):

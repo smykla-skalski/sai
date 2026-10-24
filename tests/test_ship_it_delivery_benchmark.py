@@ -1,9 +1,15 @@
+"""Behavior tests for the ship-it delivery benchmark validator.
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
+
 from __future__ import annotations
 
 import importlib.util
 import json
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (
@@ -16,15 +22,11 @@ SCRIPT = (
     / "delivery_benchmark.py"
 )
 CASES = (
-    ROOT
-    / "plugins"
-    / "ship-it"
-    / "benchmarks"
-    / "delivery-performance"
-    / "cases.json"
+    ROOT / "plugins" / "ship-it" / "benchmarks" / "delivery-performance" / "cases.json"
 )
 SPEC = importlib.util.spec_from_file_location("delivery_benchmark", SCRIPT)
-assert SPEC is not None and SPEC.loader is not None
+assert SPEC is not None
+assert SPEC.loader is not None
 delivery_benchmark = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(delivery_benchmark)
 
@@ -39,7 +41,7 @@ def sample_result(
     approval_requests: int = 0,
     approval_waits: int = 0,
     duplicates: int = 0,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     return {
         "outcome": outcome,
         "required_gates": ["ci"],
@@ -116,7 +118,9 @@ class DeliveryBenchmarkTests(unittest.TestCase):
             ["required_delivery_blocker_present: expected True, got False"],
         )
 
-    def test_candidate_rejects_new_approval_action_after_recorded_approval(self) -> None:
+    def test_candidate_rejects_new_approval_action_after_recorded_approval(
+        self,
+    ) -> None:
         case = self.cases[1]
         result = sample_result(approval_requests=1, approval_waits=1)
 
@@ -145,15 +149,11 @@ class DeliveryBenchmarkTests(unittest.TestCase):
                 result = sample_result()
                 result["gate_executions"] = gate_executions
 
-                failures = delivery_benchmark.validate_result(
-                    case, result, "candidate"
-                )
+                failures = delivery_benchmark.validate_result(case, result, "candidate")
 
                 self.assertEqual(
                     failures,
-                    [
-                        "derived duplicate gate executions: expected at most 0, got 1"
-                    ],
+                    ["derived duplicate gate executions: expected at most 0, got 1"],
                 )
 
     def test_native_failure_requires_explicit_untested_criterion(self) -> None:

@@ -7,14 +7,18 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
-import json
 import itertools
+import json
 import unittest
 from pathlib import Path
 from typing import Any, Final
 
 SKILL_DIR: Final[Path] = (
-    Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
+    Path(__file__).resolve().parent.parent
+    / "plugins"
+    / "ship-it"
+    / "skills"
+    / "ship-it"
 )
 CONTRACT_FILE: Final[Path] = SKILL_DIR / "references" / "capabilities.json"
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
@@ -59,9 +63,7 @@ class ShipItCapabilityContractTest(unittest.TestCase):
         )
 
     def test_contract_has_stable_profiles_and_phase_order(self) -> None:
-        self.assertEqual(
-            self.contract["schema_version"], "sai.ship-it.capabilities/v1"
-        )
+        self.assertEqual(self.contract["schema_version"], "sai.ship-it.capabilities/v1")
         self.assertEqual(set(self.contract["profiles"]), EXPECTED_PROFILES)
         self.assertEqual(
             tuple(phase["id"] for phase in self.contract["phases"]),
@@ -94,7 +96,9 @@ class ShipItCapabilityContractTest(unittest.TestCase):
                 selected_profile = next(iter(matching_overrides), phase["profile"])
                 allowed = set(profiles[selected_profile]["allows"])
                 for requirement in phase["requirements"]:
-                    if "when" in requirement and not matches(requirement["when"], facts):
+                    if "when" in requirement and not matches(
+                        requirement["when"], facts
+                    ):
                         continue
                     declared = set(requirement.get("all_of", ())) | set(
                         requirement.get("any_of", ())
@@ -157,8 +161,7 @@ class ShipItCapabilityContractTest(unittest.TestCase):
         test_conditional = {
             capability
             for requirement in phases["test"]["requirements"]
-            if requirement.get("when")
-            == {"fact": "test_gate_required", "equals": True}
+            if requirement.get("when") == {"fact": "test_gate_required", "equals": True}
             for capability in requirement.get("all_of", ())
         }
         self.assertIn("filesystem.transient-write", test_conditional)

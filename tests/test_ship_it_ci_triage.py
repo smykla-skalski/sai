@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any, Final
 
 SKILL_DIR: Final[Path] = (
-    Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
+    Path(__file__).resolve().parent.parent
+    / "plugins"
+    / "ship-it"
+    / "skills"
+    / "ship-it"
 )
 TRIAGE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "ci-triage.md"
 TRIAGE_SCHEMA: Final[Path] = SKILL_DIR / "references" / "ci-triage.schema.json"
@@ -20,19 +24,17 @@ EVIDENCE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "evidence.md"
 PR_LOOP_REFERENCE: Final[Path] = SKILL_DIR / "references" / "pr-loop.md"
 TELEMETRY_REFERENCE: Final[Path] = SKILL_DIR / "references" / "telemetry.md"
 TELEMETRY_SCHEMA: Final[Path] = SKILL_DIR / "references" / "telemetry.schema.json"
-TELEMETRY_V2_SCHEMA: Final[Path] = (
-    SKILL_DIR / "references" / "telemetry-v2.schema.json"
-)
-TELEMETRY_V1_SCHEMA: Final[Path] = (
-    SKILL_DIR / "references" / "telemetry-v1.schema.json"
-)
+TELEMETRY_V2_SCHEMA: Final[Path] = SKILL_DIR / "references" / "telemetry-v2.schema.json"
+TELEMETRY_V1_SCHEMA: Final[Path] = SKILL_DIR / "references" / "telemetry-v1.schema.json"
 RISK_REFERENCE: Final[Path] = SKILL_DIR / "references" / "risk.md"
 
 
 class ShipItCiTriageContractTest(unittest.TestCase):
     def setUp(self) -> None:
         self.guidance = TRIAGE_REFERENCE.read_text(encoding="utf-8")
-        self.schema: dict[str, Any] = json.loads(TRIAGE_SCHEMA.read_text(encoding="utf-8"))
+        self.schema: dict[str, Any] = json.loads(
+            TRIAGE_SCHEMA.read_text(encoding="utf-8")
+        )
 
     def test_failure_identity_is_exact_and_deduplicated_before_logs(self) -> None:
         required_key = set(self.schema["properties"]["key"]["required"])
@@ -63,9 +65,7 @@ class ShipItCiTriageContractTest(unittest.TestCase):
             set(self.schema["properties"]["classification"]["enum"]),
             {"code", "flaky", "infrastructure", "unknown"},
         )
-        self.assertEqual(
-            self.schema["properties"]["supportingEvidence"]["minItems"], 1
-        )
+        self.assertEqual(self.schema["properties"]["supportingEvidence"]["minItems"], 1)
         self.assertIn("owner-only temporary file", self.guidance)
         self.assertIn("Do not send an entire workflow or job log", self.guidance)
 
@@ -82,9 +82,7 @@ class ShipItCiTriageContractTest(unittest.TestCase):
             condition["if"]["properties"]["classification"]["const"], "code"
         )
         self.assertEqual(
-            condition["then"]["properties"]["failedAcceptanceEvidence"][
-                "minItems"
-            ],
+            condition["then"]["properties"]["failedAcceptanceEvidence"]["minItems"],
             1,
         )
 
@@ -99,7 +97,9 @@ class ShipItCiTriageContractTest(unittest.TestCase):
         self.assertIn("rerunsUsed", self.schema["required"])
         self.assertIn("rerunRequest", self.schema["required"])
         self.assertIn("maximum value across the group", self.guidance)
-        self.assertIn("prevents each new attempt from resetting the limit", self.guidance)
+        self.assertIn(
+            "prevents each new attempt from resetting the limit", self.guidance
+        )
         self.assertIn("Before invoking the provider", self.guidance)
         self.assertIn("Do not send another request while it is non-null", self.guidance)
         risk = RISK_REFERENCE.read_text(encoding="utf-8")

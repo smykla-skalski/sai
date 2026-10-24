@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Quick xDS health check for any Envoy-based service mesh proxy.
+"""Quick xDS health check for any Envoy-based service mesh proxy.
 
 Checks in order:
   1. Control plane connection (connected_state)
@@ -21,7 +20,11 @@ Usage:
 Exit codes:
     0  all checks passed
     1  one or more checks failed
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
+
+from __future__ import annotations
 
 import argparse
 import contextlib
@@ -30,10 +33,10 @@ import re
 import shutil
 import subprocess
 import sys
+from typing import Final
 
-
-_KUBECTL: str = shutil.which("kubectl") or "kubectl"
-_K8S_NAME_RE: re.Pattern[str] = re.compile(r"^[a-z0-9][a-z0-9._-]{0,251}$")
+_KUBECTL: Final[str] = shutil.which("kubectl") or "kubectl"
+_K8S_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9][a-z0-9._-]{0,251}$")
 
 
 def _validate_k8s_name(value: str, label: str) -> None:
@@ -42,39 +45,55 @@ def _validate_k8s_name(value: str, label: str) -> None:
         sys.exit(f"Invalid {label} {value!r}: must match [a-z0-9][a-z0-9._-]{{0,251}}")
 
 
-RESET = "\033[0m"
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-BOLD = "\033[1m"
+RESET: Final[str] = "\033[0m"
+GREEN: Final[str] = "\033[32m"
+RED: Final[str] = "\033[31m"
+YELLOW: Final[str] = "\033[33m"
+BOLD: Final[str] = "\033[1m"
 
 
 def ok(msg: str) -> None:
+    """Print msg as a passed check."""
     print(f"  {GREEN}✓{RESET} {msg}")
 
 
 def fail(msg: str) -> None:
+    """Print msg as a failed check."""
     print(f"  {RED}✗{RESET} {msg}")
 
 
 def warn(msg: str) -> None:
+    """Print msg as a warning."""
     print(f"  {YELLOW}!{RESET} {msg}")
 
 
-def kubectl_exec(pod: str, namespace: str, container: str, *cmd: str) -> tuple[int, str]:
+def kubectl_exec(
+    pod: str,
+    namespace: str,
+    container: str,
+    *cmd: str,
+) -> tuple[int, str]:
+    """Run cmd in the pod container; return (exit code, stdout)."""
     _validate_k8s_name(pod, "pod")
     _validate_k8s_name(namespace, "namespace")
     _validate_k8s_name(container, "container")
     result = subprocess.run(
         [_KUBECTL, "exec", pod, "-n", namespace, "-c", container, "--", *cmd],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     return result.returncode, result.stdout
 
 
 def fetch_stats(
-    pod: str, ns: str, container: str, admin_port: int, filter_str: str = ""
+    pod: str,
+    ns: str,
+    container: str,
+    admin_port: int,
+    filter_str: str = "",
 ) -> dict[str, float]:
+    """Return numeric used stats, filtered when filter_str is set, or {} on failure."""
     url = f"localhost:{admin_port}/stats?usedonly"
     if filter_str:
         url += f"&filter={filter_str}"
@@ -90,9 +109,8 @@ def fetch_stats(
     return stats
 
 
-def fetch_json(
-    pod: str, ns: str, container: str, url: str
-) -> dict | list | None:
+def fetch_json(pod: str, ns: str, container: str, url: str) -> dict | list | None:
+    """Return the parsed JSON body of an admin URL, or None on any failure."""
     rc, stdout = kubectl_exec(pod, ns, container, "wget", "-qO-", url)
     if rc != 0:
         return None
@@ -102,9 +120,8 @@ def fetch_json(
         return None
 
 
-def check_cp_connection(
-    pod: str, ns: str, container: str, admin_port: int
-) -> bool:
+def check_cp_connection(pod: str, ns: str, container: str, admin_port: int) -> bool:
+    """Return True only when control_plane.connected_state is 1."""
     stats = fetch_stats(pod, ns, container, admin_port, "control_plane")
     connected = stats.get("control_plane.connected_state", -1)
     pending = stats.get("control_plane.pending_requests", 0)
@@ -112,15 +129,18 @@ def check_cp_connection(
     if connected == 1:
         ok(f"Control plane connected (pending_requests={int(pending)})")
         return True
-    elif connected == 0:
+    if connected == 0:
         fail("Control plane DISCONNECTED (connected_state=0)")
         return False
-    else:
-        warn(f"Could not read control_plane.connected_state — is port {admin_port} accessible?")
-        return False
+    warn(
+        "Could not read control_plane.connected_state"
+        f" — is port {admin_port} accessible?",
+    )
+    return False
 
 
 def check_nacks(pod: str, ns: str, container: str, admin_port: int) -> bool:
+    """Return True when no update_rejected counter is above zero."""
     stats = fetch_stats(pod, ns, container, admin_port, "update_rejected")
     rejected = {k: int(v) for k, v in stats.items() if v > 0}
     if not rejected:
@@ -128,12 +148,15 @@ def check_nacks(pod: str, ns: str, container: str, admin_port: int) -> bool:
         return True
     for k, v in rejected.items():
         fail(f"NACK: {k} = {v}  (config rejected by Envoy)")
-    print(f"    Tip: enable config logging → kubectl exec ... -- wget -qO- --post-data='' "
-          f"'localhost:{admin_port}/logging?config=debug'")
+    print(
+        "    Tip: enable config logging → kubectl exec ... -- wget -qO- --post-data='' "
+        f"'localhost:{admin_port}/logging?config=debug'",
+    )
     return False
 
 
 def check_warming(pod: str, ns: str, container: str, admin_port: int) -> bool:
+    """Return True when no listener or cluster is stuck in warming."""
     stats = fetch_stats(pod, ns, container, admin_port, "warming")
     warming_listeners = int(stats.get("listener_manager.total_listeners_warming", 0))
     warming_clusters = int(stats.get("cluster_manager.warming_clusters", 0))
@@ -141,26 +164,43 @@ def check_warming(pod: str, ns: str, container: str, admin_port: int) -> bool:
     passed = True
     if warming_listeners > 0:
         fail(f"{warming_listeners} listener(s) stuck in warming")
-        data = fetch_json(pod, ns, container,
-                          f"localhost:{admin_port}/config_dump?resource=dynamic_warming_listeners")
+        data = fetch_json(
+            pod,
+            ns,
+            container,
+            f"localhost:{admin_port}/config_dump?resource=dynamic_warming_listeners",
+        )
         if data:
-            names = _extract_warming_names(data, "dynamic_warming_listeners", "listener")
+            names = _extract_warming_names(
+                data,
+                "dynamic_warming_listeners",
+                "listener",
+            )
             if names:
                 print(f"    Warming listeners: {', '.join(names)}")
-        print("    Tip: warming listeners block traffic until RDS/SDS delivers all dependencies")
+        print(
+            "    Tip: warming listeners block traffic"
+            " until RDS/SDS delivers all dependencies",
+        )
         passed = False
     else:
         ok("No warming listeners")
 
     if warming_clusters > 0:
         fail(f"{warming_clusters} cluster(s) stuck in warming")
-        data = fetch_json(pod, ns, container,
-                          f"localhost:{admin_port}/config_dump?resource=dynamic_warming_clusters")
+        data = fetch_json(
+            pod,
+            ns,
+            container,
+            f"localhost:{admin_port}/config_dump?resource=dynamic_warming_clusters",
+        )
         if data:
             names = _extract_warming_names(data, "dynamic_warming_clusters", "cluster")
             if names:
                 print(f"    Warming clusters: {', '.join(names)}")
-        print("    Tip: warming clusters need both CDS + EDS before they become active")
+        print(
+            "    Tip: warming clusters need both CDS + EDS before they become active",
+        )
         passed = False
     else:
         ok("No warming clusters")
@@ -168,7 +208,11 @@ def check_warming(pod: str, ns: str, container: str, admin_port: int) -> bool:
     return passed
 
 
-def _extract_warming_names(data: dict | list, section: str, resource_key: str) -> list[str]:
+def _extract_warming_names(
+    data: dict | list,
+    section: str,
+    resource_key: str,
+) -> list[str]:
     names: list[str] = []
     try:
         configs = data.get("configs", []) if isinstance(data, dict) else []
@@ -183,11 +227,21 @@ def _extract_warming_names(data: dict | list, section: str, resource_key: str) -
 
 
 def check_cluster_present(
-    pod: str, ns: str, container: str, admin_port: int, cluster_name: str
+    pod: str,
+    ns: str,
+    container: str,
+    admin_port: int,
+    cluster_name: str,
 ) -> bool:
+    """Return True when cluster_name appears in the active clusters config dump."""
     rc, stdout = kubectl_exec(
-        pod, ns, container, "wget", "-qO-",
-        f"localhost:{admin_port}/config_dump?resource=dynamic_active_clusters&name_regex={cluster_name}",
+        pod,
+        ns,
+        container,
+        "wget",
+        "-qO-",
+        f"localhost:{admin_port}/config_dump?resource=dynamic_active_clusters"
+        f"&name_regex={cluster_name}",
     )
     if rc != 0:
         fail(f"Cluster '{cluster_name}': could not query config_dump")
@@ -201,10 +255,19 @@ def check_cluster_present(
 
 
 def check_route_present(
-    pod: str, ns: str, container: str, admin_port: int, route_name: str
+    pod: str,
+    ns: str,
+    container: str,
+    admin_port: int,
+    route_name: str,
 ) -> bool:
+    """Return True when route_name appears in the route configs dump."""
     rc, stdout = kubectl_exec(
-        pod, ns, container, "wget", "-qO-",
+        pod,
+        ns,
+        container,
+        "wget",
+        "-qO-",
         f"localhost:{admin_port}/config_dump?resource=dynamic_route_configs",
     )
     if rc != 0:
@@ -218,6 +281,7 @@ def check_route_present(
 
 
 def main() -> None:
+    """Run the xDS checks; exit 1 when any check fails."""
     parser = argparse.ArgumentParser(
         description="Quick xDS health check for any Envoy-based service mesh proxy",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -225,37 +289,53 @@ def main() -> None:
     )
     parser.add_argument("pod", help="Pod name")
     parser.add_argument("--namespace", "-n", default="default")
-    parser.add_argument("--container", "-c", default="kuma-sidecar",
-                        help="Sidecar container name (default: kuma-sidecar; Istio: istio-proxy)")
-    parser.add_argument("--admin-port", "-p", type=int, default=9901,
-                        help="Envoy admin port (default: 9901; Istio: 15000; Consul: 19000)")
-    parser.add_argument("--cluster", help="Assert this cluster name exists in active clusters")
-    parser.add_argument("--route", help="Assert this route name exists in route configs")
+    parser.add_argument(
+        "--container",
+        "-c",
+        default="kuma-sidecar",
+        help="Sidecar container name (default: kuma-sidecar; Istio: istio-proxy)",
+    )
+    parser.add_argument(
+        "--admin-port",
+        "-p",
+        type=int,
+        default=9901,
+        help="Envoy admin port (default: 9901; Istio: 15000; Consul: 19000)",
+    )
+    parser.add_argument(
+        "--cluster",
+        help="Assert this cluster name exists in active clusters",
+    )
+    parser.add_argument(
+        "--route",
+        help="Assert this route name exists in route configs",
+    )
     args = parser.parse_args()
 
-    print(f"{BOLD}xDS check: {args.pod} ({args.namespace}/{args.container}) "
-          f"admin:{args.admin_port}{RESET}\n")
+    print(
+        f"{BOLD}xDS check: {args.pod} ({args.namespace}/{args.container}) "
+        f"admin:{args.admin_port}{RESET}\n",
+    )
 
     results: list[bool] = []
 
     print(f"{BOLD}[1] Control plane connection{RESET}")
-    results.append(check_cp_connection(args.pod, args.namespace, args.container, args.admin_port))
+    target = (args.pod, args.namespace, args.container, args.admin_port)
+    results.append(check_cp_connection(*target))
 
     print(f"\n{BOLD}[2] NACKs{RESET}")
-    results.append(check_nacks(args.pod, args.namespace, args.container, args.admin_port))
+    results.append(check_nacks(*target))
 
     print(f"\n{BOLD}[3] Warming resources{RESET}")
-    results.append(check_warming(args.pod, args.namespace, args.container, args.admin_port))
+    results.append(check_warming(*target))
 
     if args.cluster:
         print(f"\n{BOLD}[4] Cluster presence{RESET}")
-        results.append(check_cluster_present(
-            args.pod, args.namespace, args.container, args.admin_port, args.cluster))
+        results.append(check_cluster_present(*target, args.cluster))
 
     if args.route:
         print(f"\n{BOLD}[5] Route presence{RESET}")
-        results.append(check_route_present(
-            args.pod, args.namespace, args.container, args.admin_port, args.route))
+        results.append(check_route_present(*target, args.route))
 
     passed = sum(results)
     total = len(results)

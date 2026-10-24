@@ -20,9 +20,13 @@ REGISTRY_FILE = SKILL_DIR / "references" / "personas.md"
 FRONTMATTER_FENCE = "---\n"
 PERSONA_COUNT = 27
 REGISTRY_SLUG = re.compile(r"^\| `(?P<slug>[a-z0-9-]+)` \|", re.MULTILINE)
-DISPLAY_NAME_ENTRY = re.compile(r"=`(?P<slug>[a-z0-9-]+)`/(?P<name>[^;.\n]+(?:\. [^;.\n]+)?)[;.]")
+DISPLAY_NAME_ENTRY = re.compile(
+    r"=`(?P<slug>[a-z0-9-]+)`/(?P<name>[^;.\n]+(?:\. [^;.\n]+)?)[;.]"
+)
 TEMPLATE_HEADING = re.compile(r"^## .*\b(?:review|advisory)\b.*$", re.MULTILINE)
-DOSSIER_NAME =re.compile(r"`(?P<file>[a-z0-9-]+-deep\.md)` in the council skill's `references/`")
+DOSSIER_NAME = re.compile(
+    r"`(?P<file>[a-z0-9-]+-deep\.md)` in the council skill's `references/`"
+)
 
 
 def split_frontmatter(text: str) -> tuple[str, str]:
@@ -78,7 +82,9 @@ class PersonaMandateSyncTest(unittest.TestCase):
                 match = DOSSIER_NAME.search(agent.read_text(encoding="utf-8"))
                 self.assertIsNotNone(match, "dossier sentence missing")
                 if match:
-                    self.assertTrue((SKILL_DIR / "references" / match["file"]).is_file())
+                    self.assertTrue(
+                        (SKILL_DIR / "references" / match["file"]).is_file()
+                    )
 
     def test_template_heading_matches_display_name(self) -> None:
         workflow = (SKILL_DIR / "references" / "workflow.md").read_text(
@@ -94,7 +100,9 @@ class PersonaMandateSyncTest(unittest.TestCase):
 
     def test_root_manifest_has_no_schema(self) -> None:
         manifest = json.loads((PLUGIN_DIR / "plugin.json").read_text(encoding="utf-8"))
-        self.assertNotIn("$schema", manifest, "$schema stops Copilot CLI registering agents/")
+        self.assertNotIn(
+            "$schema", manifest, "$schema stops Copilot CLI registering agents/"
+        )
 
 
 if __name__ == "__main__":

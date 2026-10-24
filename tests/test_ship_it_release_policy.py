@@ -1,4 +1,7 @@
-"""Validate ship-it's repository release-policy contract."""
+"""Validate ship-it's repository release-policy contract.
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +11,11 @@ from pathlib import Path
 from typing import Any, Final
 
 SKILL_DIR: Final[Path] = (
-    Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
+    Path(__file__).resolve().parent.parent
+    / "plugins"
+    / "ship-it"
+    / "skills"
+    / "ship-it"
 )
 POLICY_FILE: Final[Path] = SKILL_DIR / "references" / "release-policy.json"
 RELEASE_REFERENCE: Final[Path] = SKILL_DIR / "references" / "release.md"
@@ -136,7 +143,9 @@ class ShipItReleasePolicyContractTest(unittest.TestCase):
         checkpoint = CHECKPOINT_REFERENCE.read_text(encoding="utf-8")
         self.assertIn('"releasePolicy": null', checkpoint)
         self.assertIn("may also lack `releasePolicy`", checkpoint)
-        self.assertIn("terminal single-change outcome may lack `branchCleanup`", checkpoint)
+        self.assertIn(
+            "terminal single-change outcome may lack `branchCleanup`", checkpoint
+        )
         self.assertIn("add `branchCleanup: not-applicable`", checkpoint)
         self.assertIn("without inventing cleanup", checkpoint)
         for expected in (
@@ -153,7 +162,9 @@ class ShipItReleasePolicyContractTest(unittest.TestCase):
         skill = SKILL_FILE.read_text(encoding="utf-8")
         pr_loop = PR_LOOP_REFERENCE.read_text(encoding="utf-8")
         completion = COMPLETION_REFERENCE.read_text(encoding="utf-8")
-        self.assertEqual(skill.count("[references/release.md](references/release.md)"), 1)
+        self.assertEqual(
+            skill.count("[references/release.md](references/release.md)"), 1
+        )
         self.assertIn("resolved release policy from the checkpoint", pr_loop)
         self.assertIn("Do not request Copilot unless", pr_loop)
         self.assertIn("resolved issue-closing behavior", completion)

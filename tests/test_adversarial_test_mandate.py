@@ -102,7 +102,9 @@ class UnresolvedBaseTest(unittest.TestCase):
             gate,
         )
         self.assertIn("record a failed result (evidence, or `gateVerdicts`", gate)
-        self.assertIn("set `status: blocked` with its `Gate failure:` line as `blocker`", gate)
+        self.assertIn(
+            "set `status: blocked` with its `Gate failure:` line as `blocker`", gate
+        )
         self.assertIn("start no fix pass", gate)
         self.assertIn("`nextAction` is to fetch the base ref", gate)
 

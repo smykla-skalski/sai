@@ -13,16 +13,17 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from test_ship_it_bookkeeping import SCRIPT, checkpoint_document, checkpoint_path
 
 REVISION = "a" * 40
-GITHUB_SOURCE = {
+GITHUB_SOURCE: dict[str, Any] = {
     "sourceType": "github",
     "repository": "github.com/smykla-skalski/sai",
     "issue": 277,
 }
-GRANT = {
+GRANT: dict[str, Any] = {
     "id": "ship",
     "source": {
         "kind": "user-request",
@@ -34,7 +35,7 @@ GRANT = {
     "limits": [],
     "status": "active",
 }
-RELEASE_POLICY = {
+RELEASE_POLICY: dict[str, Any] = {
     "schemaVersion": 1,
     "sources": ["bundled default"],
     "requiredReviewers": [],
@@ -45,7 +46,7 @@ RELEASE_POLICY = {
     "activatedFallbacks": [],
     "resolvedAt": "2026-01-01T00:00:00Z",
 }
-RISK = {
+RISK: dict[str, Any] = {
     "level": "medium",
     "diffClass": "code",
     "policySource": "bundled default",
@@ -108,8 +109,15 @@ class CheckpointCreationTest(unittest.TestCase):
             json.dumps(GITHUB_SOURCE if source is None else source),
         )
 
-    def prepare_repair(self, identity: str, source: dict | None = None) -> tuple[Path, dict]:
-        created = self.create(source, None, "--identity", (GITHUB_SOURCE if source is None else source)["repository"])
+    def prepare_repair(
+        self, identity: str, source: dict | None = None
+    ) -> tuple[Path, dict]:
+        created = self.create(
+            source,
+            None,
+            "--identity",
+            (GITHUB_SOURCE if source is None else source)["repository"],
+        )
         self.assertEqual(created.returncode, 0, created.stderr)
         path = Path(json.loads(created.stdout)["checkpoint"])
         document = json.loads(path.read_text())
@@ -165,7 +173,9 @@ class CheckpointCreationTest(unittest.TestCase):
         result = self.repair(path, source)
         self.assertEqual(result.returncode, 0, result.stderr)
         after = json.loads(path.read_text())
-        self.assertEqual(after["repository"]["identity"], "github.com/smykla-skalski/sai")
+        self.assertEqual(
+            after["repository"]["identity"], "github.com/smykla-skalski/sai"
+        )
         after["repository"].pop("identityRepairs")
         after["repository"]["identity"] = before["repository"]["identity"]
         self.assertEqual(after, before)
@@ -192,8 +202,19 @@ with patch.object(Path, "replace", side_effect=OSError("interrupted write")):
         raise AssertionError("expected interrupted replacement")
 """
         result = subprocess.run(
-            [sys.executable, "-c", program, str(SCRIPT.parent), str(path), str(self.root), json.dumps(GITHUB_SOURCE)],
-            capture_output=True, text=True, check=False, timeout=15,
+            [
+                sys.executable,
+                "-c",
+                program,
+                str(SCRIPT.parent),
+                str(path),
+                str(self.root),
+                json.dumps(GITHUB_SOURCE),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(path.read_bytes(), original)
@@ -483,6 +504,7 @@ class SectionCommandTest(unittest.TestCase):
                 {**RISK, "level": "high", "overrideAuthorization": override},
             )
         )
+        value: object
         for value in ("", "  ", 0, False, [], {}):
             with self.subTest(value=value):
                 self.assert_refused(
@@ -655,7 +677,7 @@ class SectionCommandTest(unittest.TestCase):
             "summary exceeds",
         )
 
-    def add_grant(self, grant: dict) -> subprocess.CompletedProcess[str]:
+    def add_grant(self, grant: object) -> subprocess.CompletedProcess[str]:
         return self.command("add-grant", "--grant-json", grant)
 
     def test_add_grant_appends_to_an_existing_checkpoint(self) -> None:
@@ -1074,6 +1096,7 @@ class SectionCommandTest(unittest.TestCase):
         self.assertEqual(self.read()["hostedReviewDecision"]["decidedAt"], stamp)
 
     def test_falsy_hosted_review_decided_at_is_refused(self) -> None:
+        value: object
         for value in (0, "", None, False, []):
             with self.subTest(value=value):
                 self.refuse_unchanged(
@@ -1089,6 +1112,7 @@ class SectionCommandTest(unittest.TestCase):
             "provider": "local",
             "summary": "ruff and unittest passed",
         }
+        value: object
         for value in (0, "", None, False, []):
             with self.subTest(value=value):
                 self.refuse_unchanged(
@@ -1240,7 +1264,7 @@ class SectionCommandTest(unittest.TestCase):
                     self.write(self.document)
                     self.assert_ok(self.command(*arguments))
 
-    def recover(self, update: dict) -> subprocess.CompletedProcess[str]:
+    def recover(self, update: object) -> subprocess.CompletedProcess[str]:
         return self.command("record-acceptance-recovery", "--recovery-json", update)
 
     def new_recovery(self, **changes: object) -> dict:
@@ -1412,6 +1436,7 @@ class SectionCommandTest(unittest.TestCase):
                 )
 
     def test_acceptance_recovery_rejects_a_non_object_value(self) -> None:
+        value: object
         for value in ([], "text", 1):
             with self.subTest(value=value):
                 self.assert_refused(self.recover(value), "--recovery-json")

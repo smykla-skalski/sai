@@ -12,6 +12,8 @@ Input is read from stdin. Output is NDJSON to stdout, errors to stderr.
 Exit codes:
     0  Success
     1  Runtime error (missing data, invalid range, etc.)
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ HUNK_HEADER_RE: Final[re.Pattern[str]] = re.compile(
 )
 PREVIEW_MAX_LEN: Final[int] = 120
 NULL_BYTE_SEPARATOR: Final[str] = "\x00"
-MIN_GIT_DIFF_PARTS: Final[int] = 4   # "diff --git a/... b/..." has 4 space-separated tokens
+MIN_GIT_DIFF_PARTS: Final[int] = 4  # "diff --git a/... b/..." has 4 tokens
 MIN_SUBHUNK_SECTIONS: Final[int] = 2  # stdin has two sections separated by null byte
 
 
@@ -215,46 +217,52 @@ def cmd_find_subhunks(args: argparse.Namespace) -> None:
     fine_hunks = parse_diff_hunks(fine_diff, args.file)
 
     matching = [
-        h
-        for h in fine_hunks
-        if hunk_in_parent(h, args.old_start, args.old_count)
+        h for h in fine_hunks if hunk_in_parent(h, args.old_start, args.old_count)
     ]
 
     if len(matching) <= 1:
         print(
-            json.dumps({
-                "parent": args.parent,
-                "splittable": False,
-                "reason": "single_hunk",
-                "suggestion": f"use {args.parent}:START-END for line-level selection",
-            }),
+            json.dumps(
+                {
+                    "parent": args.parent,
+                    "splittable": False,
+                    "reason": "single_hunk",
+                    "suggestion": (
+                        f"use {args.parent}:START-END for line-level selection"
+                    ),
+                },
+            ),
         )
         return
 
     for i, h in enumerate(matching, 1):
         added, removed = count_changes(h.body)
         print(
-            json.dumps({
-                "id": f"{args.parent}.{i}",
-                "parent": args.parent,
-                "file": args.file,
-                "old_start": h.old_start,
-                "old_count": h.old_count,
-                "new_start": h.new_start,
-                "new_count": h.new_count,
-                "added": added,
-                "removed": removed,
-                "preview": hunk_preview(h.body),
-            }),
+            json.dumps(
+                {
+                    "id": f"{args.parent}.{i}",
+                    "parent": args.parent,
+                    "file": args.file,
+                    "old_start": h.old_start,
+                    "old_count": h.old_count,
+                    "new_start": h.new_start,
+                    "new_count": h.new_count,
+                    "added": added,
+                    "removed": removed,
+                    "preview": hunk_preview(h.body),
+                },
+            ),
         )
 
     print(
-        json.dumps({
-            "summary": True,
-            "parent": args.parent,
-            "splittable": True,
-            "sub_hunks": len(matching),
-        }),
+        json.dumps(
+            {
+                "summary": True,
+                "parent": args.parent,
+                "splittable": True,
+                "sub_hunks": len(matching),
+            },
+        ),
     )
 
 
@@ -275,13 +283,15 @@ def cmd_extract_patch(args: argparse.Namespace) -> None:
     idx = args.sub_index
     if idx < 1 or idx > len(matching):
         print(
-            json.dumps({
-                "error": "sub_hunk_not_found",
-                "id": args.id,
-                "detail": (
-                    f"parent {args.id.split('.')[0]} has {len(matching)} sub-hunks"
-                ),
-            }),
+            json.dumps(
+                {
+                    "error": "sub_hunk_not_found",
+                    "id": args.id,
+                    "detail": (
+                        f"parent {args.id.split('.')[0]} has {len(matching)} sub-hunks"
+                    ),
+                },
+            ),
             file=sys.stderr,
         )
         sys.exit(1)
@@ -356,11 +366,13 @@ def cmd_line_select(args: argparse.Namespace) -> None:
     hunk_num = args.hunk_num
     if hunk_num < 1 or hunk_num > len(all_hunks):
         print(
-            json.dumps({
-                "error": "hunk_not_found",
-                "id": args.id,
-                "detail": f"file {args.file} has {len(all_hunks)} hunks",
-            }),
+            json.dumps(
+                {
+                    "error": "hunk_not_found",
+                    "id": args.id,
+                    "detail": f"file {args.file} has {len(all_hunks)} hunks",
+                },
+            ),
             file=sys.stderr,
         )
         sys.exit(1)
@@ -372,23 +384,27 @@ def cmd_line_select(args: argparse.Namespace) -> None:
 
     if start < 1 or end > len(body) or start > end:
         print(
-            json.dumps({
-                "error": "line_range_out_of_bounds",
-                "id": args.id,
-                "lines": args.lines,
-                "max_lines": len(body),
-            }),
+            json.dumps(
+                {
+                    "error": "line_range_out_of_bounds",
+                    "id": args.id,
+                    "lines": args.lines,
+                    "max_lines": len(body),
+                },
+            ),
             file=sys.stderr,
         )
         sys.exit(1)
 
     if start == 1 and end == len(body):
         print(
-            json.dumps({
-                "note": "full_hunk_selected",
-                "id": args.id,
-                "lines": args.lines,
-            }),
+            json.dumps(
+                {
+                    "note": "full_hunk_selected",
+                    "id": args.id,
+                    "lines": args.lines,
+                },
+            ),
             file=sys.stderr,
         )
         sys.stdout.write(make_hunk_patch(args.file, hunk))
@@ -398,12 +414,14 @@ def cmd_line_select(args: argparse.Namespace) -> None:
 
     if not has_changes:
         print(
-            json.dumps({
-                "error": "no_changes_in_range",
-                "id": args.id,
-                "lines": args.lines,
-                "detail": "selected range has no additions or removals",
-            }),
+            json.dumps(
+                {
+                    "error": "no_changes_in_range",
+                    "id": args.id,
+                    "lines": args.lines,
+                    "detail": "selected range has no additions or removals",
+                },
+            ),
             file=sys.stderr,
         )
         sys.exit(1)
@@ -411,10 +429,7 @@ def cmd_line_select(args: argparse.Namespace) -> None:
     old_count, new_count = _recalculate_counts(new_body)
 
     patch = make_patch_header(args.file)
-    patch += (
-        f"@@ -{hunk.old_start},{old_count} "
-        f"+{hunk.new_start},{new_count} @@\n"
-    )
+    patch += f"@@ -{hunk.old_start},{old_count} +{hunk.new_start},{new_count} @@\n"
     for line in new_body:
         patch += line + "\n"
 

@@ -224,13 +224,14 @@ def resolve_target(
             ),
             None,
         )
-        require(
+        if not (
             child is not None
             and child["dispatchId"] == dispatch
             and child["status"]
-            in ({"running", "blocked", "failed"} if allow_terminal else {"running"}),
-            "worker requires active child dispatch",
-        )
+            in ({"running", "blocked", "failed"} if allow_terminal else {"running"})
+        ):
+            message = "worker requires active child dispatch"
+            raise StateError(message)
         return child["worker"]
     require(set(target) == {"reservationId"}, "invalid worker target")
     receipt = next(
@@ -265,7 +266,9 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
     kind = event["kind"]
     if kind in {"register", "adopt"}:
         return register(checkpoint, event, record)
-    require(record is not None, "unknown worker dispatch")
+    if record is None:
+        message = "unknown worker dispatch"
+        raise StateError(message)
     require(
         at >= timestamp(record["registeredAt"], "registeredAt"),
         "worker event precedes registration",

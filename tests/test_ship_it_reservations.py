@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from test_ship_it_bookkeeping import SCRIPT, checkpoint_document, checkpoint_path
 
 
-class ReservationTest(unittest.TestCase):
+class ReservationFixture(unittest.TestCase):
     def setUp(self) -> None:
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -102,7 +102,7 @@ class ReservationTest(unittest.TestCase):
                 for item in state.get("workerRecovery", [])
             )
         ):
-            ReservationTest.settle_command_only_fixture(self, identity)
+            self.settle_command_only_fixture(identity)
         return outcome
 
     def settle_command_only_fixture(self, identity: str) -> None:
@@ -144,6 +144,8 @@ class ReservationTest(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
+
+class ReservationTest(ReservationFixture):
     def test_concurrent_duplicate_reserves_have_one_dispatch_receipt(self) -> None:
         with ThreadPoolExecutor(max_workers=8) as pool:
             results = list(pool.map(lambda _: self.reserve("one"), range(8)))

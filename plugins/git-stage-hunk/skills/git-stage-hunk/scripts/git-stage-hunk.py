@@ -45,6 +45,8 @@ Exit codes:
 
 Dependencies: git, python3
 Optional:     patchutils (lsdiff, filterdiff, grepdiff)
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
 
 from __future__ import annotations
@@ -62,6 +64,9 @@ from typing import Final
 # Import from split_hunk (same directory)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from split_hunk import (
+    DiffHunk,
+    _build_partial_body,
+    _recalculate_counts,
     count_changes,
     hunk_in_parent,
     hunk_preview,
@@ -153,16 +158,16 @@ def get_diff() -> str:
 def get_fine_diff() -> str:
     """Get a zero-context diff for fine-grained hunk splitting."""
     return run_git(
-        "diff", "--inter-hunk-context=0", "--unified=0", check=False,
+        "diff",
+        "--inter-hunk-context=0",
+        "--unified=0",
+        check=False,
     ).stdout
 
 
 def has_patchutils() -> bool:
     """Check if patchutils (lsdiff + filterdiff) are available."""
-    return (
-        shutil.which("lsdiff") is not None
-        and shutil.which("filterdiff") is not None
-    )
+    return shutil.which("lsdiff") is not None and shutil.which("filterdiff") is not None
 
 
 def _run_patchutils_cmd(cmd: list[str], input_text: str) -> str:
@@ -243,7 +248,8 @@ def table_stage_header() -> None:
 def table_stage_row(result: StageResult) -> str:
     """Format a stage mode table row."""
     label = {"ok": "ok", "dry_run": "dry_run", "error": "FAILED"}.get(
-        result.status, result.status,
+        result.status,
+        result.status,
     )
     return f"| {result.id} | {result.file} | {label} |"
 
@@ -289,8 +295,7 @@ def _list_files_from_diff(diff_text: str) -> list[str]:
 def _is_binary_file(diff_text: str, file_path: str) -> bool:
     """Check if a file is binary in the diff."""
     return any(
-        "Binary files" in line and file_path in line
-        for line in diff_text.splitlines()
+        "Binary files" in line and file_path in line for line in diff_text.splitlines()
     )
 
 
@@ -333,13 +338,16 @@ def build_hunk_index(
             continue
 
         file_diff = _get_file_diff(
-            diff_text, file_path, use_patchutils=use_patchutils,
+            diff_text,
+            file_path,
+            use_patchutils=use_patchutils,
         )
         if not file_diff:
             continue
 
         for hunk_num, hunk in enumerate(
-            parse_diff_hunks(file_diff, file_path), 1,
+            parse_diff_hunks(file_diff, file_path),
+            1,
         ):
             hunk_id += 1
             added, removed = count_changes(hunk.body)
@@ -408,7 +416,11 @@ def apply_patch(patch: str, extra_flags: str = "") -> tuple[bool, str]:
         cmd.append(extra_flags)
 
     result = subprocess.run(  # noqa: S603
-        cmd, input=patch, capture_output=True, text=True, check=False,
+        cmd,
+        input=patch,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     return result.returncode == 0, result.stderr
 
@@ -419,8 +431,10 @@ def _stage_file_entries_dry_run(
     """Dry-run staging for a file's entries."""
     results = [
         StageResult(
-            id=entry.id, file=entry.file,
-            action="would_stage", status="dry_run",
+            id=entry.id,
+            file=entry.file,
+            action="would_stage",
+            status="dry_run",
         )
         for entry in file_entries
     ]
@@ -444,8 +458,10 @@ def _stage_file_entries_bulk(
 
     results = [
         StageResult(
-            id=entry.id, file=entry.file,
-            action="staged", status="ok",
+            id=entry.id,
+            file=entry.file,
+            action="staged",
+            status="ok",
         )
         for entry in file_entries
     ]
@@ -465,15 +481,19 @@ def _stage_file_entries_individual(
 
     for entry in file_entries:
         hunk_patch = extract_hunk_patch(
-            diff_text, entry.file, entry.hunk_num,
+            diff_text,
+            entry.file,
+            entry.hunk_num,
             use_patchutils=use_patchutils,
         )
         success, stderr = apply_patch(hunk_patch)
         if success:
             results.append(
                 StageResult(
-                    id=entry.id, file=entry.file,
-                    action="staged", status="ok",
+                    id=entry.id,
+                    file=entry.file,
+                    action="staged",
+                    status="ok",
                 ),
             )
             ok_count += 1
@@ -482,8 +502,11 @@ def _stage_file_entries_individual(
                 emit(json.dumps({"error": "index_locked", "detail": stderr}))
             results.append(
                 StageResult(
-                    id=entry.id, file=entry.file,
-                    action="stage_failed", status="error", detail=stderr,
+                    id=entry.id,
+                    file=entry.file,
+                    action="stage_failed",
+                    status="error",
+                    detail=stderr,
                 ),
             )
             fail_count += 1
@@ -520,7 +543,9 @@ def stage_hunks(
         bulk_ok = False
         if use_patchutils:
             bulk_ok, ok, results = _stage_file_entries_bulk(
-                diff_text, file_path, file_entries,
+                diff_text,
+                file_path,
+                file_entries,
             )
             if bulk_ok:
                 ok_count += ok
@@ -528,7 +553,9 @@ def stage_hunks(
 
         if not bulk_ok:
             ok, fail, results = _stage_file_entries_individual(
-                diff_text, file_entries, use_patchutils=use_patchutils,
+                diff_text,
+                file_entries,
+                use_patchutils=use_patchutils,
             )
             ok_count += ok
             fail_count += fail
@@ -565,17 +592,26 @@ def emit_stage_results(
     else:
         for r in outcome.results:
             obj: dict[str, object] = {
-                "id": r.id, "file": r.file,
-                "action": r.action, "status": r.status,
+                "id": r.id,
+                "file": r.file,
+                "action": r.action,
+                "status": r.status,
             }
             if r.detail:
                 obj["detail"] = r.detail
             emit(json.dumps(obj))
-        emit(json.dumps({
-            "summary": True, "total_hunks": outcome.total_hunks,
-            "staged": outcome.ok_count, "failed": outcome.fail_count,
-            "dry_run": dry_run, "fallback": fallback,
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": outcome.total_hunks,
+                    "staged": outcome.ok_count,
+                    "failed": outcome.fail_count,
+                    "dry_run": dry_run,
+                    "fallback": fallback,
+                },
+            ),
+        )
 
 
 # -- Map matched hunks to global IDs ------------------------------------------
@@ -653,18 +689,32 @@ def mode_list(
         print(f"{len(index)} hunks across {len(files_seen)} files")
     else:
         for entry in index:
-            emit(json.dumps({
-                "id": entry.id, "file": entry.file,
-                "hunk_num": entry.hunk_num,
-                "old_start": entry.old_start, "old_count": entry.old_count,
-                "new_start": entry.new_start, "new_count": entry.new_count,
-                "added": entry.added, "removed": entry.removed,
-                "preview": entry.preview,
-            }))
-        emit(json.dumps({
-            "summary": True, "total_hunks": total_hunks,
-            "mode": "list", "fallback": fallback,
-        }))
+            emit(
+                json.dumps(
+                    {
+                        "id": entry.id,
+                        "file": entry.file,
+                        "hunk_num": entry.hunk_num,
+                        "old_start": entry.old_start,
+                        "old_count": entry.old_count,
+                        "new_start": entry.new_start,
+                        "new_count": entry.new_count,
+                        "added": entry.added,
+                        "removed": entry.removed,
+                        "preview": entry.preview,
+                    },
+                ),
+            )
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": total_hunks,
+                    "mode": "list",
+                    "fallback": fallback,
+                },
+            ),
+        )
 
 
 def mode_split(
@@ -675,62 +725,88 @@ def mode_split(
     """Show sub-hunks for one specific hunk."""
     parent = _find_entry(index, target)
     if not parent:
-        emit(json.dumps({
-            "error": "invalid_hunk_id", "id": target,
-            "valid_range": f"H1-H{total_hunks}",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "error": "invalid_hunk_id",
+                    "id": target,
+                    "valid_range": f"H1-H{total_hunks}",
+                },
+            ),
+        )
         sys.exit(EXIT_RUNTIME)
 
     fine_diff = get_fine_diff()
     fine_hunks = parse_diff_hunks(fine_diff, parent.file)
     matching = [
-        h for h in fine_hunks
-        if hunk_in_parent(h, parent.old_start, parent.old_count)
+        h for h in fine_hunks if hunk_in_parent(h, parent.old_start, parent.old_count)
     ]
 
     if len(matching) <= 1:
-        emit(json.dumps({
-            "parent": parent.id, "splittable": False,
-            "reason": "single_hunk",
-            "suggestion": f"use {parent.id}:START-END for line-level selection",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "parent": parent.id,
+                    "splittable": False,
+                    "reason": "single_hunk",
+                    "suggestion": f"use {parent.id}:START-END for line-level selection",
+                },
+            ),
+        )
         return
 
     for i, h in enumerate(matching, 1):
         added, removed = count_changes(h.body)
-        emit(json.dumps({
-            "id": f"{parent.id}.{i}", "parent": parent.id,
-            "file": parent.file,
-            "old_start": h.old_start, "old_count": h.old_count,
-            "new_start": h.new_start, "new_count": h.new_count,
-            "added": added, "removed": removed,
-            "preview": hunk_preview(h.body),
-        }))
+        emit(
+            json.dumps(
+                {
+                    "id": f"{parent.id}.{i}",
+                    "parent": parent.id,
+                    "file": parent.file,
+                    "old_start": h.old_start,
+                    "old_count": h.old_count,
+                    "new_start": h.new_start,
+                    "new_count": h.new_count,
+                    "added": added,
+                    "removed": removed,
+                    "preview": hunk_preview(h.body),
+                },
+            ),
+        )
 
-    emit(json.dumps({
-        "summary": True, "parent": parent.id,
-        "splittable": True, "sub_hunks": len(matching),
-    }))
+    emit(
+        json.dumps(
+            {
+                "summary": True,
+                "parent": parent.id,
+                "splittable": True,
+                "sub_hunks": len(matching),
+            },
+        ),
+    )
 
 
 def _emit_list_split_entry_table(
     entry: HunkEntry,
-    matching: list[object],
+    matching: list[DiffHunk],
     files_seen: set[str],
 ) -> None:
     """Emit one entry for list-split mode in table format."""
-    from split_hunk import DiffHunk  # noqa: PLC0415
-
     is_splittable = len(matching) > 1
 
     if is_splittable:
         print(table_list_row(entry))
     else:
         row_entry = HunkEntry(
-            id=entry.id, file=entry.file, hunk_num=entry.hunk_num,
-            old_start=entry.old_start, old_count=entry.old_count,
-            new_start=entry.new_start, new_count=entry.new_count,
-            added=entry.added, removed=entry.removed,
+            id=entry.id,
+            file=entry.file,
+            hunk_num=entry.hunk_num,
+            old_start=entry.old_start,
+            old_count=entry.old_count,
+            new_start=entry.new_start,
+            new_count=entry.new_count,
+            added=entry.added,
+            removed=entry.removed,
             preview="(not splittable)",
         )
         print(table_list_row(row_entry))
@@ -738,14 +814,17 @@ def _emit_list_split_entry_table(
 
     if is_splittable:
         for i, h in enumerate(matching, 1):
-            if not isinstance(h, DiffHunk):
-                continue
             added, removed = count_changes(h.body)
             sub = HunkEntry(
-                id=f"  {entry.id}.{i}", file=entry.file, hunk_num=i,
-                old_start=h.old_start, old_count=h.old_count,
-                new_start=h.new_start, new_count=h.new_count,
-                added=added, removed=removed,
+                id=f"  {entry.id}.{i}",
+                file=entry.file,
+                hunk_num=i,
+                old_start=h.old_start,
+                old_count=h.old_count,
+                new_start=h.new_start,
+                new_count=h.new_count,
+                added=added,
+                removed=removed,
                 preview=hunk_preview(h.body),
             )
             print(table_list_row(sub))
@@ -753,18 +832,20 @@ def _emit_list_split_entry_table(
 
 def _emit_list_split_entry_ndjson(
     entry: HunkEntry,
-    matching: list[object],
+    matching: list[DiffHunk],
 ) -> None:
     """Emit one entry for list-split mode in NDJSON format."""
-    from split_hunk import DiffHunk  # noqa: PLC0415
-
     is_splittable = len(matching) > 1
     obj: dict[str, object] = {
-        "id": entry.id, "file": entry.file,
+        "id": entry.id,
+        "file": entry.file,
         "hunk_num": entry.hunk_num,
-        "old_start": entry.old_start, "old_count": entry.old_count,
-        "new_start": entry.new_start, "new_count": entry.new_count,
-        "added": entry.added, "removed": entry.removed,
+        "old_start": entry.old_start,
+        "old_count": entry.old_count,
+        "new_start": entry.new_start,
+        "new_count": entry.new_count,
+        "added": entry.added,
+        "removed": entry.removed,
         "preview": entry.preview,
         "splittable": is_splittable,
         "sub_hunks": len(matching) if is_splittable else 0,
@@ -773,17 +854,23 @@ def _emit_list_split_entry_ndjson(
 
     if is_splittable:
         for i, h in enumerate(matching, 1):
-            if not isinstance(h, DiffHunk):
-                continue
             added, removed = count_changes(h.body)
-            emit(json.dumps({
-                "id": f"{entry.id}.{i}", "parent": entry.id,
-                "file": entry.file,
-                "old_start": h.old_start, "old_count": h.old_count,
-                "new_start": h.new_start, "new_count": h.new_count,
-                "added": added, "removed": removed,
-                "preview": hunk_preview(h.body),
-            }))
+            emit(
+                json.dumps(
+                    {
+                        "id": f"{entry.id}.{i}",
+                        "parent": entry.id,
+                        "file": entry.file,
+                        "old_start": h.old_start,
+                        "old_count": h.old_count,
+                        "new_start": h.new_start,
+                        "new_count": h.new_count,
+                        "added": added,
+                        "removed": removed,
+                        "preview": hunk_preview(h.body),
+                    },
+                ),
+            )
 
 
 def mode_list_split(
@@ -805,8 +892,7 @@ def mode_list_split(
     for entry in index:
         fine_hunks = parse_diff_hunks(fine_diff, entry.file)
         matching = [
-            h for h in fine_hunks
-            if hunk_in_parent(h, entry.old_start, entry.old_count)
+            h for h in fine_hunks if hunk_in_parent(h, entry.old_start, entry.old_count)
         ]
 
         if len(matching) > 1:
@@ -825,12 +911,18 @@ def mode_list_split(
             f"{splittable_count} splittable ({total_sub_hunks} sub-hunks)",
         )
     else:
-        emit(json.dumps({
-            "summary": True, "total_hunks": total_hunks,
-            "splittable_hunks": splittable_count,
-            "total_sub_hunks": total_sub_hunks,
-            "mode": "list-split", "fallback": fallback,
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": total_hunks,
+                    "splittable_hunks": splittable_count,
+                    "total_sub_hunks": total_sub_hunks,
+                    "mode": "list-split",
+                    "fallback": fallback,
+                },
+            ),
+        )
 
 
 def _count_hunks_in_text(text: str) -> int:
@@ -856,12 +948,16 @@ def mode_verify(
     unstaged_hunks = _count_hunks_in_text(diff_text)
 
     if not table:
-        emit(json.dumps({
-            "staged_files": len(staged_files),
-            "unstaged_files": len(unstaged_files),
-            "staged_hunks": staged_hunks,
-            "unstaged_hunks": unstaged_hunks,
-        }))
+        emit(
+            json.dumps(
+                {
+                    "staged_files": len(staged_files),
+                    "unstaged_files": len(unstaged_files),
+                    "staged_hunks": staged_hunks,
+                    "unstaged_hunks": unstaged_hunks,
+                },
+            ),
+        )
     else:
         table_verify_header()
 
@@ -880,10 +976,15 @@ def mode_verify(
             total_s += s_hunks
             total_u += u_hunks
         else:
-            emit(json.dumps({
-                "file": f, "staged_hunks": s_hunks,
-                "unstaged_hunks": u_hunks,
-            }))
+            emit(
+                json.dumps(
+                    {
+                        "file": f,
+                        "staged_hunks": s_hunks,
+                        "unstaged_hunks": u_hunks,
+                    },
+                ),
+            )
 
     if table:
         print()
@@ -925,17 +1026,24 @@ def _stage_plain_hunks(
         if entry:
             matched.append(entry)
         else:
-            emit(json.dumps({
-                "warning": "invalid_hunk_id", "id": rid,
-                "valid_range": f"H1-H{ctx.total_hunks}",
-            }))
+            emit(
+                json.dumps(
+                    {
+                        "warning": "invalid_hunk_id",
+                        "id": rid,
+                        "valid_range": f"H1-H{ctx.total_hunks}",
+                    },
+                ),
+            )
 
     if not matched:
         return 0, 0, []
 
     return stage_hunks(
-        matched, ctx.diff_text,
-        use_patchutils=ctx.use_patchutils, dry_run=dry_run,
+        matched,
+        ctx.diff_text,
+        use_patchutils=ctx.use_patchutils,
+        dry_run=dry_run,
     )
 
 
@@ -951,43 +1059,73 @@ def _stage_subhunk_ref(
 
     parent = _find_entry(index, parent_id)
     if not parent:
-        emit(json.dumps({
-            "warning": "invalid_hunk_id", "id": ref,
-            "detail": f"parent {parent_id} not found",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "warning": "invalid_hunk_id",
+                    "id": ref,
+                    "detail": f"parent {parent_id} not found",
+                },
+            ),
+        )
         return 0, 1, None
 
     fine_diff = get_fine_diff()
     fine_hunks = parse_diff_hunks(fine_diff, parent.file)
     matching = [
-        h for h in fine_hunks
-        if hunk_in_parent(h, parent.old_start, parent.old_count)
+        h for h in fine_hunks if hunk_in_parent(h, parent.old_start, parent.old_count)
     ]
 
     if sub_index < 1 or sub_index > len(matching):
-        return 0, 1, StageResult(
-            id=ref, file=parent.file,
-            action="stage_failed", status="error",
-            detail="sub-hunk extraction failed",
+        return (
+            0,
+            1,
+            StageResult(
+                id=ref,
+                file=parent.file,
+                action="stage_failed",
+                status="error",
+                detail="sub-hunk extraction failed",
+            ),
         )
 
     hunk = matching[sub_index - 1]
     patch = make_hunk_patch(parent.file, hunk)
 
     if dry_run:
-        return 1, 0, StageResult(
-            id=ref, file=parent.file,
-            action="would_stage", status="dry_run",
+        return (
+            1,
+            0,
+            StageResult(
+                id=ref,
+                file=parent.file,
+                action="would_stage",
+                status="dry_run",
+            ),
         )
 
     success, stderr = apply_patch(patch, "--unidiff-zero")
     if success:
-        return 1, 0, StageResult(
-            id=ref, file=parent.file, action="staged", status="ok",
+        return (
+            1,
+            0,
+            StageResult(
+                id=ref,
+                file=parent.file,
+                action="staged",
+                status="ok",
+            ),
         )
-    return 0, 1, StageResult(
-        id=ref, file=parent.file,
-        action="stage_failed", status="error", detail=stderr,
+    return (
+        0,
+        1,
+        StageResult(
+            id=ref,
+            file=parent.file,
+            action="stage_failed",
+            status="error",
+            detail=stderr,
+        ),
     )
 
 
@@ -997,11 +1135,6 @@ def _build_line_select_patch(
     lines_str: str,
 ) -> str:
     """Build a partial patch from a line range selection."""
-    from split_hunk import (  # noqa: PLC0415
-        _build_partial_body,
-        _recalculate_counts,
-    )
-
     file_hunks = parse_diff_hunks(diff_text, parent.file)
     if parent.hunk_num < 1 or parent.hunk_num > len(file_hunks):
         return ""
@@ -1025,10 +1158,7 @@ def _build_line_select_patch(
     old_count, new_count = _recalculate_counts(new_body)
 
     patch = make_patch_header(parent.file)
-    patch += (
-        f"@@ -{hunk.old_start},{old_count} "
-        f"+{hunk.new_start},{new_count} @@\n"
-    )
+    patch += f"@@ -{hunk.old_start},{old_count} +{hunk.new_start},{new_count} @@\n"
     for line in new_body:
         patch += line + "\n"
     return patch
@@ -1046,34 +1176,65 @@ def _stage_linesel_ref(
 
     parent = _find_entry(index, hunk_id)
     if not parent:
-        emit(json.dumps({
-            "warning": "invalid_hunk_id", "id": ref,
-            "detail": f"hunk {hunk_id} not found",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "warning": "invalid_hunk_id",
+                    "id": ref,
+                    "detail": f"hunk {hunk_id} not found",
+                },
+            ),
+        )
         return 0, 1, None
 
     patch = _build_line_select_patch(diff_text, parent, lines_str)
     if not patch:
-        return 0, 1, StageResult(
-            id=ref, file=parent.file,
-            action="stage_failed", status="error",
-            detail="line-select patch construction failed",
+        return (
+            0,
+            1,
+            StageResult(
+                id=ref,
+                file=parent.file,
+                action="stage_failed",
+                status="error",
+                detail="line-select patch construction failed",
+            ),
         )
 
     if dry_run:
-        return 1, 0, StageResult(
-            id=ref, file=parent.file,
-            action="would_stage", status="dry_run",
+        return (
+            1,
+            0,
+            StageResult(
+                id=ref,
+                file=parent.file,
+                action="would_stage",
+                status="dry_run",
+            ),
         )
 
     success, stderr = apply_patch(patch)
     if success:
-        return 1, 0, StageResult(
-            id=ref, file=parent.file, action="staged", status="ok",
+        return (
+            1,
+            0,
+            StageResult(
+                id=ref,
+                file=parent.file,
+                action="staged",
+                status="ok",
+            ),
         )
-    return 0, 1, StageResult(
-        id=ref, file=parent.file,
-        action="stage_failed", status="error", detail=stderr,
+    return (
+        0,
+        1,
+        StageResult(
+            id=ref,
+            file=parent.file,
+            action="stage_failed",
+            status="error",
+            detail=stderr,
+        ),
     )
 
 
@@ -1098,11 +1259,15 @@ def _classify_hunk_ids(
             bad_ids.append(rid)
 
     if bad_ids:
-        emit(json.dumps({
-            "warning": "invalid_hunk_ids",
-            "ids": ",".join(bad_ids),
-            "valid_range": f"H1-H{total_hunks}",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "warning": "invalid_hunk_ids",
+                    "ids": ",".join(bad_ids),
+                    "valid_range": f"H1-H{total_hunks}",
+                },
+            ),
+        )
 
     return plain_ids, subhunk_refs, linesel_refs
 
@@ -1114,7 +1279,8 @@ def mode_hunk(cfg: ParsedArgs, ctx: _RunContext) -> None:
 
     requested = [rid.strip() for rid in cfg.hunk_ids.split(",")]
     plain_ids, subhunk_refs, linesel_refs = _classify_hunk_ids(
-        requested, ctx.total_hunks,
+        requested,
+        ctx.total_hunks,
     )
 
     all_results: list[StageResult] = []
@@ -1124,7 +1290,9 @@ def mode_hunk(cfg: ParsedArgs, ctx: _RunContext) -> None:
     # Batch 1: Plain hunk IDs
     if plain_ids:
         ok, fail, results = _stage_plain_hunks(
-            plain_ids, ctx, dry_run=cfg.dry_run,
+            plain_ids,
+            ctx,
+            dry_run=cfg.dry_run,
         )
         total_ok += ok
         total_fail += fail
@@ -1133,7 +1301,9 @@ def mode_hunk(cfg: ParsedArgs, ctx: _RunContext) -> None:
     # Batch 2: Sub-hunk IDs
     for ref in subhunk_refs:
         ok, fail, result = _stage_subhunk_ref(
-            ref, ctx.index, dry_run=cfg.dry_run,
+            ref,
+            ctx.index,
+            dry_run=cfg.dry_run,
         )
         total_ok += ok
         total_fail += fail
@@ -1143,7 +1313,10 @@ def mode_hunk(cfg: ParsedArgs, ctx: _RunContext) -> None:
     # Batch 3: Line-select IDs
     for ref in linesel_refs:
         ok, fail, result = _stage_linesel_ref(
-            ref, ctx.index, ctx.diff_text, dry_run=cfg.dry_run,
+            ref,
+            ctx.index,
+            ctx.diff_text,
+            dry_run=cfg.dry_run,
         )
         total_ok += ok
         total_fail += fail
@@ -1155,16 +1328,25 @@ def mode_hunk(cfg: ParsedArgs, ctx: _RunContext) -> None:
         if cfg.table:
             print("No valid hunk IDs.")
         else:
-            emit(json.dumps({
-                "summary": True, "total_hunks": ctx.total_hunks,
-                "staged": 0, "failed": 0,
-                "dry_run": cfg.dry_run, "error": "no valid hunk IDs",
-            }))
+            emit(
+                json.dumps(
+                    {
+                        "summary": True,
+                        "total_hunks": ctx.total_hunks,
+                        "staged": 0,
+                        "failed": 0,
+                        "dry_run": cfg.dry_run,
+                        "error": "no valid hunk IDs",
+                    },
+                ),
+            )
         sys.exit(EXIT_RUNTIME)
 
     emit_stage_results(
         _StageOutcome(all_results, total_ok, total_fail, ctx.total_hunks),
-        table=cfg.table, dry_run=cfg.dry_run, fallback=cfg.fallback,
+        table=cfg.table,
+        dry_run=cfg.dry_run,
+        fallback=cfg.fallback,
     )
     if total_fail > 0:
         sys.exit(EXIT_RUNTIME)
@@ -1187,26 +1369,41 @@ def mode_file(cfg: ParsedArgs, ctx: _RunContext) -> None:
             bad_files.append(rf)
 
     if bad_files:
-        emit(json.dumps({
-            "warning": "files_not_in_diff",
-            "files": ",".join(bad_files),
-        }))
+        emit(
+            json.dumps(
+                {
+                    "warning": "files_not_in_diff",
+                    "files": ",".join(bad_files),
+                },
+            ),
+        )
 
     if not matched:
-        emit(json.dumps({
-            "summary": True, "total_hunks": ctx.total_hunks,
-            "staged": 0, "failed": 0,
-            "dry_run": cfg.dry_run, "error": "no matching files in diff",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": ctx.total_hunks,
+                    "staged": 0,
+                    "failed": 0,
+                    "dry_run": cfg.dry_run,
+                    "error": "no matching files in diff",
+                },
+            ),
+        )
         sys.exit(EXIT_RUNTIME)
 
     ok, fail, results = stage_hunks(
-        matched, ctx.diff_text,
-        use_patchutils=ctx.use_patchutils, dry_run=cfg.dry_run,
+        matched,
+        ctx.diff_text,
+        use_patchutils=ctx.use_patchutils,
+        dry_run=cfg.dry_run,
     )
     emit_stage_results(
         _StageOutcome(results, ok, fail, ctx.total_hunks),
-        table=cfg.table, dry_run=cfg.dry_run, fallback=cfg.fallback,
+        table=cfg.table,
+        dry_run=cfg.dry_run,
+        fallback=cfg.fallback,
     )
     if fail > 0:
         sys.exit(EXIT_RUNTIME)
@@ -1219,38 +1416,63 @@ def mode_pattern(cfg: ParsedArgs, ctx: _RunContext) -> None:
 
     matched_diff = run_grepdiff(ctx.diff_text, cfg.pattern)
     if not matched_diff:
-        emit(json.dumps({
-            "summary": True, "total_hunks": ctx.total_hunks,
-            "staged": 0, "failed": 0,
-            "dry_run": cfg.dry_run, "error": "no hunks match pattern",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": ctx.total_hunks,
+                    "staged": 0,
+                    "failed": 0,
+                    "dry_run": cfg.dry_run,
+                    "error": "no hunks match pattern",
+                },
+            ),
+        )
         return
 
     matched_index = build_hunk_index(matched_diff, use_patchutils=True)
     if not matched_index:
-        emit(json.dumps({
-            "summary": True, "total_hunks": ctx.total_hunks,
-            "staged": 0, "failed": 0, "dry_run": cfg.dry_run,
-            "error": "no parseable hunks match pattern",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": ctx.total_hunks,
+                    "staged": 0,
+                    "failed": 0,
+                    "dry_run": cfg.dry_run,
+                    "error": "no parseable hunks match pattern",
+                },
+            ),
+        )
         return
 
     final_entries = _map_to_global_ids(matched_index, ctx.index)
     if not final_entries:
-        emit(json.dumps({
-            "summary": True, "total_hunks": ctx.total_hunks,
-            "staged": 0, "failed": 0, "dry_run": cfg.dry_run,
-            "error": "matched hunks could not be mapped to global IDs",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": ctx.total_hunks,
+                    "staged": 0,
+                    "failed": 0,
+                    "dry_run": cfg.dry_run,
+                    "error": "matched hunks could not be mapped to global IDs",
+                },
+            ),
+        )
         return
 
     ok, fail, results = stage_hunks(
-        final_entries, ctx.diff_text,
-        use_patchutils=True, dry_run=cfg.dry_run,
+        final_entries,
+        ctx.diff_text,
+        use_patchutils=True,
+        dry_run=cfg.dry_run,
     )
     emit_stage_results(
         _StageOutcome(results, ok, fail, ctx.total_hunks),
-        table=cfg.table, dry_run=cfg.dry_run, fallback=False,
+        table=cfg.table,
+        dry_run=cfg.dry_run,
+        fallback=False,
     )
     if fail > 0:
         sys.exit(EXIT_RUNTIME)
@@ -1265,7 +1487,7 @@ def _parse_range_spec(
         die("invalid range spec: missing file", EXIT_USAGE)
 
     range_file = range_spec[:colon_idx]
-    range_lines = range_spec[colon_idx + 1:]
+    range_lines = range_spec[colon_idx + 1 :]
 
     parts = range_lines.split("-")
     if len(parts) != RANGE_PART_COUNT:
@@ -1289,39 +1511,58 @@ def mode_range(cfg: ParsedArgs, ctx: _RunContext) -> None:
     range_file, range_start, range_end = _parse_range_spec(cfg.range_spec)
 
     matched_diff = run_filterdiff(
-        ctx.diff_text, range_file,
+        ctx.diff_text,
+        range_file,
         lines=f"{range_start}-{range_end}",
     )
 
     if not matched_diff:
-        emit(json.dumps({
-            "summary": True, "total_hunks": ctx.total_hunks,
-            "staged": 0, "failed": 0, "dry_run": cfg.dry_run,
-            "error": (
-                f"no hunks overlap range {range_start}-{range_end}"
-                f" in {range_file}"
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": ctx.total_hunks,
+                    "staged": 0,
+                    "failed": 0,
+                    "dry_run": cfg.dry_run,
+                    "error": (
+                        f"no hunks overlap range {range_start}-{range_end}"
+                        f" in {range_file}"
+                    ),
+                },
             ),
-        }))
+        )
         return
 
     matched_index = build_hunk_index(matched_diff, use_patchutils=True)
     final_entries = _map_to_global_ids(matched_index, ctx.index)
 
     if not final_entries:
-        emit(json.dumps({
-            "summary": True, "total_hunks": ctx.total_hunks,
-            "staged": 0, "failed": 0, "dry_run": cfg.dry_run,
-            "error": "matched hunks could not be mapped to global IDs",
-        }))
+        emit(
+            json.dumps(
+                {
+                    "summary": True,
+                    "total_hunks": ctx.total_hunks,
+                    "staged": 0,
+                    "failed": 0,
+                    "dry_run": cfg.dry_run,
+                    "error": "matched hunks could not be mapped to global IDs",
+                },
+            ),
+        )
         return
 
     ok, fail, results = stage_hunks(
-        final_entries, ctx.diff_text,
-        use_patchutils=True, dry_run=cfg.dry_run,
+        final_entries,
+        ctx.diff_text,
+        use_patchutils=True,
+        dry_run=cfg.dry_run,
     )
     emit_stage_results(
         _StageOutcome(results, ok, fail, ctx.total_hunks),
-        table=cfg.table, dry_run=cfg.dry_run, fallback=False,
+        table=cfg.table,
+        dry_run=cfg.dry_run,
+        fallback=False,
     )
     if fail > 0:
         sys.exit(EXIT_RUNTIME)
@@ -1350,8 +1591,7 @@ def _resolve_split_mode(raw: argparse.Namespace) -> tuple[str, str]:
     if raw.list_mode:
         return "list-split", ""
     die(
-        "--split requires a hunk ID (--split H3) "
-        "or must be combined with --list",
+        "--split requires a hunk ID (--split H3) or must be combined with --list",
         EXIT_USAGE,
     )
     return "", ""  # unreachable, die exits
@@ -1431,18 +1671,26 @@ def _dispatch_mode(cfg: ParsedArgs, ctx: _RunContext) -> None:
     """Dispatch to the appropriate mode handler."""
     handlers: dict[str, object] = {
         "list": lambda: mode_list(
-            ctx.index, ctx.total_hunks,
-            table=cfg.table, fallback=cfg.fallback,
+            ctx.index,
+            ctx.total_hunks,
+            table=cfg.table,
+            fallback=cfg.fallback,
         ),
         "split": lambda: mode_split(
-            ctx.index, cfg.split_target, ctx.total_hunks,
+            ctx.index,
+            cfg.split_target,
+            ctx.total_hunks,
         ),
         "list-split": lambda: mode_list_split(
-            ctx.index, ctx.total_hunks,
-            table=cfg.table, fallback=cfg.fallback,
+            ctx.index,
+            ctx.total_hunks,
+            table=cfg.table,
+            fallback=cfg.fallback,
         ),
         "verify": lambda: mode_verify(
-            ctx.diff_text, table=cfg.table, fallback=cfg.fallback,
+            ctx.diff_text,
+            table=cfg.table,
+            fallback=cfg.fallback,
         ),
         "hunk": lambda: mode_hunk(cfg, ctx),
         "file": lambda: mode_file(cfg, ctx),
@@ -1507,10 +1755,16 @@ def main(argv: list[str] | None = None) -> None:
                     '{"error":"no_hunks_for_file",'
                     '"detail":"no unstaged hunks match the file filter"}',
                 )
-                emit(json.dumps({
-                    "summary": True, "total_hunks": total_hunks,
-                    "mode": "list", "filtered": 0,
-                }))
+                emit(
+                    json.dumps(
+                        {
+                            "summary": True,
+                            "total_hunks": total_hunks,
+                            "mode": "list",
+                            "filtered": 0,
+                        },
+                    ),
+                )
             sys.exit(EXIT_OK)
         hunk_index = filtered
         total_hunks = len(hunk_index)

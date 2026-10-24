@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Auto-detect and health-check any service mesh control plane in a Kubernetes cluster.
+"""Auto-detect and health-check any service mesh control plane in a Kubernetes cluster.
 
 Detects: Kuma, Istio, Linkerd, Consul Connect
 Checks: control plane pods, proxy count, overall health signal
@@ -11,41 +10,51 @@ Usage:
 Exit codes:
     0  all checks passed (or no mesh detected)
     1  mesh detected but unhealthy
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import shutil
 import subprocess
 import sys
+from typing import Final
 
-_KUBECTL: str = shutil.which("kubectl") or "kubectl"
+_KUBECTL: Final[str] = shutil.which("kubectl") or "kubectl"
 
-RESET = "\033[0m"
-GREEN = "\033[32m"
-RED = "\033[31m"
-YELLOW = "\033[33m"
-BOLD = "\033[1m"
-CYAN = "\033[36m"
+RESET: Final[str] = "\033[0m"
+GREEN: Final[str] = "\033[32m"
+RED: Final[str] = "\033[31m"
+YELLOW: Final[str] = "\033[33m"
+BOLD: Final[str] = "\033[1m"
+CYAN: Final[str] = "\033[36m"
 
 
 def ok(msg: str) -> None:
+    """Print msg as a passed check."""
     print(f"  {GREEN}✓{RESET} {msg}")
 
 
 def fail(msg: str) -> None:
+    """Print msg as a failed check."""
     print(f"  {RED}✗{RESET} {msg}")
 
 
 def warn(msg: str) -> None:
+    """Print msg as a warning."""
     print(f"  {YELLOW}!{RESET} {msg}")
 
 
 def info(msg: str) -> None:
+    """Print msg as a hint."""
     print(f"  {CYAN}→{RESET} {msg}")
 
 
 def kubectl(*args: str, kubeconfig: str | None = None) -> tuple[int, str]:
+    """Run kubectl with args; return (exit code, stdout)."""
     cmd = [_KUBECTL]
     if kubeconfig:
         cmd += ["--kubeconfig", kubeconfig]
@@ -55,8 +64,16 @@ def kubectl(*args: str, kubeconfig: str | None = None) -> tuple[int, str]:
 
 
 def get_pods_json(namespace: str, label: str, kubeconfig: str | None) -> list[dict]:
+    """Return pods that match the label selector, or [] on any kubectl or JSON error."""
     rc, stdout = kubectl(
-        "get", "pods", "-n", namespace, "-l", label, "-o", "json",
+        "get",
+        "pods",
+        "-n",
+        namespace,
+        "-l",
+        label,
+        "-o",
+        "json",
         kubeconfig=kubeconfig,
     )
     if rc != 0:
@@ -69,11 +86,13 @@ def get_pods_json(namespace: str, label: str, kubeconfig: str | None) -> list[di
 
 
 def ns_exists(namespace: str, kubeconfig: str | None) -> bool:
+    """Return True when kubectl can get the namespace."""
     rc, _ = kubectl("get", "namespace", namespace, kubeconfig=kubeconfig)
     return rc == 0
 
 
 def pod_ready(pod: dict) -> bool:
+    """Return True when the pod has a Ready condition with status "True"."""
     conditions = pod.get("status", {}).get("conditions", [])
     for c in conditions:
         if c.get("type") == "Ready":
@@ -82,6 +101,7 @@ def pod_ready(pod: dict) -> bool:
 
 
 def summarize_pods(pods: list[dict], label: str) -> bool:
+    """Print pod readiness; return True only when pods exist and all are ready."""
     if not pods:
         fail(f"No pods found with label {label!r}")
         return False
@@ -90,19 +110,20 @@ def summarize_pods(pods: list[dict], label: str) -> bool:
     if ready == total:
         ok(f"{ready}/{total} pods ready")
         return True
-    else:
-        fail(f"{ready}/{total} pods ready")
-        for p in pods:
-            if not pod_ready(p):
-                name = p.get("metadata", {}).get("name", "?")
-                phase = p.get("status", {}).get("phase", "?")
-                warn(f"  Not ready: {name} ({phase})")
-        return False
+    fail(f"{ready}/{total} pods ready")
+    for p in pods:
+        if not pod_ready(p):
+            name = p.get("metadata", {}).get("name", "?")
+            phase = p.get("status", {}).get("phase", "?")
+            warn(f"  Not ready: {name} ({phase})")
+    return False
 
 
 # ─── Mesh-specific checks ────────────────────────────────────────────────────
 
+
 def check_kuma(kubeconfig: str | None) -> bool:
+    """Return False only when Kuma is installed and its control plane is unhealthy."""
     print(f"\n{BOLD}Kuma control plane{RESET}")
     ns = "kuma-system"
     if not ns_exists(ns, kubeconfig):
@@ -119,6 +140,7 @@ def check_kuma(kubeconfig: str | None) -> bool:
 
 
 def check_istio(kubeconfig: str | None) -> bool:
+    """Return False only when Istio is installed and istiod is unhealthy."""
     print(f"\n{BOLD}Istio control plane (istiod){RESET}")
     ns = "istio-system"
     if not ns_exists(ns, kubeconfig):
@@ -136,6 +158,7 @@ def check_istio(kubeconfig: str | None) -> bool:
 
 
 def check_linkerd(kubeconfig: str | None) -> bool:
+    """Return False only when a Linkerd control plane component has unready pods."""
     print(f"\n{BOLD}Linkerd control plane{RESET}")
     ns = "linkerd"
     if not ns_exists(ns, kubeconfig):
@@ -144,8 +167,14 @@ def check_linkerd(kubeconfig: str | None) -> bool:
 
     # Check destination, identity, proxy-injector
     all_passed = True
-    for component in ("linkerd-destination", "linkerd-identity", "linkerd-proxy-injector"):
-        pods = get_pods_json(ns, f"linkerd.io/control-plane-component={component.replace('linkerd-', '')}", kubeconfig)
+    for component in (
+        "linkerd-destination",
+        "linkerd-identity",
+        "linkerd-proxy-injector",
+    ):
+        short_name = component.replace("linkerd-", "")
+        label = f"linkerd.io/control-plane-component={short_name}"
+        pods = get_pods_json(ns, label, kubeconfig)
         if pods and not summarize_pods(pods, f"component={component}"):
             all_passed = False
 
@@ -156,6 +185,7 @@ def check_linkerd(kubeconfig: str | None) -> bool:
 
 
 def check_consul(kubeconfig: str | None) -> bool:
+    """Return False only when Consul is installed and its servers are unhealthy."""
     print(f"\n{BOLD}Consul Connect{RESET}")
     ns = "consul"
     if not ns_exists(ns, kubeconfig):
@@ -173,11 +203,15 @@ def check_consul(kubeconfig: str | None) -> bool:
 
 # ─── Webhook health ──────────────────────────────────────────────────────────
 
+
 def check_webhooks(kubeconfig: str | None) -> bool:
+    """Report mesh mutating webhooks; always return True because this is advisory."""
     print(f"\n{BOLD}Admission webhooks (mesh injection){RESET}")
     rc, stdout = kubectl(
-        "get", "mutatingwebhookconfigurations",
-        "-o", "jsonpath={.items[*].metadata.name}",
+        "get",
+        "mutatingwebhookconfigurations",
+        "-o",
+        "jsonpath={.items[*].metadata.name}",
         kubeconfig=kubeconfig,
     )
     if rc != 0:
@@ -185,17 +219,23 @@ def check_webhooks(kubeconfig: str | None) -> bool:
         return True  # non-fatal
 
     names = stdout.strip().split() if stdout.strip() else []
-    mesh_hooks = [n for n in names if any(k in n for k in ("kuma", "istio", "linkerd", "consul"))]
+    mesh_hooks = [
+        n for n in names if any(k in n for k in ("kuma", "istio", "linkerd", "consul"))
+    ]
     if mesh_hooks:
         ok(f"Mesh webhook(s) present: {', '.join(mesh_hooks)}")
     else:
-        warn("No mesh-related mutating webhooks found — sidecar injection may not work")
+        warn(
+            "No mesh-related mutating webhooks found — sidecar injection may not work",
+        )
     return True
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
+    """Check every supported mesh; exit 1 when any check fails."""
     parser = argparse.ArgumentParser(
         description="Auto-detect and health-check any service mesh control plane",
         formatter_class=argparse.RawDescriptionHelpFormatter,

@@ -76,19 +76,61 @@ CHECK_TODO: Final[str] = "SM-todo-marker"
 SEVERITY_RANK: Final[dict[str, int]] = {"high": 0, "medium": 1, "low": 2}
 
 BRACE_EXTS: Final[frozenset[str]] = frozenset(
-    {".js", ".jsx", ".ts", ".tsx", ".java", ".c", ".h", ".cpp", ".cc", ".cxx",
-     ".hpp", ".hh", ".cs", ".go", ".rs", ".kt", ".kts", ".swift", ".php",
-     ".scala", ".m", ".mm"},
+    {
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".java",
+        ".c",
+        ".h",
+        ".cpp",
+        ".cc",
+        ".cxx",
+        ".hpp",
+        ".hh",
+        ".cs",
+        ".go",
+        ".rs",
+        ".kt",
+        ".kts",
+        ".swift",
+        ".php",
+        ".scala",
+        ".m",
+        ".mm",
+    },
 )
 PYTHON_EXTS: Final[frozenset[str]] = frozenset({".py", ".pyi"})
-SOURCE_EXTS: Final[frozenset[str]] = BRACE_EXTS | PYTHON_EXTS | frozenset(
-    {".rb", ".ex", ".exs", ".lua", ".pl", ".sh", ".bash", ".zsh"},
+SOURCE_EXTS: Final[frozenset[str]] = (
+    BRACE_EXTS
+    | PYTHON_EXTS
+    | frozenset(
+        {".rb", ".ex", ".exs", ".lua", ".pl", ".sh", ".bash", ".zsh"},
+    )
 )
 
 SKIP_DIRS: Final[frozenset[str]] = frozenset(
-    {".git", "node_modules", "vendor", "dist", "build", "target", ".venv",
-     "venv", "__pycache__", ".mypy_cache", ".tox", "out", "bin", "obj",
-     ".next", ".nuxt", "coverage", ".gradle"},
+    {
+        ".git",
+        "node_modules",
+        "vendor",
+        "dist",
+        "build",
+        "target",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".mypy_cache",
+        ".tox",
+        "out",
+        "bin",
+        "obj",
+        ".next",
+        ".nuxt",
+        "coverage",
+        ".gradle",
+    },
 )
 
 # Function-signature start, brace languages. Captures the name for evidence.
@@ -231,7 +273,10 @@ def check_long_file(rel: str, lines: list[str], threshold: int) -> list[Finding]
     severity = "high" if loc > threshold * 2 else "medium"
     return [
         Finding(
-            rel, 1, CHECK_LONG_FILE, severity,
+            rel,
+            1,
+            CHECK_LONG_FILE,
+            severity,
             f"File is {loc} lines (> {threshold}) - candidate Large Class / split",
             f"loc={loc} threshold={threshold}",
         ),
@@ -246,7 +291,10 @@ def check_todos(rel: str, lines: list[str]) -> list[Finding]:
         if m:
             out.append(
                 Finding(
-                    rel, idx, CHECK_TODO, "low",
+                    rel,
+                    idx,
+                    CHECK_TODO,
+                    "low",
                     f"Debt marker: {m.group(1)}",
                     f"L{idx}: {line.strip()[:EVIDENCE_SNIPPET_LEN]}",
                 ),
@@ -286,7 +334,10 @@ def check_deep_nesting(rel: str, lines: list[str], threshold: int) -> list[Findi
     severity = "high" if worst_depth >= threshold + HIGH_NESTING_MARGIN else "medium"
     return [
         Finding(
-            rel, worst_line, CHECK_DEEP_NESTING, severity,
+            rel,
+            worst_line,
+            CHECK_DEEP_NESTING,
+            severity,
             f"Nesting depth ~{worst_depth} (> {threshold}) - tangled conditionals",
             f"L{worst_line} depth~{worst_depth} unit={unit}",
         ),
@@ -348,7 +399,10 @@ def check_params(
         return None
     severity = "high" if params >= threshold + HIGH_PARAMS_MARGIN else "medium"
     return Finding(
-        rel, idx + 1, CHECK_LONG_PARAMS, severity,
+        rel,
+        idx + 1,
+        CHECK_LONG_PARAMS,
+        severity,
         f"'{name}' takes {params} parameters (> {threshold}) - Long Parameter List",
         f"L{idx + 1} params={params}",
     )
@@ -398,7 +452,10 @@ def _long_function_finding(
     """Build a Long Method finding for a function exceeding the budget."""
     severity = "high" if span > max_fn * 2 else "medium"
     return Finding(
-        rel, idx + 1, CHECK_LONG_FUNCTION, severity,
+        rel,
+        idx + 1,
+        CHECK_LONG_FUNCTION,
+        severity,
         f"'{name}' spans ~{span} lines (> {max_fn}) - Long Method",
         f"L{idx + 1} span~{span}",
     )
@@ -467,11 +524,17 @@ def scan_file(path: Path, args: argparse.Namespace) -> list[Finding]:
     findings += check_todos(rel, lines)
     if path.suffix in BRACE_EXTS:
         findings += check_brace_functions(
-            rel, lines, args.max_function_lines, args.max_params,
+            rel,
+            lines,
+            args.max_function_lines,
+            args.max_params,
         )
     elif path.suffix in PYTHON_EXTS:
         findings += check_python_functions(
-            rel, lines, args.max_function_lines, args.max_params,
+            rel,
+            lines,
+            args.max_function_lines,
+            args.max_params,
         )
     return findings
 
@@ -488,7 +551,9 @@ def emit_ndjson(findings: list[Finding], files: int) -> None:
         emit(f.as_record())
         by_check[f.check] = by_check.get(f.check, 0) + 1
     summary: dict[str, object] = {
-        "kind": "summary", "total": len(findings), "files": files,
+        "kind": "summary",
+        "total": len(findings),
+        "files": files,
     }
     summary.update({k: by_check[k] for k in sorted(by_check)})
     emit(summary)
@@ -511,12 +576,17 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("paths", nargs="+", help="Files or directories to scan.")
     parser.add_argument("--max-file-lines", type=int, default=DEFAULT_MAX_FILE_LINES)
     parser.add_argument(
-        "--max-function-lines", type=int, default=DEFAULT_MAX_FUNCTION_LINES,
+        "--max-function-lines",
+        type=int,
+        default=DEFAULT_MAX_FUNCTION_LINES,
     )
     parser.add_argument("--max-params", type=int, default=DEFAULT_MAX_PARAMS)
     parser.add_argument("--max-nesting", type=int, default=DEFAULT_MAX_NESTING)
     parser.add_argument(
-        "--top", type=int, default=0, help="Keep N highest-severity findings (0=all).",
+        "--top",
+        type=int,
+        default=0,
+        help="Keep N highest-severity findings (0=all).",
     )
     parser.add_argument("--human", action="store_true")
     return parser.parse_args(argv)
@@ -537,7 +607,9 @@ def main(argv: list[str] | None = None) -> int:
         ranked = sorted(
             findings,
             key=lambda f: (
-                SEVERITY_RANK.get(f.severity, UNKNOWN_SEVERITY_RANK), f.file, f.line,
+                SEVERITY_RANK.get(f.severity, UNKNOWN_SEVERITY_RANK),
+                f.file,
+                f.line,
             ),
         )
         keep = {id(f) for f in ranked[: args.top]}

@@ -98,17 +98,22 @@ def timestamp(value: object) -> datetime:
 
 def validate_operation(operation: object, identities: set[str]) -> str:
     """Validate one persisted reservation and return its resource kind."""
-    require(isinstance(operation, dict), "reservation must be an object")
+    if not isinstance(operation, dict):
+        msg = "reservation must be an object"
+        raise ConvergenceError(msg)
     identity = operation.get("id")
-    require(
+    if not (
         isinstance(identity, str)
         and bool(identity.strip())
-        and identity not in identities,
-        "reservation IDs must be non-empty and unique",
-    )
+        and identity not in identities
+    ):
+        msg = "reservation IDs must be non-empty and unique"
+        raise ConvergenceError(msg)
     identities.add(identity)
     kind = operation.get("kind")
-    require(isinstance(kind, str) and kind in COUNTERS, "invalid reservation kind")
+    if not (isinstance(kind, str) and kind in COUNTERS):
+        msg = "invalid reservation kind"
+        raise ConvergenceError(msg)
     for field in ("revision", "inputs", "reservedAt"):
         require(
             isinstance(operation.get(field), str) and bool(operation[field].strip()),
@@ -279,11 +284,12 @@ def spend_allowance(
         >= POLICY["max_elapsed_minutes"] * 60
     )
     if state[counter] >= LIMITS[kind] or (kind == "review" and elapsed) or grant_id:
-        require(
-            bool(grant_id),
-            f"{counter} allowance exhausted; defer optional work "
-            "or recover a named acceptance failure",
-        )
+        if not grant_id:
+            msg = (
+                f"{counter} allowance exhausted; defer optional work "
+                "or recover a named acceptance failure"
+            )
+            raise ConvergenceError(msg)
         consume_grant(checkpoint, grant_id, counter)
         state["mode"] = "exhaustive"
         state["authorizedBy"] = grant_id
@@ -474,7 +480,7 @@ def record_review(
     """Store findings and require reassessment after a second severe review."""
     state = checkpoint["convergence"]
     findings = result.get("findings")
-    require(
+    if not (
         isinstance(findings, list)
         and all(
             isinstance(finding, dict)
@@ -486,9 +492,10 @@ def record_review(
                 for key in ("id", "label", "location", "summary")
             )
             for finding in findings
-        ),
-        "review result requires structured surviving findings",
-    )
+        )
+    ):
+        msg = "review result requires structured surviving findings"
+        raise ConvergenceError(msg)
     require(
         len({finding["id"] for finding in findings}) == len(findings),
         "finding IDs must be unique",

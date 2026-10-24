@@ -11,6 +11,7 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 from unittest.mock import patch
 
 PATH = (
@@ -19,6 +20,8 @@ PATH = (
 )
 sys.path.insert(0, str(PATH.parent))
 spec = importlib.util.spec_from_file_location("hosted_wait", PATH)
+assert spec is not None
+assert spec.loader is not None
 module = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = module
 spec.loader.exec_module(module)
@@ -138,7 +141,7 @@ class WaitTests(unittest.TestCase):
 
     def test_absent_ambiguous_stale_and_different_actor_exemptions_block(self) -> None:
         applicable, detail = ruleset()
-        cases = [
+        cases: list[tuple[str, dict[str, Any]]] = [
             ("no resolved actor", {"integration": None}),
             ("different actor", {"integration": 2740}),
             ("no applicable rule", {"applicable": []}),
@@ -146,7 +149,11 @@ class WaitTests(unittest.TestCase):
         ]
         for name, changes in cases:
             with self.subTest(name=name):
-                arguments = {"applicable": applicable, "detail": detail, **changes}
+                arguments: dict[str, Any] = {
+                    "applicable": applicable,
+                    "detail": detail,
+                    **changes,
+                }
 
                 state = read_exemption(**arguments)
 
@@ -156,7 +163,7 @@ class WaitTests(unittest.TestCase):
 
     def test_non_exempt_or_stale_ruleset_details_block(self) -> None:
         applicable, detail = ruleset()
-        cases = [
+        cases: list[tuple[str, dict[str, Any]]] = [
             (
                 "no actor",
                 {"bypassActors": {"nodes": [], "pageInfo": {"hasNextPage": False}}},
@@ -211,7 +218,7 @@ class WaitTests(unittest.TestCase):
         self.assertEqual(self.evaluate(state)["pending"], ["platform:review-required"])
 
     def test_exempt_actor_does_not_waive_other_release_requirements(self) -> None:
-        cases = [
+        cases: list[tuple[str, dict[str, Any], dict[str, str], str]] = [
             (
                 "required check",
                 {"required": [{"name": "ci", "bucket": "fail"}]},

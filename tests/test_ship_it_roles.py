@@ -25,7 +25,9 @@ SELECTOR_FIELDS: Final[list[str]] = ["provider", "model", "variant"]
 
 class ShipItRolesTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.contract = json.loads((SKILL_DIR / "references" / "roles.json").read_text())
+        self.contract = json.loads(
+            (SKILL_DIR / "references" / "roles.json").read_text()
+        )
         self.guidance = (SKILL_DIR / "references" / "roles.md").read_text()
         self.evidence = (SKILL_DIR / "references" / "evidence.md").read_text()
 
@@ -52,11 +54,11 @@ class ShipItRolesTest(unittest.TestCase):
         for adapter in self.contract["adapters"].values():
             self.assertTrue(adapter["subagents"])
             self.assertEqual(set(adapter["selectors"]), set(SELECTOR_FIELDS))
-            self.assertEqual(
-                adapter["unsupported_selector"], "reject-before-dispatch"
-            )
+            self.assertEqual(adapter["unsupported_selector"], "reject-before-dispatch")
         isolation = self.contract["context_isolation"]
-        self.assertEqual(isolation["adapter_fallback_roles_excluded"], ["review", "testing"])
+        self.assertEqual(
+            isolation["adapter_fallback_roles_excluded"], ["review", "testing"]
+        )
         for adapter in self.contract["adapters"].values():
             self.assertNotIn("review", adapter["fallback_roles"])
             self.assertNotIn("testing", adapter["fallback_roles"])
@@ -93,8 +95,12 @@ class ShipItRolesTest(unittest.TestCase):
         self.assertIn("route record for every tester execution and retry", test)
         self.assertIn("With no subagent capability, block", test)
         self.assertIn("Inline testing does not satisfy this gate", test)
-        self.assertIn("Dispatch every reproduction rerun to a fresh subagent execution", test)
-        self.assertIn("each reproduction check before acting to a fresh subagent execution", test)
+        self.assertIn(
+            "Dispatch every reproduction rerun to a fresh subagent execution", test
+        )
+        self.assertIn(
+            "each reproduction check before acting to a fresh subagent execution", test
+        )
         capabilities = (SKILL_DIR / "references" / "capabilities.md").read_text()
         self.assertIn("fresh subagent", capabilities)
         self.assertIn("inline testing never satisfies the gate", capabilities)
@@ -109,7 +115,9 @@ class ShipItRolesTest(unittest.TestCase):
             capabilities.index("fresh generic subagent"),
         )
 
-    def test_review_and_testing_require_fresh_context_not_a_different_model(self) -> None:
+    def test_review_and_testing_require_fresh_context_not_a_different_model(
+        self,
+    ) -> None:
         isolation = self.contract["context_isolation"]
         self.assertEqual(isolation["required_for"], ["review", "testing"])
         self.assertEqual(isolation["execution"], "fresh-subagent-per-pass-or-retry")
@@ -133,14 +141,14 @@ class ShipItRolesTest(unittest.TestCase):
         example_match = re.search(
             r"```json\n(?P<document>.*?)\n```", self.evidence, re.DOTALL
         )
-        self.assertIsNotNone(example_match)
+        assert example_match is not None
         example = json.loads(example_match["document"])
         route = example["roleRoutes"][0]
         self.assertEqual(route["sourceRevision"], example["revision"])
         self.assertEqual(set(route["requested"]), set(SELECTOR_FIELDS))
         self.assertEqual(set(route["actual"]), set(SELECTOR_FIELDS))
         for field in self.contract["route_record"]["required_fields"]:
-                self.assertIn(field, route)
+            self.assertIn(field, route)
 
     def test_revision_rollover_preserves_verified_result_provenance(self) -> None:
         for expected in (

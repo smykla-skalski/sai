@@ -166,7 +166,9 @@ class ShipItConvergenceContractTest(unittest.TestCase):
         )
         convergence = reference("convergence.md")
         self.assertIn("assess the review, test and quality manifests", convergence)
-        self.assertIn("unchanged relevant inputs carry the completed results", convergence)
+        self.assertIn(
+            "unchanged relevant inputs carry the completed results", convergence
+        )
         self.assertIn("changed dimensions record their invalidation", convergence)
         self.assertIn("focused checks under the retained authorization", convergence)
         self.assertIn("naming the first-parent comparison", reference("evidence.md"))

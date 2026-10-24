@@ -5,4 +5,5 @@ ignore = [
     "D213",   # incompatible with D212
     "T201",   # print is the correct output mechanism
     "INP001", # standalone scripts, not a package
+    "COM812", # conflicts with ruff format, which already adds trailing commas
 ]

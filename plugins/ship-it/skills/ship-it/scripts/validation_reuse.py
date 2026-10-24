@@ -225,7 +225,9 @@ def relevance_scope(spec: dict[str, Any]) -> dict[str, Any] | None:
 
 def paths(value: object, name: str) -> list[str]:
     """Validate explicit repository-relative file or directory scopes."""
-    require(isinstance(value, list), f"{name} must be a path array")
+    if not isinstance(value, list):
+        msg = f"{name} must be a path array"
+        raise ConvergenceError(msg)
     for item in value:
         require(
             isinstance(item, str)
@@ -280,14 +282,17 @@ def capture(spec: dict[str, Any], revision: str, criteria: list[str]) -> dict[st
         "command must be a non-empty argument array",
     )
     environment = spec.get("environment")
-    require(isinstance(environment, dict), "environment must be an object")
+    if not isinstance(environment, dict):
+        msg = "environment must be an object"
+        raise ConvergenceError(msg)
     variables = environment.get("variables")
-    require(
+    if not (
         isinstance(variables, list)
         and all(isinstance(name, str) and name for name in variables)
-        and isinstance(environment.get("facts"), dict),
-        "environment requires variable names and runtime facts",
-    )
+        and isinstance(environment.get("facts"), dict)
+    ):
+        msg = "environment requires variable names and runtime facts"
+        raise ConvergenceError(msg)
     require(isinstance(spec.get("policyFacts"), dict), "inputs require policyFacts")
     entries = {}
     for entry in git(repository, "ls-tree", "-r", "-z", "HEAD").split(b"\0"):
@@ -406,10 +411,9 @@ def changed_files(old: dict[str, Any], new: dict[str, Any]) -> list[dict[str, st
 
 def artifact(path: object) -> dict[str, str]:
     """Bind an output artifact to immutable content, failing closed on missing data."""
-    require(
-        isinstance(path, str) and Path(path).is_absolute(),
-        "result requires absolute output path",
-    )
+    if not (isinstance(path, str) and Path(path).is_absolute()):
+        msg = "result requires absolute output path"
+        raise ConvergenceError(msg)
     try:
         content = Path(path).read_bytes()
     except OSError as error:
