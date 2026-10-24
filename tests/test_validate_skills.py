@@ -42,6 +42,7 @@ class ValidateSkillsCommandTest(unittest.TestCase):
         self.scratch = Path(scratch.name)
 
     def run_script(self, *paths: Path) -> subprocess.CompletedProcess[str]:
+        assert UV is not None
         return subprocess.run(
             [UV, "run", "--quiet", "--script", str(SCRIPT), *map(str, paths)],
             capture_output=True,

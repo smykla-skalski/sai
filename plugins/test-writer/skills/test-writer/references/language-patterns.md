@@ -39,10 +39,14 @@ func TestParseConfig(t *testing.T) {
 ## Python
 
 ```python
-@pytest.mark.parametrize("input_val,expected", [
-    pytest.param("valid", Result(ok=True), id="valid-input"),
-    pytest.param("", None, id="empty-rejects"),
-], ids=lambda x: x)
+@pytest.mark.parametrize(
+    "input_val,expected",
+    [
+        pytest.param("valid", Result(ok=True), id="valid-input"),
+        pytest.param("", None, id="empty-rejects"),
+    ],
+    ids=lambda x: x,
+)
 def test_parse(input_val, expected):
     assert parse(input_val) == expected
 ```

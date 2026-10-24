@@ -155,7 +155,7 @@ comments(first:1){nodes{author{login}}}} pageInfo{hasNextPage endCursor}}}}}
             "number": self.number,
             "mergeActor": self.merge_integration is not None,
         }
-        collected = {"checks": [], "reviews": [], "threads": []}
+        collected: dict[str, list[dict]] = {"checks": [], "reviews": [], "threads": []}
         finished: set[str] = set()
         observed_head = None
         observed_base = None
@@ -246,7 +246,7 @@ def _submitted_reviews(collected: dict) -> list[dict]:
 
 def _normalize(pr: dict, collected: dict, serviceability: dict | None = None) -> dict:
     checks = []
-    statuses = []
+    statuses: list[dict] = []
     required = []
     latest: dict[tuple[str, str, str], dict] = {}
     for item in collected["checks"]:

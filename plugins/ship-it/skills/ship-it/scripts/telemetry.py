@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import itertools
 import json
 import os
 import re
@@ -17,6 +18,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
@@ -30,6 +32,7 @@ if TYPE_CHECKING:
 SCHEMA_VERSION: Final[int] = 4
 SUPPORTED_SCHEMA_VERSIONS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
 LOCK_TIMEOUT_SECONDS: Final[float] = 2.0
+LOCK_RETRY_SECONDS: Final[float] = 0.02
 ROLES: Final[tuple[str, ...]] = (
     "primary",
     "subagent",
@@ -95,32 +98,40 @@ COUNTERS: Final[tuple[str, ...]] = (
     "user_interruptions",
 )
 SAFE_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$")
-SAFE_TASK_ID: Final[re.Pattern[str]] = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
+SAFE_TASK_ID: Final[re.Pattern[str]] = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$",
+)
 RUN_ID: Final[re.Pattern[str]] = re.compile(r"^run_[0-9a-f]{24}$")
 
 
 class UsageError(Exception):
-    pass
+    """Reject unsafe input or unreadable telemetry state."""
 
 
 def data_dir() -> Path:
+    """Return the telemetry root under XDG_DATA_HOME or ~/.local/share."""
     root = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
     return root / "sai" / "ship-it" / "telemetry"
 
 
+def _lock(descriptor: int, timeout_message: str) -> None:
+    deadline = time.monotonic() + LOCK_TIMEOUT_SECONDS
+    while True:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                raise OSError(timeout_message) from None
+            time.sleep(LOCK_RETRY_SECONDS)
+
+
 @contextmanager
 def exclusive_lock(path: Path) -> Iterator[None]:
+    """Hold an exclusive flock on path; raise OSError when it stays busy."""
     descriptor = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
     with os.fdopen(descriptor, "a", encoding="utf-8") as lock:
-        deadline = time.monotonic() + LOCK_TIMEOUT_SECONDS
-        while True:
-            try:
-                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    raise OSError("telemetry lock timed out") from None
-                time.sleep(0.02)
+        _lock(lock.fileno(), "telemetry lock timed out")
         try:
             yield
         finally:
@@ -128,33 +139,43 @@ def exclusive_lock(path: Path) -> Iterator[None]:
 
 
 def validate_identifier(label: str, value: str) -> str:
+    """Return value when it is a safe identifier that is not a URL."""
     if not SAFE_ID.fullmatch(value) or "://" in value:
-        raise UsageError(f"{label} must be 1-128 safe identifier characters")
+        msg = f"{label} must be 1-128 safe identifier characters"
+        raise UsageError(msg)
     return value
 
 
 def validate_task_id(value: str) -> str:
+    """Return value when it is a safe opaque task id."""
     if not SAFE_TASK_ID.fullmatch(value):
-        raise UsageError("task id must be 1-128 opaque identifier characters")
+        msg = "task id must be 1-128 opaque identifier characters"
+        raise UsageError(msg)
     return value
 
 
 def validate_opaque_identifier(label: str, value: str) -> str:
+    """Return value when it is a safe opaque identifier, which excludes / and :."""
     if not SAFE_TASK_ID.fullmatch(value):
-        raise UsageError(f"{label} must be 1-128 opaque identifier characters")
+        msg = f"{label} must be 1-128 opaque identifier characters"
+        raise UsageError(msg)
     return value
 
 
 def timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    """Return the current UTC time as ISO 8601 with milliseconds and a Z suffix."""
+    now = datetime.now(timezone.utc)
+    return now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def private_directory(path: Path) -> None:
+    """Create path if needed and restrict it to the owner."""
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(path, 0o700)
+    path.chmod(0o700)
 
 
 def private_json(path: Path, value: dict) -> None:
+    """Write value as compact JSON to a new owner-only file; fail if it exists."""
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     descriptor = os.open(path, flags, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
@@ -163,8 +184,12 @@ def private_json(path: Path, value: dict) -> None:
 
 
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
+    """Replace path with compact owner-only JSON through a synced temporary file."""
     private_directory(path.parent)
-    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        dir=path.parent,
+    )
     temporary = Path(temporary_name)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
@@ -180,24 +205,29 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
 
 
 def task_index_path(task_id: str) -> Path:
+    """Return the index file of task_id, named by its hash to keep the id private."""
     digest = hashlib.sha256(task_id.encode()).hexdigest()
     return data_dir() / "tasks" / f"{digest}.json"
 
 
 def indexed_run(task_id: str) -> dict[str, Any] | None:
+    """Return the run state the task index points to, or None without an index."""
     path = task_index_path(task_id)
     try:
         index = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return None
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise UsageError("cannot read task run index") from error
+        msg = "cannot read task run index"
+        raise UsageError(msg) from error
     if not isinstance(index, dict) or index.get("task_id") != task_id:
-        raise UsageError("invalid task run index")
+        msg = "invalid task run index"
+        raise UsageError(msg)
     return load_run(index.get("run_id", ""))
 
 
 def discover_run(task_id: str) -> dict[str, Any] | None:
+    """Return the newest readable run state of task_id, or None."""
     runs = data_dir() / "runs"
     if not runs.is_dir():
         return None
@@ -216,60 +246,67 @@ def discover_run(task_id: str) -> dict[str, Any] | None:
 
 
 def load_run(run_id: str) -> dict[str, Any]:
+    """Return the validated state of run_id; raise UsageError if it is unusable."""
     if not isinstance(run_id, str) or not RUN_ID.fullmatch(run_id):
-        raise UsageError("run id has an invalid format")
+        msg = "run id has an invalid format"
+        raise UsageError(msg)
     path = data_dir() / "runs" / f"{run_id}.json"
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        raise UsageError(f"unknown run id {run_id!r}") from None
+        msg = f"unknown run id {run_id!r}"
+        raise UsageError(msg) from None
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        raise UsageError(f"cannot read run state for {run_id!r}") from None
+        msg = f"cannot read run state for {run_id!r}"
+        raise UsageError(msg) from None
     if not isinstance(value, dict) or value.get("run_id") != run_id:
-        raise UsageError(f"invalid run state for {run_id!r}")
+        msg = f"invalid run state for {run_id!r}"
+        raise UsageError(msg)
     try:
         validate_task_id(value["task_id"])
         validate_identifier("harness", value["harness"])
         validate_identifier("provider", value["provider"])
         validate_identifier("model", value["model"])
         if value["role"] not in ROLES:
-            raise UsageError("role in run state is invalid")
+            msg = "role in run state is invalid"
+            raise UsageError(msg)
     except (KeyError, TypeError):
-        raise UsageError(f"invalid run state for {run_id!r}") from None
+        msg = f"invalid run state for {run_id!r}"
+        raise UsageError(msg) from None
     return value
 
 
 def metric_values(args: argparse.Namespace) -> dict[str, int | None]:
+    """Return every counter from args, None when absent; reject negatives."""
     values: dict[str, int | None] = {}
     for name in COUNTERS:
         value = getattr(args, name, None)
         if value is not None and value < 0:
-            raise UsageError(f"{name.replace('_', '-')} cannot be negative")
+            msg = f"{name.replace('_', '-')} cannot be negative"
+            raise UsageError(msg)
         values[name] = value
     return values
 
 
+def _write_all(descriptor: int, encoded: bytes) -> None:
+    remaining = memoryview(encoded)
+    while remaining:
+        written = os.write(descriptor, remaining)
+        if written <= 0:
+            msg = "event append made no progress"
+            raise OSError(msg)
+        remaining = remaining[written:]
+
+
 def append_event(path: Path, encoded: bytes) -> None:
+    """Append encoded to the log under a lock; truncate a partial write."""
     descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
     try:
         os.fchmod(descriptor, 0o600)
-        deadline = time.monotonic() + LOCK_TIMEOUT_SECONDS
-        while True:
-            try:
-                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except BlockingIOError:
-                if time.monotonic() >= deadline:
-                    raise OSError("event log lock timed out") from None
-                time.sleep(0.02)
+        _lock(descriptor, "event log lock timed out")
         start = os.lseek(descriptor, 0, os.SEEK_END)
-        remaining = memoryview(encoded)
         try:
-            while remaining:
-                written = os.write(descriptor, remaining)
-                if written <= 0:
-                    raise OSError("event append made no progress")
-                remaining = remaining[written:]
+            _write_all(descriptor, encoded)
         except OSError:
             os.ftruncate(descriptor, start)
             raise
@@ -278,28 +315,39 @@ def append_event(path: Path, encoded: bytes) -> None:
 
 
 def event_in_log(path: Path, event_id: str) -> bool:
+    """Return whether the compact log at path holds event_id."""
     try:
         content = path.read_bytes()
     except FileNotFoundError:
         return False
     except OSError as error:
-        raise UsageError("cannot read telemetry event log") from error
+        msg = "cannot read telemetry event log"
+        raise UsageError(msg) from error
     return f'"event_id":"{event_id}"'.encode() in content
 
 
 def load_event(path: Path) -> dict[str, Any]:
+    """Return the stored event object at path; raise UsageError if unusable."""
     try:
         event = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError) as error:
-        raise UsageError("cannot read existing telemetry event") from error
+        msg = "cannot read existing telemetry event"
+        raise UsageError(msg) from error
     except json.JSONDecodeError as error:
-        raise UsageError("existing telemetry event is invalid") from error
+        msg = "existing telemetry event is invalid"
+        raise UsageError(msg) from error
     if not isinstance(event, dict):
-        raise UsageError("existing telemetry event is not an object")
+        msg = "existing telemetry event is not an object"
+        raise UsageError(msg)
     return event
 
 
 def persist_event(record: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    """Store record once and make sure the log holds it.
+
+    Return whether the event already existed and the stored copy, which wins
+    over record on a duplicate.
+    """
     root = data_dir()
     events = root / "events"
     private_directory(events)
@@ -328,6 +376,7 @@ def event_identifier(
     args: argparse.Namespace,
     outcome: str | None,
 ) -> str:
+    """Return a stable id for an observation, or a random id without one."""
     observation_id = getattr(args, "observation_id", None)
     if observation_id is None:
         return f"evt_{secrets.token_hex(12)}"
@@ -341,12 +390,17 @@ def event_identifier(
     return f"evt_{hashlib.sha256(material.encode()).hexdigest()[:24]}"
 
 
+def _identity(args: argparse.Namespace, state: dict[str, Any], label: str) -> str:
+    return validate_identifier(label, getattr(args, label, None) or state[label])
+
+
 def emit(
     state: dict[str, Any],
     args: argparse.Namespace,
     event: str,
     outcome: str | None,
 ) -> dict[str, Any]:
+    """Persist one event and return it with its duplicate flag and log path."""
     root = data_dir()
     private_directory(root)
     path = root / "events.ndjson"
@@ -364,9 +418,9 @@ def emit(
         "run_id": state["run_id"],
         "task_id": state["task_id"],
         "event": event,
-        "harness": validate_identifier("harness", getattr(args, "harness", None) or state["harness"]),
-        "provider": validate_identifier("provider", getattr(args, "provider", None) or state["provider"]),
-        "model": validate_identifier("model", getattr(args, "model", None) or state["model"]),
+        "harness": _identity(args, state, "harness"),
+        "provider": _identity(args, state, "provider"),
+        "model": _identity(args, state, "model"),
         "role": getattr(args, "role", None) or state["role"],
         "phase": args.phase,
         "observation_id": observation_id,
@@ -381,6 +435,11 @@ def emit(
 
 
 def begin(args: argparse.Namespace) -> dict[str, Any]:
+    """Start or resume the run of a task and emit run_started.
+
+    A resumed run keeps its stored identity, and a run that finished blocked
+    becomes active again.
+    """
     task_id = validate_task_id(args.task_id)
     runs = data_dir() / "runs"
     private_directory(runs)
@@ -405,13 +464,13 @@ def begin(args: argparse.Namespace) -> dict[str, Any]:
                 "skill_version": json.loads(
                     (Path(__file__).resolve().parents[3] / "plugin.json").read_text(
                         encoding="utf-8",
-                    )
+                    ),
                 )["version"],
             }
             private_json(runs / f"{state['run_id']}.json", state)
         else:
-            for field in ("harness", "provider", "model", "role"):
-                setattr(args, field, state[field])
+            for name in ("harness", "provider", "model", "role"):
+                setattr(args, name, state[name])
             if reactivate:
                 state["status"] = "active"
                 state.pop("outcome", None)
@@ -430,23 +489,35 @@ def begin(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def record(args: argparse.Namespace) -> dict:
+    """Emit a phase_completed snapshot for an existing run."""
     return emit(load_run(args.run_id), args, "phase_completed", None)
 
 
 def observe(args: argparse.Namespace) -> dict[str, Any]:
+    """Emit an idempotent phase, wait or interruption observation.
+
+    Wait events require a wait kind and other events reject one; non-primary
+    phase events require a worker id.
+    """
     wait_event = args.event in ("wait_started", "wait_completed")
     if wait_event != (args.wait_kind is not None):
         requirement = "requires" if wait_event else "does not accept"
-        raise UsageError(f"{args.event} {requirement} --wait-kind")
+        msg = f"{args.event} {requirement} --wait-kind"
+        raise UsageError(msg)
     state = load_run(args.run_id)
     effective_role = args.role or state["role"]
     phase_event = args.event in ("phase_started", "phase_completed")
     if phase_event and effective_role != "primary" and args.worker_id is None:
-        raise UsageError("non-primary phase observations require --worker-id")
+        msg = "non-primary phase observations require --worker-id"
+        raise UsageError(msg)
     return emit(state, args, args.event, None)
 
 
 def finish(args: argparse.Namespace) -> dict[str, Any]:
+    """Emit run_finished and record the outcome.
+
+    Only a run that finished blocked may finish again with another outcome.
+    """
     args.phase = "complete"
     args.observation_id = "run"
     args.worker_id = None
@@ -454,11 +525,12 @@ def finish(args: argparse.Namespace) -> dict[str, Any]:
     run_path = data_dir() / "runs" / f"{args.run_id}.json"
     with exclusive_lock(run_path.with_suffix(".lock")):
         state = load_run(args.run_id)
-        if (
-            state.get("status") == "finished"
-            and state.get("outcome") not in ("blocked", args.outcome)
+        if state.get("status") == "finished" and state.get("outcome") not in (
+            "blocked",
+            args.outcome,
         ):
-            raise UsageError("run already finished with a different outcome")
+            msg = "run already finished with a different outcome"
+            raise UsageError(msg)
         result = emit(state, args, "run_finished", args.outcome)
         state["status"] = "finished"
         state["outcome"] = args.outcome
@@ -467,24 +539,30 @@ def finish(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def parse_timestamp(value: object) -> datetime:
+    """Return the timezone-aware datetime of an event timestamp."""
     if not isinstance(value, str):
-        raise UsageError("telemetry event timestamp is invalid")
+        msg = "telemetry event timestamp is invalid"
+        raise UsageError(msg)
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as error:
-        raise UsageError("telemetry event timestamp is invalid") from error
+        msg = "telemetry event timestamp is invalid"
+        raise UsageError(msg) from error
     if parsed.tzinfo is None:
-        raise UsageError("telemetry event timestamp must include a timezone")
+        msg = "telemetry event timestamp must include a timezone"
+        raise UsageError(msg)
     return parsed
 
 
 def milliseconds(start: datetime, end: datetime) -> int:
+    """Return the whole milliseconds from start to end, never negative."""
     return max(0, round((end - start).total_seconds() * 1000))
 
 
 def merge_intervals(
     intervals: list[tuple[datetime, datetime]],
 ) -> list[tuple[datetime, datetime]]:
+    """Return the sorted union of intervals, joining overlapping ones."""
     merged: list[tuple[datetime, datetime]] = []
     for start, end in sorted(intervals):
         if not merged or start > merged[-1][1]:
@@ -495,6 +573,7 @@ def merge_intervals(
 
 
 def interval_total(intervals: list[tuple[datetime, datetime]]) -> int:
+    """Return the milliseconds that the union of intervals covers."""
     return sum(milliseconds(start, end) for start, end in merge_intervals(intervals))
 
 
@@ -502,6 +581,7 @@ def overlap_total(
     left: list[tuple[datetime, datetime]],
     right: list[tuple[datetime, datetime]],
 ) -> int:
+    """Return the milliseconds that both interval sets cover."""
     overlaps: list[tuple[datetime, datetime]] = []
     for left_start, left_end in merge_intervals(left):
         for right_start, right_end in merge_intervals(right):
@@ -511,52 +591,68 @@ def overlap_total(
     return interval_total(overlaps)
 
 
-def read_events(run_id: str) -> list[dict[str, Any]]:
+def _logged_events() -> Iterator[dict[str, Any]]:
     path = data_dir() / "events.ndjson"
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
-        lines = []
+        return
     except (OSError, UnicodeDecodeError) as error:
-        raise UsageError("cannot read telemetry event log") from error
-    events: list[dict[str, Any]] = []
-    seen: set[str] = set()
+        msg = "cannot read telemetry event log"
+        raise UsageError(msg) from error
     for line in lines:
         try:
             event = json.loads(line)
         except json.JSONDecodeError as error:
-            raise UsageError("telemetry event log contains invalid JSON") from error
+            msg = "telemetry event log contains invalid JSON"
+            raise UsageError(msg) from error
         if not isinstance(event, dict):
-            raise UsageError("telemetry event log contains a non-object")
-        event_id = event.get("event_id")
-        if event.get("run_id") != run_id or not isinstance(event_id, str):
-            continue
-        version = event.get("schema_version")
-        if version not in SUPPORTED_SCHEMA_VERSIONS:
-            raise UsageError(f"unsupported telemetry schema version: {version!r}")
-        if event_id in seen:
-            continue
-        seen.add(event_id)
-        events.append(event)
+            msg = "telemetry event log contains a non-object"
+            raise UsageError(msg)
+        yield event
+
+
+def _stored_events() -> Iterator[dict[str, Any]]:
     event_dir = data_dir() / "events"
     if event_dir.is_dir():
         for event_path in event_dir.glob("evt_*.json"):
-            event = load_event(event_path)
-            event_id = event.get("event_id")
-            if event.get("run_id") != run_id or not isinstance(event_id, str):
-                continue
-            version = event.get("schema_version")
-            if version not in SUPPORTED_SCHEMA_VERSIONS:
-                raise UsageError(f"unsupported telemetry schema version: {version!r}")
-            if event_id not in seen:
-                seen.add(event_id)
-                events.append(event)
+            yield load_event(event_path)
+
+
+def _run_event_id(event: dict[str, Any], run_id: str) -> str | None:
+    event_id = event.get("event_id")
+    if event.get("run_id") != run_id or not isinstance(event_id, str):
+        return None
+    version = event.get("schema_version")
+    if version not in SUPPORTED_SCHEMA_VERSIONS:
+        msg = f"unsupported telemetry schema version: {version!r}"
+        raise UsageError(msg)
+    return event_id
+
+
+def _event_order(event: dict[str, Any]) -> tuple[datetime, str]:
+    return parse_timestamp(event.get("emitted_at")), event["event_id"]
+
+
+def read_events(run_id: str) -> list[dict[str, Any]]:
+    """Return the unique events of run_id, oldest first.
+
+    The log is read before the per-event files, and the first copy of an event
+    id wins.
+    """
+    events: dict[str, dict[str, Any]] = {}
+    for event in itertools.chain(_logged_events(), _stored_events()):
+        event_id = _run_event_id(event, run_id)
+        if event_id is not None:
+            events.setdefault(event_id, event)
     if not events:
-        raise UsageError(f"no telemetry events found for run {run_id!r}")
-    return sorted(events, key=lambda event: (parse_timestamp(event.get("emitted_at")), event["event_id"]))
+        msg = f"no telemetry events found for run {run_id!r}"
+        raise UsageError(msg)
+    return sorted(events.values(), key=_event_order)
 
 
 def latest_counter(events: list[dict[str, Any]], name: str) -> int | None:
+    """Return the highest integer value of counter name across events, or None."""
     values = [
         metrics[name]
         for event in events
@@ -567,118 +663,167 @@ def latest_counter(events: list[dict[str, Any]], name: str) -> int | None:
 
 
 def repeated_count(events: list[dict[str, Any]], counter: str) -> int | None:
+    """Return how many runs of a gate came after the first, or None if unknown."""
     value = latest_counter(events, counter)
     return None if value is None else max(0, value - 1)
 
 
-def build_report(run_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
-    starts: dict[tuple[str, str, str | None], dict[str, Any]] = {}
-    primary_by_phase: dict[str, list[tuple[datetime, datetime]]] = {
-        phase: [] for phase in PHASES
-    }
-    worker_intervals: dict[str, list[tuple[datetime, datetime]]] = {}
-    waits: dict[str, list[tuple[datetime, datetime]]] = {
-        kind: [] for kind in WAIT_KINDS
-    }
-    incomplete = 0
-    interruptions = 0
-    has_timing_observation = False
+@dataclass
+class _Timeline:
+    """Pair the timed observations of one run, fed in timestamp order."""
+
     run_started: datetime | None = None
     run_finished: datetime | None = None
+    interruptions: int = 0
+    has_timing_observation: bool = False
+    incomplete: int = 0
+    starts: dict[tuple[str, str, str | None], dict[str, Any]] = field(
+        default_factory=dict,
+    )
+    primary_by_phase: dict[str, list[tuple[datetime, datetime]]] = field(
+        default_factory=lambda: {phase: [] for phase in PHASES},
+    )
+    worker_intervals: dict[str, list[tuple[datetime, datetime]]] = field(
+        default_factory=dict,
+    )
+    waits: dict[str, list[tuple[datetime, datetime]]] = field(
+        default_factory=lambda: {kind: [] for kind in WAIT_KINDS},
+    )
 
-    for event in events:
+    def add(self, event: dict[str, Any]) -> None:
         occurred = parse_timestamp(event.get("emitted_at"))
         event_name = event.get("event")
-        if event_name == "run_started" and run_started is None:
-            run_started = occurred
+        if event_name == "run_started" and self.run_started is None:
+            self.run_started = occurred
         elif event_name == "run_finished":
-            run_finished = occurred
+            self.run_finished = occurred
         elif event_name == "user_interruption":
-            interruptions += 1
-
+            self.interruptions += 1
         observation_id = event.get("observation_id")
-        if not isinstance(observation_id, str):
-            continue
+        if isinstance(observation_id, str):
+            self._observe(event, observation_id, occurred)
+
+    def _observe(
+        self,
+        event: dict[str, Any],
+        observation_id: str,
+        occurred: datetime,
+    ) -> None:
+        event_name = event.get("event")
         if event_name in ("phase_started", "wait_started"):
-            has_timing_observation = True
+            self.has_timing_observation = True
             kind = "phase" if event_name == "phase_started" else "wait"
-            starts.setdefault((kind, observation_id, event.get("worker_id")), event)
-            continue
-        if event_name not in ("phase_completed", "wait_completed"):
-            continue
-        kind = "phase" if event_name == "phase_completed" else "wait"
-        started = starts.pop(
-            (kind, observation_id, event.get("worker_id")),
-            None,
-        )
-        if started is None:
-            incomplete += 1
-            continue
+            key = (kind, observation_id, event.get("worker_id"))
+            self.starts.setdefault(key, event)
+        elif event_name in ("phase_completed", "wait_completed"):
+            kind = "phase" if event_name == "phase_completed" else "wait"
+            key = (kind, observation_id, event.get("worker_id"))
+            started = self.starts.pop(key, None)
+            if started is None or not self._complete(kind, started, event, occurred):
+                self.incomplete += 1
+
+    def _complete(
+        self,
+        kind: str,
+        started: dict[str, Any],
+        event: dict[str, Any],
+        occurred: datetime,
+    ) -> bool:
         start = parse_timestamp(started.get("emitted_at"))
         if occurred < start:
-            incomplete += 1
-            continue
-        interval = (start, occurred)
+            return False
         if kind == "wait":
-            wait_kind = started.get("wait_kind")
-            if wait_kind != event.get("wait_kind") or wait_kind not in waits:
-                incomplete += 1
-                continue
-            waits[wait_kind].append(interval)
-            continue
+            return self._record_wait(started, event, (start, occurred))
+        return self._record_phase(started, event, (start, occurred))
+
+    def _record_wait(
+        self,
+        started: dict[str, Any],
+        event: dict[str, Any],
+        interval: tuple[datetime, datetime],
+    ) -> bool:
+        wait_kind = started.get("wait_kind")
+        if wait_kind != event.get("wait_kind") or wait_kind not in self.waits:
+            return False
+        self.waits[wait_kind].append(interval)
+        return True
+
+    def _record_phase(
+        self,
+        started: dict[str, Any],
+        event: dict[str, Any],
+        interval: tuple[datetime, datetime],
+    ) -> bool:
         phase = started.get("phase")
-        if phase != event.get("phase") or phase not in primary_by_phase:
-            incomplete += 1
-            continue
+        if phase != event.get("phase") or phase not in self.primary_by_phase:
+            return False
         worker_id = started.get("worker_id")
         if worker_id != event.get("worker_id"):
-            incomplete += 1
-            continue
+            return False
         if isinstance(worker_id, str):
-            worker_intervals.setdefault(worker_id, []).append(interval)
+            self.worker_intervals.setdefault(worker_id, []).append(interval)
         else:
-            primary_by_phase[phase].append(interval)
+            self.primary_by_phase[phase].append(interval)
+        return True
 
-    incomplete += len(starts)
-    primary_intervals = [
-        interval
-        for phase_intervals in primary_by_phase.values()
-        for interval in phase_intervals
-    ]
-    all_waits = [interval for wait_intervals in waits.values() for interval in wait_intervals]
-    primary_total = interval_total(primary_intervals) if primary_intervals else None
-    active_work = (
-        None
-        if primary_total is None
-        else max(0, primary_total - overlap_total(primary_intervals, all_waits))
-    )
-    metric_interruptions = latest_counter(events, "user_interruptions")
-    interruption_values = [interruptions] if interruptions else []
-    if metric_interruptions is not None:
-        interruption_values.append(metric_interruptions)
-    interruption_count = max(interruption_values) if interruption_values else None
+    def delivery_elapsed_ms(self) -> int | None:
+        if self.run_started is None or self.run_finished is None:
+            return None
+        return milliseconds(self.run_started, self.run_finished)
+
+    def active_work_ms(self) -> int | None:
+        primary = [
+            interval
+            for intervals in self.primary_by_phase.values()
+            for interval in intervals
+        ]
+        if not primary:
+            return None
+        waits = [
+            interval for intervals in self.waits.values() for interval in intervals
+        ]
+        return max(0, interval_total(primary) - overlap_total(primary, waits))
+
+
+def _durations(
+    intervals_by_name: dict[str, list[tuple[datetime, datetime]]],
+) -> dict[str, int | None]:
+    return {
+        name: interval_total(intervals) if intervals else None
+        for name, intervals in intervals_by_name.items()
+    }
+
+
+def _interruption_count(events: list[dict[str, Any]], observed: int) -> int | None:
+    values = [observed] if observed else []
+    metric = latest_counter(events, "user_interruptions")
+    if metric is not None:
+        values.append(metric)
+    return max(values) if values else None
+
+
+def build_report(run_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Summarize time-ordered events of one run into a report.
+
+    Primary phase time excludes observed waits; worker time is reported apart.
+    A metric is None when no event observed it.
+    """
+    timeline = _Timeline()
+    for event in events:
+        timeline.add(event)
+    incomplete = timeline.incomplete + len(timeline.starts)
     return {
         "run_id": run_id,
-        "delivery_elapsed_ms": (
-            milliseconds(run_started, run_finished)
-            if run_started is not None and run_finished is not None
-            else None
-        ),
-        "active_work_ms": active_work,
-        "phase_durations_ms": {
-            phase: interval_total(intervals) if intervals else None
-            for phase, intervals in primary_by_phase.items()
-        },
-        "observed_wait_ms": {
-            kind: interval_total(intervals) if intervals else None
-            for kind, intervals in waits.items()
-        },
+        "delivery_elapsed_ms": timeline.delivery_elapsed_ms(),
+        "active_work_ms": timeline.active_work_ms(),
+        "phase_durations_ms": _durations(timeline.primary_by_phase),
+        "observed_wait_ms": _durations(timeline.waits),
         "worker_durations_ms": (
             {
                 worker: interval_total(intervals)
-                for worker, intervals in sorted(worker_intervals.items())
+                for worker, intervals in sorted(timeline.worker_intervals.items())
             }
-            if worker_intervals
+            if timeline.worker_intervals
             else None
         ),
         "repeated_gate_counts": {
@@ -686,8 +831,8 @@ def build_report(run_id: str, events: list[dict[str, Any]]) -> dict[str, Any]:
             "test": repeated_count(events, "test_runs"),
             "quality": repeated_count(events, "full_quality_gate_runs"),
         },
-        "user_interruptions": interruption_count,
-        "observations_complete": has_timing_observation and incomplete == 0,
+        "user_interruptions": _interruption_count(events, timeline.interruptions),
+        "observations_complete": timeline.has_timing_observation and incomplete == 0,
         "incomplete_observation_count": incomplete,
         "event_count": len(events),
         "token_cost": token_cost.summarize(events),
@@ -706,11 +851,13 @@ def usage(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def report(args: argparse.Namespace) -> dict[str, Any]:
+    """Return the report of the run selected by run id or task id."""
     if args.task_id is not None:
         task_id = validate_task_id(args.task_id)
         state = indexed_run(task_id) or discover_run(task_id)
         if state is None:
-            raise UsageError(f"no run found for task id {task_id!r}")
+            msg = f"no run found for task id {task_id!r}"
+            raise UsageError(msg)
         run_id = state["run_id"]
     else:
         run_id = args.run_id
@@ -720,7 +867,8 @@ def report(args: argparse.Namespace) -> dict[str, Any]:
     return result
 
 
-def add_identity(parser: argparse.ArgumentParser, required: bool) -> None:
+def add_identity(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    """Add the harness, provider, model and role options to parser."""
     parser.add_argument("--harness", required=required)
     parser.add_argument("--provider", required=required)
     parser.add_argument("--model", required=required)
@@ -728,11 +876,13 @@ def add_identity(parser: argparse.ArgumentParser, required: bool) -> None:
 
 
 def add_metrics(parser: argparse.ArgumentParser) -> None:
+    """Add one optional integer option per counter to parser."""
     for name in COUNTERS:
         parser.add_argument(f"--{name.replace('_', '-')}", type=int)
 
 
 def parser() -> argparse.ArgumentParser:
+    """Return the command-line parser; each subcommand sets its handler."""
     root = argparse.ArgumentParser(description=__doc__)
     commands = root.add_subparsers(dest="command", required=True)
 
@@ -742,7 +892,10 @@ def parser() -> argparse.ArgumentParser:
     add_metrics(begin_parser)
     begin_parser.set_defaults(handler=begin)
 
-    record_parser = commands.add_parser("record", help="emit a completed phase snapshot")
+    record_parser = commands.add_parser(
+        "record",
+        help="emit a completed phase snapshot",
+    )
     record_parser.add_argument("--run-id", required=True)
     record_parser.add_argument("--phase", choices=PHASES, required=True)
     add_identity(record_parser, required=False)
@@ -771,7 +924,8 @@ def parser() -> argparse.ArgumentParser:
     finish_parser.set_defaults(handler=finish)
 
     usage_parser = commands.add_parser(
-        "usage", help="record one non-overlapping host usage delta",
+        "usage",
+        help="record one non-overlapping host usage delta",
     )
     usage_parser.add_argument("--run-id", required=True)
     usage_parser.add_argument("--phase", choices=PHASES, required=True)
@@ -793,6 +947,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run one subcommand and print its result; return 2 on rejected input."""
     try:
         args = parser().parse_args(argv)
         result = args.handler(args)
@@ -802,13 +957,13 @@ def main(argv: list[str] | None = None) -> int:
             print(token_cost.markdown(result, version))
         else:
             print(json.dumps(result, sort_keys=True, separators=(",", ":")))
-        return 0
     except (UsageError, token_cost.UsageError) as error:
         print(f"telemetry: {error}", file=sys.stderr)
         return 2
     except OSError as error:
         print(f"telemetry: cannot persist event: {error}", file=sys.stderr)
         return 2
+    return 0
 
 
 if __name__ == "__main__":

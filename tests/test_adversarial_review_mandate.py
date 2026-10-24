@@ -28,7 +28,9 @@ CODE_VERDICT = re.compile(
     r"^CODE_ADVERSARY_VERDICT: "
     r"(FOUND BLOCKING \(\d+\)|FOUND ISSUES \(\d+\)|MINOR ONLY \(\d+\)|CLEAN)$"
 )
-FINDINGS_VERDICT = re.compile(r"^FINDINGS_ADVERSARY_VERDICT: (SOUND|CORRECTED|ESCAPED_BUG)$")
+FINDINGS_VERDICT = re.compile(
+    r"^FINDINGS_ADVERSARY_VERDICT: (SOUND|CORRECTED|ESCAPED_BUG)$"
+)
 VALID_CODE_VERDICTS = (
     "CODE_ADVERSARY_VERDICT: FOUND BLOCKING (2)",
     "CODE_ADVERSARY_VERDICT: FOUND ISSUES (1)",
@@ -80,7 +82,11 @@ class MandateSyncTest(unittest.TestCase):
     def test_agent_frontmatter_names_match_file_names(self) -> None:
         for name in ADVERSARIES:
             with self.subTest(agent=name):
-                head = (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8").split("\n", 2)[1]
+                head = (
+                    (AGENTS_DIR / f"{name}.md")
+                    .read_text(encoding="utf-8")
+                    .split("\n", 2)[1]
+                )
                 self.assertEqual(head, f"name: {name}")
 
 
@@ -90,14 +96,20 @@ class ProofContractTest(unittest.TestCase):
         for marker in ("## Proof ladder", "*Proof:*", "*Trace:*", "`question:`"):
             with self.subTest(marker=marker):
                 self.assertIn(marker, mandate)
-        self.assertIn("A `blocking:` without a `*Proof:*` or `*Trace:*` line is not a blocking finding", mandate)
+        self.assertIn(
+            "A `blocking:` without a `*Proof:*` or `*Trace:*` line is not a blocking finding",
+            mandate,
+        )
 
     def test_findings_adversary_strips_unproven_blocking(self) -> None:
         mandate = read_mandate("findings-adversary")
         self.assertIn("**Proof is executed.**", mandate)
         self.assertIn("DOWNGRADE→`issue:`", mandate)
         self.assertIn("DOWNGRADE→`question:`", mandate)
-        self.assertIn("A race with no step-by-step trace is a `question:`, never a blocker", mandate)
+        self.assertIn(
+            "A race with no step-by-step trace is a `question:`, never a blocker",
+            mandate,
+        )
 
     def test_findings_adversary_refuses_clean_input(self) -> None:
         mandate = read_mandate("findings-adversary")
@@ -156,7 +168,9 @@ class VerdictFormatTest(unittest.TestCase):
             gate,
         )
         self.assertIn("record a failed result (evidence, or `gateVerdicts`", gate)
-        self.assertIn("set `status: blocked` with its `Gate failure:` line as `blocker`", gate)
+        self.assertIn(
+            "set `status: blocked` with its `Gate failure:` line as `blocker`", gate
+        )
         self.assertIn("start no fix pass", gate)
         self.assertIn("else to rerun the gate", gate)
 
@@ -175,7 +189,9 @@ class VerdictFormatTest(unittest.TestCase):
     def test_workflow_skips_findings_pass_without_fixable_findings(self) -> None:
         workflow = WORKFLOW_FILE.read_text(encoding="utf-8")
         self.assertIn("when no finding is labelled `blocking:` or `issue:`", workflow)
-        self.assertIn("Never dispatch the Findings Adversary to refute a clean result", workflow)
+        self.assertIn(
+            "Never dispatch the Findings Adversary to refute a clean result", workflow
+        )
 
     def test_findings_guard_reply_satisfies_validator(self) -> None:
         mandate = read_mandate("findings-adversary")

@@ -79,14 +79,33 @@ CHECK_COUPLING: Final[str] = "HS-coupling"
 # Files we never treat as refactoring targets even if they churn.
 IGNORED_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
-        ".lock", ".sum", ".min.js", ".min.css", ".map", ".svg", ".png", ".jpg",
-        ".jpeg", ".gif", ".ico", ".pdf", ".gz", ".zip", ".woff", ".woff2", ".ttf",
+        ".lock",
+        ".sum",
+        ".min.js",
+        ".min.css",
+        ".map",
+        ".svg",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".ico",
+        ".pdf",
+        ".gz",
+        ".zip",
+        ".woff",
+        ".woff2",
+        ".ttf",
     },
 )
 IGNORED_NAMES: Final[frozenset[str]] = frozenset(
     {
-        "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "go.sum",
-        "Cargo.lock", "poetry.lock",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "go.sum",
+        "Cargo.lock",
+        "poetry.lock",
     },
 )
 
@@ -393,17 +412,23 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
         description="Rank refactoring hotspots from git history.",
     )
     parser.add_argument(
-        "paths", nargs="*", help="Path prefixes to scope (default: whole repo).",
+        "paths",
+        nargs="*",
+        help="Path prefixes to scope (default: whole repo).",
     )
     parser.add_argument("--since", default=DEFAULT_SINCE)
     parser.add_argument("--top", type=int, default=DEFAULT_TOP)
     parser.add_argument("--min-churn", type=int, default=DEFAULT_MIN_CHURN)
     parser.add_argument(
-        "--max-files-per-commit", type=int, default=DEFAULT_MAX_FILES_PER_COMMIT,
+        "--max-files-per-commit",
+        type=int,
+        default=DEFAULT_MAX_FILES_PER_COMMIT,
     )
     parser.add_argument("--coupling-min", type=float, default=DEFAULT_COUPLING_MIN)
     parser.add_argument(
-        "--coupling-support", type=int, default=DEFAULT_COUPLING_SUPPORT,
+        "--coupling-support",
+        type=int,
+        default=DEFAULT_COUPLING_SUPPORT,
     )
     parser.add_argument("--human", action="store_true")
     return parser.parse_args(argv)
@@ -416,11 +441,17 @@ def main(argv: list[str] | None = None) -> int:
         fail("--top must be positive")
     root = repo_root()
     history = collect_history(
-        tuple(args.paths), args.since, args.max_files_per_commit, root,
+        tuple(args.paths),
+        args.since,
+        args.max_files_per_commit,
+        root,
     )
     hotspots = rank_hotspots(history, args.min_churn, args.top)
     coupling = rank_coupling(
-        history, args.coupling_support, args.coupling_min, args.top,
+        history,
+        args.coupling_support,
+        args.coupling_min,
+        args.top,
     )
     if args.human:
         emit_human(hotspots, coupling)

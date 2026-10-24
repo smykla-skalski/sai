@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Copyright 2026 Smykla Skalski, MIT License.
 """Replay the public agent-workflow failure corpus through harness adapters.
 
 Adapters receive one synthetic corpus case as JSON on stdin and return a
@@ -19,7 +20,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 SCHEMA_VERSION: Final[int] = 1
 SUPPORTED_HARNESSES: Final[tuple[str, ...]] = (
@@ -37,7 +38,7 @@ FAILURE_MODES: Final[frozenset[str]] = frozenset(
         "compaction-loss",
         "tool-failure",
         "incomplete-delivery",
-    }
+    },
 )
 WORKFLOWS: Final[frozenset[str]] = frozenset({"single-agent", "multi-agent"})
 EXPECTED_OUTCOMES: Final[dict[str, str]] = {
@@ -49,7 +50,7 @@ EXPECTED_OUTCOMES: Final[dict[str, str]] = {
     "incomplete-delivery": "waiting",
 }
 OUTCOMES: Final[frozenset[str]] = frozenset(
-    {"accepted", "rejected", "blocked", "cancelled", "failed", "waiting"}
+    {"accepted", "rejected", "blocked", "cancelled", "failed", "waiting"},
 )
 PHASES: Final[frozenset[str]] = frozenset(
     {
@@ -66,7 +67,7 @@ PHASES: Final[frozenset[str]] = frozenset(
         "fix",
         "merge",
         "complete",
-    }
+    },
 )
 COUNTERS: Final[tuple[str, ...]] = (
     "turns",
@@ -90,10 +91,10 @@ CASE_KEYS: Final[frozenset[str]] = frozenset(
         "expected_behavior",
         "forbidden_behavior",
         "grading",
-    }
+    },
 )
 TRACE_KEYS: Final[frozenset[str]] = frozenset(
-    {"schema_version", "case_id", "harness", "outcome", "events", "cost"}
+    {"schema_version", "case_id", "harness", "outcome", "events", "cost"},
 )
 EVENT_KEYS: Final[frozenset[str]] = frozenset({"sequence", "phase", "observation"})
 SLUG: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$")
@@ -107,165 +108,201 @@ class AdapterError(Exception):
     """Privacy-safe adapter failure suitable for a persisted report."""
 
     def __init__(self, reason: str) -> None:
+        """Keep reason, a stable token that is safe to persist in a report."""
         super().__init__(reason)
         self.reason = reason
 
 
 def require_object(value: object, label: str) -> dict[str, object]:
+    """Return value as a JSON object; raise UsageError naming label otherwise."""
     if not isinstance(value, dict):
-        raise UsageError(f"{label} must be an object")
+        msg = f"{label} must be an object"
+        raise UsageError(msg)
     return value
 
 
 def require_string(value: object, label: str, *, slug: bool = False) -> str:
+    """Return a non-empty string, a lowercase slug when slug is set."""
     if not isinstance(value, str) or not value:
-        raise UsageError(f"{label} must be a non-empty string")
+        msg = f"{label} must be a non-empty string"
+        raise UsageError(msg)
     if slug and not SLUG.fullmatch(value):
-        raise UsageError(f"{label} must be a lowercase slug")
+        msg = f"{label} must be a lowercase slug"
+        raise UsageError(msg)
     return value
 
 
 def require_string_list(value: object, label: str, *, slug: bool = False) -> list[str]:
+    """Return a non-empty array of unique strings checked like require_string."""
     if not isinstance(value, list) or not value:
-        raise UsageError(f"{label} must be a non-empty array")
+        msg = f"{label} must be a non-empty array"
+        raise UsageError(msg)
     result = [require_string(item, f"{label} item", slug=slug) for item in value]
     if len(result) != len(set(result)):
-        raise UsageError(f"{label} must not contain duplicates")
+        msg = f"{label} must not contain duplicates"
+        raise UsageError(msg)
     return result
 
 
+def _validate_case_fields(case: dict[str, object], label: str) -> None:
+    require_string(case["title"], f"{label}.title")
+    if case["failure_mode"] not in FAILURE_MODES:
+        msg = f"{label}.failure_mode is unsupported"
+        raise UsageError(msg)
+    harnesses = require_string_list(case["harnesses"], f"{label}.harnesses", slug=True)
+    if any(item not in (*SUPPORTED_HARNESSES, "multi-agent") for item in harnesses):
+        msg = f"{label}.harnesses contains an unsupported harness"
+        raise UsageError(msg)
+    if case["workflow"] not in WORKFLOWS:
+        msg = f"{label}.workflow is unsupported"
+        raise UsageError(msg)
+
+    privacy = require_object(case["privacy"], f"{label}.privacy")
+    expected_privacy = {
+        "classification": "public",
+        "provenance": "synthetic-redaction",
+        "reviewed": True,
+        "contains_source_content": False,
+    }
+    if privacy != expected_privacy:
+        msg = f"{label}.privacy is not approved synthetic-redaction"
+        raise UsageError(msg)
+
+    require_string(case["task_input"], f"{label}.task_input")
+    for field in ("initial_state", "expected_behavior", "forbidden_behavior"):
+        require_string_list(case[field], f"{label}.{field}")
+    grading = require_object(case["grading"], f"{label}.grading")
+    if set(grading) != {"required_observations", "failure_observations"}:
+        msg = f"{label}.grading fields do not match schema version 1"
+        raise UsageError(msg)
+    require_string_list(
+        grading["required_observations"],
+        f"{label}.grading.required_observations",
+        slug=True,
+    )
+    require_string_list(
+        grading["failure_observations"],
+        f"{label}.grading.failure_observations",
+        slug=True,
+    )
+
+
 def validate_corpus(value: object) -> list[dict[str, object]]:
+    """Return the corpus cases; raise UsageError when any case breaks schema 1."""
     corpus = require_object(value, "corpus")
     if set(corpus) != {"schema_version", "cases"} or corpus.get("schema_version") != 1:
-        raise UsageError("corpus must match agent-workflows schema version 1")
+        msg = "corpus must match agent-workflows schema version 1"
+        raise UsageError(msg)
     raw_cases = corpus.get("cases")
     if not isinstance(raw_cases, list) or not raw_cases:
-        raise UsageError("corpus cases must be a non-empty array")
+        msg = "corpus cases must be a non-empty array"
+        raise UsageError(msg)
 
     cases: list[dict[str, object]] = []
     ids: set[str] = set()
     for index, raw_case in enumerate(raw_cases):
-        case = require_object(raw_case, f"cases[{index}]")
+        label = f"cases[{index}]"
+        case = require_object(raw_case, label)
         if set(case) != CASE_KEYS:
-            raise UsageError(f"cases[{index}] fields do not match schema version 1")
-        case_id = require_string(case["id"], f"cases[{index}].id", slug=True)
+            msg = f"{label} fields do not match schema version 1"
+            raise UsageError(msg)
+        case_id = require_string(case["id"], f"{label}.id", slug=True)
         if case_id in ids:
-            raise UsageError(f"duplicate case id {case_id!r}")
+            msg = f"duplicate case id {case_id!r}"
+            raise UsageError(msg)
         ids.add(case_id)
-        require_string(case["title"], f"cases[{index}].title")
-        if case["failure_mode"] not in FAILURE_MODES:
-            raise UsageError(f"cases[{index}].failure_mode is unsupported")
-        harnesses = require_string_list(
-            case["harnesses"], f"cases[{index}].harnesses", slug=True
-        )
-        if any(item not in (*SUPPORTED_HARNESSES, "multi-agent") for item in harnesses):
-            raise UsageError(
-                f"cases[{index}].harnesses contains an unsupported harness"
-            )
-        if case["workflow"] not in WORKFLOWS:
-            raise UsageError(f"cases[{index}].workflow is unsupported")
-
-        privacy = require_object(case["privacy"], f"cases[{index}].privacy")
-        expected_privacy = {
-            "classification": "public",
-            "provenance": "synthetic-redaction",
-            "reviewed": True,
-            "contains_source_content": False,
-        }
-        if privacy != expected_privacy:
-            raise UsageError(
-                f"cases[{index}].privacy is not approved synthetic-redaction"
-            )
-
-        require_string(case["task_input"], f"cases[{index}].task_input")
-        for field in ("initial_state", "expected_behavior", "forbidden_behavior"):
-            require_string_list(case[field], f"cases[{index}].{field}")
-        grading = require_object(case["grading"], f"cases[{index}].grading")
-        if set(grading) != {"required_observations", "failure_observations"}:
-            raise UsageError(
-                f"cases[{index}].grading fields do not match schema version 1"
-            )
-        require_string_list(
-            grading["required_observations"],
-            f"cases[{index}].grading.required_observations",
-            slug=True,
-        )
-        require_string_list(
-            grading["failure_observations"],
-            f"cases[{index}].grading.failure_observations",
-            slug=True,
-        )
+        _validate_case_fields(case, label)
         cases.append(case)
     return cases
 
 
 def parse_adapters(values: list[str]) -> dict[str, Path]:
+    """Map HARNESS=/absolute/executable arguments to adapter paths."""
     adapters: dict[str, Path] = {}
     for value in values:
         harness, separator, raw_path = value.partition("=")
         if not separator or harness not in SUPPORTED_HARNESSES or not raw_path:
-            raise UsageError("adapter must be HARNESS=/absolute/executable")
+            msg = "adapter must be HARNESS=/absolute/executable"
+            raise UsageError(msg)
         if harness in adapters:
-            raise UsageError(f"duplicate adapter for {harness}")
+            msg = f"duplicate adapter for {harness}"
+            raise UsageError(msg)
         path = Path(raw_path)
         if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK):
-            raise UsageError(
-                f"adapter for {harness} must be an executable absolute path"
-            )
+            msg = f"adapter for {harness} must be an executable absolute path"
+            raise UsageError(msg)
         adapters[harness] = path
     return adapters
 
 
-def validate_trace(value: object, case_id: str, harness: str) -> dict[str, object]:
-    trace = require_object(value, "adapter trace")
-    if set(trace) != TRACE_KEYS or trace.get("schema_version") != SCHEMA_VERSION:
-        raise UsageError("adapter trace fields do not match schema version 1")
-    if trace.get("case_id") != case_id or trace.get("harness") != harness:
-        raise UsageError("adapter trace identity does not match the replay request")
-    if trace.get("outcome") not in OUTCOMES:
-        raise UsageError("adapter trace outcome is unsupported")
-
-    raw_events = trace.get("events")
+def _validate_events(raw_events: object) -> list[dict[str, object]]:
     if not isinstance(raw_events, list) or not raw_events:
-        raise UsageError("adapter trace events must be a non-empty array")
+        msg = "adapter trace events must be a non-empty array"
+        raise UsageError(msg)
     events: list[dict[str, object]] = []
     for index, raw_event in enumerate(raw_events, start=1):
         event = require_object(raw_event, f"events[{index - 1}]")
         if set(event) != EVENT_KEYS or event.get("sequence") != index:
-            raise UsageError(
-                "adapter trace events must have exact fields and contiguous sequence"
-            )
+            msg = "adapter trace events must have exact fields and contiguous sequence"
+            raise UsageError(msg)
         if event.get("phase") not in PHASES:
-            raise UsageError("adapter trace event phase is unsupported")
+            msg = "adapter trace event phase is unsupported"
+            raise UsageError(msg)
         require_string(event.get("observation"), "adapter trace observation", slug=True)
         events.append(event)
+    return events
 
-    cost = require_object(trace.get("cost"), "adapter trace cost")
+
+def _validate_cost(value: object) -> dict[str, object]:
+    cost = require_object(value, "adapter trace cost")
     if set(cost) != set(COUNTERS):
-        raise UsageError("adapter trace cost fields do not match schema version 1")
+        msg = "adapter trace cost fields do not match schema version 1"
+        raise UsageError(msg)
     for name in COUNTERS:
         counter = cost[name]
         if counter is not None and (
             isinstance(counter, bool) or not isinstance(counter, int) or counter < 0
         ):
-            raise UsageError(
-                f"adapter trace cost {name} must be null or a non-negative integer"
-            )
+            msg = f"adapter trace cost {name} must be null or a non-negative integer"
+            raise UsageError(msg)
+    return cost
+
+
+def validate_trace(value: object, case_id: str, harness: str) -> dict[str, object]:
+    """Return the adapter trace when it matches schema 1 and the replay request."""
+    trace = require_object(value, "adapter trace")
+    if set(trace) != TRACE_KEYS or trace.get("schema_version") != SCHEMA_VERSION:
+        msg = "adapter trace fields do not match schema version 1"
+        raise UsageError(msg)
+    if trace.get("case_id") != case_id or trace.get("harness") != harness:
+        msg = "adapter trace identity does not match the replay request"
+        raise UsageError(msg)
+    if trace.get("outcome") not in OUTCOMES:
+        msg = "adapter trace outcome is unsupported"
+        raise UsageError(msg)
+    events = _validate_events(trace.get("events"))
+    cost = _validate_cost(trace.get("cost"))
     trace["events"] = events
     trace["cost"] = cost
     return trace
 
 
 def run_adapter(
-    path: Path, harness: str, case: dict[str, object], timeout: float
+    path: Path,
+    harness: str,
+    case: dict[str, object],
+    timeout: float,
 ) -> dict[str, object]:
+    """Replay one case through an adapter; raise AdapterError with a safe reason."""
     request = {
         "schema_version": SCHEMA_VERSION,
         "harness": harness,
         "case": case,
     }
     try:
-        completed = subprocess.run(
+        # S603: argv list with no shell; the adapter is the caller's --adapter,
+        # checked to be an absolute executable.
+        completed = subprocess.run(  # noqa: S603
             [str(path)],
             input=json.dumps(request, sort_keys=True, separators=(",", ":")) + "\n",
             text=True,
@@ -275,36 +312,47 @@ def run_adapter(
             env={**os.environ, "SAI_REPLAY_HARNESS": harness},
         )
     except subprocess.TimeoutExpired as error:
-        raise AdapterError("adapter_timeout") from error
+        msg = "adapter_timeout"
+        raise AdapterError(msg) from error
     except OSError as error:
-        raise AdapterError("adapter_start_failed") from error
+        msg = "adapter_start_failed"
+        raise AdapterError(msg) from error
     if completed.returncode != 0:
-        raise AdapterError("adapter_exit_nonzero")
+        msg = "adapter_exit_nonzero"
+        raise AdapterError(msg)
     try:
         value = json.loads(completed.stdout)
     except json.JSONDecodeError as error:
-        raise AdapterError("adapter_invalid_json") from error
+        msg = "adapter_invalid_json"
+        raise AdapterError(msg) from error
     try:
         return validate_trace(value, str(case["id"]), harness)
     except UsageError as error:
-        raise AdapterError("adapter_invalid_trace") from error
+        msg = "adapter_invalid_trace"
+        raise AdapterError(msg) from error
 
 
 def grade_trace(trace: dict[str, object], case: dict[str, object]) -> dict[str, object]:
+    """Grade a validated trace against the observations and phases of its case."""
     grading = require_object(case["grading"], "case grading")
     required = set(
         require_string_list(
-            grading["required_observations"], "required observations", slug=True
-        )
+            grading["required_observations"],
+            "required observations",
+            slug=True,
+        ),
     )
     failures = set(
         require_string_list(
-            grading["failure_observations"], "failure observations", slug=True
-        )
+            grading["failure_observations"],
+            "failure observations",
+            slug=True,
+        ),
     )
     events = trace["events"]
     if not isinstance(events, list):
-        raise UsageError("validated trace events changed type")
+        msg = "validated trace events changed type"
+        raise UsageError(msg)
     observed = {
         str(event["observation"]) for event in events if isinstance(event, dict)
     }
@@ -347,7 +395,8 @@ def grade_trace(trace: dict[str, object], case: dict[str, object]) -> dict[str, 
 
 
 def accepted_cost(results: list[dict[str, object]]) -> dict[str, object]:
-    accepted: dict[str, list[dict[str, object]]] = defaultdict(list)
+    """Return mean cost counters per harness over passed, accepted results."""
+    accepted: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for result in results:
         if result.get("status") == "passed" and result.get("outcome") == "accepted":
             cost = result.get("cost")
@@ -371,8 +420,11 @@ def accepted_cost(results: list[dict[str, object]]) -> dict[str, object]:
 
 
 def replay(
-    cases: list[dict[str, object]], adapters: dict[str, Path], timeout: float
-) -> dict[str, object]:
+    cases: list[dict[str, object]],
+    adapters: dict[str, Path],
+    timeout: float,
+) -> dict[str, Any]:
+    """Replay every case through the adapter of each harness it names."""
     results: list[dict[str, object]] = []
     for harness in SUPPORTED_HARNESSES:
         adapter = adapters.get(harness)
@@ -387,7 +439,7 @@ def replay(
                         "harness": harness,
                         "status": "skipped",
                         "reason": "adapter_unavailable",
-                    }
+                    },
                 )
                 continue
             try:
@@ -400,7 +452,7 @@ def replay(
                         "harness": harness,
                         "status": "failed",
                         "reason": error.reason,
-                    }
+                    },
                 )
     return {
         "schema_version": SCHEMA_VERSION,
@@ -415,10 +467,14 @@ def replay(
 
 
 def parser() -> argparse.ArgumentParser:
+    """Return the CLI argument parser."""
     value = argparse.ArgumentParser(description=__doc__)
     value.add_argument("--corpus", type=Path, required=True)
     value.add_argument(
-        "--adapter", action="append", default=[], metavar="HARNESS=/ABSOLUTE/PATH"
+        "--adapter",
+        action="append",
+        default=[],
+        metavar="HARNESS=/ABSOLUTE/PATH",
     )
     value.add_argument("--timeout", type=float, default=300.0)
     value.add_argument("--output", type=Path)
@@ -426,6 +482,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the CLI and return its exit code."""
     args = parser().parse_args(argv)
     if args.timeout <= 0:
         print("error: timeout must be positive", file=sys.stderr)

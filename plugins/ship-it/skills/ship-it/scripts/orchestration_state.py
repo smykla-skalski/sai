@@ -13,7 +13,7 @@ import copy
 import re
 from typing import Any, Final
 
-from checkpoint_state import commit_id, non_empty, one_of, require
+from checkpoint_state import StateError, commit_id, non_empty, one_of, require
 from worker_recovery import held
 
 ISSUE_URL: Final[re.Pattern[str]] = re.compile(
@@ -281,7 +281,9 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
         "data and nextAction",
     )
     graph = checkpoint.get("orchestration")
-    require(isinstance(graph, dict), "initialize orchestration before recording events")
+    if not isinstance(graph, dict):
+        message = "initialize orchestration before recording events"
+        raise StateError(message)
     if replay(graph["events"], event):
         return {"eventId": event["eventId"], "applied": False}
     require(one_of(event["kind"], EVENT_KINDS), "invalid orchestration event kind")
@@ -289,7 +291,9 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
         (item for item in graph["children"] if item["issueUrl"] == event["issueUrl"]),
         None,
     )
-    require(child is not None, "event issueUrl is not a recorded child")
+    if child is None:
+        message = "event issueUrl is not a recorded child"
+        raise StateError(message)
     require(
         child["terminalEventId"] is None
         or (event["kind"] == "dispatch" and child["status"] in {"blocked", "failed"}),
@@ -423,12 +427,13 @@ def apply_child_event(
             expected = (
                 {"requested"} if kind == "capacity-grant" else {"requested", "active"}
             )
-            require(
+            if not (
                 lease is not None
                 and lease["status"] in expected
-                and lease["gate"] == data["gate"],
-                "capacity event requires matching lease and status",
-            )
+                and lease["gate"] == data["gate"]
+            ):
+                message = "capacity event requires matching lease and status"
+                raise StateError(message)
             lease["status"] = "active" if kind == "capacity-grant" else "released"
     elif kind == "gate":
         require(
@@ -623,10 +628,9 @@ def record_acceptance_recovery(
         ),
         None,
     )
-    require(
-        grant is not None and grant["status"] == "active",
-        "recovery requires an active recorded grant",
-    )
+    if not (grant is not None and grant["status"] == "active"):
+        message = "recovery requires an active recorded grant"
+        raise StateError(message)
     require(
         all(limit["used"] < limit["maximum"] for limit in grant["limits"]),
         "recovery grant allowance is exhausted",

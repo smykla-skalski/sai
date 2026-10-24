@@ -1141,6 +1141,9 @@ def convergence_operation(args: argparse.Namespace) -> dict[str, Any]:
                     persist_invalidations(before_capture, checkpoint, path)
                     raise
             if args.command == "assess":
+                if snapshot is None:
+                    msg = "--inputs-json must be non-empty"
+                    raise BookkeepingError(msg)
                 result = assess(checkpoint, args.kind, args.revision, snapshot)
             else:
                 before = copy.deepcopy(checkpoint)
@@ -1438,7 +1441,7 @@ def reserve_request(
         ("revision", args.revision),
         ("inputs", inputs),
     ):
-        if not value.strip():
+        if not value or not value.strip():
             msg = f"--{field} must be non-empty"
             raise BookkeepingError(msg)
     request = {

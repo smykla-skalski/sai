@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Behavior tests for the workflow failure replay runner."""
+"""Behavior tests for the workflow failure replay runner.
+
+Copyright 2026 Smykla Skalski, MIT License.
+"""
 
 from __future__ import annotations
 
@@ -10,17 +13,19 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 SCRIPT = Path(__file__).with_name("replay_failures.py")
 TRACE_SCHEMA = SCRIPT.parent.parent / "references" / "replay-trace.schema.json"
 SPEC = importlib.util.spec_from_file_location("replay_failures", SCRIPT)
 if SPEC is None or SPEC.loader is None:
-    raise RuntimeError("cannot load replay_failures.py")
+    msg = "cannot load replay_failures.py"
+    raise RuntimeError(msg)
 REPLAY = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(REPLAY)
 
 
-def case() -> dict[str, object]:
+def case() -> dict[str, Any]:
     return {
         "id": "stale-validation-after-edit",
         "title": "A source edit invalidates earlier validation",
@@ -48,7 +53,7 @@ def case() -> dict[str, object]:
     }
 
 
-def corpus() -> dict[str, object]:
+def corpus() -> dict[str, Any]:
     return {"schema_version": 1, "cases": [case()]}
 
 

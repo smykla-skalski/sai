@@ -12,7 +12,11 @@ from pathlib import Path
 from typing import Any, Final
 
 SKILL_DIR: Final[Path] = (
-    Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
+    Path(__file__).resolve().parent.parent
+    / "plugins"
+    / "ship-it"
+    / "skills"
+    / "ship-it"
 )
 POLICY_FILE: Final[Path] = SKILL_DIR / "references" / "risk-policy.json"
 RISK_REFERENCE: Final[Path] = SKILL_DIR / "references" / "risk.md"
@@ -98,8 +102,7 @@ def classify(policy: dict[str, Any], changed_paths: tuple[str, ...]) -> str:
         glob_to_regex(glob) for glob in policy["diff_classes"]["docs"]["paths"]
     ]
     if changed_paths and all(
-        any(docs_glob.match(path) for docs_glob in docs_globs)
-        for path in changed_paths
+        any(docs_glob.match(path) for docs_glob in docs_globs) for path in changed_paths
     ):
         return "docs"
     return "code"
@@ -113,9 +116,7 @@ class ShipItRiskContractTest(unittest.TestCase):
         self.guidance = RISK_REFERENCE.read_text(encoding="utf-8")
 
     def test_default_policy_selects_gates_by_level(self) -> None:
-        self.assertEqual(
-            self.policy["schema_version"], "sai.ship-it.risk-policy/v1"
-        )
+        self.assertEqual(self.policy["schema_version"], "sai.ship-it.risk-policy/v1")
         self.assertEqual(tuple(self.policy["risk_order"]), RISKS)
         self.assertEqual(self.policy["default_risk"], "medium")
         self.assertNotIn("independent_review", self.policy)
@@ -184,28 +185,60 @@ class ShipItRiskContractTest(unittest.TestCase):
                 self.assertIn(expected, self.guidance)
 
     def test_small_code_retains_manual_test_and_one_fresh_review(self) -> None:
-        profile = json.loads((SKILL_DIR / "references" / self.policy["small_code"]).read_text(encoding="utf-8"))
+        profile = json.loads(
+            (SKILL_DIR / "references" / self.policy["small_code"]).read_text(
+                encoding="utf-8"
+            )
+        )
         self.assertEqual(profile["max_changed_lines_exclusive"], 50)
         self.assertEqual(profile["test_scope"], "changed-surface")
-        self.assertEqual(profile["required_gates"], [
-            "local-checks", "inline-review", "adversarial-test", "ci",
-        ])
-        self.assertEqual(profile["fallbacks"], {
-            "inline-review": ["portable-review-fallback"],
-            "adversarial-test": ["portable-test-fallback"],
-        })
-        for path in (".github/workflows/test.yml", ".githooks/pre-commit",
-                     "src/auth/login.py", "src/security/check.go",
-                     "db/migrations/001.sql", "infra/main.tf", "go.mod",
-                     "app/package.json", "uv.lock", "Dockerfile"):
+        self.assertEqual(
+            profile["required_gates"],
+            [
+                "local-checks",
+                "inline-review",
+                "adversarial-test",
+                "ci",
+            ],
+        )
+        self.assertEqual(
+            profile["fallbacks"],
+            {
+                "inline-review": ["portable-review-fallback"],
+                "adversarial-test": ["portable-test-fallback"],
+            },
+        )
+        for path in (
+            ".github/workflows/test.yml",
+            ".githooks/pre-commit",
+            "src/auth/login.py",
+            "src/security/check.go",
+            "db/migrations/001.sql",
+            "infra/main.tf",
+            "go.mod",
+            "app/package.json",
+            "uv.lock",
+            "Dockerfile",
+        ):
             with self.subTest(path=path):
-                self.assertTrue(any(glob_to_regex(pattern).match(path)
-                                    for pattern in profile["excluded_paths"]))
-        for required in ("exactly 50 lines", "including documentation and tests",
-                         "--numstat --no-renames", "both old and new paths",
-                         "uncommitted changes", "any repository path rule",
-                         "never lower it", "becoming smaller does not grant a downgrade",
-                         "invalidates affected evidence", "`policyFacts`"):
+                self.assertTrue(
+                    any(
+                        glob_to_regex(pattern).match(path)
+                        for pattern in profile["excluded_paths"]
+                    )
+                )
+        for required in (
+            "exactly 50 lines",
+            "including documentation and tests",
+            "--numstat --no-renames",
+            "both old and new paths",
+            "uncommitted changes",
+            "any repository path rule",
+            "never lower it",
+            "becoming smaller does not grant a downgrade",
+            "invalidates affected evidence",
+            "`policyFacts`",
+        ):
             self.assertIn(required, self.guidance)
         test = TEST_REFERENCE.read_text(encoding="utf-8")
         self.assertIn("testScope: changed-surface", test)
@@ -227,12 +260,17 @@ class ShipItRiskContractTest(unittest.TestCase):
         roles_guidance = (SKILL_DIR / "references" / "roles.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("Every review and testing pass runs in a fresh subagent context", roles_guidance)
+        self.assertIn(
+            "Every review and testing pass runs in a fresh subagent context",
+            roles_guidance,
+        )
         self.assertIn("one-pass `inline-review` gate too", roles_guidance)
         evidence = (SKILL_DIR / "references" / "evidence.md").read_text(
             encoding="utf-8"
         )
-        self.assertIn("Every review and testing route uses a fresh subagent execution", evidence)
+        self.assertIn(
+            "Every review and testing route uses a fresh subagent execution", evidence
+        )
         self.assertIn("Provider and model may match implementation", evidence)
 
     def test_hosted_review_is_resolved_by_release_policy(self) -> None:
@@ -274,7 +312,7 @@ class ShipItRiskContractTest(unittest.TestCase):
         self.assertIn("context isolation is fixed by the role contract", self.guidance)
 
     def test_rejects_incompatible_fallback_fixture(self) -> None:
-        fixture = {
+        fixture: dict[str, Any] = {
             "required_gates": ["adversarial-review"],
             "fallbacks": {"adversarial-review": ["ci"]},
         }

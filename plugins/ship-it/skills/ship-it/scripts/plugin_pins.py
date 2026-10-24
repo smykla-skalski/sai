@@ -22,13 +22,15 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from types import ModuleType
+
+fcntl: ModuleType | None
 try:
     import fcntl
 except ImportError:
     fcntl = None
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 MAX_CLEANUP: Final[int] = 100
 LEASE_LENGTH: Final[int] = 32
@@ -239,7 +241,7 @@ class Pins:
             raise ValueError(msg)
         with self.locked():
             active = set()
-            owners = {}
+            owners: dict[int, str | None] = {}
             for path in sorted((self.root / "leases").glob("*.json")):
                 lease = json.loads(path.read_text())
                 pid = lease["ownerPid"]
@@ -253,7 +255,7 @@ class Pins:
                     active.add(lease["bundle"])
                 else:
                     path.unlink()
-            removed = []
+            removed: list[str] = []
             for bundle in sorted((self.root / "bundles").iterdir()):
                 if len(removed) >= limit:
                     break

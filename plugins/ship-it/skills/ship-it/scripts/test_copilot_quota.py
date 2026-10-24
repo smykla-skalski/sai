@@ -10,6 +10,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from copilot_quota import (
@@ -100,8 +101,9 @@ class QuotaMemoryTest(unittest.TestCase):
 
     def test_waiter_remembers_refusal_for_later_pr_and_preserves_reviews(self) -> None:
         head = "a" * 40
-        pr = {
+        pr: dict[str, Any] = {
             "headRefOid": head,
+            "baseRefName": "main",
             "state": "OPEN",
             "merged": False,
             "reviewDecision": None,

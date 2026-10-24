@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Collect a full Envoy diagnostic snapshot from any Envoy-based sidecar.
+"""Collect a full Envoy diagnostic snapshot from any Envoy-based sidecar.
 
 Usage:
     # Kuma (default admin port 9901, container kuma-sidecar)
@@ -15,7 +14,11 @@ Usage:
 Output directory (default: ./envoy-snapshot-<pod>-<timestamp>/) contains:
     config_dump.json, stats.txt, clusters.txt, listeners.json,
     certs.json, server_info.json, init_dump.json
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
@@ -25,9 +28,10 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Final
 
-_KUBECTL: str = shutil.which("kubectl") or "kubectl"
-_K8S_NAME_RE: re.Pattern[str] = re.compile(r"^[a-z0-9][a-z0-9._-]{0,251}$")
+_KUBECTL: Final[str] = shutil.which("kubectl") or "kubectl"
+_K8S_NAME_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9][a-z0-9._-]{0,251}$")
 
 
 def _validate_k8s_name(value: str, label: str) -> None:
@@ -36,18 +40,24 @@ def _validate_k8s_name(value: str, label: str) -> None:
         sys.exit(f"Invalid {label} {value!r}: must match [a-z0-9][a-z0-9._-]{{0,251}}")
 
 
-_ENDPOINT_PATHS = [
-    ("config_dump.json",  "/config_dump?include_eds"),
-    ("stats.txt",         "/stats?usedonly"),
-    ("clusters.txt",      "/clusters"),
-    ("listeners.json",    "/listeners?format=json"),
-    ("certs.json",        "/certs"),
-    ("server_info.json",  "/server_info"),
-    ("init_dump.json",    "/init_dump"),
+_ENDPOINT_PATHS: Final[list[tuple[str, str]]] = [
+    ("config_dump.json", "/config_dump?include_eds"),
+    ("stats.txt", "/stats?usedonly"),
+    ("clusters.txt", "/clusters"),
+    ("listeners.json", "/listeners?format=json"),
+    ("certs.json", "/certs"),
+    ("server_info.json", "/server_info"),
+    ("init_dump.json", "/init_dump"),
 ]
 
 
-def kubectl_exec(pod: str, namespace: str, container: str, *cmd: str) -> tuple[int, str, str]:
+def kubectl_exec(
+    pod: str,
+    namespace: str,
+    container: str,
+    *cmd: str,
+) -> tuple[int, str, str]:
+    """Run cmd in the pod container; return (exit code, stdout, stderr)."""
     _validate_k8s_name(pod, "pod")
     _validate_k8s_name(namespace, "namespace")
     _validate_k8s_name(container, "container")
@@ -57,6 +67,7 @@ def kubectl_exec(pod: str, namespace: str, container: str, *cmd: str) -> tuple[i
 
 
 def fetch_endpoint(pod: str, namespace: str, container: str, url: str) -> str | None:
+    """Return the body of an admin URL, or None after a warning on stderr."""
     rc, stdout, stderr = kubectl_exec(pod, namespace, container, "wget", "-qO-", url)
     if rc != 0:
         print(f"  WARN: {url} failed: {stderr.strip()}", file=sys.stderr)
@@ -65,6 +76,7 @@ def fetch_endpoint(pod: str, namespace: str, container: str, url: str) -> str | 
 
 
 def pretty_json(text: str) -> str:
+    """Return text indented as JSON, or unchanged when it is not valid JSON."""
     try:
         return json.dumps(json.loads(text), indent=2)
     except (json.JSONDecodeError, ValueError):
@@ -72,28 +84,55 @@ def pretty_json(text: str) -> str:
 
 
 def main() -> None:
+    """Save every admin endpoint plus manifest.json into the output directory."""
     parser = argparse.ArgumentParser(
         description="Collect Envoy diagnostic snapshot from any Envoy-based sidecar",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Admin port defaults: Kuma=9901  Istio=15000  Consul=19000",
     )
     parser.add_argument("pod", help="Pod name")
-    parser.add_argument("--namespace", "-n", default="default", help="Kubernetes namespace (default: default)")
-    parser.add_argument("--container", "-c", default="kuma-sidecar",
-                        help="Sidecar container name (default: kuma-sidecar; Istio: istio-proxy)")
-    parser.add_argument("--admin-port", "-p", type=int, default=9901,
-                        help="Envoy admin port (default: 9901; Istio: 15000; Consul: 19000)")
-    parser.add_argument("--output-dir", "-o", help="Output directory (default: ./envoy-snapshot-<pod>-<ts>/)")
+    parser.add_argument(
+        "--namespace",
+        "-n",
+        default="default",
+        help="Kubernetes namespace (default: default)",
+    )
+    parser.add_argument(
+        "--container",
+        "-c",
+        default="kuma-sidecar",
+        help="Sidecar container name (default: kuma-sidecar; Istio: istio-proxy)",
+    )
+    parser.add_argument(
+        "--admin-port",
+        "-p",
+        type=int,
+        default=9901,
+        help="Envoy admin port (default: 9901; Istio: 15000; Consul: 19000)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        help="Output directory (default: ./envoy-snapshot-<pod>-<ts>/)",
+    )
     args = parser.parse_args()
 
-    endpoints = [(f, f"localhost:{args.admin_port}{path}") for f, path in _ENDPOINT_PATHS]
+    endpoints = [
+        (f, f"localhost:{args.admin_port}{path}") for f, path in _ENDPOINT_PATHS
+    ]
 
-    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out_dir = Path(args.output_dir) if args.output_dir else Path(f"envoy-snapshot-{args.pod}-{ts}")
+    ts = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
+    out_dir = (
+        Path(args.output_dir)
+        if args.output_dir
+        else Path(f"envoy-snapshot-{args.pod}-{ts}")
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Collecting snapshot from {args.pod}/{args.container} in namespace {args.namespace} "
-          f"(admin port {args.admin_port})")
+    print(
+        f"Collecting snapshot from {args.pod}/{args.container} "
+        f"in namespace {args.namespace} (admin port {args.admin_port})",
+    )
     print(f"Output: {out_dir}/\n")
 
     for filename, url in endpoints:

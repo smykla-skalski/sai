@@ -13,6 +13,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "plugins/ship-it/skills/ship-it/scripts"
@@ -1019,15 +1020,15 @@ class OrchestrationTest(unittest.TestCase):
     def test_atomic_failure_preserves_previous_graph(self) -> None:
         self.initialize()
         before = self.checkpoint.read_bytes()
-        original = bookkeeping.atomic_write
 
         def fail_write(_path: Path, _document: dict) -> None:
             message = "injected write failure"
             raise OSError(message)
 
-        bookkeeping.atomic_write = fail_write
-        self.addCleanup(setattr, bookkeeping, "atomic_write", original)
-        with self.assertRaises(OSError):
+        with (
+            patch.object(bookkeeping, "atomic_write", fail_write),
+            self.assertRaises(OSError),
+        ):
             bookkeeping.mutate_checkpoint(
                 self.checkpoint,
                 lambda document: document["orchestration"].update({"events": []}) or {},

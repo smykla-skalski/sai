@@ -16,6 +16,8 @@ Exit codes:
     0  Success (may output empty array)
     1  Runtime error
     2  Usage/input error
+
+Copyright 2026 Smykla Skalski, MIT License.
 """
 
 from __future__ import annotations

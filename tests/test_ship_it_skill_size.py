@@ -17,7 +17,11 @@ from pathlib import Path
 from typing import Final
 
 SKILL_DIR: Final[Path] = (
-    Path(__file__).resolve().parent.parent / "plugins" / "ship-it" / "skills" / "ship-it"
+    Path(__file__).resolve().parent.parent
+    / "plugins"
+    / "ship-it"
+    / "skills"
+    / "ship-it"
 )
 SKILL_FILE: Final[Path] = SKILL_DIR / "SKILL.md"
 OPENAI_AGENT_FILE: Final[Path] = SKILL_DIR / "agents" / "openai.yaml"
@@ -127,7 +131,9 @@ class ShipItSkillSizeTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, checkpoint)
 
-        example_match = re.search(r"```json\n(?P<document>.*?)\n```", checkpoint, re.DOTALL)
+        example_match = re.search(
+            r"```json\n(?P<document>.*?)\n```", checkpoint, re.DOTALL
+        )
         if example_match is None:
             self.fail("checkpoint reference has no JSON example")
         example = json.loads(example_match["document"])
@@ -184,7 +190,9 @@ class ShipItSkillSizeTest(unittest.TestCase):
         self.assertIn('"claim": null', checkpoint)
         self.assertIn('"claim": null', evidence)
         self.assertIn("authoritative issue comment", checkpoint)
-        self.assertIn('"status": "active|blocked|completed|cancelled|failed"', checkpoint)
+        self.assertIn(
+            '"status": "active|blocked|completed|cancelled|failed"', checkpoint
+        )
         self.assertIn("explicit restart instruction", checkpoint)
         self.assertIn("active, unexpired", evidence)
 
@@ -217,7 +225,9 @@ class ShipItSkillSizeTest(unittest.TestCase):
             with self.subTest(expected=expected):
                 self.assertIn(expected, evidence)
 
-        example_match = re.search(r"```json\n(?P<document>.*?)\n```", evidence, re.DOTALL)
+        example_match = re.search(
+            r"```json\n(?P<document>.*?)\n```", evidence, re.DOTALL
+        )
         if example_match is None:
             self.fail("evidence reference has no JSON example")
         example = json.loads(example_match["document"])
@@ -266,15 +276,15 @@ class ShipItSkillSizeTest(unittest.TestCase):
                 "local `head` and the pr `headrefoid`",
             ),
             "completion.md": ("complete record for the gated pr head",),
-            "orchestration.md": (
-                "evidence record is complete for the final pr head",
-            ),
+            "orchestration.md": ("evidence record is complete for the final pr head",),
         }
         for reference, required_text in expectations.items():
             with self.subTest(reference=reference):
-                content = (SKILL_DIR / "references" / reference).read_text(
-                    encoding="utf-8"
-                ).lower()
+                content = (
+                    (SKILL_DIR / "references" / reference)
+                    .read_text(encoding="utf-8")
+                    .lower()
+                )
                 for expected in required_text:
                     self.assertIn(expected, content)
 

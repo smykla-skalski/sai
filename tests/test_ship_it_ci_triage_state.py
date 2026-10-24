@@ -414,6 +414,7 @@ class CiTriageStateTest(unittest.TestCase):
 
     def test_present_but_falsy_recorded_at_is_refused(self) -> None:
         self.record(make_record())
+        value: object
         for value in ("", 0, False, []):
             with self.subTest(value=value):
                 self.refused(

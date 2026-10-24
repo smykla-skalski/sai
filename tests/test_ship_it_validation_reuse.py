@@ -9,22 +9,15 @@ import json
 import os
 import subprocess
 import sys
-import unittest
 from pathlib import Path
+from typing import Any
 
 import test_ship_it_reservations as reservations
 
 
-class ValidationReuseTest(unittest.TestCase):
-    write = reservations.ReservationTest.write
-    read = reservations.ReservationTest.read
-    cli = reservations.ReservationTest.cli
-    finish = reservations.ReservationTest.finish
-    assert_ok = reservations.ReservationTest.assert_ok
-    assert_denied = reservations.ReservationTest.assert_denied
-
+class ValidationReuseTest(reservations.ReservationFixture):
     def setUp(self) -> None:
-        reservations.ReservationTest.setUp(self)
+        super().setUp()
         self.repository = Path(self.directory.name) / "repository"
         self.repository.mkdir()
         self.git("init", "-q")
@@ -40,7 +33,7 @@ class ValidationReuseTest(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
         self.commit()
-        self.spec = {
+        self.spec: dict[str, Any] = {
             "repository": str(self.repository),
             "source": ["src"],
             "dependencies": ["dependency"],
@@ -113,10 +106,30 @@ class ValidationReuseTest(unittest.TestCase):
 
     def complete(self, verdict: str = "passed", kind: str = "review") -> None:
         self.assertTrue(self.assert_ok(self.structured(kind=kind))["dispatch"])
-        result = {"verdict": verdict, "output": str(self.output)}
+        result: dict[str, Any] = {"verdict": verdict, "output": str(self.output)}
         if kind == "review":
             result["findings"] = []
         self.assert_ok(self.finish("initial", result))
+
+    def test_empty_inputs_manifest_is_rejected_without_a_decision(self) -> None:
+        before = self.read()
+        for command, identity in (("assess", ()), ("reserve", ("--id", "empty"))):
+            with self.subTest(command=command):
+                result = self.cli(
+                    command,
+                    "--checkpoint",
+                    str(self.path),
+                    *identity,
+                    "--kind",
+                    "review",
+                    "--revision",
+                    self.revision,
+                    "--inputs-json",
+                    "",
+                )
+                self.assert_denied(result)
+                self.assertIn("must be non-empty", result.stderr)
+        self.assertEqual(self.read(), before)
 
     def test_unchanged_inputs_new_identity_reuses_without_consuming(self) -> None:
         self.complete()
