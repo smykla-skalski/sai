@@ -12,6 +12,7 @@ Monorepo of Claude Code plugins called **SAI (Skills for Agentic Intelligence)**
 - Validate portable skills (needs uv): `scripts/validate_skills.py` (all skills) or `scripts/validate_skills.py plugins/{plugin-name}/skills/{skill-name}`. It wraps skills-ref and drops the Claude-only keys (`argument-hint`, `user-invocable`, `disable-model-invocation`, `context`, `agent`, `model`, `hooks`) that plain `agentskills validate` rejects; Claude Code reads them only at the top level of the frontmatter
 - Lint: `ruff check .` and `ruff format --check .`
 - Type check (needs uv, which installs the scripts' dependencies): `uvx --with gspread --with google-auth --with onepassword-sdk --with requests --with types-requests --with youtube-transcript-api --with skills-ref==0.1.1 mypy $(git ls-files '*.py')`
+- Eval a skill change on Claude and Codex, review the runs with Jev and check triggering: `CONTRIBUTING.md` → "Evaluating a skill" (`scripts/eval_codex.py`, `scripts/eval_review.py`, `scripts/eval_triggers.py`)
 - No build step (pure markdown + scripts)
 - One-time setup per clone: `git config core.hooksPath .githooks` (enables the version bump hook)
 - Test the version bump hook: `python3 -m unittest discover -s tests`
