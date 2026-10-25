@@ -57,7 +57,8 @@ if TYPE_CHECKING:
 
 DEFAULT_RUNS: Final[int] = 3
 DEFAULT_TIMEOUT_SECONDS: Final[int] = 240
-CLAUDE_MAX_TURNS: Final[str] = "8"
+# Drafting queries read a diff or files first and load the skill only before writing.
+CLAUDE_MAX_TURNS: Final[str] = "16"
 DESCRIPTION_LINE: Final[re.Pattern[str]] = re.compile(
     r"^description:.*\n(?:[ \t]+.*\n)*",
     re.MULTILINE,
@@ -268,8 +269,6 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.runs < 1 or args.concurrency < 1:
         parser.error("--runs and --concurrency must be at least 1")
-    if args.agent == "codex" and (args.description or args.description_file):
-        parser.error("--description works with --agent claude only")
     return args
 
 
@@ -287,7 +286,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.description:
                 plugin = with_description(plugin, skill, args.description, scratch)
             sandbox = (
-                codex_sandbox(args.codex, plugin.name, scratch / "codex")
+                codex_sandbox(args.codex, plugin, scratch / "codex")
                 if args.agent == "codex"
                 else None
             )

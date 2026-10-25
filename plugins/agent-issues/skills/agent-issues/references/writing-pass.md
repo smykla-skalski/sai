@@ -13,7 +13,6 @@ Apply to every title and body before showing anything. The goal is text a mainta
 ## Use the sibling skills when present
 
 - If the `humanize` skill is available, run it on the draft as the final pass, preserving every command, path and identifier exactly.
-- If a concise-writing skill is available, run it too.
 - Otherwise apply the checklist below. It is the fallback and the verification.
 
 ## Checklist

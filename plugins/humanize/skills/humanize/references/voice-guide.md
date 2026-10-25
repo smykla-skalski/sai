@@ -25,6 +25,10 @@ Removing AI patterns can leave text that is clean but flat: every sentence the s
 
 **Keep what is already theirs.** Contractions, first person, humor, opinions, idioms and a team's usual phrasing stay. Do not sand them into neutral prose, and do not delete normal contractions.
 
+**Keep the force.** A polite request stays a request ("Could you send it by Friday?"), not an order. An apology, a thank-you, urgency and a firm "must" keep their strength. Cut padding around them, not the courtesy itself.
+
+**When you draft, take the voice from the project.** Match the form and register of the file the text goes into, or of the examples the user gives: the commit style of the repository, the headings and tense of the changelog, the tone of the docs around the new section.
+
 **Use the medium's normal register.** Contractions are fine wherever the medium allows them. "We can't ship this yet" is better than "We are unable to proceed at this time" in Slack, a PR or a commit body.
 
 **Vary rhythm by meaning.** A short sentence for the verdict, a longer one when the reasoning needs it. Do not enforce a length or a quota.
@@ -39,7 +43,7 @@ Removing AI patterns can leave text that is clean but flat: every sentence the s
 
 | Medium | Shape | Example |
 | :-- | :-- | :-- |
-| Commit message | imperative subject that says what changed, then why | "fix(pool): stop Acquire deadlock under load" |
+| Commit message | imperative subject that says what changed, a bug fix as a fix ("Fix ignored Retry-After headers"), with full identifiers and numbers while it fits in 72 characters; a body only for what the subject cannot hold, such as the cause or why, never a restatement of a subject fact | "fix(pool): stop Acquire deadlock under load" |
 | PR description | problem, then what changed and why | "Release could block forever. It now times out after 30s." |
 | Slack reply | answer, then reason or blocker, then next action | "Yes. CI is green, merging after stand-up." |
 | Announcement | change, who it affects, when, what they must do | "VPN login moves to SSO on 3 Nov. Contractors must enroll by Friday." |

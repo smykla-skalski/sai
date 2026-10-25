@@ -1,13 +1,14 @@
 # humanize
 
-Identifies and removes signs of AI-generated writing from text, then rewrites it for its reader: point first, concrete words, only useful context, the author's own voice. The patterns are editing smells, not proof of who wrote a text, so the skill gives no authorship verdict and never adds fake mistakes to look human.
+Writes and rewrites text for people as short and plain as it can be without losing anything the reader needs: every fact, instruction, condition, number and the intended tone. It removes signs of AI-generated writing, fixes grammar and usage, applies plain composition rules, and checks the result against its source before it cuts further. The patterns are editing smells, not proof of who wrote a text, so the skill gives no authorship verdict and never adds fake mistakes to look human.
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI and opencode.
 
-Two complementary sources:
+Sources:
 
-- **Detection**: Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide (WikiProject AI Cleanup), plus habits of AI agents such as burying the point - 30 patterns in six categories
-- **Composition**: William Strunk Jr.'s [The Elements of Style](https://github.com/obra/the-elements-of-style) (1918) and the Google and Microsoft technical-writing guides - point first, active voice, plain and concrete words, one idea per sentence, omitting needless words
+- Detection: Wikipedia's [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) guide (WikiProject AI Cleanup), plus habits of AI agents such as burying the point: 30 patterns in six categories
+- Meaning: a lossless plain-language method built on ISO 24495, Digital.gov and W3C guidance. It records what the reader must know and do, locks numbers, conditions, modal verbs, quotations and code, and checks recall and support before every further cut
+- Usage and composition: all of William Strunk Jr.'s [The Elements of Style](https://github.com/obra/the-elements-of-style) (1918), rules 1-18 and the list of misused words, with the Google and Microsoft style guides where they have moved on from 1918, such as singular "they"
 
 ## Installation
 
@@ -35,7 +36,9 @@ Local checkout: `claude --plugin-dir /path/to/sai/plugins/humanize/`
 
 ## Usage
 
-In Claude Code and Copilot CLI use `/humanize`, in Codex `$humanize`, or ask in plain words ("humanize this PR description"). The skill runs in the current conversation and starts no subagents.
+In Claude Code and Copilot CLI use `/humanize`, in Codex `$humanize`, or ask in plain words ("humanize this PR description", "tighten this paragraph", "write the commit message for this change"). The skill runs in the current conversation and starts no subagents.
+
+It has three modes. Rewrite edits an existing draft and reports what it changed. Draft writes new text, such as a commit message, release notes or a docs section, from the facts you give, with no report. Score reports the patterns without a rewrite.
 
 ```
 /humanize path/to/file.md
@@ -45,7 +48,7 @@ In Claude Code and Copilot CLI use `/humanize`, in Codex `$humanize`, or ask in 
 
 | Flag           | Purpose                                         |
 |:---------------|:------------------------------------------------|
-| (positional)   | File path to humanize                           |
+| (positional)   | File path or text to rewrite or score           |
 | `--score-only` | Report detected patterns without rewriting      |
 | `--dry-run`    | Output rewritten text to chat instead of saving |
 
@@ -60,15 +63,17 @@ In Claude Code and Copilot CLI use `/humanize`, in Codex `$humanize`, or ask in 
 5. **Filler** (22-24): filler phrases, excessive hedging, generic positive conclusions
 6. **Structure** (25-30): buried point, over-completing, excessive balance, generic headings, unsupported confidence, needless connectors
 
+It also fixes Strunk's usage errors (possessives, serial commas, comma splices, fragments, dangling modifiers and 65 misused words and expressions) and applies his composition rules.
+
 ## Evals
 
-`evals/` holds behavior tests for [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals): in-place rewrite, `--score-only` without an authorship verdict, a chat-only preview, pasted text, a buried point, and already clean text with contractions and one natural em dash. Each case also checks that the skill runs in the main session and starts no subagent. The cases copy their input files into the workspace, so they need `--scaffold`:
+`evals/` holds behavior tests for [`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals): in-place rewrite, `--score-only` without an authorship verdict, a chat-only preview, pasted text, a buried point, already clean text with contractions and one natural em dash, usage errors, protected conditions and numbers, a wordy text cut to under 60% of its length, a polite request that must stay polite, unsupported claims kept and flagged, and two drafts (a docs section and a commit message) with no report. Each case also checks that the skill runs in the main session and starts no subagent. The cases copy their input files into the workspace, so they need `--scaffold`:
 
 ```bash
-claude plugin eval plugins/humanize --scaffold --allow-tools Edit Write --judge-model sonnet
+claude plugin eval plugins/humanize --scaffold --allow-tools Edit Write --judge-model opus
 ```
 
-The judge graders are tuned for Sonnet. The default background model misreads some correct replies.
+The judge graders are tuned for Opus. Weaker judge models misread some correct replies or flip on near-identical ones.
 
 ## License
 

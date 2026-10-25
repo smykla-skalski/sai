@@ -8,15 +8,22 @@ evals/review.json:
      "criteria": {"name": [{"ask": "...", "pass": "...", "fail": "...",
                             "inverted": true}, ...]},
      "cases": {"case": {"medium": "...", "file": "notes.md",
-                        "check_quotes": true, "criteria": ["name", ...],
+                        "check_quotes": true, "check_lossless": true,
+                        "reference": "...", "max_words": 60,
+                        "criteria": ["name", ...],
                         "graders": {"name": ["grader", ...]}}}}
 
 Each criterion is asked in at least three phrasings, one of them inverted, so a
 reviewer that agrees with everything shows up as inconsistent. A criterion
 passes when most phrasings pass. `{where}` and `{medium}` in the text are
 replaced with the "where" text and the case's medium. Code computes what Jev
-is weak at: whether the file changed and, with check_quotes, which quotes in
-the reply's table rows are not verbatim in the original. "graders" maps a
+is weak at: whether the file changed; with check_quotes, which quotes in
+the reply's table rows are not verbatim in the original; and with
+check_lossless, the word counts of the original and the result and the
+original's literal details (numbers, code spans, URLs, issue references) that
+the result lacks. A case with a "reference" (a minimal rewrite that keeps
+everything) or "max_words" also gets a word budget: the reference's length plus
+20%, or max_words. Fence lines do not count as words. "graders" maps a
 criterion to `claude plugin eval` graders that judge the same thing, so the
 summary reports how often Jev and the graders agree.
 
@@ -41,6 +48,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import statistics
@@ -69,6 +77,12 @@ QUALITY_LABELS: Final[list[str]] = [
     "Excellent",
 ]
 QUOTE: Final[re.Pattern[str]] = re.compile(rf'"([^"]{{{MIN_QUOTE_CHARS},}})"')
+DETAIL: Final[re.Pattern[str]] = re.compile(
+    r"`[^`\n]+`|https?://[^\s<>()]*[^\s<>().,;:!?'\"]|#\d+|\d+(?:[.,:]\d+)*",
+)
+TABLE_ROW: Final[re.Pattern[str]] = re.compile(r"^\s*\|", re.MULTILINE)
+FENCE: Final[str] = "```"
+BUDGET_SLACK: Final[float] = 1.2
 CURLY: Final[dict[int, str]] = str.maketrans(
     {
         "\N{LEFT SINGLE QUOTATION MARK}": "'",
@@ -97,8 +111,11 @@ class CaseReview:
     medium: str
     file: str | None
     check_quotes: bool
+    check_lossless: bool
     criteria: tuple[str, ...]
     graders: dict[str, tuple[str, ...]]
+    reference: str | None = None
+    max_words: int | None = None
 
 
 @dataclass(frozen=True)
@@ -162,8 +179,11 @@ def load_rubric(plugin: Path, cases: dict[str, Case]) -> Rubric:
             medium=str(raw["medium"]),
             file=str(raw["file"]) if raw.get("file") else None,
             check_quotes=bool(raw.get("check_quotes")),
+            check_lossless=bool(raw.get("check_lossless")),
             criteria=tuple(raw["criteria"]),
             graders={k: tuple(v) for k, v in dict(raw.get("graders", {})).items()},
+            reference=str(raw["reference"]) if raw.get("reference") else None,
+            max_words=int(raw["max_words"]) if raw.get("max_words") else None,
         )
         grader_names = {grader.name for grader in cases[name].graders}
         unknown = [
@@ -272,6 +292,52 @@ def quote_check(reply: str, original: str) -> dict[str, object]:
     }
 
 
+def result_text(run: RunInput, review: CaseReview, original: str) -> str:
+    """Return the run's text: the changed file, else the reply before its report."""
+    if review.file and run.files is not None:
+        after = run.files.get(review.file, original)
+        if after != original:
+            return after
+    return TABLE_ROW.split(run.reply, maxsplit=1)[0]
+
+
+def word_count(text: str) -> int:
+    """Count the words of a text, leaving out code fence lines."""
+    lines = (line for line in text.splitlines() if not line.strip().startswith(FENCE))
+    return len(" ".join(lines).split())
+
+
+def word_budget(review: CaseReview) -> int | None:
+    """Return the case's word budget: max_words, else the reference plus 20%."""
+    if review.max_words:
+        return review.max_words
+    if review.reference:
+        return math.ceil(word_count(review.reference) * BUDGET_SLACK)
+    return None
+
+
+def lossless_check(
+    original: str,
+    result: str,
+    budget: int | None = None,
+) -> dict[str, object]:
+    """Count words and list the original's literal details missing from the result.
+
+    A judge model reads past a dropped number or command, so code finds them.
+    Code spans match with or without their backticks.
+    """
+    details = dict.fromkeys(match.group() for match in DETAIL.finditer(original))
+    words = word_count(result)
+    check: dict[str, object] = {
+        "original_words": word_count(original),
+        "result_words": words,
+        "missing_details": [d for d in details if d.strip("`") not in result],
+    }
+    if budget is not None:
+        check.update(word_budget=budget, within_budget=words <= budget)
+    return check
+
+
 def original_text(case: Case, review: CaseReview) -> str:
     """Return the text under edit: the case file, else the prompt's pasted text."""
     if review.file:
@@ -298,6 +364,9 @@ def build_state(run: RunInput, case: Case, review: CaseReview) -> dict[str, obje
         state.update(file_after=after, file_changed=after != original)
     if review.check_quotes:
         state["report_quote_check"] = quote_check(run.reply, original)
+    if review.check_lossless:
+        result = result_text(run, review, original)
+        state["lossless_check"] = lossless_check(original, result, word_budget(review))
     return state
 
 
@@ -502,6 +571,11 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.concurrency < 1:
         parser.error("--concurrency must be at least 1")
+    if "claude" in args.model.lower() or args.model.lower().startswith("anthropic/"):
+        parser.error(
+            "judge Claude models through Claude Code (claude plugin eval "
+            "--judge-model, eval_codex.py --judge-model), not OpenRouter",
+        )
     return args
 
 

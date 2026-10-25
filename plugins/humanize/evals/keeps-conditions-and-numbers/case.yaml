@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: keeps-conditions-and-numbers
+expected_outcome: |
+  The skill edits on-call.md in place. It drops the legalese and filler
+  ("It is important to note", "notwithstanding", "forty-eight (48)", "Additionally,
+  this ensures a robust and seamless response process") but keeps every protected
+  detail: the on-call engineer, the security team, in writing, without undue
+  delay, no later than 48 hours, actual or suspected incidents, affects or is
+  reasonably likely to affect customer data, and the exception for incidents
+  limited to staging. The duty stays "must" or "shall". The report lists the
+  changed form of the number under changed details.
+context:
+  scaffold_script: place-files.sh

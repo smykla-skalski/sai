@@ -1,109 +1,102 @@
 ---
 name: humanize
-description: "Use this skill when the user hands you existing prose (pasted text or a file) and wants it to sound plainer and more like a person wrote it, because it reads as fluffy, stiff, corporate, buzzword-heavy (\"enhance\", \"robust\", \"seamless\", \"leverage\", \"pivotal milestone\"), over-hyped, robotic, or ChatGPT-like. This covers any medium: commit messages, PR descriptions, Slack posts, emails, announcements, docs, changelogs, blog posts, and review comments. Also use it when the user wants to rate or score how AI-sounding a text is without editing it. The trigger is an existing draft that needs de-slopping, not the type of document. Don't use it to draft new content from scratch (such as writing release notes from commits), to make text more formal or polished, to summarize, shorten, or simplify for clarity alone, to edit code or identifiers, to beat AI detectors, or to judge whether someone used AI."
+description: "Use this skill whenever you write or rewrite text for people, even one short paragraph, that must be plain, concise and natural without losing anything. Skip it, without opening it, for summaries, translation, proofreading only, formal or promotional rewrites, code, comments, docstrings, data structure, AI-detection questions, and chat answers. It rewrites a pasted or file draft that reads wordy, unclear, stiff, corporate, buzzword-heavy (\"robust\", \"seamless\", \"leverage\"), hyped or ChatGPT-like, cuts text to a set length, also prose values in YAML or JSON, and writes new prose, also from notes or bullets: a commit message, PR description, release notes, changelog, a docs, README or CONTRIBUTING section, an email, a blog post or paragraph, a Slack post or announcement, a review comment or user-facing error messages. Load it before you write, even when you first read a diff, staged changes or files for the facts. It keeps every fact, number, condition and tone. Also use it to score how AI-like a text sounds."
 license: MIT
 compatibility: Works in Claude Code, Codex, opencode and Copilot CLI. No scripts or network access needed.
 argument-hint: "[file-path | text] [--score-only] [--dry-run]"
 allowed-tools: AskUserQuestion Edit Read Write
 user-invocable: true
 metadata:
-  short-description: Rewrite text to sound natural
+  short-description: Write and rewrite text plainly without losing meaning
 ---
 
 # Humanize
 
-Remove AI writing patterns from prose and rewrite it for its reader: answer first, use concrete words, include only useful context, match the audience, stop. Detection follows Wikipedia's "Signs of AI writing" and common agent habits. The rewrite follows Strunk and the Google and Microsoft style guides.
+Make text for people as short and plain as it can be while it keeps everything its reader needs: every fact, instruction, condition, number and the intended tone. Remove AI writing patterns, fix usage, apply the composition principles, and check the result against its source before you cut further.
 
-Use it for commit messages, PR descriptions, docs, changelogs, blog posts and review comments. Not for code, structured data (JSON/YAML), translation, edits where the wording must stay nearly exact, or text where AI patterns are intentional. Not for beating AI detectors or hiding AI use that a policy requires you to disclose: the patterns are editing smells, not proof of who wrote the text.
+Modes: rewrite an existing draft, pasted or in a file; draft new text the user asks for, from the material it must carry; score with `--score-only`.
 
-Run every phase yourself, in this conversation. Do not hand any phase to a subagent: Phase 5 checks against the same catalog and hit list, and only the main conversation can ask the user for a missing target.
+Not for code, identifiers, data structure (prose values in it are text), summaries or cuts that drop required content, translation, proofreading that must keep the wording, more formal or promotional rewrites, or your own chat answers. Not for beating AI detectors or hiding AI use that a policy requires you to disclose: the patterns are editing smells, not proof of who wrote the text.
+
+Run every phase yourself in this conversation, never in a subagent: only it holds your notes and can ask the user.
 
 ## Agent compatibility
 
-Paths are relative to this skill's directory. Outside Claude Code, use these fallbacks:
+Paths are relative to this skill's directory. Outside Claude Code:
 
 | Claude Code feature | Fallback |
 | :-- | :-- |
 | AskUserQuestion | Ask in plain text and wait for the answer |
-| Edit and Write | Use the agent's own file-edit tool (`apply_patch` in Codex). If the Codex sandbox blocks the write, request escalation with a short reason |
+| Edit and Write | Use the agent's file-edit tool (`apply_patch` in Codex). If the sandbox blocks the write, request escalation |
 
 ## Arguments
 
 Invocation arguments: `$ARGUMENTS`
 
-If that line is empty or still shows the literal placeholder, the client passed none: take the file path, text and flags from the user's request.
+If that line is empty or still shows the literal placeholder, take the file path, text and flags from the user's request.
 
-| Flag | Default | Purpose |
-| :-- | :-- | :-- |
-| (positional) | - | File path or raw text to humanize. Ask for it if omitted |
-| `--score-only` | off | Report detected patterns without rewriting |
-| `--dry-run` | off | Print the rewrite to chat instead of editing the file |
-
-By default the skill edits the file in place.
+| Flag | Purpose |
+| :-- | :-- |
+| (positional) | File path or raw text to rewrite or score |
+| `--score-only` | Report patterns without rewriting |
+| `--dry-run` | Print the rewrite to chat instead of editing the file in place |
 
 ## Workflow
 
 ### Phase 1: Input
 
-1. Parse the target and flags from [Arguments](#arguments).
-2. If there is no file path or text, use AskUserQuestion to get it.
-3. Read the target file, or keep raw text as given. If the path is missing or unreadable, report the error and stop.
-4. Warn if the text is under 50 characters: detection needs more content.
-5. Note the medium and the audience.
+1. Pick the mode: draft when the user asks for new text, score with `--score-only`, else rewrite.
+2. Rewrite or score with no file path or text: use AskUserQuestion to get it. Draft: collect the facts the text must carry from the request and any diff, notes or files it names, and read the file the text goes into.
+3. Read the target or keep raw text. If the path is unreadable, report it and stop.
+4. Warn if the text is under 50 characters.
 
-### Phase 2: Pattern scan
+### Phase 2: Understand
 
-Read [references/patterns.md](references/patterns.md) in full. Check the text against all 30 patterns, one at a time, and skip none. A listed word or mark is a hit only when it harms the text in context.
+Read [references/lossless-method.md](references/lossless-method.md) in full. Write working notes, kept out of the reply: the semantic contract, the meaning ledger and the protected elements.
 
-Record each match in a hit list: pattern number and name, the quoted offending text, and severity (faint, clear or glaring). Phases 4 to 6 work from this list.
+### Phase 3: Scan
 
-- No hits: tell the user in one sentence that the text needs no changes, then stop. Do not list what you checked.
-- `--score-only`: go to Phase 6.
+Skip in draft mode. Read [references/patterns.md](references/patterns.md) and [references/usage.md](references/usage.md) in full. Check the text against all 30 patterns and every usage rule, one at a time. Record each hit: pattern or rule, quoted text, severity (faint, clear or glaring).
 
-### Phase 3: Voice assessment
+- No hits, and the method's final cut would remove nothing: say in one sentence that the text needs no changes, then stop. Do not list what you checked.
+- `--score-only`: go to Phase 7.
 
-Read [references/voice-guide.md](references/voice-guide.md) in full. Note what is the author's own and must stay (contractions, first person, opinions, team phrasing) and the shape the medium expects. Mark flat sections: uniform sentences or bullets, one corporate register, stiff phrasing, useful facts buried late.
+### Phase 4: Voice
 
-### Phase 4: Rewrite
+Read [references/voice-guide.md](references/voice-guide.md) in full. Note the author's own voice and courtesy, the force of each request or warning, and the medium's shape. In draft mode, match the file the text goes into or the user's examples.
 
-Read [references/elements-of-style.md](references/elements-of-style.md) in full. This phase needs ultrathink: weigh pattern removal, voice, composition and meaning before you rewrite each section.
+### Phase 5: Rewrite or draft
 
-Fix every hit, faint ones included, in this order:
+Read [references/elements-of-style.md](references/elements-of-style.md) in full, and in draft mode also patterns.md and usage.md. This phase needs ultrathink: weigh every change against the ledger, the protected elements and the tone.
 
-1. Strip communication artifacts: chatbot phrases, disclaimers, sycophantic openings.
-2. Fix structure: put the point in the first sentence, cut what nobody asked for, drop generic headings and automatic pros and cons.
-3. Fix content patterns: deflate significance claims, replace vague attributions with specifics, keep a confident claim only with the source's evidence.
-4. Fix language patterns: replace vague AI vocabulary, restore simple copulas (is/are/has), remove negative parallelisms, forced triads and needless connectors.
-5. Fix style patterns: em dash overuse, mechanical boldface and emoji, title case headings, curly quotes in plain text.
-6. Cut filler: remove filler phrases, reduce hedging, cut generic conclusions and recaps.
-7. Restore voice where Phase 3 marked it: the medium's register and shape, rhythm that follows the meaning. Keep the author's contractions, first person and opinions, and add none of your own.
-8. Apply the composition principles: active voice where the actor is known, positive form, concrete and plain words, one main idea per sentence, no needless words, emphasis at the end of the sentence, one topic per paragraph.
+Follow the method's edit order: delete dispensable units, merge repeats, reorder so the point comes first, simplify syntax, simplify words, then restore the voice. Fix every hit, faint ones included. In draft mode, write from the ledger in the medium's shape so the text needs no fixes.
 
-Keep the original meaning. Never add facts the source does not contain: invented facts undermine trust even when the prose reads better. Never add typos, broken grammar, feelings or tangents to seem human. Keep technical accuracy and the audience's jargon intact, because a style fix that breaks correctness makes the text worse.
+Never add facts, examples, commands, causes, commitments, feelings or opinions the source lacks. Never change certainty, modal verbs, numbers, units, responsibility, conditions, exceptions, quotations or citations. A substantive claim without evidence keeps its strength; only puffery goes. Never add typos or broken grammar to seem human.
 
-### Phase 5: Verification
+### Phase 6: Verify and cut
 
-Re-read the hit list, then check the rewrite:
+Run the method's gates, questions and adversarial check on the result. Also confirm that no pattern or usage error remains, the first sentence gives the point, and the voice and tone fit the medium. Restore what was lost and check again. Then make the final cut, rerunning the gates after each material cut, until nothing else can go. In draft mode, the source is the material from Phase 1.
 
-- No pattern from the catalog remains.
-- The first sentence gives the point, and every sentence adds information.
-- No information is lost or invented, and nothing was added to seem human.
-- The author's voice survives, and the tone fits the medium and audience.
-- Every composition principle from Phase 4 step 8 holds.
-- The text sounds natural read aloud.
+### Phase 7: Report
 
-Revise and recheck each failing section.
+Skip in draft mode.
 
-### Phase 6: Report
+Use this exact table header: `| # | Pattern | Instance | Fix |`. Keep these four columns. Pattern names the pattern or usage rule, Instance holds only the quoted original text, and Fix holds only the replacement or "removed", with no notes. Give each quoted phrase one row naming every pattern it shows, and never quote text inside another row's quote.
 
-Build the pattern report as a table with the columns #, Pattern (catalog names), Instance (only the quoted original text, no notes, even for structure patterns) and Fix (what replaced it, or "removed"). Give each quoted phrase one row naming every pattern it shows, and never quote text that sits inside another row's quote.
+Under it, one summary line with word counts: `14 patterns in 5 categories. Severity: Heavy. 212 → 94 words.` (Minor, Moderate or Heavy). Add these only when they apply, one quoted item per line:
 
-Under the table, write exactly one summary line, such as `14 patterns in 5 categories. Severity: Heavy.` (Minor, Moderate or Heavy). Under it, write `Cut for lack of evidence:` and list each claim you cut or hedged, one line each with just the quoted claim. The author's own numbers and facts are evidence, not claims to flag. With `--score-only`, leave out the Fix column and the claims list, print the report and stop.
+- `Claims without evidence:` substantive claims kept although the source gives no evidence, quoted as in the original. The author's own numbers and facts are evidence.
+- `Changed details:` only protected elements whose form changed, such as `forty-eight (48) hours → 48 hours`; never rewordings or merges.
+- For legal, regulatory, safety, medical or financial text, the line `A qualified reviewer must check this before use.`
 
-Never call the text AI-written, and add no authorship disclaimer either: people write these patterns too, and false accusations do real harm. Your reply is the output, then the report, and nothing else: no commentary, notes, advice, follow-up offers or alternatives.
+With `--score-only`, omit the Fix column, the word counts and the lists.
 
-### Phase 7: Output
+Never call the text AI-written or add an authorship disclaimer: people write these patterns too. The reply is the output, then the report, and nothing else: no sentence before or after them, no commentary, advice, follow-up offers or alternatives.
 
-1. With `--dry-run`, or when the input was raw text, print the rewritten text to chat.
-2. Otherwise edit the file in place: targeted edits (Edit) for local fixes, a full rewrite (Write) when most of the content changed.
-3. Print the pattern report next, also after an in-place edit, not a change summary.
+### Phase 8: Output
+
+1. Draft mode, no report: in chat, reply with the text alone, without explaining your choices. In a file, reply only `Added "<section>" to <file>.`: the user reads the text there, so position or content is noise. Do nothing else with the text that the user did not ask for.
+2. With `--dry-run`, or for raw text, print the rewrite to chat.
+3. Otherwise edit the file in place before you reply: Edit for local fixes, Write when most of it changed. Never report an edit you did not make.
+4. Print the report next. After an in-place edit, the report is the whole reply: no copy of the text and no summary of the changes.
+5. Before you send, delete every sentence of the reply that is not the output, the report or the one file sentence.

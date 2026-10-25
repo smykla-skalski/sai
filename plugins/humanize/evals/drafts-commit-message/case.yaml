@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: drafts-commit-message
+expected_outcome: |
+  This is new writing, so the skill drafts the commit message in chat and
+  writes no pattern report and no file. The message has an imperative subject of at
+  most 72 characters and, if needed, a short body that does not repeat it. It keeps
+  retry.go, client.go, "up to 250ms" of random jitter, the Retry-After fix and
+  "Fixes #91", and adds no reason, number or detail the request does not give.

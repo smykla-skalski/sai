@@ -4,6 +4,8 @@ Each pattern is an editing smell: it makes text vaguer, longer or less specific.
 
 A word or mark on a list is a hit only when it does that harm in context. "Key" in "API key", or one em dash where the author would naturally use one, is not a hit. Do not replace words or punctuation just because they appear on a list, and never fix a hit by adding typos or broken grammar.
 
+Every "After" below uses only facts from its "Before". A fix deletes decoration and states the remaining facts plainly. It never adds a source, number, cause or detail, however much better the text would read.
+
 ## Contents
 
 1. [Content patterns](#content-patterns)
@@ -55,27 +57,27 @@ LLM writing puffs up importance by adding statements about how arbitrary aspects
 
 > **Before:** The Statistical Institute of Catalonia was officially established in 1989, marking a pivotal moment in the evolution of regional statistics in Spain. This initiative was part of a broader movement across Spain to decentralize administrative functions and enhance regional governance.
 
-> **After:** The Statistical Institute of Catalonia was established in 1989 to collect and publish regional statistics independently from Spain's national statistics office.
+> **After:** The Statistical Institute of Catalonia was established in 1989, as part of a movement across Spain to decentralize administration and strengthen regional government.
 
 ### 2. Notability and media coverage claims
 
 **Words to watch:** independent coverage, local/regional/national media outlets, written by a leading expert, active social media presence
 
-LLMs hit readers over the head with claims of notability, often listing sources without context.
+LLMs hit readers over the head with claims of notability, often listing sources without context. Keep the facts and drop the boasting frame. Only the author can add what the sources said.
 
 > **Before:** Her views have been cited in The New York Times, BBC, Financial Times, and The Hindu. She maintains an active social media presence with over 500,000 followers.
 
-> **After:** In a 2024 New York Times interview, she argued that AI regulation should focus on outcomes rather than methods.
+> **After:** The New York Times, the BBC, the Financial Times and The Hindu have cited her views. She has over 500,000 followers on social media.
 
 ### 3. Superficial -ing analyses
 
 **Words to watch:** highlighting/underscoring/emphasizing..., ensuring..., reflecting/symbolizing..., contributing to..., cultivating/fostering..., encompassing..., showcasing...
 
-AI chatbots tack present participle ("-ing") phrases onto sentences to add fake depth.
+AI chatbots tack present participle ("-ing") phrases onto sentences to add fake depth. Cut a phrase that only asserts significance. Keep one that states a checkable fact, as its own clause.
 
 > **Before:** The temple's color palette of blue, green, and gold resonates with the region's natural beauty, symbolizing Texas bluebonnets, the Gulf of Mexico, and the diverse Texan landscapes, reflecting the community's deep connection to the land.
 
-> **After:** The temple uses blue, green, and gold colors. The architect said these were chosen to reference local bluebonnets and the Gulf coast.
+> **After:** The temple's blue, green, and gold symbolize Texas bluebonnets, the Gulf of Mexico, and the Texan landscape.
 
 ### 4. Promotional language
 
@@ -85,17 +87,17 @@ LLMs have serious problems keeping a neutral tone, especially for "cultural heri
 
 > **Before:** Nestled within the breathtaking region of Gonder in Ethiopia, Alamata Raya Kobo stands as a vibrant town with a rich cultural heritage and stunning natural beauty.
 
-> **After:** Alamata Raya Kobo is a town in the Gonder region of Ethiopia, known for its weekly market and 18th-century church.
+> **After:** Alamata Raya Kobo is a town in the Gonder region of Ethiopia.
 
 ### 5. Vague attributions and weasel words
 
 **Words to watch:** Industry reports, Observers have cited, Experts argue, Some critics argue, several sources/publications (when few cited)
 
-AI chatbots attribute opinions to vague authorities without specific sources.
+AI chatbots attribute opinions to vague authorities without specific sources. Name the source when the text names it elsewhere. Never invent one. If the text names none, keep the claim with its attribution as vague as it was, and list it under `Claims without evidence:` in the report.
 
 > **Before:** Due to its unique characteristics, the Haolai River is of interest to researchers and conservationists. Experts believe it plays a crucial role in the regional ecosystem.
 
-> **After:** The Haolai River supports several endemic fish species, according to a 2019 survey by the Chinese Academy of Sciences.
+> **After:** The Haolai River interests researchers and conservationists. Experts believe it plays a major role in the regional ecosystem.
 
 ### 6. Formulaic challenges sections
 
@@ -105,7 +107,7 @@ Many LLM-generated articles include formulaic "Challenges" sections.
 
 > **Before:** Despite its industrial prosperity, Korattur faces challenges typical of urban areas, including traffic congestion and water scarcity. Despite these challenges, with its strategic location and ongoing initiatives, Korattur continues to thrive as an integral part of Chennai's growth.
 
-> **After:** Traffic congestion increased after 2015 when three new IT parks opened. The municipal corporation began a stormwater drainage project in 2022 to address recurring floods.
+> **After:** Korattur, an industrially prosperous part of Chennai, has traffic congestion and water scarcity.
 
 ---
 
@@ -119,7 +121,7 @@ These words appear far more frequently in post-2023 text. They often co-occur. R
 
 > **Before:** Additionally, a distinctive feature of Somali cuisine is the incorporation of camel meat. An enduring testament to Italian colonial influence is the widespread adoption of pasta in the local culinary landscape, showcasing how these dishes have integrated into the traditional diet.
 
-> **After:** Somali cuisine also includes camel meat, which is considered a delicacy. Pasta dishes, introduced during Italian colonization, remain common, especially in the south.
+> **After:** Camel meat is a distinctive part of Somali cuisine. Pasta, a result of Italian colonial influence, is widely eaten and now part of the traditional diet.
 
 ### 8. Copula avoidance
 
@@ -129,7 +131,9 @@ LLMs substitute elaborate constructions for simple copulas.
 
 > **Before:** Gallery 825 serves as LAAA's exhibition space for contemporary art. The gallery features four separate spaces and boasts over 3,000 square feet.
 
-> **After:** Gallery 825 is LAAA's exhibition space for contemporary art. The gallery has four rooms totaling 3,000 square feet.
+> **After:** Gallery 825 is LAAA's exhibition space for contemporary art. It has four separate spaces and over 3,000 square feet.
+
+"Over 3,000" stays "over 3,000": a range is a protected detail, and "totaling 3,000" would change it.
 
 ### 9. Negative parallelisms
 
@@ -137,15 +141,17 @@ Constructions like "Not only...but..." or "It's not just about..., it's..." are 
 
 > **Before:** It's not just about the beat riding under the vocals; it's part of the aggression and atmosphere. It's not merely a song, it's a statement.
 
-> **After:** The heavy beat adds to the aggressive tone.
+> **After:** The beat under the vocals adds to the aggression and atmosphere. The song is a statement.
 
 ### 10. Rule of three overuse
 
-LLMs force ideas into groups of three to appear comprehensive.
+LLMs force ideas into groups of three to appear comprehensive. A real list of three things stays.
 
 > **Before:** The event features keynote sessions, panel discussions, and networking opportunities. Attendees can expect innovation, inspiration, and industry insights.
 
-> **After:** The event includes talks and panels. There's also time for informal networking between sessions.
+> **After:** The event has keynote sessions, panel discussions, and time for networking.
+
+The first triad lists three real parts of the event, so it stays. The second is decoration.
 
 ### 11. Synonym cycling
 
@@ -161,7 +167,7 @@ LLMs use "from X to Y" constructions where X and Y are not on a meaningful scale
 
 > **Before:** Our journey through the universe has taken us from the singularity of the Big Bang to the grand cosmic web, from the birth and death of stars to the enigmatic dance of dark matter.
 
-> **After:** The book covers the Big Bang, star formation, and current theories about dark matter.
+> **After:** We covered the Big Bang, the cosmic web, the birth and death of stars, and dark matter.
 
 ---
 
@@ -181,7 +187,9 @@ AI chatbots emphasize phrases in boldface mechanically, especially for acronyms 
 
 > **Before:** It blends **OKRs (Objectives and Key Results)**, **KPIs (Key Performance Indicators)**, and visual strategy tools such as the **Business Model Canvas (BMC)** and **Balanced Scorecard (BSC)**.
 
-> **After:** It blends OKRs, KPIs, and visual strategy tools like the Business Model Canvas and Balanced Scorecard.
+> **After:** It blends OKRs (objectives and key results), KPIs (key performance indicators), and visual strategy tools such as the Business Model Canvas and the Balanced Scorecard.
+
+The expansions stay for readers who need them. Each acronym used only once goes.
 
 ### 15. Inline-header vertical lists
 
@@ -192,7 +200,9 @@ AI outputs lists where items start with bolded headers followed by colons. Colla
 > - **Performance:** Performance has been enhanced through optimized algorithms.
 > - **Security:** Security has been strengthened with end-to-end encryption.
 
-> **After:** The update improves the interface, speeds up load times through optimized algorithms, and adds end-to-end encryption.
+> **After:** The update adds a new interface that significantly improves the user experience, optimized algorithms that improve performance, and end-to-end encryption.
+
+"Significantly improved" has no evidence in the source, so it stays at its strength and goes on the report's `Claims without evidence:` list.
 
 ### 16. Title case in headings
 
@@ -206,9 +216,9 @@ AI chatbots capitalize all main words in headings. Use sentence case instead, un
 
 AI chatbots decorate headings or bullet points with emojis. Remove them.
 
-> **Before:** Launch Phase: The product launches in Q3. Key Insight: Users prefer simplicity. Next Steps: Schedule follow-up meeting.
+> **Before:** 🚀 Launch Phase: The product launches in Q3. 💡 Key Insight: Users prefer simplicity. ✅ Next Steps: Schedule follow-up meeting.
 
-> **After:** The product launches in Q3. User research showed a preference for simplicity. Next step: schedule a follow-up meeting.
+> **After:** The product launches in Q3. Users prefer simplicity. Next step: schedule a follow-up meeting.
 
 ### 18. Curly quotation marks
 
@@ -230,9 +240,9 @@ Curly: \u201c \u201d \u2018 \u2019. Straight: " " ' '.
 
 Text meant as chatbot correspondence gets pasted as content: openers that echo the request, and follow-up offers at the end. Strip these entirely.
 
-> **Before:** Here is an overview of the French Revolution. I hope this helps! Let me know if you'd like me to expand on any section.
+> **Before:** Here is an overview of the French Revolution. The revolution began in 1789 amid a financial crisis and food shortages. I hope this helps! Let me know if you'd like me to expand on any section.
 
-> **After:** The French Revolution began in 1789 when financial crisis and food shortages led to widespread unrest.
+> **After:** The French Revolution began in 1789 amid a financial crisis and food shortages.
 
 ### 20. Knowledge-cutoff disclaimers
 
@@ -242,7 +252,9 @@ AI disclaimers about incomplete information get left in text.
 
 > **Before:** While specific details about the company's founding are not extensively documented in readily available sources, it appears to have been established sometime in the 1990s.
 
-> **After:** The company was founded in 1994, according to its registration documents.
+> **After:** The company was probably founded in the 1990s.
+
+"Probably" keeps the uncertainty that the disclaimer expressed. Removing the disclaimer must not make the claim more certain.
 
 ### 21. Sycophantic tone
 
@@ -250,7 +262,9 @@ Overly positive, people-pleasing language. Cut it.
 
 > **Before:** Great question! You're absolutely right that this is a complex topic. That's an excellent point about the economic factors.
 
-> **After:** The economic factors you mentioned are relevant here.
+> **After:** You're right that this topic is complex, and your point about the economic factors holds.
+
+The agreement is content, so it stays. The flattery goes.
 
 ---
 
@@ -277,7 +291,7 @@ Common substitutions:
 
 ### 23. Excessive hedging
 
-Over-qualifying statements. Reduce to one hedge maximum per claim.
+Over-qualifying statements. Collapse stacked hedges into one hedge of the same strength. Never remove the uncertainty itself: "may" must not become "will".
 
 > **Before:** It could potentially possibly be argued that the policy might have some effect on outcomes.
 
@@ -309,11 +323,11 @@ The decision, request, result, or blocker comes after a preamble or at the very 
 
 ### 26. Over-completing
 
-A short answer grows a summary, implications, recommendations, and a recap that nobody asked for. Stop when the reader can act.
+A short answer grows a summary, implications and a recap that nobody asked for. Cut what repeats or inflates, keep any instruction the author gave, and stop when the reader can act.
 
 > **Before:** The fix is in 2.8.1. In summary, this update resolves the issue. Going forward, it is recommended to keep dependencies current. Overall, this represents an important improvement in stability.
 
-> **After:** The fix is in 2.8.1.
+> **After:** The fix is in 2.8.1. Keep dependencies current.
 
 ### 27. Excessive balance
 
@@ -339,7 +353,7 @@ Headings that stand in for substance: a scaffold on a few lines of text, or the 
 
 **Words to watch:** should provide a robust solution, ensures, guarantees, significantly improves, without any issues
 
-Smooth, confident claims that hide missing evidence. Keep the claim with the evidence the source gives, or cut it. Never invent a number or a test result. If an important claim has no support in the source, keep it with one hedge and flag it in the report so the author can add the evidence.
+Smooth, confident claims that hide missing evidence. When the source gives evidence, state the claim through it and drop the gloss. When it gives none, keep the claim at the strength the source gives it, drop only the decoration ("robust", "seamless"), and list the claim under `Claims without evidence:` in the report so the author can add support. Never invent a number or a test result, never add a hedge, and never cut a substantive claim.
 
 > **Before:** This change should provide a robust solution and significantly improve performance. Load tests show p95 latency dropping from 180 to 122 ms.
 
@@ -347,7 +361,7 @@ Smooth, confident claims that hide missing evidence. Keep the claim with the evi
 
 ### 30. Needless connectors
 
-**Words to watch:** Additionally, Furthermore, Moreover, Notably, Importantly, That said, However (when nothing contrasts)
+**Words to watch:** Additionally, Also (opening a sentence), Furthermore, Moreover, Notably, Importantly, That said, However (when nothing contrasts)
 
 Transitions added where the order of the sentences already shows the relation. Delete them. Keep a connector that carries a contrast or a cause the reader would otherwise miss.
 
