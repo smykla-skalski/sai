@@ -1,6 +1,8 @@
 # Composition principles
 
-Distilled from William Strunk Jr.'s "The Elements of Style" (1918) and current technical-writing guidance from Google and Microsoft. Apply these during the rewrite phase after removing AI patterns. They address how to write well, not just how to avoid writing badly. The target in one line: answer first, use concrete words, include only useful context, match the audience, stop.
+Distilled from William Strunk Jr.'s "The Elements of Style" (1918, rules 8-18), plain-language guidance from Digital.gov and W3C, and the Google and Microsoft technical-writing guides. Apply them to every sentence you rewrite or draft. The target in one line: answer first, use concrete words, include only useful context, match the audience, stop.
+
+Every principle here works under one limit: the result keeps every fact, condition, number, modal verb and tone of its source. When a principle would change the meaning, keep the meaning.
 
 ## Contents
 
@@ -11,17 +13,18 @@ Distilled from William Strunk Jr.'s "The Elements of Style" (1918) and current t
 5. [Use plain words, keep needed jargon](#use-plain-words-keep-needed-jargon)
 6. [Omit needless words](#omit-needless-words)
 7. [One main idea per sentence](#one-main-idea-per-sentence)
-8. [Vary sentence structure](#vary-sentence-structure)
-9. [Keep related words together](#keep-related-words-together)
-10. [Place emphasis at the end](#place-emphasis-at-the-end)
-11. [One paragraph, one topic](#one-paragraph-one-topic)
-12. [Needless expressions](#needless-expressions)
+8. [Express parallel ideas in parallel form](#express-parallel-ideas-in-parallel-form)
+9. [Vary sentence structure](#vary-sentence-structure)
+10. [Keep related words together](#keep-related-words-together)
+11. [Keep to one tense](#keep-to-one-tense)
+12. [Place emphasis at the end](#place-emphasis-at-the-end)
+13. [One paragraph, one topic](#one-paragraph-one-topic)
 
 ---
 
 ## Lead with the point
 
-The first sentence answers the reader's question: what happened, what they must do, or what was decided. Context and evidence follow. When the source buries the point, move it up, using only the source's own facts.
+The first sentence answers the reader's question: what happened, what they must do, or what was decided. Order the rest by what the reader needs: result or action, then conditions, then explanation, then background. When the source buries the point, move it up, using only the source's own facts.
 
 > **Before:** Following our recent discussions, we have made several updates to the API. As part of this work, v1 will shut down on 15 November.
 >
@@ -29,7 +32,11 @@ The first sentence answers the reader's question: what happened, what they must 
 
 ## Use the active voice
 
-The active voice is more direct and vigorous than the passive. AI text defaults to passive constructions that weaken the writing.
+The active voice is more direct and vigorous than the passive, and it shows who is responsible. Prefer actor, action, object, condition.
+
+> **Before:** Upon completion of the verification procedure, notification will be provided to the applicant by the department.
+>
+> **After:** The department will notify the applicant after verification.
 
 > **Before:** The deploy was approved by Marta after the review was completed.
 >
@@ -39,27 +46,22 @@ The active voice is more direct and vigorous than the passive. AI text defaults 
 >
 > **After:** Dead leaves covered the ground.
 
-> **Before:** The reason that he left college was that his health became impaired.
->
-> **After:** Failing health compelled him to leave college.
-
 Do not chain one passive on another. "Gold was not allowed to be exported" becomes "It was forbidden to export gold."
 
-The passive is fine when the receiver of the action is the topic of the paragraph. "The dramatists of the Restoration are little esteemed today" is correct in a paragraph about those dramatists.
+Keep the passive when the actor is unknown, irrelevant, deliberately in the background or legally significant, or when the receiver of the action is the topic of the paragraph. "The dramatists of the Restoration are little esteemed today" is correct in a paragraph about those dramatists. Never invent an actor to make a sentence active.
 
 ## Put statements in positive form
 
-Make definite assertions. Use "not" for denial or antithesis, never for evasion. AI text hedges with negative phrasing where a direct positive statement works better.
+Make definite assertions. Use "not" for denial or antithesis, never for evasion. Switch to the positive only when it means exactly the same, including the degree:
 
 | Negative form | Positive form |
 | :-- | :-- |
 | He was not very often on time | He usually came late |
 | did not remember | forgot |
-| did not pay any attention to | ignored |
-| did not have much confidence in | distrusted |
-| not important | trifling |
+| did not succeed | failed |
+| not the same | different |
 
-This applies to whole passages too:
+"Not important" and "trifling", or "did not pay attention" and "ignored", differ in strength or intent. Keep the negation there.
 
 > **Before:** The Taming of the Shrew is rather weak in spots. Shakespeare does not portray Katharine as a very admirable character, nor does Bianca remain long in memory.
 >
@@ -67,14 +69,14 @@ This applies to whole passages too:
 
 ## Use concrete language
 
-Prefer the specific to the general, the definite to the vague, the concrete to the abstract. AI text gravitates toward generic abstractions. Counter this by grounding statements in observable details.
+Prefer the specific to the general, the definite to the vague, the concrete to the abstract. Ground statements in observable details.
 
 | Abstract | Concrete |
 | :-- | :-- |
 | A period of unfavorable weather set in | It rained every day for a week |
 | He showed satisfaction as he took possession of his well-earned reward | He grinned as he pocketed the coin |
 
-The surest way to hold the reader's attention is being specific. When dealing with general principles, give particular instances. The instances must come from the source: concrete language never means inventing a number, a name, or a result.
+The details must come from the source: concrete language never means inventing a number, a name or a result.
 
 > **Before:** Additionally, this groundbreaking framework serves as a testament to the team's commitment to fostering innovation, showcasing how modern tools can enhance developer productivity in today's rapidly evolving landscape.
 >
@@ -84,13 +86,30 @@ The source names no concrete gains, so the rewrite invents none. Adding "cuts bu
 
 ## Use plain words, keep needed jargon
 
-Prefer the shortest familiar word that stays precise: "use" over "utilize", "help" over "facilitate", "benchmark" over "perform an evaluation of". Simple words read faster for everyone, including readers working in a second language.
+Use the shortest familiar word that is equally precise. If the plain word has exactly the same meaning and implications here, use it. Otherwise keep the precise term and explain it once if the reader needs that.
 
-Keep a technical term when the audience would use it. "Redis" beats "a data storage intermediary", and "p95 latency" beats "how slow the slower requests are". Precision wins over artificial simplicity.
+| Prefer | Instead of |
+| :-- | :-- |
+| use | utilize, leverage |
+| help | facilitate |
+| about | with respect to, regarding |
+| before | prior to |
+| start | commence, initiate |
+| buy | purchase (when no technical distinction exists) |
+| change | modify (when no technical distinction exists) |
+| can | has the ability to |
+
+Turn hidden verbs back into verbs: "make a decision" is "decide", "conduct an investigation" is "investigate", "provide an explanation of" is "explain", "perform an evaluation of" is "evaluate". In "there are three services that call it", make the services the subject: "Three services call it."
+
+Unpack a long noun chain into its relations: "user session token refresh failure alert" becomes "an alert when a user's session token fails to refresh". Replace a vague "it", "this" or "that" with its noun when the reference is unclear. Move essential content out of parentheses into the sentence.
+
+Keep a technical term when the audience uses it. "Redis" beats "a data storage intermediary", and "p95 latency" beats "how slow the slower requests are". Simple words read faster for everyone, including readers working in a second language, but precision wins over artificial simplicity.
 
 ## Omit needless words
 
-A sentence should contain no unnecessary words, a paragraph no unnecessary sentences. This does not mean making all sentences short or avoiding detail - it means making every word tell. Concision is less text, not less information: remove a word, and restore it only if the meaning changes.
+A sentence should contain no unnecessary words, a paragraph no unnecessary sentences. This does not mean making all sentences short or avoiding detail. It means making every word tell. Concision is less text, not less information: remove a word, and restore it only if the meaning changes.
+
+Delete repeated conclusions, sentences that restate the previous one, empty introductions ("It is important to note that"), intensifiers that add nothing, metadiscourse ("As mentioned previously") and a second statement of a date or qualification when one clear statement is enough.
 
 | Wordy | Concise |
 | :-- | :-- |
@@ -101,12 +120,15 @@ A sentence should contain no unnecessary words, a paragraph no unnecessary sente
 | in a hasty manner | hastily |
 | this is a subject which | this subject |
 | His story is a strange one. | His story is strange. |
+| in order to | to |
+| at this point in time | now |
+| in the event that | if |
 
 Revise "the fact that" out of every sentence:
 
 | Expression | Replacement |
 | :-- | :-- |
-| owing to the fact that | since, because |
+| owing to the fact that, due to the fact that | because |
 | in spite of the fact that | though |
 | call your attention to the fact that | remind you |
 | I was unaware of the fact that | I did not know |
@@ -118,6 +140,12 @@ Revise "the fact that" out of every sentence:
 | :-- | :-- |
 | His brother, who is a member of the same firm | His brother, a member of the same firm |
 | Trafalgar, which was Nelson's last battle | Trafalgar, Nelson's last battle |
+
+> **Before:** Prior to initiating the deployment process, it is necessary to ensure that you have created a backup copy of the configuration file. Once this has been done, execute the following command in a terminal window in order to restart the service.
+>
+> **After:** Back up the configuration file before deployment. Then run the following command in a terminal to restart the service.
+
+"It is necessary to" becomes a command, which has the same force, and the order, backup before deployment, stays.
 
 Combine choppy step-by-step sentences when the relationship between them matters, as cause and sequence do here:
 
@@ -133,41 +161,64 @@ A sentence that strings independent clauses together with "and" is hard to scan.
 >
 > **After:** v4 is live. Metrics look good. The old worker stays available while we monitor.
 
+## Express parallel ideas in parallel form
+
+Ideas with the same content and function take the same grammatical form, so the reader sees the likeness. Do not vary the form for variety's sake.
+
+| Unlike forms | Parallel forms |
+| :-- | :-- |
+| Formerly, science was taught by the textbook method, while now the laboratory method is employed. | Formerly, science was taught by the textbook method. Now it is taught by the laboratory method. |
+| It was both a long ceremony and very tedious. | The ceremony was both long and tedious. |
+| A time not for words, but action. | A time not for words, but for action. |
+| Either you must grant his request or incur his ill will. | You must either grant his request or incur his ill will. |
+| My objections are, first, the injustice of the measure; second, that it is unconstitutional. | My objections are, first, that the measure is unjust; second, that it is unconstitutional. |
+
+Use an article or a preposition before the first term of a series only, or before every term: "in spring, summer, or winter", or "in spring, in summer, or in winter". Follow correlatives (both...and, not...but, not only...but also, either...or, first...second) with the same construction. Start every item of a list with the same part of speech, such as a verb for steps. When many similar ideas pile up, group them, or put them in a table.
+
 ## Vary sentence structure
 
 Avoid a succession of loose sentences with two co-ordinate clauses joined by a conjunction. This creates monotony:
 
 > The third concert was given last evening, and a large audience was in attendance. Mr. Appleton was the soloist, and the Boston Symphony Orchestra furnished the music. The former showed himself an artist of the first rank, while the latter proved fully deserving of its reputation.
 
-Every sentence follows the same "X happened, and Y happened" pattern. Recast some as simple sentences, some as periodic sentences, some with semicolons. The variety should reflect the actual relationships between ideas, not a mechanical template.
+Every sentence follows the same "X happened, and Y happened" pattern. Recast some as simple sentences and some as periodic sentences, whichever best shows the real relations of the thought.
 
-AI text produces this kind of structural monotony frequently, and it tires the reader. Vary structure because the ideas differ, not to hit a length target or to look human.
+AI text produces this kind of structural monotony often, and it tires the reader. Vary structure because the ideas differ, not to hit a length target or to look human.
 
 ## Keep related words together
 
 The position of words in a sentence shows their relationship. Keep together what belongs together.
 
-Subject and verb should not be separated by a clause that can move to the beginning:
+Do not separate subject and verb by a phrase that can move to the beginning:
 
 | Separated | Together |
 | :-- | :-- |
 | Wordsworth, in the fifth book of The Excursion, gives a minute description | In the fifth book of The Excursion, Wordsworth gives a minute description |
+| Cast iron, when treated in a Bessemer converter, is changed into steel | By treatment in a Bessemer converter, cast iron is changed into steel |
 
-Relative pronouns should follow their antecedent immediately:
+Put a relative pronoun right after its antecedent:
 
 | Ambiguous | Clear |
 | :-- | :-- |
 | He wrote three articles about his adventures in Spain, which were published in Harper's | He published in Harper's three articles about his adventures in Spain |
+| This is a portrait of Benjamin Harrison, grandson of William Henry Harrison, who became President in 1889 | This is a portrait of Benjamin Harrison, grandson of William Henry Harrison. He became President in 1889 |
 
-Modifiers should sit next to what they modify:
+Put a modifier next to what it modifies, and watch the scope of "not" and "only":
 
 | Misplaced | Correct |
 | :-- | :-- |
 | He only found two mistakes | He found only two mistakes |
+| All the members were not present | Not all the members were present |
+
+## Keep to one tense
+
+In a summary, report or changelog, pick one tense and keep it: shifting tenses looks uncertain. Technical text usually takes the present tense ("The command returns"). In a present-tense summary, put earlier events in the perfect ("has been compelled"); in a past-tense one, the past perfect. A past tense in reported speech stays: "The Friar confesses that it was he who married them."
+
+When you summarize someone else's statements, say once that what follows is their view. Do not repeat "he said", "the author adds" or "the speaker went on to say" in every sentence.
 
 ## Place emphasis at the end
 
-The end of a sentence is its most prominent position. Put the word or phrase you want to emphasize there.
+The end of a sentence is its most prominent position. Put the word or phrase you want to emphasize there, usually the new element.
 
 | Weak ending | Strong ending |
 | :-- | :-- |
@@ -176,35 +227,18 @@ The end of a sentence is its most prominent position. Put the word or phrase you
 
 The beginning of a sentence is the second most prominent position. Any element other than the subject becomes emphatic when placed first.
 
-This principle applies equally to sentences within a paragraph and paragraphs within a composition. End paragraphs with your strongest point, not a trailing detail. It does not move the main point of a message to the end: the first sentence still states it (see [Lead with the point](#lead-with-the-point)), and the text stops after the last fact the reader needs.
+This applies to sentences within a paragraph and to paragraphs within a text too: end a paragraph on its strongest point, not a trailing detail. It does not move the main point of a message to the end. The first sentence still states it (see [Lead with the point](#lead-with-the-point)), and the text stops after the last fact the reader needs.
 
 ## One paragraph, one topic
 
-Each paragraph should cover one topic. Begin with a topic sentence that signals what the paragraph is about. End in a way that reinforces the opening, not with a digression.
+Each paragraph covers one topic. Begin with a topic sentence that says what the paragraph is about, develop it, and end in a way that reinforces the opening or states a consequence, not with a digression or an unimportant detail. A short text on one subject needs only one paragraph.
 
 AI text often produces paragraphs that drift between topics or end with unrelated observations. When rewriting, check that each paragraph has a clear subject and that the final sentence relates to it.
 
-Single-sentence paragraphs are acceptable as transitions but should not be the norm.
-
-## Needless expressions
-
-Words and phrases that add nothing. Replace or remove.
-
-| Expression | Problem | Fix |
-| :-- | :-- | :-- |
-| case | usually redundant ("in many cases") | rewrite ("many rooms") |
-| character | wordiness ("acts of a hostile character") | cut ("hostile acts") |
-| factor | hackneyed ("the great factor in") | rewrite ("he won by") |
-| feature | adds nothing ("a feature worthy of mention") | describe the thing |
-| interesting | lazy intro ("an interesting story") | just tell the story |
-| nature | same as character ("of a hostile nature") | cut ("hostile") |
-| along these lines | overworked ("spoke along the same lines") | rewrite ("to the same effect") |
-| worth while | vague approval | be specific about the value |
-| very | use sparingly; prefer strong words | cut or choose a stronger word |
-| certainly | false intensifier, like "very" | cut |
+Single-sentence paragraphs are acceptable as transitions, and in short media such as chat, but should not be the norm in longer prose.
 
 ---
 
 ## Source
 
-Strunk, William Jr. "The Elements of Style." 1918. Adapted from [obra/the-elements-of-style](https://github.com/obra/the-elements-of-style) skill reference. "Lead with the point", "Use plain words, keep needed jargon" and "One main idea per sentence" follow the [Google](https://developers.google.com/tech-writing) and [Microsoft](https://learn.microsoft.com/style-guide/welcome/) technical-writing guides.
+Strunk, William Jr. "The Elements of Style." 1918. Adapted from [obra/the-elements-of-style](https://github.com/obra/the-elements-of-style) skill reference. "Lead with the point", "Use plain words, keep needed jargon" and "One main idea per sentence" follow the [Google](https://developers.google.com/tech-writing) and [Microsoft](https://learn.microsoft.com/style-guide/welcome/) technical-writing guides, [Digital.gov](https://digital.gov/guides/plain-language/writing) and [W3C](https://www.w3.org/WAI/WCAG2/supplemental/patterns/o3p01-clear-words/).

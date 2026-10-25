@@ -22,7 +22,7 @@ Repository layout:
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `plugins/git-clean-gone/`     |
 | **git-stage-hunk**      | Non-interactive hunk staging for selective git add without TTY                          | `plugins/git-stage-hunk/`     |
 | **go-code-review**      | Auto-review Go code for 100+ common mistakes from 100go.co                              | `plugins/go-code-review/`     |
-| **humanize**            | Make text sound natural by removing AI writing patterns                                 | `plugins/humanize/`           |
+| **humanize**            | Write and rewrite text plainly and concisely without losing meaning                     | `plugins/humanize/`           |
 | **kubecon-cfp**         | Interactive KubeCon CFP submission writer with data-driven insights                    | `plugins/kubecon-cfp/`        |
 | **kup**                 | Fill the monthly KUP report (Polish creative-work tax deduction) from merged GitHub PRs into a Google Sheet | `plugins/kup/`                |
 | **plan-critic**         | Critique an implementation plan before coding: Skeptic, Architect, and Verifier personas return an Approve/Refine/Reject verdict | `plugins/plan-critic/`        |
@@ -52,7 +52,7 @@ Codex skills:
 | **git-clean-gone**     | Clean up stale local branches and worktrees; explicit invocation only (same portable package as Claude Code) | `plugins/git-clean-gone/skills/git-clean-gone/` |
 | **git-stage-hunk**     | Stage selected git hunks without a TTY; explicit invocation only (same portable package as Claude Code) | `plugins/git-stage-hunk/skills/git-stage-hunk/` |
 | **go-code-review**     | Review Go code for 100+ common mistakes from 100go.co (same portable package as Claude Code) | `plugins/go-code-review/skills/go-code-review/` |
-| **humanize**           | Remove AI writing patterns from text (same portable package as Claude Code) | `plugins/humanize/skills/humanize/` |
+| **humanize**           | Write and rewrite text plainly (same portable package as Claude Code)       | `plugins/humanize/skills/humanize/` |
 | **kubecon-cfp**        | Draft and refine KubeCon CFP submissions, explicit invocation only (same portable package as Claude Code) | `plugins/kubecon-cfp/skills/kubecon-cfp/` |
 | **kup**                | Fill the monthly KUP report from merged GitHub PRs into a Google Sheet (same portable package as Claude Code) | `plugins/kup/skills/kup/` |
 | **plan-critic**        | Critique implementation plans before coding; personas run sequentially on Codex (same portable package as Claude Code) | `plugins/plan-critic/skills/plan-critic/` |

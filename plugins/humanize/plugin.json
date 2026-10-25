@@ -1,21 +1,21 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "humanize",
-  "version": "2.6.2",
-  "description": "Make text sound natural by removing AI writing patterns. For commit messages, PR descriptions, review comments, docs, changelogs, and any text that sounds robotic or AI-generated.",
+  "version": "3.0.0",
+  "description": "Write and rewrite text for people as short and plain as possible without losing meaning: removes AI writing patterns, fixes usage, and keeps every fact, condition and tone. For commit messages, PR descriptions, docs, changelogs, emails and review comments.",
   "author": {
     "name": "Smykla Skalski Labs"
   },
   "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/humanize",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["writing", "clear-writing", "de-slop", "text", "style", "natural-language", "pattern-removal"],
+  "keywords": ["writing", "clear-writing", "de-slop", "text", "style", "natural-language", "plain-language", "concise", "pattern-removal"],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "Humanize",
-        "shortDescription": "Rewrite text to sound natural and direct",
-        "longDescription": "Finds 30 common signs of AI writing in a draft and rewrites it with plain composition rules, keeping the meaning and facts intact.",
+        "shortDescription": "Write and rewrite text plainly without losing meaning",
+        "longDescription": "Rewrites drafts and writes new text for people as short and plain as possible. It removes 30 common signs of AI writing, fixes grammar and usage, and checks that every fact, condition, number and tone survives.",
         "developerName": "SAI",
         "category": "Writing",
         "capabilities": ["Interactive", "Write"],
@@ -24,6 +24,7 @@
         "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
         "defaultPrompt": [
           "Use $humanize to rewrite this draft so it sounds natural.",
+          "Use $humanize to write the commit message for this change.",
           "Use $humanize to score this file for AI writing patterns without rewriting it.",
           "Use $humanize to preview a rewrite of CHANGELOG.md without editing it."
         ],

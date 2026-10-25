@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: fixes-usage-errors
+expected_outcome: |
+  The skill edits migrations.md in place and fixes its usage errors: the
+  dangling opening phrase (the platform team, not the migration, finished the
+  review), the comma splice, "less tables", "different than", the sentence-opening
+  "Due to", "as to whether" and "kind of". It keeps the singular "their" for
+  "anybody", every fact, "must" for running `make migrate` before Friday, "some"
+  reports, and the uncertainty about whether the slowdown is permanent. The reply
+  ends with a pattern report.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: cuts-wordy-instructions
+expected_outcome: |
+  The skill edits deploy.md in place and cuts it to well under half its length.
+  It removes the wordy phrases ("Prior to initiating", "it is necessary to",
+  "in order to", "At this point in time", "has the ability to", "In the event
+  that", "make a decision") and keeps every step and detail: back up
+  /etc/app/config.yaml before deploying, the `sudo systemctl restart app`
+  command, a restart of up to 30 seconds during which the service cannot accept
+  requests, and that if the service fails to start the reader should decide
+  whether to restore the backup. "Should" stays a recommendation.
+context:
+  scaffold_script: place-files.sh

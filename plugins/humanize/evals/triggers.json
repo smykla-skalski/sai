@@ -79,7 +79,7 @@
     },
     {
       "query": "write a commit message for my staged changes, conventional commits format",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "summarize the PR description in pr-body.md into two bullets I can read out at standup",
@@ -91,11 +91,11 @@
     },
     {
       "query": "draft a LinkedIn post announcing our Series A, 150 words, upbeat but not cringe",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "the descriptions in config/features.yaml are too long, shorten each one to under 60 chars without breaking the YAML",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "my manager said our postmortem in docs/incident-0412.md reads like an AI generated it. can you make it read like an engineer wrote it? keep the timeline exact",
@@ -127,11 +127,11 @@
     },
     {
       "query": "write release notes for v2.0 from these commits: add retry flag, drop python 3.9, fix cache eviction race",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "turn this bullet list into a short paragraph for our blog: faster builds, new cache layer, fewer flaky tests",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "proofread announcement.txt for spelling mistakes only, leave the wording and tone exactly as they are",
@@ -143,7 +143,7 @@
     },
     {
       "query": "make the error messages in src/errors.go friendlier for end users, they're too terse",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "our onboarding email template sounds like it came out of an LLM. fix the wording but keep the links and the start date: \"Welcome aboard! We are excited to embark on this journey together as you seamlessly integrate into our vibrant team.\"",
@@ -171,11 +171,11 @@
     },
     {
       "query": "shorten the intro in README.md to two sentences, keep the tone",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
-      "query": "add a section to CONTRIBUTING.md about how we run integration tests locally",
-      "should_trigger": false
+      "query": "add a section to CONTRIBUTING.md about how we run integration tests locally: start the stack with `make up`, then run `make integration`, it needs about 4 GB of free RAM",
+      "should_trigger": true
     },
     {
       "query": "check cover-letter.md for any spelling or grammar mistakes and fix only those",
@@ -183,6 +183,46 @@
     },
     {
       "query": "explain what a buried lede is and give me two examples from journalism",
+      "should_trigger": false
+    },
+    {
+      "query": "this paragraph in docs/onboarding.md is way too wordy, tighten it but keep every step and number",
+      "should_trigger": true
+    },
+    {
+      "query": "rewrite our data retention policy in plain language for non-lawyers, every obligation and exception has to stay: \"Notwithstanding the foregoing, the Company shall retain Customer Data for a period not exceeding ninety (90) days following termination, save where retention is required by applicable law.\"",
+      "should_trigger": true
+    },
+    {
+      "query": "write the PR description for the change in pr-body.md's branch, it adds the --dry-run flag to the deploy command and fixes the timeout bug in #212",
+      "should_trigger": true
+    },
+    {
+      "query": "draft an email to the whole eng org about the database maintenance window this Saturday 02:00-04:00 UTC, writes will be blocked during it",
+      "should_trigger": true
+    },
+    {
+      "query": "what's the difference between affect and effect? I always mix them up",
+      "should_trigger": false
+    },
+    {
+      "query": "add docstrings to every public function in utils/parse.py",
+      "should_trigger": false
+    },
+    {
+      "query": "turn the timeline in docs/incident-0412.md into a JSON array of {time, event} objects",
+      "should_trigger": false
+    },
+    {
+      "query": "write a python script that counts the words in every markdown file under docs/",
+      "should_trigger": false
+    },
+    {
+      "query": "review the Go code in src/errors.go for bugs, ignore the wording of the messages",
+      "should_trigger": false
+    },
+    {
+      "query": "summarize docs/incident-0412.md in three bullets for the exec update",
       "should_trigger": false
     }
   ]

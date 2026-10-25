@@ -319,8 +319,31 @@ def _codex_auth() -> Path:
     return auth
 
 
-def codex_sandbox(codex: str, plugin: str, root: Path) -> CodexSandbox:
-    """Install one plugin from this repo's marketplace into a fresh Codex home.
+def plugin_marketplace(plugin: Path, root: Path) -> tuple[Path, str]:
+    """Write a Codex marketplace that serves only a copy of plugin.
+
+    Return the marketplace directory and its name. The copy is what Codex
+    installs, so a plugin outside the repo, such as an old snapshot or one with
+    a candidate description, gets tested as given. The entry keeps the repo
+    marketplace's settings for that plugin.
+    """
+    repo = load_json_object(CODEX_MARKETPLACE)
+    entries = [e for e in repo.get("plugins", []) if e.get("name") == plugin.name]
+    entry = dict(entries[0]) if entries else {"name": plugin.name}
+    entry["source"] = {"source": "local", "path": f"./plugins/{plugin.name}"}
+    market = root / "marketplace"
+    shutil.copytree(
+        plugin,
+        market / "plugins" / plugin.name,
+        ignore=shutil.ignore_patterns("evals"),
+    )
+    manifest = {"name": repo["name"], "plugins": [entry]}
+    write_files(market, {".agents/plugins/marketplace.json": json.dumps(manifest)})
+    return market, str(repo["name"])
+
+
+def codex_sandbox(codex: str, plugin: Path, root: Path) -> CodexSandbox:
+    """Install a copy of one plugin directory into a fresh Codex home.
 
     Codex copies plugins into its cache, so call this again after every edit.
     The codex binary must honor CODEX_HOME; some wrapper scripts do not.
@@ -329,10 +352,10 @@ def codex_sandbox(codex: str, plugin: str, root: Path) -> CodexSandbox:
     sandbox.home.mkdir(parents=True, exist_ok=True)
     sandbox.codex_home.mkdir(parents=True, exist_ok=True)
     shutil.copy2(_codex_auth(), sandbox.codex_home / "auth.json")
-    marketplace = load_json_object(CODEX_MARKETPLACE)["name"]
+    market, name = plugin_marketplace(plugin, root)
     for argv in (
-        [codex, "plugin", "marketplace", "add", str(REPO_ROOT)],
-        [codex, "plugin", "add", f"{plugin}@{marketplace}"],
+        [codex, "plugin", "marketplace", "add", str(market)],
+        [codex, "plugin", "add", f"{plugin.name}@{name}"],
     ):
         result = run_command(argv, cwd=root, env=sandbox.env(), timeout=120)
         if result.returncode != 0:

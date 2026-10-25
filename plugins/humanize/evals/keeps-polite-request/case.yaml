@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: keeps-polite-request
+expected_outcome: |
+  The input is pasted text, so the rewrite goes to chat. The email stays a
+  polite request to Dana, phrased as a question or with "please", and still
+  thanks her. It keeps the Q3 cloud cost breakdown, Friday, the budget review on
+  Monday and the sign-off from Ola, and drops the padding: "I hope this email
+  finds you well", "just wanted to quickly reach out", "might possibly", "extremely
+  grateful for any assistance" and "Thanks so much in advance".

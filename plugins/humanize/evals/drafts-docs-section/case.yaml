@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: drafts-docs-section
+expected_outcome: |
+  This is new writing, so the skill drafts the text and writes no pattern
+  report. It adds a "## Running tests" section to CONTRIBUTING.md that states the
+  four facts from the request plainly and briefly: Docker must be running, `make
+  test` starts the tests, a full run takes about 3 minutes, and `TEST_DB_PORT`
+  sets another port when 5432 is taken. It adds no other facts, keeps the existing
+  sections unchanged, and uses no AI vocabulary, filler or em dashes.
+context:
+  scaffold_script: place-files.sh

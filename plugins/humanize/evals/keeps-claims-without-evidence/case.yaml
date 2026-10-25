@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: keeps-claims-without-evidence
+expected_outcome: |
+  The skill edits pr-body.md in place. It drops the puffery ("groundbreaking",
+  "seamlessly", "Additionally", "I hope this helps reviewers") but keeps the two
+  claims the PR gives no evidence for, that the change significantly improves
+  performance and makes search more reliable for all users, at the same strength:
+  no added hedge, no invented numbers. The report lists both under "Claims
+  without evidence". Every fact stays: /search, Redis, SEARCH_CACHE_TTL with a
+  default of 300 seconds, and the fix for empty queries returning a 500 error.
+context:
+  scaffold_script: place-files.sh

@@ -1,6 +1,6 @@
 {
-  "where": "The rewritten text is `file_after` when the task edits a file in place. Otherwise it is the rewritten version inside `assistant_reply`; ignore any pattern report and any quotes of the original there.",
-  "quality": "{where} Rate how well the assistant served the user for {medium}: correct mode, facts kept, nothing invented, plain specific writing, the author's voice kept, no authorship verdict.",
+  "where": "The text to judge is `file_after` when the task edits or writes a file; when the task adds a new section, judge only the new text. Otherwise it is the rewritten or drafted text inside `assistant_reply`; ignore any pattern report and any quotes of the original there.",
+  "quality": "{where} Rate the result for {medium}. Weigh first that it is as short as it can be while it loses nothing: every fact, condition, number, modal verb and the tone kept, and nothing invented. Then weigh plain, specific wording, the author's voice, the requested mode and no authorship verdict.",
   "criteria": {
     "task_done": [
       {
@@ -166,17 +166,17 @@
     ],
     "ends_cleanly": [
       {
-        "ask": "Ignore quotes of the original inside any pattern report. The report may end with a one-line summary and a short list of claims cut for lack of evidence; that list is required. Does `assistant_reply` end there, without a follow-up offer such as 'Want me to...', 'Tell me if you want...' or 'I can also...'?",
+        "ask": "Ignore quotes of the original inside any pattern report. The report may end with a one-line summary and, when they apply, a list of claims without evidence, a list of changed details and a one-line note that a qualified reviewer must check the text; those parts are allowed. Does `assistant_reply` end there, without a follow-up offer such as 'Want me to...', 'Tell me if you want...' or 'I can also...'?",
         "pass": "The reply ends cleanly with no follow-up offer.",
         "fail": "The reply ends with or contains a follow-up offer."
       },
       {
-        "ask": "Ignore quotes of the original inside any pattern report. A one-line summary and a short list of claims cut for lack of evidence are required parts of the report. Beyond those, is `assistant_reply` free of advice, alternatives or extra sections the user did not ask for?",
-        "pass": "It contains only the result and the required report parts.",
-        "fail": "It adds advice, alternatives or extra sections beyond the required report parts."
+        "ask": "Ignore quotes of the original inside any pattern report. The report may end with a one-line summary and, when they apply, a list of claims without evidence, a list of changed details and a one-line note that a qualified reviewer must check the text; those parts are allowed. Beyond the result and those parts, is `assistant_reply` free of advice, alternatives or extra sections the user did not ask for?",
+        "pass": "It contains only the result and the allowed report parts.",
+        "fail": "It adds advice, alternatives or extra sections beyond the allowed report parts."
       },
       {
-        "ask": "Ignore quotes of the original inside any pattern report, and treat a short list of claims cut for lack of evidence as a required part. Does the assistant, in its own voice, offer to do more, give advice on what to add, or suggest optional alternatives?",
+        "ask": "Ignore quotes of the original inside any pattern report. The report may end with a one-line summary and, when they apply, a list of claims without evidence, a list of changed details and a one-line note that a qualified reviewer must check the text; those parts are allowed. Does the assistant, in its own voice, offer to do more, give advice on what to add, or suggest optional alternatives?",
         "pass": "It does not.",
         "fail": "It does.",
         "inverted": true
@@ -217,11 +217,213 @@
         "fail": "Something was changed or flagged.",
         "inverted": true
       }
+    ],
+    "usage_fixed": [
+      {
+        "ask": "{where} Is that text free of usage errors: comma splices, accidental sentence fragments, opening phrases that refer to the wrong subject, 'less' for countable nouns, 'different than', 'due to' meaning 'because of', 'as to whether' and 'kind of' as a hedge?",
+        "pass": "No usage error remains.",
+        "fail": "At least one usage error remains."
+      },
+      {
+        "ask": "{where} Would a careful copy editor find that text grammatically correct and free of misused words?",
+        "pass": "Yes, it is correct.",
+        "fail": "No, grammar or word-usage errors remain."
+      },
+      {
+        "ask": "{where} Does that text still contain a grammar or usage error such as a comma splice, a dangling modifier, 'less' with a countable noun or 'different than'?",
+        "pass": "It contains none.",
+        "fail": "It still contains some.",
+        "inverted": true
+      }
+    ],
+    "protected_kept": [
+      {
+        "ask": "{where} Compare it with `original_text`. Does it keep every number, unit, date, name, modal verb (must, shall, may, should, can), negation, condition, exception, quantifier (all, some, any, each) and attribution with the same meaning and strength?",
+        "pass": "Every protected detail is kept with the same meaning and strength.",
+        "fail": "A protected detail is missing, changed, weakened or strengthened."
+      },
+      {
+        "ask": "{where} Could a reader of that text take a different action, meet a different deadline, apply a rule in a different case, or read a claim as more or less certain than a reader of `original_text`?",
+        "pass": "No, the obligations, conditions, numbers and certainty are the same.",
+        "fail": "Yes, something changed.",
+        "inverted": true
+      },
+      {
+        "ask": "{where} Are the conditions, exceptions, limits and obligations of `original_text` all still in that text, unchanged in scope?",
+        "pass": "Yes, all of them, unchanged in scope.",
+        "fail": "No, one is missing or its scope changed."
+      }
+    ],
+    "concise": [
+      {
+        "ask": "{where} Is every word in that text needed for meaning, use or tone, with no filler, repetition, wordy phrase or preamble left?",
+        "pass": "Every word earns its place.",
+        "fail": "Filler, repetition, wordy phrases or preamble remain."
+      },
+      {
+        "ask": "{where} Does that text say a fact twice, or keep filler, preamble, a recap, a needless connector or a wordy phrase that a plainer form says in fewer words?",
+        "pass": "It does none of these.",
+        "fail": "It does at least one of these.",
+        "inverted": true
+      },
+      {
+        "ask": "{where} `lossless_check.within_budget` says whether the result fits a word budget that code set from a minimal rewrite of the same source that keeps everything (`lossless_check.word_budget`, against `result_words`). Is the result within that budget?",
+        "pass": "Yes, it is within the budget.",
+        "fail": "No, it is over the budget."
+      },
+      {
+        "ask": "{where} `lossless_check.within_budget` says whether the result fits a word budget that code set from a minimal rewrite of the same source that keeps everything (`lossless_check.word_budget`, against `result_words`). Given the budget and what the reader must keep, is the result as short as its content allows?",
+        "pass": "It is as short as its content allows.",
+        "fail": "It is longer than its content needs."
+      },
+      {
+        "ask": "{where} `lossless_check.within_budget` says whether the result fits a word budget that code set from a minimal rewrite of the same source that keeps everything (`lossless_check.word_budget`, against `result_words`). Would a strict editor whose goal is the fewest words that lose nothing accept the result's length and wording?",
+        "pass": "Yes.",
+        "fail": "No, the editor would still cut a repeat, filler or a wordy phrase."
+      }
+    ],
+    "tone_kept": [
+      {
+        "ask": "{where} Does that text keep the tone and force of `original_text`: a polite request stays a polite request, thanks and apologies stay, and certainty stays the same?",
+        "pass": "The tone and force are kept.",
+        "fail": "The tone or force changed, for example a request became a bare command or the thanks disappeared."
+      },
+      {
+        "ask": "{where} Would the recipient read that text as just as polite and friendly as `original_text`, only shorter?",
+        "pass": "Yes.",
+        "fail": "No, it reads ruder, colder or more demanding."
+      },
+      {
+        "ask": "{where} Does that text turn a request in `original_text` into an order, or drop its courtesy?",
+        "pass": "It does not.",
+        "fail": "It does.",
+        "inverted": true
+      }
+    ],
+    "claims_kept_and_flagged": [
+      {
+        "ask": "{where} `original_text` makes claims with no evidence, such as a significant performance gain or better reliability. Does that text keep those claims at the same strength, with no added hedge and no invented evidence, and does `assistant_reply` list them under 'Claims without evidence'?",
+        "pass": "The claims are kept at the same strength and listed.",
+        "fail": "A claim was cut, weakened, strengthened or given invented evidence, or the list is missing."
+      },
+      {
+        "ask": "{where} Did the rewrite delete, soften or embellish a substantive claim from `original_text` instead of keeping it as stated and flagging it for the author?",
+        "pass": "No, it kept and flagged the claims.",
+        "fail": "Yes, it deleted, softened or embellished a claim.",
+        "inverted": true
+      },
+      {
+        "ask": "Does `assistant_reply` tell the author which claims of `original_text` lack evidence, by quoting them in a 'Claims without evidence' list?",
+        "pass": "Yes, the list quotes the unsupported claims.",
+        "fail": "No, the list is missing or does not quote them."
+      }
+    ],
+    "draft_carries_request": [
+      {
+        "ask": "{where} Does the new text carry every fact the user gave in `user_request` (commands, numbers with their qualifiers such as 'about' or 'up to', names, files, conditions and issue numbers)?",
+        "pass": "Every fact from the request is there, unchanged.",
+        "fail": "A fact from the request is missing or changed."
+      },
+      {
+        "ask": "{where} Could a reader of the new text act on every fact in `user_request`?",
+        "pass": "Yes.",
+        "fail": "No, something the user gave is missing or wrong."
+      },
+      {
+        "ask": "{where} Does the new text drop or alter any fact from `user_request`, for example by losing a qualifier such as 'about' or 'up to'?",
+        "pass": "It drops or alters nothing.",
+        "fail": "It drops or alters a fact.",
+        "inverted": true
+      }
+    ],
+    "draft_adds_nothing": [
+      {
+        "ask": "{where} Does every statement in the new text come from `user_request` or from the existing file in `original_text`?",
+        "pass": "Nothing was added.",
+        "fail": "The new text adds a fact, reason, benefit, number, command or step that neither source contains."
+      },
+      {
+        "ask": "{where} Is the new text free of invented content, such as a reason, benefit, extra step or number the user never gave?",
+        "pass": "It is free of invented content.",
+        "fail": "It contains invented content."
+      },
+      {
+        "ask": "{where} Does the new text claim anything the user did not say, such as why the change helps?",
+        "pass": "It claims nothing extra.",
+        "fail": "It claims something extra.",
+        "inverted": true
+      }
+    ],
+    "no_report_when_drafting": [
+      {
+        "ask": "This task asked for new text, not a rewrite. Is `assistant_reply` free of a pattern report table and of a list of AI writing patterns?",
+        "pass": "There is no pattern report.",
+        "fail": "A pattern report or pattern list appears."
+      },
+      {
+        "ask": "This task asked for new text. Does `assistant_reply` give the text, or say where it went, without commentary on AI writing patterns?",
+        "pass": "Yes.",
+        "fail": "No, it adds a pattern report or commentary on patterns."
+      },
+      {
+        "ask": "This task asked for new text. Does `assistant_reply` include a pattern report, as if it had rewritten an existing draft?",
+        "pass": "It does not.",
+        "fail": "It does.",
+        "inverted": true
+      }
+    ],
+    "lossless": [
+      {
+        "ask": "{where} `lossless_check.missing_details` lists literal details of `original_text` (numbers, code spans, URLs, issue references) that code could not find in the result; treat each as lost unless the result clearly keeps its meaning in other words. Can a reader recover from the result every fact, instruction, condition, exception, number and qualifier of the source (`original_text`; for new text, the facts in `user_request`)? Dropping puffery and decoration, such as 'robust', 'cutting-edge', 'game-changer' or 'empowering users', is not a loss; collapsing stacked hedges into one hedge of the same strength, such as 'could potentially' to 'could', is not a loss either. Dropping a fact, condition, qualifier or substantive claim is.",
+        "pass": "Everything the reader needs can be recovered.",
+        "fail": "Something the reader needs is missing or changed."
+      },
+      {
+        "ask": "{where} Is every claim in the result supported by the source (`original_text`; for new text, the facts in `user_request`), with nothing added? Dropping puffery and decoration, such as 'robust', 'cutting-edge', 'game-changer' or 'empowering users', is not a loss; collapsing stacked hedges into one hedge of the same strength, such as 'could potentially' to 'could', is not a loss either. Dropping a fact, condition, qualifier or substantive claim is.",
+        "pass": "Every claim is supported.",
+        "fail": "The result adds or changes a claim."
+      },
+      {
+        "ask": "{where} Assume the result is subtly wrong. Compared with the source (`original_text`; for new text, the facts in `user_request`), is there a wording difference that could cause a different action, deadline or number, a stronger or weaker claim, a lost exception or uncertainty, or changed attribution? Dropping puffery and decoration, such as 'robust', 'cutting-edge', 'game-changer' or 'empowering users', is not a loss; collapsing stacked hedges into one hedge of the same strength, such as 'could potentially' to 'could', is not a loss either. Dropping a fact, condition, qualifier or substantive claim is.",
+        "pass": "No such difference exists.",
+        "fail": "Such a difference exists.",
+        "inverted": true
+      },
+      {
+        "ask": "{where} Do certainty, conditions, exceptions, attribution and tone keep their force in the result, compared with the source (`original_text`; for new text, the facts in `user_request`)? Dropping puffery and decoration, such as 'robust', 'cutting-edge', 'game-changer' or 'empowering users', is not a loss; collapsing stacked hedges into one hedge of the same strength, such as 'could potentially' to 'could', is not a loss either. Dropping a fact, condition, qualifier or substantive claim is.",
+        "pass": "They all keep their force.",
+        "fail": "At least one lost or gained force."
+      },
+      {
+        "ask": "{where} Answer these from the source (`original_text`; for new text, the facts in `user_request`) and again from the result: who acts, what action, when, what quantity and unit, what condition, what exception, how certain. Are the answers the same? Dropping puffery and decoration, such as 'robust', 'cutting-edge', 'game-changer' or 'empowering users', is not a loss; collapsing stacked hedges into one hedge of the same strength, such as 'could potentially' to 'could', is not a loss either. Dropping a fact, condition, qualifier or substantive claim is.",
+        "pass": "All answers are the same.",
+        "fail": "At least one answer differs."
+      }
+    ],
+    "reply_lean": [
+      {
+        "ask": "The task wrote its result into a file, so the reply should carry nothing the file already holds. Allowed, and never extra: the pattern report table (its Fix column quotes replacements, which is fine), its summary line such as '9 patterns in 5 categories. Severity: Moderate. 72 → 62 words.', a 'Claims without evidence:' list, a 'Changed details:' list, the line 'A qualified reviewer must check this before use.', and, for new text, the single sentence 'Added \"<section>\" to <file>.' Extra: any other sentence, such as a summary of what changed, an explanation, the section's position, a list of its contents, or a quote of the new text. Is `assistant_reply` free of extra text?",
+        "pass": "It holds only allowed parts.",
+        "fail": "It holds extra text."
+      },
+      {
+        "ask": "The task wrote its result into a file, so the reply should carry nothing the file already holds. Allowed, and never extra: the pattern report table (its Fix column quotes replacements, which is fine), its summary line such as '9 patterns in 5 categories. Severity: Moderate. 72 → 62 words.', a 'Claims without evidence:' list, a 'Changed details:' list, the line 'A qualified reviewer must check this before use.', and, for new text, the single sentence 'Added \"<section>\" to <file>.' Extra: any other sentence, such as a summary of what changed, an explanation, the section's position, a list of its contents, or a quote of the new text. Does `assistant_reply` contain any extra text?",
+        "pass": "It contains none.",
+        "fail": "It contains some.",
+        "inverted": true
+      },
+      {
+        "ask": "The task wrote its result into a file, so the reply should carry nothing the file already holds. Allowed, and never extra: the pattern report table (its Fix column quotes replacements, which is fine), its summary line such as '9 patterns in 5 categories. Severity: Moderate. 72 → 62 words.', a 'Claims without evidence:' list, a 'Changed details:' list, the line 'A qualified reviewer must check this before use.', and, for new text, the single sentence 'Added \"<section>\" to <file>.' Extra: any other sentence, such as a summary of what changed, an explanation, the section's position, a list of its contents, or a quote of the new text. Apart from the allowed parts, is `assistant_reply` empty?",
+        "pass": "Yes, nothing else is there.",
+        "fail": "No, something else is there."
+      }
     ]
   },
   "cases": {
     "humanizes-pasted-commit-message": {
       "medium": "a git commit message",
+      "check_lossless": true,
+      "reference": "fix(pool): fix race in pool.Acquire(), add 30s pool.Release() timeout\n\nThe race could deadlock the pool under high concurrency.\n\nFixes #482.",
       "criteria": [
         "task_done",
         "no_authorship_verdict",
@@ -231,7 +433,9 @@
         "nothing_added",
         "smells_gone",
         "point_first",
-        "voice_fits"
+        "voice_fits",
+        "lossless",
+        "concise"
       ],
       "graders": {
         "facts_kept": [
@@ -239,11 +443,16 @@
         ],
         "smells_gone": [
           "06-rewrite-is-clean"
+        ],
+        "concise": [
+          "07-is-concise"
         ]
       }
     },
     "leads-with-the-point": {
       "medium": "a status update for a team Slack channel",
+      "check_lossless": true,
+      "reference": "The v3.2 rollout is blocked until DB-142, the missing index on `orders.created_at`, is fixed. Marta owns the fix and expects it by Thursday.",
       "criteria": [
         "task_done",
         "no_authorship_verdict",
@@ -253,7 +462,9 @@
         "nothing_added",
         "smells_gone",
         "point_first",
-        "voice_fits"
+        "voice_fits",
+        "lossless",
+        "concise"
       ],
       "graders": {
         "ends_cleanly": [
@@ -267,6 +478,9 @@
         ],
         "point_first": [
           "06-leads-with-the-blocker"
+        ],
+        "concise": [
+          "10-is-concise"
         ]
       }
     },
@@ -301,6 +515,8 @@
     "previews-rewrite-in-chat": {
       "medium": "a project changelog",
       "file": "CHANGELOG.md",
+      "check_lossless": true,
+      "reference": "# Changelog\n\n## v1.7.0\n\n- A new caching layer cuts API calls by 40%.\n- Logs include request IDs, which helps debug distributed systems.\n- Fixed a critical bug where `sync --force` could, in certain edge cases, overwrite local changes.",
       "criteria": [
         "task_done",
         "no_authorship_verdict",
@@ -310,7 +526,9 @@
         "nothing_added",
         "smells_gone",
         "point_first",
-        "voice_fits"
+        "voice_fits",
+        "lossless",
+        "concise"
       ],
       "graders": {
         "facts_kept": [
@@ -318,12 +536,17 @@
         ],
         "smells_gone": [
           "06-rewrite-is-clean"
+        ],
+        "concise": [
+          "07-is-concise"
         ]
       }
     },
     "rewrites-release-notes-in-place": {
       "medium": "release notes in a Markdown file",
       "file": "release-notes.md",
+      "check_lossless": true,
+      "reference": "# Release notes: version 2.4.0\n\nVersion 2.4.0 improves reliability.\n\n- The new `--retry-limit` flag caps retries per request (default: 5) for more predictable behavior across distributed systems.\n- Cold start time drops from 1.8s to 0.9s.\n- The driver supports Postgres 16.\n\n## Breaking changes\n\nThe deprecated `connect_legacy()` function is removed. Projects that still call it fail at build time, so migrate to `connect()` before upgrading.",
       "criteria": [
         "task_done",
         "no_authorship_verdict",
@@ -333,7 +556,10 @@
         "nothing_added",
         "smells_gone",
         "point_first",
-        "voice_fits"
+        "voice_fits",
+        "lossless",
+        "concise",
+        "reply_lean"
       ],
       "graders": {
         "facts_kept": [
@@ -345,6 +571,9 @@
         "smells_gone": [
           "03-removes-ai-vocabulary",
           "04-removes-chatbot-closers"
+        ],
+        "concise": [
+          "09-is-short"
         ]
       }
     },
@@ -369,6 +598,239 @@
         "report_accurate": [
           "07-quotes-key-phrases",
           "09-one-row-per-phrase"
+        ]
+      }
+    },
+    "fixes-usage-errors": {
+      "medium": "an internal engineering doc",
+      "file": "migrations.md",
+      "check_lossless": true,
+      "reference": "# Database migrations\n\nThe platform team finished the schema review and approved the migration. Each engineer must run `make migrate` before Friday.\n\nThe new schema has fewer tables than the old one, and the query planner behaves differently. Because of the index changes, some reports are somewhat slow. We are not sure whether the slowdown is permanent.\n\nAsk Priya if anybody is unsure of their role.",
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "facts_kept",
+        "nothing_added",
+        "protected_kept",
+        "usage_fixed",
+        "concise",
+        "voice_fits",
+        "lossless",
+        "reply_lean"
+      ],
+      "graders": {
+        "usage_fixed": [
+          "03-uses-fewer-for-counts",
+          "04-fixes-misused-words",
+          "06-keeps-singular-they",
+          "07-fixes-grammar"
+        ],
+        "facts_kept": [
+          "05-keeps-facts"
+        ],
+        "nothing_added": [
+          "08-keeps-meaning"
+        ]
+      }
+    },
+    "keeps-conditions-and-numbers": {
+      "medium": "an on-call runbook section",
+      "file": "on-call.md",
+      "check_lossless": true,
+      "reference": "# Reporting security incidents\n\nThis rule overrides the rest of this runbook. The on-call engineer must notify the security team in writing, without undue delay and no later than 48 hours after becoming aware of any actual or suspected incident that affects, or is reasonably likely to affect, customer data, unless the incident is limited to staging environments.",
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "facts_kept",
+        "nothing_added",
+        "protected_kept",
+        "smells_gone",
+        "concise",
+        "voice_fits",
+        "lossless",
+        "reply_lean"
+      ],
+      "graders": {
+        "protected_kept": [
+          "03-keeps-every-condition",
+          "04-keeps-the-duty-strength"
+        ],
+        "smells_gone": [
+          "05-drops-legalese-and-filler"
+        ],
+        "nothing_added": [
+          "07-invents-nothing"
+        ]
+      }
+    },
+    "cuts-wordy-instructions": {
+      "medium": "deployment instructions in a Markdown doc",
+      "file": "deploy.md",
+      "check_lossless": true,
+      "reference": "# Deploying\n\nBack up `/etc/app/config.yaml` before you deploy. Then restart the service in a terminal:\n\n    sudo systemctl restart app\n\nThe restart can take up to 30 seconds, and the service cannot accept requests until it finishes. If the service fails to start, you should decide whether to restore the backup.",
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "facts_kept",
+        "nothing_added",
+        "protected_kept",
+        "concise",
+        "point_first",
+        "lossless",
+        "reply_lean"
+      ],
+      "graders": {
+        "facts_kept": [
+          "03-keeps-steps-and-numbers"
+        ],
+        "concise": [
+          "04-drops-wordy-phrases",
+          "05-is-short"
+        ],
+        "protected_kept": [
+          "06-keeps-order-and-conditions"
+        ]
+      }
+    },
+    "keeps-polite-request": {
+      "medium": "an email to a colleague",
+      "check_lossless": true,
+      "reference": "Hi Dana,\n\nCould you send the Q3 cloud cost breakdown by Friday? We need it for the budget review on Monday.\n\nThanks,\nOla",
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "facts_kept",
+        "nothing_added",
+        "tone_kept",
+        "concise",
+        "smells_gone",
+        "voice_fits",
+        "lossless"
+      ],
+      "graders": {
+        "facts_kept": [
+          "05-keeps-facts"
+        ],
+        "tone_kept": [
+          "06-request-stays-polite"
+        ],
+        "concise": [
+          "07-drops-padding"
+        ],
+        "ends_cleanly": [
+          "08-ends-without-follow-up-offer"
+        ]
+      }
+    },
+    "keeps-claims-without-evidence": {
+      "medium": "a pull request description",
+      "file": "pr-body.md",
+      "check_lossless": true,
+      "reference": "This PR adds a caching layer for the `/search` endpoint on our existing Redis cluster. It significantly improves performance and makes search more reliable for all users. It also adds a `SEARCH_CACHE_TTL` setting (default 300 seconds) and fixes the bug where empty queries returned a 500 error.",
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "facts_kept",
+        "nothing_added",
+        "claims_kept_and_flagged",
+        "smells_gone",
+        "point_first",
+        "voice_fits",
+        "lossless",
+        "concise",
+        "reply_lean"
+      ],
+      "graders": {
+        "facts_kept": [
+          "03-keeps-facts"
+        ],
+        "claims_kept_and_flagged": [
+          "04-keeps-unsupported-claims",
+          "06-flags-the-claims",
+          "07-claims-keep-their-strength"
+        ],
+        "smells_gone": [
+          "05-drops-puffery"
+        ]
+      }
+    },
+    "drafts-docs-section": {
+      "medium": "a new section in a project's CONTRIBUTING.md",
+      "file": "CONTRIBUTING.md",
+      "check_lossless": true,
+      "max_words": 64,
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "draft_carries_request",
+        "draft_adds_nothing",
+        "no_report_when_drafting",
+        "concise",
+        "smells_gone",
+        "voice_fits",
+        "lossless",
+        "reply_lean"
+      ],
+      "graders": {
+        "draft_carries_request": [
+          "03-adds-the-section"
+        ],
+        "draft_adds_nothing": [
+          "06-section-is-concise-and-adds-nothing"
+        ],
+        "no_report_when_drafting": [
+          "07-no-pattern-report"
+        ],
+        "smells_gone": [
+          "05-new-text-is-plain"
+        ],
+        "ends_cleanly": [
+          "08-ends-without-follow-up-offer"
+        ]
+      }
+    },
+    "drafts-commit-message": {
+      "medium": "a git commit message",
+      "check_lossless": true,
+      "reference": "Fix ignored Retry-After headers and add retry jitter\n\nRetries now wait up to 250ms of random jitter. The retry logic moves from client.go into a new retry.go.\n\nFixes #91",
+      "criteria": [
+        "task_done",
+        "no_authorship_verdict",
+        "no_fake_errors",
+        "ends_cleanly",
+        "draft_carries_request",
+        "draft_adds_nothing",
+        "no_report_when_drafting",
+        "concise",
+        "smells_gone",
+        "point_first",
+        "voice_fits",
+        "lossless"
+      ],
+      "graders": {
+        "draft_carries_request": [
+          "05-keeps-facts"
+        ],
+        "draft_adds_nothing": [
+          "08-adds-nothing"
+        ],
+        "no_report_when_drafting": [
+          "07-no-pattern-report"
+        ],
+        "smells_gone": [
+          "06-commit-is-plain"
         ]
       }
     }

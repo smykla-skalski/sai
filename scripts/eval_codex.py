@@ -311,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             skill = skill_name(plugin)
             cases = select_cases(plugin, args.case)
-            sandbox = codex_sandbox(args.codex, plugin.name, scratch / "codex")
+            sandbox = codex_sandbox(args.codex, plugin, scratch / "codex")
             suite = Suite(sandbox, skill, args.model, scratch)
             jobs = [(case, n) for case in cases for n in range(1, args.runs + 1)]
             with ThreadPoolExecutor(max_workers=args.concurrency) as pool:

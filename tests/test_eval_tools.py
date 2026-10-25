@@ -41,7 +41,7 @@ def codex_run(**fields: object) -> object:
 class SuiteLoadingTest(unittest.TestCase):
     def test_humanize_cases_load_with_settings_and_nested_targets(self) -> None:
         cases = {case.name: case for case in common.load_cases(HUMANIZE)}
-        self.assertEqual(len(cases), 6)
+        self.assertEqual(len(cases), 13)
         notes = cases["rewrites-release-notes-in-place"]
         self.assertFalse(notes.prompt.startswith("---"))
         self.assertEqual(notes.settings["timeout_seconds"], "600")
@@ -49,6 +49,23 @@ class SuiteLoadingTest(unittest.TestCase):
         targets = [g.meta.get("target") for g in notes.graders]
         self.assertIn({"source": "file", "path": "release-notes.md"}, targets)
         self.assertNotIn("\n", cases["scores-without-editing"].expected_outcome)
+
+    def test_codex_marketplace_serves_a_copy_of_the_given_plugin(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            plugin = Path(root) / "snapshot" / "humanize"
+            (plugin / "evals").mkdir(parents=True)
+            (plugin / "plugin.json").write_text("{}")
+            market, name = common.plugin_marketplace(plugin, Path(root) / "cx")
+            manifest = json.loads(
+                (market / ".agents/plugins/marketplace.json").read_text()
+            )
+            self.assertEqual(name, manifest["name"])
+            [entry] = manifest["plugins"]
+            self.assertEqual(entry["source"]["path"], "./plugins/humanize")
+            self.assertEqual(entry["policy"]["installation"], "AVAILABLE")
+            served = market / "plugins" / "humanize"
+            self.assertTrue((served / "plugin.json").is_file())
+            self.assertFalse((served / "evals").exists())
 
     def test_codex_prompt_rewrites_only_the_exact_slash_command(self) -> None:
         self.assertEqual(
@@ -197,7 +214,7 @@ class ReviewTest(unittest.TestCase):
         rubric = review.Rubric(
             "Judge the rewrite.", "Rate {medium}.", {"c": (variant,)}, {}
         )
-        case = review.CaseReview("a commit message", None, False, ("c",), {})
+        case = review.CaseReview("a commit message", None, False, False, ("c",), {})
         questions, inverted = review.build_questions(rubric, case)
         self.assertEqual(
             questions["c__v1"]["instructions"],
@@ -208,6 +225,46 @@ class ReviewTest(unittest.TestCase):
         )
         self.assertEqual(inverted, {"c__v1": True})
         self.assertEqual(questions["quality"]["instructions"], "Rate a commit message.")
+
+    def test_lossless_check_finds_dropped_details_in_the_result_only(self) -> None:
+        original = (
+            "Run `make migrate` before 30 June (see #482 and https://x.io/a). "
+            "Cold start drops to 0.9s."
+        )
+        case = review.CaseReview("a doc", None, False, True, ("c",), {})
+        reply = (
+            "Run make migrate before June, see https://x.io/a.\n\n"
+            "| # | Pattern | Instance | Fix |\n"
+            '| 1 | Filler | "before 30 June (see #482" | cut |\n'
+        )
+        run = review.RunInput("final", "c", 1, reply, None, {})
+        result = review.result_text(run, case, original)
+        check = review.lossless_check(original, result)
+        self.assertEqual(check["missing_details"], ["30", "#482", "0.9"])
+        dry_run = review.RunInput("final", "c", 1, reply, {"a.md": original}, {})
+        file_case = review.CaseReview("a doc", "a.md", False, True, ("c",), {})
+        self.assertEqual(review.result_text(dry_run, file_case, original), result)
+        self.assertEqual((check["original_words"], check["result_words"]), (15, 7))
+
+    def test_word_budget_comes_from_the_reference_and_skips_fences(self) -> None:
+        case = review.CaseReview(
+            "a doc", None, False, True, ("c",), {}, reference="one two three four five"
+        )
+        budget = review.word_budget(case)
+        self.assertEqual(budget, 6)
+        fenced = "```\none two three four five six\n```"
+        check = review.lossless_check("x", fenced, budget)
+        self.assertEqual((check["result_words"], check["within_budget"]), (6, True))
+        over = review.lossless_check("x", fenced.replace("six", "six seven"), budget)
+        self.assertFalse(over["within_budget"])
+        explicit = review.CaseReview("a", None, False, True, (), {}, max_words=9)
+        self.assertEqual(review.word_budget(explicit), 9)
+
+    def test_claude_models_are_refused_as_openrouter_judges(self) -> None:
+        for model in ("anthropic/claude-opus-5.5", "claude-sonnet-5-5"):
+            with self.subTest(model=model), self.assertRaises(SystemExit):
+                review.parse_args(["plugins/humanize", "a.json", "--model", model])
+        self.assertEqual(review.parse_args(["p", "a.json"]).model, review.DEFAULT_MODEL)
 
     def test_quote_check_flags_invented_and_nested_quotes(self) -> None:
         reply = (

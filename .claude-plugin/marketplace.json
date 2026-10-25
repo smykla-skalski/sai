@@ -98,7 +98,7 @@
     {
       "name": "humanize",
       "source": "./plugins/humanize",
-      "description": "Make text sound natural by removing AI writing patterns",
+      "description": "Write and rewrite text plainly and concisely without losing meaning",
       "author": {
         "name": "Smykla Skalski Labs"
       },
