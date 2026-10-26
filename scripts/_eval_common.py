@@ -18,22 +18,61 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, TypeVar
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Callable, Iterator, Mapping
+
+T = TypeVar("T")
 
 REPO_ROOT: Final[Path] = Path(__file__).resolve().parent.parent
 CODEX_MARKETPLACE: Final[Path] = REPO_ROOT / ".agents" / "plugins" / "marketplace.json"
 FRONTMATTER_FENCE: Final[str] = "---"
 BLOCK_SCALAR: Final[str] = "|"
 INDENT: Final[str] = "  "
+RETRY_DELAYS_SECONDS: Final[tuple[float, ...]] = (30.0, 120.0)
 
 
 class EvalError(Exception):
     """An eval suite, data file or agent run that the tools cannot use."""
+
+
+class RunFailedError(EvalError):
+    """An agent run that ended before it finished its turn."""
+
+
+def run_failure(event: dict[str, Any]) -> str | None:
+    """Return the error of an event that ends an agent run in failure, else None."""
+    if event.get("type") != "turn.failed":
+        return None
+    error = event.get("error")
+    message = error.get("message") if isinstance(error, dict) else error
+    return str(message or "the turn failed")
+
+
+def with_retries(
+    attempt: Callable[[], T],
+    label: str,
+    delays: tuple[float, ...] | None = None,
+) -> T:
+    """Return attempt(), running it again after a pause while the run fails.
+
+    Codex ends a rate-limited run with a failed turn. Such a run says nothing
+    about the skill, so it must not count as a result: it runs again, and a run
+    that keeps failing stops the whole measurement.
+    """
+    remaining = RETRY_DELAYS_SECONDS if delays is None else delays
+    try:
+        return attempt()
+    except RunFailedError as error:
+        if not remaining:
+            msg = f"{label}: {error}"
+            raise EvalError(msg) from error
+    time.sleep(remaining[0])
+    return with_retries(attempt, label, remaining[1:])
 
 
 @dataclass(frozen=True)

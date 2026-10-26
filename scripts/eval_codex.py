@@ -44,14 +44,17 @@ from _eval_common import (
     CodexSandbox,
     EvalError,
     Grader,
+    RunFailedError,
     agent_env,
     codex_prompt,
     codex_sandbox,
     load_cases,
     run_command,
+    run_failure,
     skill_name,
     snapshot,
     stream_json,
+    with_retries,
 )
 
 DEFAULT_RUNS: Final[int] = 3
@@ -100,6 +103,8 @@ class Run:
     item_types: set[str] = field(default_factory=set)
     before: dict[str, str] = field(default_factory=dict)
     after: dict[str, str] = field(default_factory=dict)
+    completed: bool = False
+    failure: str = ""
 
     @property
     def changed_files(self) -> dict[str, str]:
@@ -219,6 +224,10 @@ def grade(
 
 def record_event(run: Run, event: dict[str, Any]) -> None:
     """Collect the parts of a Codex event that the graders need."""
+    if event.get("type") == "turn.completed":
+        run.completed = True
+    if (error := run_failure(event)) is not None:
+        run.failure = error
     item = event.get("item")
     if event.get("type") != "item.completed" or not isinstance(item, dict):
         return
@@ -250,6 +259,12 @@ def select_cases(plugin: Path, pattern: str) -> list[Case]:
 
 
 def execute(case: Case, number: int, suite: Suite) -> Run:
+    """Run the case once on Codex, running it again if the run fails to finish."""
+    label = f"{case.name} run {number}"
+    return with_retries(lambda: execute_once(case, number, suite), label)
+
+
+def execute_once(case: Case, number: int, suite: Suite) -> Run:
     """Scaffold a workspace, run the case once on Codex and collect its events."""
     workspace = Path(
         tempfile.mkdtemp(prefix=f"{case.name}-{number}-", dir=suite.scratch)
@@ -274,6 +289,9 @@ def execute(case: Case, number: int, suite: Suite) -> Run:
         timeout=timeout,
     ):
         record_event(run, event)
+    if not run.completed:
+        msg = run.failure or "the run stopped before it finished its turn"
+        raise RunFailedError(msg)
     run.after = snapshot(workspace)
     return run
 

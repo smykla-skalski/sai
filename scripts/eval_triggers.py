@@ -43,12 +43,15 @@ from typing import TYPE_CHECKING, Any, Final
 from _eval_common import (
     CodexSandbox,
     EvalError,
+    RunFailedError,
     agent_env,
     codex_sandbox,
     evals_dir,
     load_json_object,
+    run_failure,
     skill_name,
     stream_json,
+    with_retries,
     write_files,
 )
 
@@ -150,6 +153,10 @@ class Runner:
         return argv
 
     def triggered(self, query: str) -> bool:
+        """Report whether the skill loaded for query, rerunning a failed run."""
+        return with_retries(lambda: self.triggered_once(query), f"query {query!r}")
+
+    def triggered_once(self, query: str) -> bool:
         """Run one query in a fresh workspace and report whether the skill loaded."""
         workspace = Path(tempfile.mkdtemp(prefix="trigger-", dir=self.scratch))
         try:
@@ -169,9 +176,12 @@ class Runner:
             for event in events:
                 if loaded(event, self.skill):
                     return True
+                if (error := run_failure(event)) is not None:
+                    raise RunFailedError(error)
                 if run_ended(event):
                     return False
-            return False
+            msg = "the run stopped before it finished its turn"
+            raise RunFailedError(msg)
         finally:
             shutil.rmtree(workspace, ignore_errors=True)
 
