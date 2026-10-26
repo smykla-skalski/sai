@@ -1,0 +1,13 @@
+import unittest
+
+from remind.mailer import send_reminder
+
+
+class SendReminderTest(unittest.TestCase):
+    def test_rejects_invalid_address(self):
+        with self.assertRaises(ValueError):
+            send_reminder("not-an-address", "INV-1")
+
+
+if __name__ == "__main__":
+    unittest.main()

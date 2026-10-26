@@ -33,6 +33,7 @@ SKILL_ARGUMENTS = {
     "promptgen": ("--for", "--research"),
     "refactor-council": ("--no-scan", "--personas"),
     "review-agents-md": ("--score-only", "--fix"),
+    "rightsize": ("audit",),
     "staff-code-review": ("--no-adversary",),
     "staff-resume": ("--job-url", "--mode"),
     "technical-debt-manager": ("--focus", "--label"),

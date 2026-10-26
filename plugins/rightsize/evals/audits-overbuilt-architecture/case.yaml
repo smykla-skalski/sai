@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: audits-overbuilt-architecture
+expected_outcome: |
+  The skill audits docs/architecture.md, the design of a lunch pre-order app
+  for about 150 people built by two part-time developers. The verdict is
+  Overbuilt. The broken-rules table flags the six microservices with Kafka, a
+  GraphQL gateway and a service mesh as unjustified distribution, and the
+  Redis cache, Elasticsearch, two-region active/active and the payment plugin
+  system as complexity with no current requirement or measurement, each with
+  evidence quoted from the document. It suggests one deployable modular
+  application with one database. It keeps the Okta sign-in and the 7-year
+  record retention as justified, and lists missing information such as a
+  success measure, non-goals or load numbers as gaps. It changes no file.
+context:
+  scaffold_script: place-files.sh

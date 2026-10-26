@@ -1,0 +1,5 @@
+notifier: email
+sender: billing@example.com
+smtp_host: localhost
+# exponential, linear or none
+retry_strategy: exponential

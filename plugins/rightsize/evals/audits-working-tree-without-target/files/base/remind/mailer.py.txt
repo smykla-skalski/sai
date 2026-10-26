@@ -1,0 +1,19 @@
+import re
+import smtplib
+from email.message import EmailMessage
+
+EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+TEMPLATE = "templates/reminder.txt"
+
+
+def send_reminder(address: str, invoice: str) -> None:
+    if not EMAIL.match(address):
+        raise ValueError(f"invalid email address: {address!r}")
+    msg = EmailMessage()
+    msg["To"] = address
+    msg["From"] = "billing@example.com"
+    msg["Subject"] = f"Invoice {invoice} is overdue"
+    with open(TEMPLATE, encoding="utf-8") as f:
+        msg.set_content(f.read().format(invoice=invoice))
+    with smtplib.SMTP("localhost") as smtp:
+        smtp.send_message(msg)

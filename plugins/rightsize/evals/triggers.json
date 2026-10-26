@@ -1,0 +1,147 @@
+{
+  "files": {
+    "docs/architecture.md": "# Lunchbox architecture\n\nLunchbox lets employees of our Kraków office pre-order lunch from the two caterers we work with. About 150 people use it, mostly between 9:00 and 11:00 on weekdays.\n\n## Team\n\nTwo developers build and run Lunchbox part-time.\n\n## Requirements\n\n- Sign-in through the company Okta (security policy SEC-12).\n- Finance must keep every order and payment record for 7 years for the tax audit.\n- Payroll deduction is the only payment method.\n\n## Services\n\nWe split the system into six microservices, each with its own PostgreSQL database, so that teams can scale them independently later:\n\n1. `menu-service` - caterer menus\n2. `order-service` - orders\n3. `payment-service` - payroll deductions\n4. `notification-service` - email and Slack reminders\n5. `user-service` - profiles synced from Okta\n6. `reporting-service` - monthly reports for finance\n\nA GraphQL federation gateway sits in front of them. The services talk through Kafka topics (`orders.created`, `payments.settled`, `menus.updated`) so they stay loosely coupled.\n\n## Data and performance\n\n- Redis caches menus in front of `menu-service` in case menu reads become slow.\n- Elasticsearch indexes menus for full-text dish search.\n- The audit log is an append-only table in `order-service`, kept for 7 years.\n\n## Extensibility\n\nA payment plugin system (a `PaymentProvider` interface, loaded from a plugin directory) lets us add card payments or other providers in the future.\n\n## Deployment\n\n- Kubernetes with an Istio service mesh, one namespace per service.\n- Active/active in two AWS regions (eu-central-1 and eu-west-1) so that we can scale globally.\n- Each service has its own CI pipeline and Helm chart.\n",
+    "payments.py": "\"\"\"Charge customers through the payment provider.\"\"\"\n\nimport os\n\nimport requests\n\nPROVIDER_URL = os.environ[\"PROVIDER_URL\"]\n\n\ndef charge(customer_id: str, cents: int) -> str:\n    if cents <= 0:\n        raise ValueError(\"amount must be positive\")\n    response = requests.post(f\"{PROVIDER_URL}/charges\", json={\"customer\": customer_id, \"amount\": cents}, timeout=10)\n    response.raise_for_status()\n    return response.json()[\"id\"]\n",
+    "remind/notifiers/base.py": "from abc import ABC, abstractmethod\n\n\nclass Notifier(ABC):\n    @abstractmethod\n    def send(self, address: str, invoice: str) -> None: ...\n",
+    "remind/notifiers/factory.py": "from remind.notifiers.base import Notifier\nfrom remind.notifiers.email import EmailNotifier\n\n\nclass NotifierFactory:\n    _registry: dict[str, type[Notifier]] = {\"email\": EmailNotifier}\n\n    @classmethod\n    def register(cls, name: str, notifier: type[Notifier]) -> None:\n        \"\"\"Let plugins add new notifier backends.\"\"\"\n        cls._registry[name] = notifier\n\n    @classmethod\n    def create(cls, name: str, **kwargs: str) -> Notifier:\n        return cls._registry[name](**kwargs)\n",
+    "README.md": "# remind\n\nRemind is a small, robust and powerful tool that has been carefully designed from the ground up to help teams of every size send reminder emails to customers whose invoices are overdue, so that nobody ever has to chase payments by hand again.\n"
+  },
+  "queries": [
+    {
+      "query": "is docs/architecture.md overengineered? it's for ~150 people ordering lunch and there are only two of us building it",
+      "should_trigger": true
+    },
+    {
+      "query": "we just added a NotifierFactory and a base Notifier class in remind/notifiers, did we overbuild this? email is the only channel for now",
+      "should_trigger": true
+    },
+    {
+      "query": "audit my plan for unnecessary complexity before I start: a Kafka topic between the API and the worker so they're decoupled, plus a Redis cache for user profiles. Traffic is about 50 requests a minute",
+      "should_trigger": true
+    },
+    {
+      "query": "sanity check our purchase approval process against KISS: requester fills a Word form, manager approves by email, finance copies it into a spreadsheet, the CFO approves everything, ops retypes it into accounting. We want an RPA bot for the copying",
+      "should_trigger": true
+    },
+    {
+      "query": "YAGNI check on payments.py please, I'm about to add a plugin registry and three config flags for payment backends we don't have yet",
+      "should_trigger": true
+    },
+    {
+      "query": "check docs/architecture.md against the simplicity rules and tell me which ones it breaks",
+      "should_trigger": true
+    },
+    {
+      "query": "my teammate wants to split our app into 5 services before launch (we have zero users). is that justified or just complexity for its own sake?",
+      "should_trigger": true
+    },
+    {
+      "query": "did I simplify too much? I want to delete the amount check in payments.py and the timeout to make charge() shorter",
+      "should_trigger": true
+    },
+    {
+      "query": "before we commit to the design in docs/architecture.md, is it the simplest thing that still meets the Okta and 7-year retention requirements?",
+      "should_trigger": true
+    },
+    {
+      "query": "run a simplicity audit on remind/notifiers",
+      "should_trigger": true
+    },
+    {
+      "query": "ok you just implemented the retry logic and the new config loader, now audit that code for overengineering before I review it",
+      "should_trigger": true
+    },
+    {
+      "query": "review payments.py for bugs, I think charge() sometimes double-charges when the provider is slow",
+      "should_trigger": false
+    },
+    {
+      "query": "refactor remind/notifiers/factory.py so it's simpler, just inline it into the caller and delete the file",
+      "should_trigger": false
+    },
+    {
+      "query": "what does YAGNI stand for and who came up with it?",
+      "should_trigger": false
+    },
+    {
+      "query": "make this README paragraph simpler and less salesy: \"Leveraging a robust, cutting-edge architecture, our platform seamlessly empowers teams to unlock value.\"",
+      "should_trigger": false
+    },
+    {
+      "query": "do a security review of docs/architecture.md, especially the Okta sign-in and how payroll data is stored",
+      "should_trigger": false
+    },
+    {
+      "query": "calculate the cyclomatic complexity of every function in payments.py and print a table",
+      "should_trigger": false
+    },
+    {
+      "query": "will this migration plan lose data? 1. add a nullable column 2. backfill it in batches 3. switch reads 4. drop the old column",
+      "should_trigger": false
+    },
+    {
+      "query": "write unit tests for charge() in payments.py, cover the negative amount and the HTTP error",
+      "should_trigger": false
+    },
+    {
+      "query": "scan this repo for technical debt and file a GitHub issue for each item you find",
+      "should_trigger": false
+    },
+    {
+      "query": "explain the difference between a modular monolith and microservices, with one example of each",
+      "should_trigger": false
+    },
+    {
+      "query": "the code you just wrote for the retry logic fails its tests, fix it",
+      "should_trigger": false
+    },
+    {
+      "query": "before I merge this branch, can you check I didn't add anything we don't actually need? feels like I went overboard with the config options",
+      "should_trigger": true
+    },
+    {
+      "query": "we're thinking of adding istio to our 3-service internal app (about 40 users). worth it or are we overdoing it?",
+      "should_trigger": true
+    },
+    {
+      "query": "my PR adds a generic Repository<T> base class plus a UnitOfWork for a single table. the reviewer says it's overkill, are they right?",
+      "should_trigger": true
+    },
+    {
+      "query": "is our incident process too heavy? every sev3 needs a written doc, two approvals and a retro meeting with 8 people",
+      "should_trigger": true
+    },
+    {
+      "query": "we removed the retry and the idempotency key from payments.py to simplify the client. did we cut too deep?",
+      "should_trigger": true
+    },
+    {
+      "query": "rightsize docs/architecture.md for me",
+      "should_trigger": true
+    },
+    {
+      "query": "simplify the code in payments.py, apply whatever cleanups you think make sense",
+      "should_trigger": false
+    },
+    {
+      "query": "review the diff on this branch for bugs and edge cases before I open the PR",
+      "should_trigger": false
+    },
+    {
+      "query": "write an ADR explaining why we picked a modular monolith over microservices for the billing service",
+      "should_trigger": false
+    },
+    {
+      "query": "our k8s cluster is overprovisioned, rightsize the node pool and the pods' cpu/memory requests based on the last 30 days of metrics",
+      "should_trigger": false
+    },
+    {
+      "query": "how many lines of code and files does this repo have, broken down by language?",
+      "should_trigger": false
+    },
+    {
+      "query": "tighten the intro of README.md, it's too long and wordy for a landing page",
+      "should_trigger": false
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: audits-working-tree-without-target
+expected_outcome: |
+  The skill gets no target and no earlier conversation, so it audits the
+  uncommitted changes in the git working tree and says so in its scope line.
+  The change moves a small reminder mailer behind a Notifier base class and a
+  NotifierFactory with one implementation, adds a Redis cache for a local
+  template file, adds a retry_strategy option that nothing uses, and deletes
+  the email address validation with its test. The report flags the
+  one-implementation abstraction and plugin registry, the unmeasured cache and
+  the unused option as overbuilt, and the removed validation and test as
+  oversimplified, so the verdict is Mixed or names both directions. It
+  changes no file.
+context:
+  scaffold_script: place-files.sh

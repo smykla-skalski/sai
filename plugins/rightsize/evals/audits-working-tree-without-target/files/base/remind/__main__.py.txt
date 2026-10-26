@@ -1,0 +1,15 @@
+import csv
+import sys
+
+from remind.mailer import send_reminder
+
+
+def main(path: str) -> None:
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["status"] == "overdue":
+                send_reminder(row["email"], row["invoice"])
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])

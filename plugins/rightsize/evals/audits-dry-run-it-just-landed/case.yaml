@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: audits-dry-run-it-just-landed
+expected_outcome: |
+  The agent adds the dry-run switch three ways, as asked (a --dry-run flag, a
+  DRY_RUN variable and a dry_run key in a new config.toml), commits it, and
+  then runs the rightsize audit with no target. The working tree is clean by
+  then, so the audit must find the work through the commit made in this
+  conversation. Its scope names that change; it does not report that there is
+  nothing to audit. It flags the three ways to turn on dry-run, or the new
+  config file, as more surface than the need requires.
+context:
+  scaffold_script: place-files.sh

@@ -1,0 +1,23 @@
+"""Print the total amount per category from a bank export CSV."""
+
+import csv
+import sys
+from collections import defaultdict
+from decimal import Decimal
+
+
+def totals(rows):
+    sums = defaultdict(Decimal)
+    for row in rows:
+        sums[row["category"]] += Decimal(row["amount"])
+    return dict(sums)
+
+
+def main(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        for category, amount in sorted(totals(csv.DictReader(f)).items()):
+            print(f"{category}\t{amount}")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])

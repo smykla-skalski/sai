@@ -1,0 +1,25 @@
+import csv
+import sys
+
+import yaml
+
+from remind.notifiers.factory import NotifierFactory
+
+
+def main(path: str) -> None:
+    with open("config.yaml", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    notifier = NotifierFactory.create(
+        config["notifier"],
+        sender=config["sender"],
+        smtp_host=config["smtp_host"],
+        retry_strategy=config["retry_strategy"],
+    )
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["status"] == "overdue":
+                notifier.send(row["email"], row["invoice"])
+
+
+if __name__ == "__main__":
+    main(sys.argv[1])

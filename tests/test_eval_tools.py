@@ -18,6 +18,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -109,6 +110,14 @@ class CodexGradingTest(unittest.TestCase):
         self.assertTrue(codex.grade_tool_used(plain, no_agents, "humanize")[0])
         self.assertIsNone(codex.grade_tool_used(plain, grader(tool="Bash"), "x")[0])
 
+    def test_codex_runs_record_whether_their_turn_finished(self) -> None:
+        run = codex.Run(common.load_cases(HUMANIZE, "scores-without-editing")[0], 1)
+        rate_limited = {"type": "turn.failed", "error": {"message": "429 Too Many"}}
+        codex.record_event(run, rate_limited)
+        self.assertEqual((run.completed, run.failure), (False, "429 Too Many"))
+        codex.record_event(run, {"type": "turn.completed"})
+        self.assertTrue(run.completed)
+
     def test_regex_grader_reads_the_target_file_after_the_run(self) -> None:
         dashes = grader(
             pattern="—[\\s\\S]*—",
@@ -151,6 +160,31 @@ class TriggerTest(unittest.TestCase):
         }
         self.assertTrue(triggers.codex_loaded_skill(read, "humanize"))
         self.assertFalse(triggers.codex_loaded_skill(read, "humanizer"))
+
+    def test_a_failed_run_is_run_again_and_never_counted_as_a_miss(self) -> None:
+        block = {"type": "tool_use", "name": "Skill", "input": {"skill": "humanize"}}
+        load: dict[str, object] = {"type": "assistant", "message": {"content": [block]}}
+        failed: dict[str, object] = {"type": "turn.failed", "error": {"message": "429"}}
+
+        def runs(*streams: list[dict[str, object]]) -> object:
+            pending = iter(streams)
+            return lambda *_args, **_kwargs: iter(next(pending))
+
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.object(common, "RETRY_DELAYS_SECONDS", (0.0,)),
+        ):
+            runner = triggers.Runner(
+                "claude", Path(tmp), "humanize", {}, None, 1.0, Path(tmp), None
+            )
+            with mock.patch.object(triggers, "stream_json", runs([failed], [load])):
+                self.assertTrue(runner.triggered("make it plain"))
+            # A failed turn, then a run cut off before its turn ended.
+            with (
+                mock.patch.object(triggers, "stream_json", runs([failed], [])),
+                self.assertRaises(common.EvalError),
+            ):
+                runner.triggered("make it plain")
 
     def test_a_query_passes_on_the_majority_of_its_runs(self) -> None:
         positive = triggers.Query("make it plain", should_trigger=True)

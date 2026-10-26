@@ -1,0 +1,30 @@
+"""Export the orders table to CSV for the finance team."""
+
+import argparse
+import csv
+import sqlite3
+import sys
+
+
+def fetch_orders(db_path: str) -> list[dict]:
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT id, customer, total_cents, created_at FROM orders ORDER BY id")
+        return [dict(row) for row in rows]
+
+
+def write_csv(orders: list[dict], out) -> None:
+    writer = csv.DictWriter(out, fieldnames=["id", "customer", "total_cents", "created_at"])
+    writer.writeheader()
+    writer.writerows(orders)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("db", help="path to the SQLite database")
+    args = parser.parse_args()
+    write_csv(fetch_orders(args.db), sys.stdout)
+
+
+if __name__ == "__main__":
+    main()

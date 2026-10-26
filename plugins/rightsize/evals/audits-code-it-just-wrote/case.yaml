@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: audits-code-it-just-wrote
+expected_outcome: |
+  The agent adds a --format option with JSON output to export.py behind a
+  Formatter base class, a decorator registry and plugin-directory loading, as
+  the user asked, and then runs the rightsize audit with
+  no target. The audit takes the code implemented in this conversation as its
+  target and says so in its scope line. It flags the base class, the decorator
+  registry or the plugin-directory loading as speculative complexity for
+  formats nobody needs yet, notes that the user asked for them, keeps the requested
+  JSON output as a current requirement, and backs each finding with evidence
+  from export.py.
+context:
+  scaffold_script: place-files.sh
