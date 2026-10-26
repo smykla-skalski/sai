@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: infers-rewrite-from-request
+expected_outcome: |
+  The skill runs with no subcommand and infers rewrite, because the user asks to
+  slim down an existing document. It edits docs/onboarding.md in place. The process
+  loses the ceremony a 6-person company does not need: the steering committee
+  and its weekly review, a Jira ticket per step, committee sign-offs between
+  steps and on the laptop and account lists, and the planned onboarding portal
+  (these may remain as alternatives or non-goals with a trigger). It keeps the
+  security controls: full-disk encryption, the security training and acceptable
+  use policy, and production access only after they are signed, which the SOC 2
+  audit checks. It keeps the facts (DocuSign, Google Workspace, Slack, GitHub,
+  SOC 2), removes the hype, and replies with a change report with rule IDs, not
+  an audit report.
+context:
+  scaffold_script: place-files.sh

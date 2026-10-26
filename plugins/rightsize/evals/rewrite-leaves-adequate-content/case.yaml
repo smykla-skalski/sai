@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: rewrite-leaves-adequate-content
+expected_outcome: |
+  The record in docs/decisions/0004-retry-safe-exports.md is already the right
+  size for a decision record: a summary, context with the success signal and
+  the non-goal, three options with the reasons each won or lost (including the
+  key scope, the concurrent-retry and changed-body rules), consequences with a
+  staged rollout and a rollback that keeps the stored mappings, and a revisit
+  trigger. Only its prose is wordy. The skill rewrites the prose in place,
+  removes the wordy phrases, keeps every part and fact, and reports no content
+  changes.
+context:
+  scaffold_script: place-files.sh

@@ -1,21 +1,21 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "rightsize",
-  "version": "1.0.0",
-  "description": "Audit work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, new project, plan, design or process, and list broken rules with evidence, gaps and ranked fixes. With no target it audits the work in the current conversation.",
+  "version": "1.1.0",
+  "description": "Audit, write and rewrite work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, plan, design or process, write new design docs, decision records, pitches and plans that admit only justified complexity, and rewrite existing documents the same way in plain words. With no target it audits the work in the current conversation.",
   "author": {
     "name": "Smykla Skalski Labs"
   },
   "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/rightsize",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "complexity", "review"],
+  "keywords": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "complexity", "review", "design-docs", "adr", "writing"],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "Rightsize",
-        "shortDescription": "Audit work for overbuilt or oversimplified design",
-        "longDescription": "Checks a diff, PR, files, new project, plan, design or process against about 70 simplicity rules, such as the complexity admission test, the reduction order and requisite variety. It reports broken rules with evidence, gaps, ranked fixes and the complexity to keep. With no target it audits the work in the current conversation.",
+        "shortDescription": "Audit, write and rewrite work at the right size",
+        "longDescription": "Checks a diff, PR, files, new project, plan, design or process against about 70 simplicity rules, such as the complexity admission test, the reduction order and requisite variety, and reports broken rules with evidence, gaps, ranked fixes and the complexity to keep. It also writes new design docs, decision records, pitches, plans and other documents that pass those rules and 15 document rules, and rewrites existing ones the same way in plain words without losing a needed fact. With no target it audits the work in the current conversation.",
         "developerName": "SAI",
         "category": "Developer Tools",
         "capabilities": ["Interactive"],
@@ -25,7 +25,8 @@
         "defaultPrompt": [
           "Use $rightsize to audit the change we just made.",
           "Use $rightsize to audit docs/architecture.md for overengineering.",
-          "Use $rightsize to check this plan against the simplicity rules."
+          "Use $rightsize to write a design doc for this feature.",
+          "Use $rightsize to rewrite docs/plan.md so that it is no bigger than it needs to be."
         ],
         "brandColor": "#2747B8"
       }

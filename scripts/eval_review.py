@@ -25,7 +25,8 @@ the result lacks. A case with a "reference" (a minimal rewrite that keeps
 everything) or "max_words" also gets a word budget: the reference's length plus
 20%, or max_words. Fence lines do not count as words. "graders" maps a
 criterion to `claude plugin eval` graders that judge the same thing, so the
-summary reports how often Jev and the graders agree.
+summary reports how often Jev and the graders agree. A "file" that the case
+does not ship under files/ is one the run creates, so its original is empty.
 
 RESULTS is [LABEL=]PATH[@ARM]: the JSON from `claude plugin eval --json PATH
 --keep-temp` (ARM is with or without, default with) or from eval_codex.py
@@ -196,9 +197,6 @@ def load_rubric(plugin: Path, cases: dict[str, Case]) -> Rubric:
                 f"review.json case {name} names unknown criteria or graders: {unknown}"
             )
             raise EvalError(msg)
-        if review.file and not (cases[name].path / "files" / review.file).is_file():
-            msg = f"review.json case {name}: files/{review.file} does not exist"
-            raise EvalError(msg)
         reviews[name] = review
     return Rubric(str(data.get("where", "")), str(data["quality"]), criteria, reviews)
 
@@ -341,7 +339,8 @@ def lossless_check(
 def original_text(case: Case, review: CaseReview) -> str:
     """Return the text under edit: the case file, else the prompt's pasted text."""
     if review.file:
-        return (case.path / "files" / review.file).read_text()
+        path = case.path / "files" / review.file
+        return path.read_text() if path.is_file() else ""
     return case.prompt.split("\n\n", 1)[-1]
 
 

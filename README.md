@@ -32,7 +32,7 @@ Repository layout:
 | **staff-code-review**   | Staff-engineer-level code review: architecture, reliability, security, cross-team impact | `plugins/staff-code-review/`  |
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `plugins/staff-resume/`       |
 | **ship-it**             | Ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review/testing, PR, CI, Copilot review, and merge | `plugins/ship-it/` |
-| **rightsize**           | Audit work for overbuilt or oversimplified design: broken simplicity rules with evidence, gaps and ranked fixes; with no target, audits the work in the conversation | `plugins/rightsize/` |
+| **rightsize**           | Audit work for overbuilt or oversimplified design, and write or rewrite design docs, decision records, pitches and plans that pass the simplicity rules; with no target, audits the work in the conversation | `plugins/rightsize/` |
 | **technical-debt-manager** | Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding | `plugins/technical-debt-manager/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `plugins/test-writer/`        |
 | **youtube-summary**     | Summarize a YouTube video from its transcript into a concise note saved to a configured folder | `plugins/youtube-summary/`    |
@@ -61,7 +61,7 @@ Codex skills:
 | **service-mesh-debug** | Diagnose flaky service-mesh e2e tests and connectivity issues with read-only Envoy diagnostic scripts (same portable package as Claude Code) | `plugins/service-mesh-debug/skills/service-mesh-debug/` |
 | **staff-resume**       | Coach and tailor staff-level engineering resumes (same portable package as Claude Code) | `plugins/staff-resume/skills/staff-resume/` |
 | **ship-it**            | Ship a task description, GitHub issue, or Jira ticket through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-it/skills/ship-it/` |
-| **rightsize**          | Audit work against simplicity rules; runs inline and read-only (same portable package as Claude Code) | `plugins/rightsize/skills/rightsize/` |
+| **rightsize**          | Audit work against simplicity rules, and write or rewrite documents that pass them; runs inline (same portable package as Claude Code) | `plugins/rightsize/skills/rightsize/` |
 | **staff-code-review**  | Staff-level code review across seven dimensions plus two adversaries; sequential on Codex (same portable package as Claude Code) | `plugins/staff-code-review/skills/staff-code-review/` |
 | **test-writer**        | Write or review behavior-first tests with table-driven patterns and minimal mocking (same portable package as Claude Code) | `plugins/test-writer/skills/test-writer/` |
 | **technical-debt-manager** | Audit tech debt into an umbrella GitHub issue with one sub-issue per finding (same portable package as Claude Code) | `plugins/technical-debt-manager/skills/technical-debt-manager/` |
@@ -338,9 +338,9 @@ Take a task description, GitHub issue, or Jira ticket to a merged PR: implement,
 
 ### rightsize
 
-Audit work against about 70 simplicity rules from two research reports: the complexity admission test, the reduction order, boundaries, public surface, requisite variety and, for new projects, the boring default topology. Reports broken rules with evidence, gaps, ranked fixes and the complexity to keep. With no target it audits the work in the current conversation. Read-only.
+Audit work against about 70 simplicity rules from two research reports: the complexity admission test, the reduction order, boundaries, public surface, requisite variety and, for new projects, the boring default topology. Reports broken rules with evidence, gaps, ranked fixes and the complexity to keep. Without a subcommand it infers the mode from the conversation, and with no target it audits the work in the current conversation, read-only. `write` drafts a new design doc, decision record, pitch, plan, other document or chat message whose content passes those rules and 15 document rules and whose prose follows the humanize rules. `rewrite` reworks an existing document or message the same way, in a file or in the chat, and keeps every fact it needs.
 
-**Usage**: `/rightsize [audit] [path | PR | branch | pasted plan or design]` (Codex: `$rightsize`). One package for Claude Code, Codex, Copilot CLI and opencode.
+**Usage**: `/rightsize [audit | write | rewrite] [path | PR | branch | pasted text | brief] [--dry-run]` (Codex: `$rightsize`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
 [Full documentation ->](./plugins/rightsize/README.md)
 

@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: rewrites-overbuilt-plan
+expected_outcome: |
+  The skill rewrites docs/plan.md in place and replies with a change report. The
+  plan for an expense approval tool used by 120 employees and built by two
+  developers proposes five microservices, Kafka, a Redis cluster, Kubernetes with
+  Istio and an ERP plugin framework with no current reason. The rewrite proposes
+  one application with one database, and lists the cut ideas under alternatives
+  or non-goals with the trigger that would admit them. It keeps the finance
+  policy FIN-7 controls: CFO approval above 5,000 EUR and an audit trail of every
+  decision (approver, timestamp, comment) kept for 7 years. It keeps every fact
+  (120 employees, 19 days, 5,000 EUR, 7 years, Dana Kowalski, 2026-12-01, two
+  developers), adds the missing parts (a success signal tied to the 19-day
+  baseline, non-goals, a cutover or rollback) as content or open questions
+  without inventing facts, and removes the hype. The report is a table of content
+  changes with rule IDs and a summary line.
+context:
+  scaffold_script: place-files.sh

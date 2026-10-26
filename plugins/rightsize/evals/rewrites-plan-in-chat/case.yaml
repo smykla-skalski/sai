@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: rewrites-plan-in-chat
+expected_outcome: |
+  The agent first posts the future-proof plan in chat, as asked. Then the skill
+  runs with no subcommand and infers rewrite, because the user asks to slim down
+  a message that already exists in this conversation. It writes no file. The
+  final reply is the rewritten plan, ready to paste, and then the change report.
+  The rewritten plan is a direct CSV download of the orders table from the
+  existing app, with no exporter framework or registry, no queue or async jobs,
+  no status API and no S3 links; those and the extra formats appear only as
+  deferred items with a trigger. It keeps the rule that exports never contain
+  card numbers.
