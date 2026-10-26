@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: writes-message-in-chat
+expected_outcome: |
+  The skill writes the Slack message into the chat and creates no file. The reply
+  is the message alone, ready to paste, with no preamble or notes. Its first
+  sentence gives the decision. It keeps every fact (Postgres full-text search
+  instead of Elasticsearch, about 4,000 articles, English only, about 2,000
+  searches a day, the lost fuzzy matching and ranking, the cluster nobody has run
+  in production, Kasia as the decider, the two revisit triggers) and the ask to
+  send complaints to #help-center by Friday. It adds no fact, stays short and
+  reads plainly.

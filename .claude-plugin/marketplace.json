@@ -230,13 +230,13 @@
     {
       "name": "rightsize",
       "source": "./plugins/rightsize",
-      "description": "Audit work for overbuilt or oversimplified design against simplicity rules, with evidence, gaps and ranked fixes",
+      "description": "Audit work for overbuilt or oversimplified design, and write or rewrite design docs, decision records, pitches and plans that pass the simplicity rules",
       "author": {
         "name": "Smykla Skalski Labs"
       },
       "license": "MIT",
       "category": "productivity",
-      "tags": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture"]
+      "tags": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "design-docs", "writing"]
     },
     {
       "name": "kup",

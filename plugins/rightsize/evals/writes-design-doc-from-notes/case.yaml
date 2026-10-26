@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: writes-design-doc-from-notes
+expected_outcome: |
+  The skill writes a design doc to docs/design/appointment-reminders.md and replies only with where it
+  wrote it. The design is the smallest one that meets the need: a scheduled job
+  in the existing Django app and Celery worker that finds appointments about 24
+  hours away and emails them through SendGrid. Kafka, a separate notification
+  service, Redis and a plugin system are not part of the design. They appear
+  under alternatives or non-goals with the reason they lost or the trigger that
+  would admit them, and SMS, WhatsApp and push are non-goals. The doc keeps both
+  safeguards: no reminder for a cancelled appointment and no second reminder for
+  the same appointment. It opens with the problem (12% no-shows, an hour a day of
+  calls) and the decision, states a success signal tied to that baseline, and
+  gives a way to turn reminders off. It invents no facts and reads plainly.

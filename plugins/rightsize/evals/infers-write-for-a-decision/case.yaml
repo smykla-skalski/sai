@@ -1,0 +1,15 @@
+schema_version: "1.1"
+name: infers-write-for-a-decision
+expected_outcome: |
+  The skill runs with no subcommand and infers write, because the user asks for a
+  document that does not exist yet. It writes a short decision record to
+  docs/decisions/0003-help-center-search.md in the format of the two existing records (a numbered
+  title, Date, Status, Context, Decision and Consequences), not a full design doc.
+  The record keeps every fact: about 4,000 articles, English only, about 2,000
+  searches a day, Kasia as the decider, what Elasticsearch would give (fuzzy
+  matching, better ranking) and why it lost (one more cluster to run and pay for,
+  no production experience), and the revisit trigger (search-quality complaints
+  after launch or a second language). It invents no facts, reads plainly, and the
+  reply is not an audit report.
+context:
+  scaffold_script: place-files.sh

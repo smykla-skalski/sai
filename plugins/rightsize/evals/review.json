@@ -1,6 +1,6 @@
 {
-  "where": "The audit report is in `assistant_reply`. The audited work is described in `user_request` and `expected_outcome`. When the request asks the assistant to build something and then audit it, the building happened earlier in the run: `assistant_reply` holds only the audit, and an audit that criticizes what was built as requested follows the request.",
-  "quality": "{where} Rate the audit of {medium}. Weigh first that it is the shortest report that loses no finding: each finding true, backed by evidence from the work and said once, with nothing repeated across sections. Then weigh that it catches both what the work does not need and what it must keep, that its fixes are the smallest effective changes, a clear verdict, and gaps that name only missing information that matters.",
+  "where": "The reply is in `assistant_reply`, which holds only the final message: earlier messages of the run, such as work built or a plan posted before the skill ran, are not shown. For an audit it is the report, and the audited work is described in `user_request` and `expected_outcome`. When the request asks the assistant to build something and then audit it, the building happened earlier in the run: `assistant_reply` holds only the audit, and an audit that criticizes what was built as requested follows the request. For write and rewrite, the document is in `file_after`, the original in `original_text` (empty for a new document), and the material for a new document in `user_request`; the reply is only a note or a change report. When the assistant writes or rewrites a message in the chat, no file changes and the text is in `assistant_reply`: read every question about `file_after` as a question about that text.",
+  "quality": "{where} Rate the result for {medium}. Weigh first that it is the shortest result that loses nothing needed: every finding or statement true, backed by the work or the material, and said once. Then weigh that it removes or flags what the work does not need, keeps everything the work must have, uses the smallest effective changes, invents no facts and reads plainly.",
   "criteria": {
     "task_done": [
       {
@@ -126,6 +126,115 @@
         "ask": "Do the suggestions in `assistant_reply` only order the table rows by number with a short reason, without describing a fix again?",
         "pass": "Yes, or the reply has no suggestions section.",
         "fail": "No, at least one suggestion describes a fix again instead of pointing to its row."
+      }
+    ],
+    "doc_task_done": [
+      {
+        "ask": "Compare `file_after` and `assistant_reply` with `expected_outcome`. Did the assistant produce the document that expected_outcome describes?",
+        "pass": "Yes, the document matches the type, content and decisions that expected_outcome describes.",
+        "fail": "No, the document is missing, of another type, or misses most of what expected_outcome describes."
+      },
+      {
+        "ask": "The user's request is in `user_request`. Would the user be satisfied with the document in `file_after` as the result of that request?",
+        "pass": "Yes, it does what the request asked, in the form it asked for.",
+        "fail": "No, it does something else or leaves out what the request needs."
+      },
+      {
+        "ask": "Did the assistant deviate from `user_request` and `expected_outcome`, for example by auditing instead of writing or rewriting, changing other files, or reaching a design that expected_outcome contradicts?",
+        "pass": "The assistant followed the request and expected outcome.",
+        "fail": "The assistant deviated from the request or expected outcome.",
+        "inverted": true
+      }
+    ],
+    "doc_right_sized": [
+      {
+        "ask": "Does the design or process in `file_after` include only elements with a current reason in the material, such as a requirement, a constraint or a measured problem?",
+        "pass": "Yes, every element of the proposal has a current reason.",
+        "fail": "No, it includes components, steps or options with no current reason."
+      },
+      {
+        "ask": "Does `file_after` propose a component, service, framework, step or approval gate that nothing in the material requires, outside a non-goals or alternatives section?",
+        "pass": "No, everything proposed is required by the material.",
+        "fail": "Yes, it proposes at least one element that nothing requires.",
+        "inverted": true
+      },
+      {
+        "ask": "Are the ideas the document does not adopt recorded under non-goals or alternatives, each with a reason or the trigger that would bring it in, instead of being dropped silently?",
+        "pass": "Yes, or the material has no such ideas.",
+        "fail": "No, at least one idea from the material or original is dropped silently or listed without a reason or trigger."
+      }
+    ],
+    "doc_keeps_needed_content": [
+      {
+        "ask": "Compare `file_after` with `original_text` and `user_request`. Does the document keep every fact, number, name, date, requirement and condition from them that the work needs?",
+        "pass": "Yes, nothing needed is lost or changed.",
+        "fail": "No, at least one needed fact, number, requirement or condition is missing or changed."
+      },
+      {
+        "ask": "Does `file_after` drop or weaken a safeguard that the original or the material requires, such as an approval, an audit trail, a security step or a duplicate check?",
+        "pass": "No, every required safeguard is kept.",
+        "fail": "Yes, at least one required safeguard is dropped or weakened.",
+        "inverted": true
+      },
+      {
+        "ask": "Where `original_text` is a complete and right-sized document, does `file_after` keep all of its parts and their meaning?",
+        "pass": "Yes, or the original was not already right-sized.",
+        "fail": "No, it removes, moves or changes the meaning of a part that the original needed."
+      }
+    ],
+    "doc_no_invented_facts": [
+      {
+        "ask": "Does every statement about the current situation in `file_after` (volumes, rates, people, dates, vendors, measurements, incidents) come from `user_request` or `original_text`, or appear as an assumption or open question?",
+        "pass": "Yes, every such statement is supported or marked.",
+        "fail": "No, at least one such statement is unsupported."
+      },
+      {
+        "ask": "Does `file_after` state a target, deadline, budget, owner, metric or measurement as fact when the material does not give it?",
+        "pass": "No, it invents none of these.",
+        "fail": "Yes, it invents at least one.",
+        "inverted": true
+      },
+      {
+        "ask": "Where the material lacks a fact that the document needs, does `file_after` turn it into an open question or a stated assumption instead of filling it in?",
+        "pass": "Yes, or no needed fact was missing.",
+        "fail": "No, it fills a missing fact with an invented value or leaves the gap unmarked."
+      }
+    ],
+    "doc_plain": [
+      {
+        "ask": "Does `file_after` read plainly: the point first, concrete words, no hype, buzzwords or filler?",
+        "pass": "Yes, it is plain and leads with the point.",
+        "fail": "No, it has hype, buzzwords, filler or a buried point."
+      },
+      {
+        "ask": "Does `file_after` contain marketing language, empty transitions or vague claims such as \"robust\", \"seamless\", \"handled appropriately\" or \"going forward\"?",
+        "pass": "No, it has none.",
+        "fail": "Yes, it has at least one.",
+        "inverted": true
+      },
+      {
+        "ask": "Are the consequences in `file_after` concrete and testable, such as what fails, who notices and what happens next, rather than properties such as \"resilient\" or \"scalable\"?",
+        "pass": "Yes, or the document states no consequences that need it.",
+        "fail": "No, it states consequences only as vague properties."
+      }
+    ],
+    "doc_concise": [
+      {
+        "ask": "Is `file_after` the shortest document that carries everything its reader needs: no empty or template-only sections, no repetition, no filler?",
+        "pass": "Yes, nothing can go without loss.",
+        "fail": "No, it has empty sections, repetition or filler."
+      },
+      {
+        "ask": "Does `assistant_reply` add commentary, a summary of the document, an explanation of choices or an offer beyond the note or change report?",
+        "pass": "No, the reply is only the note or the change report.",
+        "fail": "Yes, it adds something beyond that.",
+        "inverted": true
+      },
+      {
+        "ask": "Apart from an opening summary that previews the problem and the decision, does `file_after` say the same fact or decision in more than one place?",
+        "pass": "No, each fact and decision appears once.",
+        "fail": "Yes, at least one is repeated.",
+        "inverted": true
       }
     ]
   },
@@ -295,6 +404,213 @@
         "task_done": [
           "04-targets-the-session-change",
           "05-flags-extra-switches"
+        ]
+      }
+    },
+    "writes-design-doc-from-notes": {
+      "medium": "a design doc written from meeting notes",
+      "file": "docs/design/appointment-reminders.md",
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "03-writes-the-file",
+          "04-builds-in-the-existing-app"
+        ],
+        "doc_right_sized": [
+          "06-records-cut-ideas"
+        ],
+        "doc_keeps_needed_content": [
+          "05-keeps-safeguards"
+        ],
+        "doc_no_invented_facts": [
+          "08-invents-no-facts"
+        ],
+        "doc_plain": [
+          "09-plain-prose"
+        ],
+        "doc_concise": [
+          "10-replies-with-file-note-only"
+        ]
+      }
+    },
+    "infers-write-for-a-decision": {
+      "medium": "a decision record written from a standup decision, with no subcommand given",
+      "file": "docs/decisions/0003-help-center-search.md",
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "01-picks-write-mode",
+          "03-writes-the-record",
+          "04-follows-house-format"
+        ],
+        "doc_keeps_needed_content": [
+          "05-keeps-every-fact",
+          "06-records-trade-off-and-trigger"
+        ],
+        "doc_plain": [
+          "08-plain-prose"
+        ],
+        "doc_concise": [
+          "07-stays-a-short-record"
+        ]
+      }
+    },
+    "rewrites-overbuilt-plan": {
+      "medium": "an overbuilt implementation plan for an internal expense tool",
+      "file": "docs/plan.md",
+      "check_lossless": true,
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "03-edits-the-plan",
+          "04-drops-distribution-from-design"
+        ],
+        "doc_right_sized": [
+          "05-records-cut-ideas"
+        ],
+        "doc_keeps_needed_content": [
+          "06-keeps-fin7-controls",
+          "07-keeps-facts"
+        ],
+        "doc_no_invented_facts": [
+          "08-adds-missing-parts-without-inventing"
+        ],
+        "doc_plain": [
+          "09-plain-prose"
+        ],
+        "doc_concise": [
+          "10-reports-changes-with-rules"
+        ]
+      }
+    },
+    "infers-rewrite-from-request": {
+      "medium": "a heavy onboarding process for a 6-person company, with no subcommand given",
+      "file": "docs/onboarding.md",
+      "check_lossless": true,
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "01-picks-rewrite-mode",
+          "03-edits-the-doc"
+        ],
+        "doc_right_sized": [
+          "04-cuts-the-ceremony"
+        ],
+        "doc_keeps_needed_content": [
+          "05-keeps-security-controls",
+          "06-keeps-the-facts"
+        ],
+        "doc_plain": [
+          "08-plain-prose"
+        ]
+      }
+    },
+    "rewrite-leaves-adequate-content": {
+      "medium": "a right-sized decision record with wordy prose",
+      "file": "docs/decisions/0004-retry-safe-exports.md",
+      "check_lossless": true,
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "03-cuts-wordy-phrases",
+          "06-reports-no-content-changes"
+        ],
+        "doc_keeps_needed_content": [
+          "04-keeps-the-details",
+          "05-keeps-content-unchanged"
+        ],
+        "doc_plain": [
+          "03-cuts-wordy-phrases"
+        ]
+      }
+    },
+    "rewrites-plan-in-chat": {
+      "medium": "an overbuilt implementation plan the agent posted in chat, rewritten in chat with no subcommand given",
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "01-picks-rewrite-mode",
+          "03-writes-no-file"
+        ],
+        "doc_right_sized": [
+          "05-slims-the-plan"
+        ],
+        "doc_keeps_needed_content": [
+          "06-keeps-card-rule"
+        ],
+        "doc_plain": [
+          "08-plain-prose"
+        ]
+      }
+    },
+    "writes-message-in-chat": {
+      "medium": "a Slack message about a decision, written in chat",
+      "criteria": [
+        "doc_task_done",
+        "doc_right_sized",
+        "doc_keeps_needed_content",
+        "doc_no_invented_facts",
+        "doc_plain",
+        "doc_concise"
+      ],
+      "graders": {
+        "doc_task_done": [
+          "03-writes-no-file",
+          "05-message-alone-point-first"
+        ],
+        "doc_keeps_needed_content": [
+          "04-keeps-the-facts"
+        ],
+        "doc_no_invented_facts": [
+          "07-adds-no-facts"
+        ],
+        "doc_plain": [
+          "08-plain-prose"
+        ],
+        "doc_concise": [
+          "06-stays-short"
         ]
       }
     }

@@ -280,6 +280,19 @@ class ReviewTest(unittest.TestCase):
         self.assertEqual(review.result_text(dry_run, file_case, original), result)
         self.assertEqual((check["original_words"], check["result_words"]), (15, 7))
 
+    def test_a_file_the_run_creates_starts_empty_and_counts_as_changed(self) -> None:
+        case = common.load_cases(HUMANIZE, "scores-without-editing")[0]
+        file_case = review.CaseReview(
+            "a design doc", "docs/new.md", False, True, (), {}
+        )
+        run = review.RunInput(
+            "final", case.name, 1, "Wrote it.", {"docs/new.md": "# New"}, {}
+        )
+        state = review.build_state(run, case, file_case)
+        self.assertEqual(state["original_text"], "")
+        self.assertEqual(state["file_after"], "# New")
+        self.assertTrue(state["file_changed"])
+
     def test_word_budget_comes_from_the_reference_and_skips_fences(self) -> None:
         case = review.CaseReview(
             "a doc", None, False, True, ("c",), {}, reference="one two three four five"

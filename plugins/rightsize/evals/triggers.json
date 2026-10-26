@@ -129,7 +129,7 @@
     },
     {
       "query": "write an ADR explaining why we picked a modular monolith over microservices for the billing service",
-      "should_trigger": false
+      "should_trigger": true
     },
     {
       "query": "our k8s cluster is overprovisioned, rightsize the node pool and the pods' cpu/memory requests based on the last 30 days of metrics",
@@ -141,6 +141,66 @@
     },
     {
       "query": "tighten the intro of README.md, it's too long and wordy for a landing page",
+      "should_trigger": false
+    },
+    {
+      "query": "write a design doc for adding appointment reminder emails to our Django booking app, keep it as small as it can be while still not double-sending",
+      "should_trigger": true
+    },
+    {
+      "query": "turn my notes in notes/search.md into a one-page pitch for the search revamp, we have a 3 week appetite and a fixed launch date",
+      "should_trigger": true
+    },
+    {
+      "query": "rewrite docs/plan.md so it's not overengineered. it proposes five microservices and Kafka for an internal expense tool with 120 users",
+      "should_trigger": true
+    },
+    {
+      "query": "this RFC is bloated, slim it down to what we actually need but keep the compliance requirements",
+      "should_trigger": true
+    },
+    {
+      "query": "draft a decision record for choosing Postgres full-text search over Elasticsearch for the help center",
+      "should_trigger": true
+    },
+    {
+      "query": "our onboarding process doc has 12 steps and a steering committee for a 6 person company, can you rework it into something proportionate?",
+      "should_trigger": true
+    },
+    {
+      "query": "write a commit message for the staged changes",
+      "should_trigger": false
+    },
+    {
+      "query": "rewrite this email to my landlord so it sounds less angry: I have asked you THREE times to fix the heating",
+      "should_trigger": false
+    },
+    {
+      "query": "write release notes for v2.3 from CHANGELOG.md",
+      "should_trigger": false
+    },
+    {
+      "query": "proofread docs/plan.md for typos only, don't change anything else",
+      "should_trigger": false
+    },
+    {
+      "query": "summarize docs/design/reminders.md in three bullets for standup",
+      "should_trigger": false
+    },
+    {
+      "query": "translate docs/onboarding.md into Polish",
+      "should_trigger": false
+    },
+    {
+      "query": "that plan you just gave me is way too much for a 3-person team, rewrite it so it only has what we actually need",
+      "should_trigger": true
+    },
+    {
+      "query": "write the message I should post in #eng explaining why we're not adding Kafka for the order events yet",
+      "should_trigger": true
+    },
+    {
+      "query": "reply to this Slack thread to thank everyone for the smooth launch yesterday",
       "should_trigger": false
     }
   ]

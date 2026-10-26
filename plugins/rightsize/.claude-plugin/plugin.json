@@ -1,12 +1,12 @@
 {
   "name": "rightsize",
-  "description": "Audit work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, new project, plan, design or process, and list broken rules with evidence, gaps and ranked fixes. With no target it audits the work in the current conversation.",
-  "version": "1.0.0",
+  "description": "Audit, write and rewrite work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, plan, design or process, write new design docs, decision records, pitches and plans that admit only justified complexity, and rewrite existing documents the same way in plain words. With no target it audits the work in the current conversation.",
+  "version": "1.1.0",
   "author": {
     "name": "Smykla Skalski Labs"
   },
   "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/rightsize",
   "repository": "https://github.com/smykla-skalski/sai",
   "license": "MIT",
-  "keywords": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "complexity", "review"]
+  "keywords": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "complexity", "review", "design-docs", "adr", "writing"]
 }
