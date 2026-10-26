@@ -1,0 +1,34 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "rightsize",
+  "version": "1.0.0",
+  "description": "Audit work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, new project, plan, design or process, and list broken rules with evidence, gaps and ranked fixes. With no target it audits the work in the current conversation.",
+  "author": {
+    "name": "Smykla Skalski Labs"
+  },
+  "homepage": "https://github.com/smykla-skalski/sai/tree/main/plugins/rightsize",
+  "repository": "https://github.com/smykla-skalski/sai",
+  "license": "MIT",
+  "keywords": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "complexity", "review"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Rightsize",
+        "shortDescription": "Audit work for overbuilt or oversimplified design",
+        "longDescription": "Checks a diff, PR, files, new project, plan, design or process against about 70 simplicity rules, such as the complexity admission test, the reduction order and requisite variety. It reports broken rules with evidence, gaps, ranked fixes and the complexity to keep. With no target it audits the work in the current conversation.",
+        "developerName": "SAI",
+        "category": "Developer Tools",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://github.com/smykla-skalski/sai/tree/main/plugins/rightsize",
+        "privacyPolicyURL": "https://github.com/smykla-skalski/sai/blob/main/README.md",
+        "termsOfServiceURL": "https://github.com/smykla-skalski/sai/blob/main/LICENSE",
+        "defaultPrompt": [
+          "Use $rightsize to audit the change we just made.",
+          "Use $rightsize to audit docs/architecture.md for overengineering.",
+          "Use $rightsize to check this plan against the simplicity rules."
+        ],
+        "brandColor": "#2747B8"
+      }
+    }
+  }
+}

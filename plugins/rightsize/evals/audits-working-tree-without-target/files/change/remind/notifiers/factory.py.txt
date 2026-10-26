@@ -1,0 +1,15 @@
+from remind.notifiers.base import Notifier
+from remind.notifiers.email import EmailNotifier
+
+
+class NotifierFactory:
+    _registry: dict[str, type[Notifier]] = {"email": EmailNotifier}
+
+    @classmethod
+    def register(cls, name: str, notifier: type[Notifier]) -> None:
+        """Let plugins add new notifier backends."""
+        cls._registry[name] = notifier
+
+    @classmethod
+    def create(cls, name: str, **kwargs: str) -> Notifier:
+        return cls._registry[name](**kwargs)

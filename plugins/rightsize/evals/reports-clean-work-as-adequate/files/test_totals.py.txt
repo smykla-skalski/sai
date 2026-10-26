@@ -1,0 +1,24 @@
+import unittest
+from decimal import Decimal
+
+from totals import totals
+
+
+class TotalsTest(unittest.TestCase):
+    def test_sums_amounts_per_category(self):
+        rows = [
+            {"category": "food", "amount": "12.50"},
+            {"category": "rent", "amount": "1500.00"},
+            {"category": "food", "amount": "7.25"},
+        ]
+        self.assertEqual(
+            totals(rows), {"food": Decimal("19.75"), "rent": Decimal("1500.00")}
+        )
+
+    def test_keeps_cents_exact(self):
+        rows = [{"category": "misc", "amount": "0.10"}] * 3
+        self.assertEqual(totals(rows), {"misc": Decimal("0.30")})
+
+
+if __name__ == "__main__":
+    unittest.main()

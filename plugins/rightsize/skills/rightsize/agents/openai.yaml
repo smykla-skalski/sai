@@ -1,0 +1,4 @@
+interface:
+  display_name: "Rightsize"
+  short_description: "Audit work for overbuilt or oversimplified design"
+  default_prompt: "Use $rightsize to audit the work we just did against the simplicity rules."

@@ -1,0 +1,5 @@
+Hello,
+
+invoice {invoice} is overdue. Please pay it within 7 days.
+
+Billing team

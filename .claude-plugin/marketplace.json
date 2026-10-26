@@ -228,6 +228,17 @@
       "tags": ["github", "jira", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
     },
     {
+      "name": "rightsize",
+      "source": "./plugins/rightsize",
+      "description": "Audit work for overbuilt or oversimplified design against simplicity rules, with evidence, gaps and ranked fixes",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture"]
+    },
+    {
       "name": "kup",
       "source": "./plugins/kup",
       "description": "Fill the monthly KUP report (Polish 50% creative-work tax deduction) from your merged GitHub pull requests and write it to your KUP Google Sheet.",

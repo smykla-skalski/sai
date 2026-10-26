@@ -166,6 +166,13 @@ GLYPHS: Final[dict[str, tuple[tuple[str, str], str]]] = {
         ),
     ),
     "review-agents-md": (REVIEW, DOC + '<path d="M420 560 L490 630 L620 480"/>'),
+    "rightsize": (
+        REVIEW,
+        (
+            '<path d="M260 400 C320 280 400 640 460 512 S560 400 600 512 H764"/>'
+            '<path d="M690 440 L764 512 L690 584"/>'
+        ),
+    ),
     "service-mesh-debug": (
         OPS,
         (

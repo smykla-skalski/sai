@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: audits-process-not-software
+expected_outcome: |
+  The skill audits the pasted purchase request process, which is a work
+  process and not software. It flags the plan to automate before eliminating
+  or combining steps, and the same request typed into three systems as
+  duplicate information that needs one record. It suggests a second approval
+  only above the $1,000 auditor threshold instead of on every purchase, and
+  keeps that auditor-required approval. It does not recommend buying the RPA
+  bot as the first step, and it does not apply software architecture defaults
+  such as a modular monolith or a datastore budget. It changes no file.

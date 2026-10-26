@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: audits-design-it-just-wrote
+expected_outcome: |
+  The agent writes docs/parking.md as asked, then runs the rightsize audit
+  with no target. The audit takes the design written in this conversation as
+  its target and says so in its scope line. It flags the four microservices
+  and Kafka as distribution that 20 users and 3 parking spots do not justify,
+  suggests one deployable application, and flags the Redis cache as added
+  without a measured problem.

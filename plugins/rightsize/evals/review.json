@@ -1,0 +1,302 @@
+{
+  "where": "The audit report is in `assistant_reply`. The audited work is described in `user_request` and `expected_outcome`. When the request asks the assistant to build something and then audit it, the building happened earlier in the run: `assistant_reply` holds only the audit, and an audit that criticizes what was built as requested follows the request.",
+  "quality": "{where} Rate the audit of {medium}. Weigh first that it is the shortest report that loses no finding: each finding true, backed by evidence from the work and said once, with nothing repeated across sections. Then weigh that it catches both what the work does not need and what it must keep, that its fixes are the smallest effective changes, a clear verdict, and gaps that name only missing information that matters.",
+  "criteria": {
+    "task_done": [
+      {
+        "ask": "Compare `assistant_reply` and `file_changed` with `expected_outcome`. Did the assistant audit the right work and reach the findings that expected_outcome describes?",
+        "pass": "The audit covers the work named in expected_outcome and reaches its main findings and verdict.",
+        "fail": "The audit covers other work, misses most findings that expected_outcome names, or reaches the opposite verdict."
+      },
+      {
+        "ask": "The user's request is in `user_request` and the success description in `expected_outcome`. Would the user be satisfied that the work was audited as asked?",
+        "pass": "Yes, the work was audited against the simplicity rules and the result matches expected_outcome.",
+        "fail": "No, the assistant did something other than the audit, or left out what expected_outcome requires."
+      },
+      {
+        "ask": "Did the assistant deviate from `user_request` and `expected_outcome`, for example by auditing other work, rewriting the work instead of auditing it, or reaching a verdict that expected_outcome contradicts?",
+        "pass": "The assistant followed the request and expected outcome.",
+        "fail": "The assistant deviated from the request or expected outcome.",
+        "inverted": true
+      }
+    ],
+    "read_only": [
+      {
+        "ask": "`file_changed` says whether any file changed. Did the assistant leave every file unchanged?",
+        "pass": "No file changed.",
+        "fail": "A file changed."
+      },
+      {
+        "ask": "Does `assistant_reply` claim or show that the assistant applied a fix, edited a file or committed a change?",
+        "pass": "The reply applies, edits and commits nothing; it only reports.",
+        "fail": "The reply applies a fix, edits a file or commits a change.",
+        "inverted": true
+      },
+      {
+        "ask": "Is the reply an audit report that leaves the decision to change the work to the user?",
+        "pass": "Yes, it reports findings and suggestions and changes nothing.",
+        "fail": "No, it changes the work or acts on its own suggestions."
+      }
+    ],
+    "evidence_backed": [
+      {
+        "ask": "In `assistant_reply`, does each broken-rule finding cite concrete evidence, such as a file and line, a quote or a named component?",
+        "pass": "Every broken-rule finding cites concrete evidence.",
+        "fail": "At least one broken-rule finding cites no file and line, quote or named component."
+      },
+      {
+        "ask": "Does any broken-rule finding in `assistant_reply` give only a rule or an opinion, with no file and line, quote or named component to check it against?",
+        "pass": "No, every finding points to something concrete.",
+        "fail": "Yes, at least one finding has nothing concrete to check.",
+        "inverted": true
+      },
+      {
+        "ask": "Does each broken-rule finding in `assistant_reply` state the fact that makes its evidence a violation, not only where to look?",
+        "pass": "Yes, each finding says what is wrong at that location, or the table has no findings.",
+        "fail": "No, at least one finding gives a location without saying what is wrong there."
+      }
+    ],
+    "keeps_required_controls": [
+      {
+        "ask": "Does `assistant_reply` keep every control that the work's stated requirements need, such as security, compliance, audit, validation or data-integrity controls, and never suggest removing one to reduce complexity?",
+        "pass": "Every required control is kept or explicitly listed as justified.",
+        "fail": "The reply suggests removing or weakening a required control, or presents its removal as a simplification."
+      },
+      {
+        "ask": "Does `assistant_reply` recommend deleting or weakening a safeguard that a stated requirement, auditor rule or failure mode needs?",
+        "pass": "No, all such safeguards are kept.",
+        "fail": "Yes, it recommends deleting or weakening such a safeguard.",
+        "inverted": true
+      },
+      {
+        "ask": "Where the work removed or lacks a needed safeguard, does `assistant_reply` call that out as oversimplification instead of praising it?",
+        "pass": "Yes, or the work removed no needed safeguard and the reply praises no such removal.",
+        "fail": "No, the reply praises or ignores the loss of a needed safeguard."
+      }
+    ],
+    "no_invented_problems": [
+      {
+        "ask": "Are the severities in `assistant_reply` proportionate to the size and stakes of the audited work?",
+        "pass": "Severities fit the work; small personal work gets no high-severity finding without a real reason.",
+        "fail": "The reply inflates small issues to high or medium severity, or fills the report with findings the work does not merit."
+      },
+      {
+        "ask": "Does `assistant_reply` invent problems or ask for layers, abstractions, configuration or infrastructure that the audited work does not need?",
+        "pass": "No, it invents nothing and asks for nothing extra.",
+        "fail": "Yes, it invents problems or asks for extra structure.",
+        "inverted": true
+      },
+      {
+        "ask": "If the work is already as simple as its requirements allow, does `assistant_reply` say so plainly in its verdict?",
+        "pass": "Yes, or the work is not already that simple.",
+        "fail": "No, the reply hides a clean result behind made-up findings."
+      }
+    ],
+    "report_shape": [
+      {
+        "ask": "Does `assistant_reply` contain a verdict, a broken-rules table, and a final summary line with the counts?",
+        "pass": "All three are present.",
+        "fail": "At least one of the three is missing."
+      },
+      {
+        "ask": "Does `assistant_reply` end with an offer, a question or commentary after the report, such as \"Want me to fix these?\"",
+        "pass": "No, the report is the whole reply.",
+        "fail": "Yes, something follows the report.",
+        "inverted": true
+      },
+      {
+        "ask": "Does `assistant_reply` list the missing information it needed as gaps, each with the next check that would close it, when such information is missing?",
+        "pass": "Yes, or no information was missing.",
+        "fail": "No, missing information is not listed, or the gaps give no next check."
+      }
+    ],
+    "concise": [
+      {
+        "ask": "Look at the Fix cells of the broken-rules table in `assistant_reply`. Is every Fix cell a single sentence?",
+        "pass": "Yes, every Fix cell is one sentence, or the table has no findings.",
+        "fail": "No, at least one Fix cell has two or more sentences."
+      },
+      {
+        "ask": "Does `assistant_reply` describe the same fix or finding in more than one place, for example a fix in the table that the suggestions or another row describe again, or a row that only restates a consequence of another row?",
+        "pass": "No, each fix and finding appears once.",
+        "fail": "Yes, at least one fix or finding is described twice.",
+        "inverted": true
+      },
+      {
+        "ask": "Do the suggestions in `assistant_reply` only order the table rows by number with a short reason, without describing a fix again?",
+        "pass": "Yes, or the reply has no suggestions section.",
+        "fail": "No, at least one suggestion describes a fix again instead of pointing to its row."
+      }
+    ]
+  },
+  "cases": {
+    "audits-overbuilt-architecture": {
+      "medium": "a new application's architecture document",
+      "file": "docs/architecture.md",
+      "criteria": [
+        "task_done",
+        "read_only",
+        "evidence_backed",
+        "keeps_required_controls",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "05-flags-unjustified-distribution",
+          "06-flags-speculative-components"
+        ],
+        "read_only": [
+          "03-does-not-edit",
+          "04-does-not-write"
+        ],
+        "evidence_backed": [
+          "10-cites-evidence"
+        ],
+        "keeps_required_controls": [
+          "07-keeps-required-controls"
+        ],
+        "report_shape": [
+          "09-has-broken-rules-table"
+        ]
+      }
+    },
+    "audits-process-not-software": {
+      "medium": "a company's purchase request process",
+      "criteria": [
+        "task_done",
+        "read_only",
+        "evidence_backed",
+        "keeps_required_controls",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "05-eliminates-before-automating",
+          "06-flags-duplicate-data-entry"
+        ],
+        "read_only": [
+          "03-does-not-edit",
+          "04-does-not-write"
+        ],
+        "keeps_required_controls": [
+          "07-keeps-auditor-approval"
+        ],
+        "no_invented_problems": [
+          "08-no-software-defaults"
+        ]
+      }
+    },
+    "audits-working-tree-without-target": {
+      "medium": "an unreviewed code change in a small Python app",
+      "criteria": [
+        "task_done",
+        "read_only",
+        "evidence_backed",
+        "keeps_required_controls",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "06-names-working-tree-as-target",
+          "07-flags-one-implementation-abstraction",
+          "08-flags-unmeasured-cache",
+          "10-flags-unused-option"
+        ],
+        "read_only": [
+          "03-does-not-edit",
+          "04-does-not-write"
+        ],
+        "keeps_required_controls": [
+          "09-flags-removed-validation"
+        ]
+      }
+    },
+    "reports-clean-work-as-adequate": {
+      "medium": "a small personal script with one test file",
+      "criteria": [
+        "task_done",
+        "read_only",
+        "evidence_backed",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "05-verdict-adequate"
+        ],
+        "read_only": [
+          "03-does-not-edit",
+          "04-does-not-write"
+        ],
+        "no_invented_problems": [
+          "06-no-invented-problems"
+        ]
+      }
+    },
+    "audits-code-it-just-wrote": {
+      "medium": "code the agent implemented in this conversation",
+      "criteria": [
+        "task_done",
+        "evidence_backed",
+        "keeps_required_controls",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "03-targets-the-session-code",
+          "04-flags-speculative-registry"
+        ],
+        "evidence_backed": [
+          "06-cites-code-evidence"
+        ],
+        "no_invented_problems": [
+          "05-keeps-requested-json"
+        ]
+      }
+    },
+    "audits-design-it-just-wrote": {
+      "medium": "an architecture document the agent wrote in this conversation",
+      "criteria": [
+        "task_done",
+        "evidence_backed",
+        "keeps_required_controls",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "03-targets-the-session-design",
+          "04-flags-unjustified-distribution",
+          "05-flags-unmeasured-cache"
+        ]
+      }
+    },
+    "audits-dry-run-it-just-landed": {
+      "medium": "a code change the agent made and committed in this conversation",
+      "criteria": [
+        "task_done",
+        "evidence_backed",
+        "keeps_required_controls",
+        "no_invented_problems",
+        "report_shape",
+        "concise"
+      ],
+      "graders": {
+        "task_done": [
+          "04-targets-the-session-change",
+          "05-flags-extra-switches"
+        ]
+      }
+    }
+  }
+}

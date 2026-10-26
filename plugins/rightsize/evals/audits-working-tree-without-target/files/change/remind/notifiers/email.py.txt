@@ -1,0 +1,33 @@
+import smtplib
+from email.message import EmailMessage
+
+import redis
+
+from remind.notifiers.base import Notifier
+
+TEMPLATE = "templates/reminder.txt"
+cache = redis.Redis(host="localhost", port=6379)
+
+
+class EmailNotifier(Notifier):
+    def __init__(self, sender: str, smtp_host: str, retry_strategy: str = "exponential") -> None:
+        self.sender = sender
+        self.smtp_host = smtp_host
+        self.retry_strategy = retry_strategy
+
+    def _template(self) -> str:
+        cached = cache.get("reminder-template")
+        if cached is None:
+            with open(TEMPLATE, encoding="utf-8") as f:
+                cached = f.read().encode()
+            cache.set("reminder-template", cached)
+        return cached.decode()
+
+    def send(self, address: str, invoice: str) -> None:
+        msg = EmailMessage()
+        msg["To"] = address
+        msg["From"] = self.sender
+        msg["Subject"] = f"Invoice {invoice} is overdue"
+        msg.set_content(self._template().format(invoice=invoice))
+        with smtplib.SMTP(self.smtp_host) as smtp:
+            smtp.send_message(msg)

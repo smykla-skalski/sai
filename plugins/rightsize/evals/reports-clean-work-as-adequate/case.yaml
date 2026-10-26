@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: reports-clean-work-as-adequate
+expected_outcome: |
+  The skill audits a small personal script that sums a bank export CSV per
+  category, with one test file and a short README. The work has no
+  unnecessary parts, so the verdict is Adequate and the broken-rules table has
+  no finding of high or medium severity. The reply does not invent problems
+  to fill the report, and it changes no file.
+context:
+  scaffold_script: place-files.sh
