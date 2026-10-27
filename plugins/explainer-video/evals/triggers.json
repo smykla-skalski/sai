@@ -1,0 +1,95 @@
+{
+  "files": {
+    "raft-video/script.py": "BEATS = {\n    \"Election\": [\n        (\"elect_1\", \"A follower that hears nothing from the leader starts an election.\"),\n        (\"elect_2\", \"Every write goes through the leader's cash first.\"),\n    ],\n}\n",
+    "raft-video/video.py": "from explainer import Narrated, T\nfrom manim import Write\n\nSCENES = [\"Election\"]\n\n\nclass Election(Narrated):\n    def construct(self):\n        self.voice(\"elect_1\")\n        self.play(Write(T(\"Leader election\", 48)))\n        self.finish()\n        self.fade_all()\n",
+    "tls-explainer/script.py": "BEATS = {\"Tls\": [(\"tls_1\", \"The server sends its certificate.\"), (\"tls_2\", \"The client checks the certificate chain.\")]}\n",
+    "tls-explainer/video.py": "SCENES = [\"Tls\"]\n",
+    "tls-explainer/media/Tls.log": "TIMELINE tls_1 0.000000\nLATE tls_2 'certificate' by 1.4s\nTIMELINE tls_2 9.400000\n",
+    "training_log.csv": "step,loss,val_loss\n0,2.31,2.35\n100,1.12,1.20\n200,0.84,0.97\n",
+    "notes/onboarding-outline.md": "# How retrieval works here\n\n1. Chunk the docs\n2. Embed the chunks\n3. Retrieve top 50 by cosine similarity\n4. Rerank with a cross-encoder\n5. Answer with the top 5\n",
+    "talk.mp4": "(placeholder for a recorded talk)\n",
+    "demo.mp4": "(placeholder for a screen recording)\n"
+  },
+  "queries": [
+    {
+      "query": "can you make a 3blue1brown style video explaining how consistent hashing works? like 4-5 minutes, with narration",
+      "should_trigger": true
+    },
+    {
+      "query": "I need an animated explainer for our onboarding about how retrieval and reranking work, the outline is in notes/onboarding-outline.md. voice-over would be great, I have an elevenlabs account",
+      "should_trigger": true
+    },
+    {
+      "query": "make a manim animation that walks through dijkstra's algorithm step by step with a voiceover, about 3 min",
+      "should_trigger": true
+    },
+    {
+      "query": "explain the Diffie-Hellman key exchange in a short narrated video, about a minute, the 3b1b look with the paint mixing analogy",
+      "should_trigger": true
+    },
+    {
+      "query": "the explainer video in raft-video/ has a click at 0:14 and the narrator says 'cash' instead of 'cache', can you fix both and re-render it",
+      "should_trigger": true
+    },
+    {
+      "query": "make me a math explainer video on why the sum of 1/n^2 is pi^2/6, black background, animated formulas, with a voice reading it",
+      "should_trigger": true
+    },
+    {
+      "query": "in tls-explainer the picture lags the voice, the build printed LATE tls_2 'certificate' by 1.4s and there's dead air before the next scene. can you fix the timing and rebuild",
+      "should_trigger": true
+    },
+    {
+      "query": "we want a 6 minute narrated animation explaining OAuth PKCE for the security team's lunch and learn next friday",
+      "should_trigger": true
+    },
+    {
+      "query": "create an explainer video about how bloom filters work",
+      "should_trigger": true
+    },
+    {
+      "query": "can you turn this into a narrated animated video for our eng blog: how a B-tree page split works, aimed at backend devs who never looked at database internals",
+      "should_trigger": true
+    },
+    {
+      "query": "summarize this youtube video for me: https://www.youtube.com/watch?v=spUNpyF58BY (the 3blue1brown fourier series one), just the key ideas",
+      "should_trigger": false
+    },
+    {
+      "query": "write a blog post explaining how bloom filters work, with a couple of mermaid diagrams, about 800 words",
+      "should_trigger": false
+    },
+    {
+      "query": "make a slide deck explaining our retrieval architecture from notes/onboarding-outline.md for thursday's review, 8 slides max",
+      "should_trigger": false
+    },
+    {
+      "query": "plot the loss and val_loss curves from training_log.csv with matplotlib and save it as loss.png",
+      "should_trigger": false
+    },
+    {
+      "query": "cut the first 10 seconds off demo.mp4 and turn the rest into a gif under 5MB",
+      "should_trigger": false
+    },
+    {
+      "query": "generate an mp3 of this with elevenlabs for our podcast intro: 'Welcome to Infra Weekly, the show about the boring parts that keep everything running.'",
+      "should_trigger": false
+    },
+    {
+      "query": "explain to me how the Diffie-Hellman key exchange works, I don't get why the shared secret ends up the same on both sides",
+      "should_trigger": false
+    },
+    {
+      "query": "add english subtitles to talk.mp4, transcribe it with whisper and burn the srt into the video",
+      "should_trigger": false
+    },
+    {
+      "query": "what's the difference between manim community and manimgl? which one should I install for a quick personal project",
+      "should_trigger": false
+    },
+    {
+      "query": "record a terminal session of our CLI install steps as an asciinema cast for the README",
+      "should_trigger": false
+    }
+  ]
+}

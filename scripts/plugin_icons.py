@@ -88,6 +88,14 @@ GLYPHS: Final[dict[str, tuple[tuple[str, str], str]]] = {
             ' M604 600 Q684 500 764 600 M260 700 H764"/>'
         ),
     ),
+    "explainer-video": (
+        WRITING,
+        (
+            '<path d="M290 740 H750 M290 740 V280"/>'
+            '<path d="M370 620 C440 360 510 360 560 500 S660 680 730 400"/>'
+            '<circle cx="730" cy="400" r="46" class="dot"/>'
+        ),
+    ),
     "generate-agents-md": (WRITING, DOC + '<path d="M520 470 V650 M430 560 H610"/>'),
     "gh-review-comments": (
         REVIEW,
