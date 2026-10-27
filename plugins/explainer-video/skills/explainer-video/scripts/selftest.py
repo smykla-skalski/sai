@@ -4,9 +4,10 @@
   selftest.py [dir]
 
 Scaffolds a project from the templates, voices its beats with synthetic tones
-through tts.trim(), checks the transcript normalizer, builds a 480p preview and
-makes contact sheets. Then it turns the project into one that an older version of
-the skill left behind, refreshes it and renders it, so old projects keep working.
+through tts.trim(), checks the transcript normalizer and the label layout, builds
+a 480p preview and makes contact sheets. Then it turns the project into one that an
+older version of the skill left behind, refreshes it and renders it, so old
+projects keep working.
 Run it after every change to scripts/ or assets/; it must end with "selftest OK".
 Without a dir it uses a temp dir and deletes it on success.
 
@@ -29,6 +30,7 @@ HERE: Final = Path(__file__).resolve()
 UV: Final = ("/usr/bin/env", "uv", "run", "--quiet")
 CHARS_PER_SECOND: Final = 16  # the pace of the real voice after trim()
 DURATION_TOLERANCE: Final = 0.3
+CENTER_TOLERANCE: Final = 1e-6
 MANIM: Final = ("/usr/bin/env", "uv", "tool", "run", "--python", "3.13")
 # video.py as older versions wrote it: Manim's names came only through explainer.py,
 # T took Text options and fade_to took animation options. unit() must stay
@@ -122,6 +124,22 @@ def normalizer() -> None:
         check(got == want, f"words() gave {got}, expected {want}")
 
 
+def layout() -> None:
+    r"""Check that multi-line labels are centered and that the drawn helpers build.
+
+    Runs inside the project, with Manim. Text with "\n" aligns its lines left.
+    """
+    explainer = importlib.import_module("explainer")
+    for lines in (
+        explainer.box("embedding\nmodel")[1],
+        explainer.stacked("a", "a long line"),
+    ):
+        offset = abs(lines[0].get_x() - lines[1].get_x())
+        check(offset < CENTER_TOLERANCE, f"multi-line label is {offset:.3f} off center")
+    explainer.bubble("Can I get a refund?")
+    explainer.database()
+
+
 def run(project: Path, *argv: str, env: dict[str, str] | None = None) -> None:
     """Run argv in the project and stop the self-test if it fails."""
     # S603: list argv, no shell; the only variables are project paths.
@@ -187,6 +205,8 @@ def main(target: str | None) -> None:
     scaffold(project)
     with_numpy = (*UV, "--python", "3.13", "--with", "numpy", "python")
     run(project, *with_numpy, str(HERE), "--tones")
+    manim = (*UV, "--python", "3.13", "--with", "manim", "python")
+    run(project, *manim, str(HERE), "--layout")
     run(
         project,
         *UV,
@@ -217,5 +237,8 @@ if __name__ == "__main__":
     elif sys.argv[1:] == ["--words"]:
         sys.path.insert(0, str(Path.cwd()))
         normalizer()
+    elif sys.argv[1:] == ["--layout"]:
+        sys.path.insert(0, str(Path.cwd()))
+        layout()
     else:
         main(sys.argv[1] if len(sys.argv) > 1 else None)
