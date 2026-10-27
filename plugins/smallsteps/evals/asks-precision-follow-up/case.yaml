@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: asks-precision-follow-up
+expected_outcome: |
+  The placed note is in step 1 and the user answers the open "Better when"
+  question with "it should be faster for users". The skill records the answer
+  but does not count it as confirmed (it marks it unclear or (suggested)), and
+  asks exactly one follow-up that asks who exactly, how much faster or how the
+  user will see it. It does not move on to step 2 and keeps the confirmed
+  problem unchanged.
+context:
+  scaffold_script: place-files.sh

@@ -269,11 +269,20 @@ def execute_once(case: Case, number: int, suite: Suite) -> Run:
     workspace = Path(
         tempfile.mkdtemp(prefix=f"{case.name}-{number}-", dir=suite.scratch)
     )
+    # Each run gets its own empty HOME, as each `claude plugin eval` run gets
+    # a sealed one: runs go in parallel, and a skill or scaffold that writes
+    # under $HOME (a setting, a notes folder) must not leak into another run
+    # or the real home. The scaffold and Codex share it, so Codex finds what
+    # the scaffold wrote. The plugin install stays in the shared CODEX_HOME.
+    home = Path(
+        tempfile.mkdtemp(prefix=f"{case.name}-{number}-home-", dir=suite.scratch)
+    )
+    env = {**suite.sandbox.env(), "HOME": str(home)}
     if case.scaffold is not None:
         result = run_command(
             [str(case.scaffold)],
             cwd=workspace,
-            env=agent_env(),
+            env=env,
             timeout=60,
         )
         if result.returncode != 0:
@@ -285,7 +294,7 @@ def execute_once(case: Case, number: int, suite: Suite) -> Run:
     for event in stream_json(
         suite.sandbox.exec_argv(workspace, prompt, suite.model),
         cwd=workspace,
-        env=suite.sandbox.env(),
+        env=env,
         timeout=timeout,
     ):
         record_event(run, event)

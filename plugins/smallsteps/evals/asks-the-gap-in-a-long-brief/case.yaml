@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: asks-the-gap-in-a-long-brief
+expected_outcome: |
+  The brief states the problem, who has it, the options and the limits clearly,
+  but it names no appetite and "faster and better" is vague. The skill saves
+  ideas/release-notes.md with the brief's items marked (suggested) and asks
+  exactly one question, labeled step 1 of 4, about one of the two gaps: the
+  appetite (how much time the idea is worth), which the skill asks right after
+  the problem, or the vague item (how much faster, what better means, or how
+  the user will see it). It does not ask again about the problem, who has it,
+  the options or the limits, writes no action card and invents no target.

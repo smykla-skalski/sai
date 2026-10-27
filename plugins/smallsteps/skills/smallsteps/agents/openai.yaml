@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smallsteps"
+  short_description: "Turn a rough idea into small, precise next steps"
+  default_prompt: "Use $smallsteps to turn my rough idea into a first small step."

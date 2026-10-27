@@ -250,6 +250,17 @@
       "tags": ["rightsize", "simplicity", "audit", "yagni", "kiss", "overengineering", "architecture", "design-docs", "writing"]
     },
     {
+      "name": "smallsteps",
+      "source": "./plugins/smallsteps",
+      "description": "Turn a rough idea into small, precise next steps through a one-question-at-a-time interview, with one idea note holding Now, Next and Later results, an action card for the first step, Mermaid maps and a Miro board on request",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["smallsteps", "ideas", "planning", "next-action", "interview", "assumptions", "adhd", "miro"]
+    },
+    {
       "name": "kup",
       "source": "./plugins/kup",
       "description": "Fill the monthly KUP report (Polish 50% creative-work tax deduction) from your merged GitHub pull requests and write it to your KUP Google Sheet.",

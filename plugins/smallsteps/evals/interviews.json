@@ -1,0 +1,122 @@
+{
+  "setting": "an assistant helps a user turn a rough idea into a plan",
+  "baseline": "Help me turn this idea into a precise plan of small actions. Ask me questions, one at a time, until the plan is precise.",
+  "judge_notes": "The file is the idea note. A question is also needless when its answer could not change the note's plan, results, action card or riskiest guess. The skill drafts some items and shows them in a playback with where each came from. A drafted item is supported only when the source it names, in the user's own words, says the same thing or leads to it with no new fact, number, time, rule or choice. These follow from the user's words and are not invented: a test time box equal to the appetite the user gave, the Size line picked from that appetite (the skill states it in the chat), \"none named\" for limits the user did not mention, and Mermaid quadrant coordinates that follow the fixed mapping from the matters and evidence labels.",
+  "checks": {
+    "action_card_complete": "true if the note has Result I want, What I need, Done when, First action and When I start, all filled for one Now result.",
+    "first_action_small": "true if the first action is one physical step under about 10 minutes.",
+    "done_when_checkable": "true if Done when is something the user can see or check.",
+    "split_ok": "true if a large idea was split into a few thin results with one in Now, or the idea was small enough not to need a split."
+  },
+  "question_slack": 2,
+  "scenarios": [
+    {
+      "name": "stretch-reminder",
+      "prompt": "I want a tool that reminds me to stretch every hour.\n\nSave the note as ideas/stretch-reminder.md.",
+      "file": "ideas/stretch-reminder.md",
+      "questions": [6, 8],
+      "brief": [
+        "After 2 to 3 hours at the desk my back hurts, because I forget to stand up.",
+        "Only I have this problem.",
+        "Better means: I stand up and stretch at least once every hour of a work day, and my back does not hurt in the evening.",
+        "This idea is worth one evening to me, no more.",
+        "I already have the Reminders app on my Mac. I have never set a repeating reminder.",
+        "What I am least sure about: that I will actually stand up when the reminder shows, instead of clicking it away.",
+        "Limits: none.",
+        "My first step could be to open the Reminders app on my Mac and add a reminder that repeats every hour.",
+        "I can do it today at 17:00 at my desk."
+      ]
+    },
+    {
+      "name": "link-finder",
+      "prompt": "I want an app that saves my links and finds them for me later.\n\nSave the note as ideas/link-finder.md.",
+      "file": "ideas/link-finder.md",
+      "questions": [9, 12],
+      "brief": [
+        "I save about 10 links a week, mostly articles and docs, by pasting them into Apple Notes.",
+        "About once a week I cannot find a link I saved and lose 10 to 20 minutes searching my browser history.",
+        "Only I have this problem.",
+        "Better means: I find a saved link by one word I remember in under a minute.",
+        "I have never tried to find a link in Apple Notes by a word. I do not know if that works.",
+        "Other ways I could do it: keep pasting into Apple Notes, or use browser bookmarks with tags.",
+        "Limits: free tools only, and work links must not go to any cloud other than iCloud.",
+        "The idea is worth one weekend to me at most before I decide again.",
+        "I can start tonight at 21:00 at my desk.",
+        "I do not know how many of my saved links have a description."
+      ]
+    },
+    {
+      "name": "release-notes",
+      "prompt": "Here is everything I know about my idea already:\n\nIdea: a script that drafts our release notes from merged PRs. It should also post the notes to Slack, update CHANGELOG.md, tag the release and email our customers.\nProblem: every second Friday I spend about 2 hours reading merged PRs in GitHub and writing the release notes by hand in a Google Doc.\nWho has it: me. I am the only one who writes release notes for our CLI.\nBetter when: it should just be faster and better.\nOptions I see: write the script, keep doing it by hand, or use GitHub's auto-generated release notes.\nLimits: no PR text may leave our GitHub org, so no external AI services.\n\nSave the note as ideas/release-notes.md.",
+      "file": "ideas/release-notes.md",
+      "questions": [12, 16],
+      "brief": [
+        "Everything in my first message is true.",
+        "Faster means: under 20 minutes instead of about 2 hours.",
+        "Better means: no missed breaking changes. The last release missed one and a customer complained.",
+        "I will see it by timing the next two releases.",
+        "Most PR titles follow conventional commits, but I do not know the exact share.",
+        "I have never tried GitHub's auto-generated release notes on our repo.",
+        "Slack, CHANGELOG, tags and customer emails can wait. The notes draft matters most.",
+        "The idea is worth two weekends to me.",
+        "My first step could be to open the list of PRs merged since the last release on GitHub.",
+        "I can start on Friday at 10:00."
+      ]
+    },
+    {
+      "name": "on-call",
+      "prompt": "I want our on-call to suck less.\n\nSave the note as ideas/on-call.md.",
+      "file": "ideas/on-call.md",
+      "questions": [12, 16],
+      "brief": [
+        "Our team is 4 SREs. Each of us is on call one week in four.",
+        "An on-call week has about 30 pages. My feeling is that about 70% are disk alerts on 3 hosts that fix themselves, but I have never measured it.",
+        "Last month two people on the team said they were exhausted after their on-call week.",
+        "Better means: under 10 pages a week, and nobody is woken up at night for an alert that fixes itself.",
+        "Options: tune the alerts, add automatic fixes, hire one more person, or change nothing.",
+        "Limit: we must not hide real incidents.",
+        "PagerDuty can export last month's pages as a CSV file.",
+        "My first step could be to export last month's pages from PagerDuty.",
+        "I can do it on Monday at 9:30.",
+        "I do not know how many pages happen at night."
+      ]
+    }
+  ],
+  "sequences": [
+    {
+      "name": "note-place",
+      "requests": [
+        "I want a tool that reminds me to stretch every hour.",
+        "Change where my idea notes go: keep them in {workspace}/vault/Ideas from now on.",
+        "I want to start a small podcast about Go performance."
+      ],
+      "expect": [
+        {
+          "after": 1,
+          "glob": "{data}/sai/smallsteps/ideas/*.md"
+        },
+        {
+          "after": 2,
+          "file": "{data}/sai/smallsteps/notes-dir",
+          "equals": "{workspace}/vault/Ideas"
+        },
+        {
+          "after": 3,
+          "glob": "{workspace}/vault/Ideas/*.md"
+        },
+        {
+          "after": 3,
+          "glob": "{workspace}/*.md",
+          "min": 0,
+          "max": 0
+        },
+        {
+          "after": 3,
+          "glob": "{workspace}/ideas/**/*.md",
+          "min": 0,
+          "max": 0
+        }
+      ]
+    }
+  ]
+}

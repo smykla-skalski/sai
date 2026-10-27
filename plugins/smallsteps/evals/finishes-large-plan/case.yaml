@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: finishes-large-plan
+expected_outcome: |
+  The placed note for a large idea has every item confirmed except the first
+  action. The user answers it and asks for a Miro board. The skill fills the
+  action card (First action and When I start), keeps exactly one result in Now,
+  keeps "unknown" where the user said unknown, and adds Mermaid maps (an
+  assumption quadrant chart and a Now/Next/Later flowchart). No Miro tools are
+  connected, so it says so, gives the Miro setup line and claims no board URL.
+  The reply shows one next action, its Done when and the note path, and does not
+  list the Next and Later results. It invents no numbers.
+context:
+  scaffold_script: place-files.sh

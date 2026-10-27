@@ -1,0 +1,180 @@
+{
+  "files": {
+    "ideas/link-finder.md": "# Link finder\n\nStep 3 of 4 | Next action: Open the notes app | Updated: 2026-10-20\n\n## 1. What I want to change\n\nRaw idea: I want to build an app that saves links, finds them by topic and adds links automatically.\nProblem: I cannot find a useful link when I need it.\nWho has it: me.\nBetter when: I find a saved link by a word I remember in under a minute.\nLimits: none\nOptions:\n1. An app that saves and finds links\n2. The way I work now: I paste links into my notes app.\n3. Do nothing or wait: I keep searching my browser history.\n\n## 2. What must be true\n\n| Claim | Fact, guess or unknown | Source or test | Matters | Evidence |\n| :-- | :-- | :-- | :-- | :-- |\n| My notes app cannot find a saved link by a word I remember | guess | the search test below | a lot | none |\n\nRiskiest guess: My notes app cannot find a saved link by a word I remember\n\n## 3. What I can do now\n\nAppetite: one weekend at most before I decide again\nSize: medium, because it is worth up to a weekend\n\n| Result | Needs first | Place |\n| :-- | :-- | :-- |\n| Know if my notes app can find one saved link | a link and my notes app | Now |\n| A way to find a link by a word I remember | a saved link | Next |\n| Save links automatically | the earlier results show a need | Later |\n\n### Action card\n\nResult I want: Know if my notes app can find one saved link\nWhat I need: a link and my notes app\nDone when: I save the link, search for it and record what happens\nFirst action: Open the notes app\nWhen I start: When I sit at my desk tonight, I will open the notes app.\n\n### Test\n\nGuess: my notes app cannot find a saved link by a word I remember\nTime box: 15 minutes\nIf right, I expect: the search does not find the link\nIf wrong, I expect: the search finds the link\nThen: if the search finds the link, I will test another link before I decide to build. If it does not, I will check why or try another way.\n\n## 4. What I learned\n\n| Date | What I did | What happened | Done | As expected | Decision |\n| :-- | :-- | :-- | :-- | :-- | :-- |\n\n## Open questions\n\n## Map\n\nMiro board: none\n",
+    "ideas/spending-tracker.md": "# Spending tracker\n\nStep 3 of 4 | Next action: answer \"First action and When I start\" | Updated: 2026-10-27\n\n## 1. What I want to change\n\nRaw idea: an app that tracks my spending and warns me before I overspend\nProblem: at the end of most months I have less money left than I expected and I do not know where it went.\nWho has it: me.\nBetter when: I know each month how much I spent in each category, and I stay under the limit I set.\nLimits: my bank login stays only with me. Cost: free tools only.\nOptions:\n1. A spending app with warnings\n2. The way I work now: I check my bank balance now and then.\n3. Do nothing or wait: the end-of-month surprise goes on.\n\n## 2. What must be true\n\n| Claim | Fact, guess or unknown | Source or test | Matters | Evidence |\n| :-- | :-- | :-- | :-- | :-- |\n| My bank can export transactions as CSV | fact | bank help page | a lot | strong |\n| I will look at my spending every week | guess | try it for 4 weeks | a lot | none |\n| How much I overspend each month | unknown | last month's export | a lot | none |\n\nRiskiest guess: I will look at my spending every week\n\n## 3. What I can do now\n\nAppetite: two evenings a week for a month\nSize: large, because it is worth more than a weekend\n\n| Result | Needs first | Place |\n| :-- | :-- | :-- |\n| Know where my money went last month | the CSV export | Now |\n| Set a monthly limit per category | last month's totals | Next |\n| A weekly check of my spending | the limits | Next |\n| Automatic import from the bank | a working sheet | Later |\n| A phone app with warnings | the automatic import | Later |\n\n### Action card\n\nResult I want: Know where my money went last month\nWhat I need: my bank's CSV export and a spreadsheet\nDone when: I see the total per category for last month\nFirst action:\nWhen I start:\n\n## 4. What I learned\n\n| Date | What I did | What happened | Done | As expected | Decision |\n| :-- | :-- | :-- | :-- | :-- | :-- |\n\n## Open questions\n\n- First action and When I start for the Now result\n\n## Map\n\nMiro board: none\n"
+  },
+  "queries": [
+    {
+      "query": "I have a rough idea for a tool that reminds me to drink water while I code, help me figure out where to start",
+      "should_trigger": true
+    },
+    {
+      "query": "help me turn this idea into small steps: a CLI that backs up my dotfiles to a private repo",
+      "should_trigger": true
+    },
+    {
+      "query": "I'm stuck on my side project idea, a recipe app for my family. what should my first step be?",
+      "should_trigger": true
+    },
+    {
+      "query": "I keep thinking about building a home lab dashboard but I don't know how to begin. can you ask me questions until we have a plan?",
+      "should_trigger": true
+    },
+    {
+      "query": "interview me about my idea for a personal finance tracker and break it into small actions",
+      "should_trigger": true
+    },
+    {
+      "query": "I have this big vague idea about automating my weekly status report. walk me through it and give me one next action",
+      "should_trigger": true
+    },
+    {
+      "query": "turn my idea into a plan with now, next and later: an Obsidian plugin that links meeting notes to tasks",
+      "should_trigger": true
+    },
+    {
+      "query": "what's the next step on ideas/link-finder.md? I ran the search test and it found the link",
+      "should_trigger": true
+    },
+    {
+      "query": "resume my idea note ideas/spending-tracker.md, I'm ready to pick the first action",
+      "should_trigger": true
+    },
+    {
+      "query": "I want to start a newsletter about Go performance but it feels huge. help me split it into small results I can actually do",
+      "should_trigger": true
+    },
+    {
+      "query": "here's a brain dump of an idea I had in the shower: a site where people swap houseplants, maybe with maps, chat, ratings, I don't know. ask me what you need and get me to a first step",
+      "should_trigger": true
+    },
+    {
+      "query": "can you help me clarify this idea before I build anything? I want an app that tracks which PRs wait too long for review",
+      "should_trigger": true
+    },
+    {
+      "query": "every idea I have turns into a giant plan I never start. help me find one small thing to do today for my idea of learning Rust by building a tiny game",
+      "should_trigger": true
+    },
+    {
+      "query": "map out what must be true for my idea to work: selling my Lightroom presets online",
+      "should_trigger": true
+    },
+    {
+      "query": "help me plan my side project idea step by step, but ask me questions first",
+      "should_trigger": true
+    },
+    {
+      "query": "I'm not sure my idea is worth doing: a Slack bot that summarizes long threads. help me figure out what to check first",
+      "should_trigger": true
+    },
+    {
+      "query": "put my spending tracker idea from ideas/spending-tracker.md on a Miro board",
+      "should_trigger": true
+    },
+    {
+      "query": "break this idea into small pieces and tell me the first action: moving my blog from Hugo to Astro",
+      "should_trigger": true
+    },
+    {
+      "query": "I want to change how I deal with my email backlog. help me think it through and land on a concrete next step",
+      "should_trigger": true
+    },
+    {
+      "query": "help me go from idea to action on a weekend project: a Raspberry Pi weather station",
+      "should_trigger": true
+    },
+    {
+      "query": "where do I even start with my idea of open-sourcing our internal deploy tool?",
+      "should_trigger": true
+    },
+    {
+      "query": "what must be true for this idea to work, and what can I do now? the idea: running Kubernetes office hours for other teams",
+      "should_trigger": true
+    },
+    {
+      "query": "write a design doc for moving our search to Postgres full-text search",
+      "should_trigger": false
+    },
+    {
+      "query": "is docs/architecture.md overengineered for a team of two?",
+      "should_trigger": false
+    },
+    {
+      "query": "file a GitHub issue for the flaky login test",
+      "should_trigger": false
+    },
+    {
+      "query": "split issue #123 into smaller issues that a coding agent can implement",
+      "should_trigger": false
+    },
+    {
+      "query": "review my implementation plan before I start coding",
+      "should_trigger": false
+    },
+    {
+      "query": "implement issue #45 and open a PR",
+      "should_trigger": false
+    },
+    {
+      "query": "rewrite this paragraph so it sounds less like AI: We leverage cutting-edge synergies to empower teams.",
+      "should_trigger": false
+    },
+    {
+      "query": "draw an architecture diagram of our services in mermaid",
+      "should_trigger": false
+    },
+    {
+      "query": "brainstorm 20 names for my new CLI tool",
+      "should_trigger": false
+    },
+    {
+      "query": "summarize this youtube video https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "should_trigger": false
+    },
+    {
+      "query": "write unit tests for the config parser",
+      "should_trigger": false
+    },
+    {
+      "query": "create a gantt chart for the Q3 roadmap",
+      "should_trigger": false
+    },
+    {
+      "query": "fix the failing CI on my branch",
+      "should_trigger": false
+    },
+    {
+      "query": "explain how OKRs work",
+      "should_trigger": false
+    },
+    {
+      "query": "what's the difference between impact mapping and story mapping?",
+      "should_trigger": false
+    },
+    {
+      "query": "convert this Miro board export to markdown",
+      "should_trigger": false
+    },
+    {
+      "query": "write a commit message for these changes",
+      "should_trigger": false
+    },
+    {
+      "query": "make a two-week sprint plan for my team of 6 from these Jira tickets",
+      "should_trigger": false
+    },
+    {
+      "query": "review this PR for bugs",
+      "should_trigger": false
+    },
+    {
+      "query": "translate my notes from Polish to English",
+      "should_trigger": false
+    },
+    {
+      "query": "set up a local Kubernetes cluster with kind",
+      "should_trigger": false
+    }
+  ]
+}

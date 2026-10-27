@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: short-path-drafts-the-card
+expected_outcome: |
+  A small idea is on the short path: the appetite is one evening, and the
+  problem, the wanted change, the riskiest guess and what the user will do if
+  it is wrong are confirmed. The user
+  answers the last open question with the first action and when it starts.
+  The skill does not ask for the remaining fields one by one. It drafts them
+  from the user's words and marks them (suggested): the way the user works
+  now, doing nothing, the Now result, What I need, Done when, and a test of
+  the riskiest guess. It writes the first action and When I start as given,
+  and asks exactly one question: a playback of the drafted items with "Is
+  this right?". It invents no numbers or facts, and it writes no decision for a
+  right guess, because the user gave none and a small idea does not ask for it.
+context:
+  scaffold_script: place-files.sh
