@@ -228,6 +228,17 @@
       "tags": ["github", "jira", "issues", "pull-request", "ci", "copilot", "automation", "shipping"]
     },
     {
+      "name": "explainer-video",
+      "source": "./plugins/explainer-video",
+      "description": "Make 3Blue1Brown-style explainer videos: Manim animations narrated with ElevenLabs, from a topic to a checked 1080p60 MP4",
+      "author": {
+        "name": "Smykla Skalski Labs"
+      },
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["video", "manim", "3blue1brown", "explainer", "animation", "elevenlabs", "narration"]
+    },
+    {
       "name": "rightsize",
       "source": "./plugins/rightsize",
       "description": "Audit work for overbuilt or oversimplified design, and write or rewrite design docs, decision records, pitches and plans that pass the simplicity rules",

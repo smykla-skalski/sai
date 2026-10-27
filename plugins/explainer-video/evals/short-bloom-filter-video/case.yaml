@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: short-bloom-filter-video
+expected_outcome: |
+  A narrated 3b1b-style MP4 of about one minute (1920x1080, 60 fps) that explains bloom filters
+  (bit array, several hash functions, "maybe present" versus "definitely absent", false positives).
+  The key is read from eleven.key without being printed. The audio check of the final build
+  passes, the clips were transcribed and judged, every scene's frames were reviewed, and the report
+  says what was verified and that the agent cannot listen to audio. The installed skill is not
+  edited; a defect found in it becomes an issue draft in the project.
+context:
+  scaffold_script: place-files.sh

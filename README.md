@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `agent-issues`, `ai-daily-digest`, `council`, `generate-agents-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-agents-md`, `rightsize`, `service-mesh-debug`, `ship-it`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `agent-issues`, `ai-daily-digest`, `council`, `explainer-video`, `generate-agents-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-agents-md`, `rightsize`, `service-mesh-debug`, `ship-it`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
@@ -17,6 +17,7 @@ Repository layout:
 | **ai-daily-digest**     | Daily AI news digest covering technical advances, business news, and engineering impact | `plugins/ai-daily-digest/`    |
 | **council**             | Run a council review when explicitly requested, through 27 sourced engineering and UX reviewer agents (antirez, tef, Muratori, Hebert, Meadows, Chin, Norman, Nielsen, Krug, Watson, Tognazzini, Tufte, etc.), and synthesize convergence, disagreement, and concrete next moves | `plugins/council/`            |
 | **service-mesh-debug**  | Diagnose and fix flaky e2e tests and connectivity issues in service mesh environments (Kuma, Istio, Linkerd, Consul) | `plugins/service-mesh-debug/` |
+| **explainer-video**     | Make 3Blue1Brown-style explainer videos: Manim animations narrated with ElevenLabs, from a topic to a checked 1080p60 MP4 | `plugins/explainer-video/` |
 | **generate-agents-md**  | Generate a lean, high-signal CLAUDE.md from codebase analysis (built to pass review-agents-md) | `plugins/generate-agents-md/` |
 | **gh-review-comments**  | List, reply to, resolve, and create GitHub PR review comment threads                    | `plugins/gh-review-comments/`  |
 | **git-clean-gone**      | Clean up local branches with deleted remote tracking and their worktrees               | `plugins/git-clean-gone/`     |
@@ -48,6 +49,7 @@ Codex skills:
 | **council**            | Persona reviewer councils run one reviewer at a time on Codex, with strict bounded-input and output rules (same portable package as Claude Code) | `plugins/council/skills/council/` |
 | **refactor-council**   | Refactoring review through 7 personas + adversary; sequential by default on Codex for reliable execution (same portable package as Claude Code) | `plugins/refactor-council/skills/refactor-council/` |
 | **review-agents-md**   | Audit and fix CLAUDE.md files against a tiered checklist; steps run inline (same portable package as Claude Code) | `plugins/review-agents-md/skills/review-agents-md/` |
+| **explainer-video**    | Make narrated 3b1b-style Manim explainer videos (same portable package as Claude Code) | `plugins/explainer-video/skills/explainer-video/` |
 | **generate-agents-md** | Generate a lean CLAUDE.md from codebase analysis (same portable package as Claude Code) | `plugins/generate-agents-md/skills/generate-agents-md/` |
 | **gh-review-comments** | Manage GitHub PR review threads with bundled gh CLI scripts (same portable package as Claude Code) | `plugins/gh-review-comments/skills/gh-review-comments/` |
 | **git-clean-gone**     | Clean up stale local branches and worktrees; explicit invocation only (same portable package as Claude Code) | `plugins/git-clean-gone/skills/git-clean-gone/` |
@@ -89,6 +91,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install ai-daily-digest@sai
 /plugin install council@sai
 /plugin install service-mesh-debug@sai
+/plugin install explainer-video@sai
 /plugin install generate-agents-md@sai
 /plugin install gh-review-comments@sai
 /plugin install git-clean-gone@sai
@@ -125,6 +128,7 @@ claude --plugin-dir /path/to/sai/plugins/agent-issues
 claude --plugin-dir /path/to/sai/plugins/ai-daily-digest
 claude --plugin-dir /path/to/sai/plugins/council
 claude --plugin-dir /path/to/sai/plugins/service-mesh-debug
+claude --plugin-dir /path/to/sai/plugins/explainer-video
 claude --plugin-dir /path/to/sai/plugins/generate-agents-md
 claude --plugin-dir /path/to/sai/plugins/gh-review-comments
 claude --plugin-dir /path/to/sai/plugins/git-clean-gone
@@ -160,6 +164,7 @@ ln -s /path/to/sai/plugins/adversarial-test/skills/adversarial-test ~/.config/op
 ln -s /path/to/sai/plugins/agent-issues/skills/agent-issues ~/.config/opencode/skills/agent-issues
 ln -s /path/to/sai/plugins/ai-daily-digest/skills/ai-daily-digest ~/.config/opencode/skills/ai-daily-digest
 ln -s /path/to/sai/plugins/council/skills/council ~/.config/opencode/skills/council
+ln -s /path/to/sai/plugins/explainer-video/skills/explainer-video ~/.config/opencode/skills/explainer-video
 ln -s /path/to/sai/plugins/generate-agents-md/skills/generate-agents-md ~/.config/opencode/skills/generate-agents-md
 ln -s /path/to/sai/plugins/gh-review-comments/skills/gh-review-comments ~/.config/opencode/skills/gh-review-comments
 ln -s /path/to/sai/plugins/git-clean-gone/skills/git-clean-gone ~/.config/opencode/skills/git-clean-gone
@@ -311,6 +316,14 @@ Refactoring review through seven sourced refactoring-and-architecture persona ag
 **Usage**: `/refactor-council <path|@file|directory> [--no-scan] [--no-adversary] [--since 12.month] [--personas a,b,c]` (Codex: `$refactor-council`)
 
 [Full documentation ->](./plugins/refactor-council/README.md)
+
+### explainer-video
+
+Make 3Blue1Brown-style explainer videos: Manim animations on black with CMU Serif text, narrated with ElevenLabs text-to-speech. The agent writes and voices the narration, animates each beat on the spoken words, and builds one 1080p60 MP4 after it has checked every clip, the soundtrack against the picture, and every frame on contact sheets. A defect found in the skill becomes a GitHub issue draft for this repository. Needs ffmpeg, uv and an ElevenLabs API key.
+
+**Usage**: `/explainer-video <topic or request>` (Codex: `$explainer-video`). One package for Claude Code, Codex, Copilot CLI and opencode.
+
+[Full documentation ->](./plugins/explainer-video/README.md)
 
 ### generate-agents-md
 
