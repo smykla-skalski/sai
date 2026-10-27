@@ -178,6 +178,13 @@ T: Final = serif
 M: Final = mono
 
 
+def stacked(
+    *lines: str, size: float = 36, color: ParsableManimColor = WHITE, buff: float = 0.2
+) -> VGroup:
+    r"""Return centered lines of text: Text with "\n" aligns its lines left."""
+    return VGroup(*[serif(s, size, color) for s in lines]).arrange(DOWN, buff=buff)
+
+
 def _hex_colors(
     t2c: Mapping[str, ParsableManimColor] | None,
 ) -> dict[str, str] | None:
@@ -434,7 +441,7 @@ def box(
     color: ParsableManimColor = BLUE,
     size: float = 30,
 ) -> VGroup:
-    """Return a tinted rounded box with a centered label."""
+    r"""Return a tinted rounded box with a centered label; "\n" gives centered lines."""
     r = RoundedRectangle(
         corner_radius=0.15,
         width=w,
@@ -443,7 +450,11 @@ def box(
         fill_color=color,
         fill_opacity=0.15,
     )
-    return VGroup(r, serif(label, size).move_to(r))
+    if "\n" in label:
+        text: VGroup | Text = stacked(*label.split("\n"), size=size, buff=0.12)
+    else:
+        text = serif(label, size)
+    return VGroup(r, text.move_to(r))
 
 
 def heat(v: float) -> ManimColor:
