@@ -9,6 +9,7 @@ Read [manim-pitfalls.md](manim-pitfalls.md) too: several Manim behaviors leave s
 | Helper | Draws |
 | :-- | :-- |
 | `T`, `M` | CMU Serif text and CMU Typewriter text (code, URLs, tokens); they take Text's options, and `t2c=` colors substrings |
+| `stacked` | Centered lines of text; `box()` centers a label with `"\n"` the same way |
 | `sub`, `sup` | Subscripts and superscripts, which CMU Serif lacks |
 | `tick`, `cross` | Drawn check mark and cross (no ✓ ✗ glyphs) |
 | `person`, `window`, `server`, `database` | A figure, a browser window, a rack, a cylinder |
@@ -52,6 +53,10 @@ grep TIMELINE media/<Scene>.log        # each clip's start time inside that scen
 ffmpeg -ss <t> -i media/videos/video/1080p60/<Scene>.mp4 -frames:v 1 f.png
 ```
 
+## Checking the story
+
+After the layout, check the story. List every fact that the video states on screen or in the voice: numbers, names, answers (`grep -n '[0-9]' video.py` and the number words in `script.py` find most of them). Each fact must be the same in every scene, and the recap must give the same answer as the scene it calls back to. When a scene shows a change (a document update, a new version), change a fact that no other scene repeats: in the RAG video a policy changed from 30 to 45 days, and the recap right after it still said 30. The layout review did not find it.
+
 ## Worked examples
 
 Each pair in `examples/` is a finished video: copy `<topic>_script.py` and `<topic>_video.py` into a project as script.py and video.py to render it. Read the matching scene for a visual recipe.
@@ -59,3 +64,4 @@ Each pair in `examples/` is a finished video: copy `<topic>_script.py` and `<top
 - `examples/embeddings_video.py` is a complete 6-minute video (embeddings and reranking) with recipes for: words as points on a plane, a column vector with a brace, rotating vectors with a live cosine readout, tokens through a model and mean pooling, contrastive pull/push, chunking and a vector index, a kNN graph with a greedy ANN walk, a ranked table that re-sorts, bi- versus cross-encoder diagrams, attention lines between token rows, an exponential counter, and a funnel..
 - `examples/oidc_video.py` is a 5.5-minute video on OpenID Connect, built on explainer.py, with recipes for: a browser mock with a cursor click, a three-party trust diagram, an analogy that morphs into the real parts (passport to ID token), a protocol triangle with messages that travel the front and back channels, a URL whose parameters light up as they are named, a JWT split into colored parts and decoded into a JSON panel with side labels, toy RSA signing and verification with superscripts, a checklist ticked on cue, a replay attack rejected, a timeline of two logins, and a recap chain of boxes.
 - `examples/webtransport_video.py` is a 5-minute video on WebTransport, built on explainer.py, with recipes for: packets that stream along lanes with `flow` (continuous, with one packet lost and the lane stopped), numbered packets that queue in a buffer (head-of-line blocking), a protocol stack that is rebuilt layer by layer, two round-trip ladder diagrams side by side with message names along the arrows, an HTTP request panel whose fields light up, datagrams that overtake each other, a firewall that stops UDP, and a code panel lit line by line with `lit`.
+- `examples/rag_video.py` is a 6-minute video on retrieval augmented generation, built on explainer.py, with recipes for: a chat window with bubbles, a header that marks the active half of a pipeline, a document cut into chunks, overlapping chunk spans over one sentence (`part()`), a vector index that the dots fly into, a rotating vector with a live cosine readout and a worked dot product, a prompt assembled from source cards with lines lit on cue, ranked lists joined and merged, a re-sort that keeps the rank numbers in place, live bars driven by a slider, and a recap pipeline in a U shape.

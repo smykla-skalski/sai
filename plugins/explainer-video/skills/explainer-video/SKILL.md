@@ -74,7 +74,7 @@ QUALITY=l ./build.py        # <folder>-480p15.mp4, ends with the audio check
 ./sheets.py 480p15          # media/sheets/<Scene>-<n>.png: 4x4 frames, one sheet per 40 s
 ```
 
-Open and read every sheet; running sheets.py is not a review. Look for text cut at the frame edges, overlapping labels, leftovers after a fade, labels under dots or lines, empty frames, and `LATE` lines from build.py. Check each highlighted word at full size (see animation.md). Fix and repeat until the sheets are clean.
+Open and read every sheet; running sheets.py is not a review. Look for text cut at the frame edges, overlapping labels, leftovers after a fade, labels under dots or lines, empty frames, and `LATE` lines from build.py. Check each highlighted word at full size, then check that every fact is the same in all scenes and in the recap (both in animation.md). Fix and repeat until the sheets are clean.
 
 ## 7. Final render
 
