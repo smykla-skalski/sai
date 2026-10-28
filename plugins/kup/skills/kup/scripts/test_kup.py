@@ -19,7 +19,7 @@ import secrets
 import stat
 import sys
 import tempfile
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -222,7 +222,7 @@ def test_descriptions_and_history() -> None:
 def test_token_cache() -> None:
     class Creds:
         token = secrets.token_urlsafe()
-        expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=50)
+        expiry = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=50)
 
     with (
         tempfile.TemporaryDirectory() as tmp,
@@ -238,9 +238,7 @@ def test_token_cache() -> None:
         assert creds.token == Creds.token
         assert creds.valid
         assert kup.cached_token("acct/vault/other") is None
-        Creds.expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(
-            minutes=5
-        )
+        Creds.expiry = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=5)
         kup.cache_token("acct/vault/item", Creds())
         assert kup.cached_token("acct/vault/item") is None
         kup.TOKEN_CACHE.write_text("{not json")

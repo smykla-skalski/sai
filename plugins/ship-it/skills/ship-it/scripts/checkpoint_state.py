@@ -152,7 +152,7 @@ def utc_timestamp(value: object, field: str) -> str:
         f"{field} must be an RFC 3339 UTC timestamp",
     )
     try:
-        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(text)
     except ValueError as error:
         message = f"{field} must be an RFC 3339 UTC timestamp"
         raise StateError(message) from error

@@ -167,7 +167,7 @@ def classify_and_remember(
             if not isinstance(timestamp, str):
                 message = "review submitted timestamp must be an ISO datetime"
                 raise ValueError(message)
-            submitted = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            submitted = datetime.fromisoformat(timestamp)
             if submitted.tzinfo is None:
                 message = "review submitted timestamp requires a timezone"
                 raise ValueError(message)

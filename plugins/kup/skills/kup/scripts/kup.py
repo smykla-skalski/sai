@@ -39,14 +39,14 @@ import re
 import subprocess
 import sys
 import time
+import tomllib
 from collections import Counter
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 import gspread
-import tomllib
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials as OAuthCredentials
 from google.oauth2.service_account import Credentials as ServiceAccountCredentials
@@ -171,7 +171,7 @@ def cached_token(source: str) -> OAuthCredentials | None:
         if (
             cached["source"] != source
             or cached["scopes"] != SCOPES
-            or expiry - datetime.now(timezone.utc) < TOKEN_MARGIN
+            or expiry - datetime.now(UTC) < TOKEN_MARGIN
         ):
             return None
         return OAuthCredentials(
@@ -194,7 +194,7 @@ def cache_token(source: str, creds: ServiceAccountCredentials) -> None:
                 "source": source,
                 "scopes": SCOPES,
                 "token": creds.token,
-                "expiry": creds.expiry.replace(tzinfo=timezone.utc).isoformat(),
+                "expiry": creds.expiry.replace(tzinfo=UTC).isoformat(),
             },
             f,
         )
@@ -266,7 +266,7 @@ def months_between(start: date, end: date) -> int:
 
 def _parse_date(value: str, fmt: str) -> date | None:
     try:
-        return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc).date()
+        return datetime.strptime(value, fmt).replace(tzinfo=UTC).date()
     except ValueError:
         return None
 
