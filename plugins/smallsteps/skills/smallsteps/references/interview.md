@@ -22,13 +22,13 @@ At every size, draft before you ask:
 4. Before each playback, check every draft against the user's words. Remove each number, duration, date, name or step that they did not say, or write "unknown" in its place.
 5. In the playback, list the user's own answers first. Then list the drafts under "Drafted from your words", each with its source: the user's words it came from in quotes, or "your appetite" or "your plan" for a draft built from those. A new detail then stands out before the user says "Yes". One playback is one question that covers all its items; never split it into parts. When the user corrects an item, apply the change and say so in one line, without a new playback, unless the change alters another draft.
 6. Medium and Large also ask the user to split the idea into results and to pick the Now result, unless the user's words already name the result that comes first. List the other results under Next in the order the user named them, without ranking them, and move a result to Later only when the user says so. Confirm the list in the playback. Large also uses the assumption map when there are several guesses.
-7. Small keeps the note small: `## Assumptions` holds only the main uncertainty, with no ratings, and the plan holds only the Now result unless the user names more results.
+7. Small keeps the note small: the process holds only the main uncertainty, with no other guesses and no ratings, and only the Now result unless the user names more results.
 8. Check precision only for the words that a Done when, a test or the wanted change depends on.
 9. A draft stays `(suggested)` until a playback confirms it. The question counts are targets, not limits: ask more when precision needs it, and never invent to stay under them.
 
 ## How to choose the next question
 
-1. Read all the context first: the idea text, pasted text, files and linked notes. Put what it says into the note marked `(suggested)`.
+1. Read all the context first: the idea text, pasted text, files and linked notes. Put what it says into the note marked `(suggested)`: what it says about the idea itself into the shape sections, the rest into `## Process`.
 2. Keep a list of the open items of the current step. An item is open when it is missing, vague, `(suggested)` or in conflict with another item.
 3. Ask about the open item whose answer would most change the note: the Now result, its Done when, the first action, the riskiest guess or the split. Prefer the item the user is least sure about.
 4. Skip an item whose answer would change nothing in the note. Never ask about an item that is already confirmed, marked "unknown" or `open`, or answered in the user's words.
@@ -38,7 +38,8 @@ At every size, draft before you ask:
 
 ## Scope and suggestions
 
-- Keep to the Now result. When the talk turns to a Next or Later result or its design, such as how to take payments while the Now result explores a contract format, write those details in one line under that result or in its linked note, say so in one line, and go back to the Now result.
+- Write what the user says about the idea itself into the shape sections at once, also when it goes beyond the Now result. Ask no extra questions about the shape.
+- Keep the process on the Now result. When the talk turns to how to build a Next or Later result, such as how to take payments while the Now result explores a contract format, write it in one line next to that result, say so in one line, and go back to the Now result.
 - Treat a system that the idea plans to build as not built. Write that something exists only when the user says so. No action, check or Done when of the Now result may need a planned system, such as running a checker that nobody has written yet: review by hand instead, or make building it a later result.
 - Keep each Next item, Later item and open question to one line. Put the rest in a linked note.
 - When the user asks for a suggestion, such as "what should I do next?", propose one small action under 10 minutes, say in one line what it is for, mark it `(suggested)`, and ask whether it is right.
@@ -140,7 +141,7 @@ Ask the user to pick the Now result. Suggest one, but let them choose. Place the
 - Next: up to 5 results, in order.
 - Later: the rest.
 
-The Now result always gets an action card under `## Now`: Result, Need, Done when, First action (one physical step under 10 minutes) and Start (a time or place, never "now" or "soon"). In the reply, say it as "When <start>, I will <first action>": that if-then form is what makes the plan work.
+The Now result always gets an action card in `## Process`: Now, Need, Done when and Next action. The next action is one physical step under 10 minutes, with a time or place to start, never "now" or "soon", always in the form "When <time or place>, I will <step>": that if-then form is what makes the plan work.
 
 When a guess must be checked before more work, the Now result is that test, and it also gets a test: the guess, how long the test may take within the appetite, what the user expects if it is right, what they expect if it is wrong, and what they will do after each result, all set before the test. Draft its time box and expectations from the user's words, as "Size the interview" says, ask for the decisions that the size asks, and confirm the test in the playback.
 
@@ -148,7 +149,7 @@ Required items: the appetite, the results and their places, what each needs firs
 
 ### 4. What did I learn?
 
-This step runs when the user comes back. Show the Now result, the next action and any open question that blocks it, and ask "Done, not done, or stuck?". In `## What we learned`, set the status, and record what the check showed and what it did not prove, or "not run" if the user did not run it. Record the status apart from whether it matched the expectation: an action can be done even when it did not bring the wanted change. Apply the decision the user set before the test: continue, change the idea, test again or stop. When the decision is `open`, ask for it now that the result is in. Then ask for the next action. When the Now result is finished, ask which result moves to Now, with the Next results as the answers in their order, and then ask for its action card.
+This step runs when the user comes back. Show the Now result, the next action and any open question that blocks it, and ask "Done, not done, or stuck?". In `**Checks:**`, set the status, and record what the check showed and what it did not prove, or "not run" if the user did not run it. Record the status apart from whether it matched the expectation: an action can be done even when it did not bring the wanted change. Apply the decision the user set before the test: continue, change the idea, test again or stop. When the decision is `open`, ask for it now that the result is in. Then ask for the next action. When the Now result is finished, ask which result moves to Now, with the Next results as the answers in their order, and then ask for its action card.
 
 Required items: the check or action, its status, what it showed, what it did not prove, the decision or `open`, the next action.
 

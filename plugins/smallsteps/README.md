@@ -7,7 +7,7 @@ Turns a rough idea into small, precise next steps by asking questions. It walks 
 3. What can I do now?
 4. What did I learn?
 
-The result is one short Markdown note per idea: your goal, your guesses, one Now result with its Done when and first action, and short Next and Later lists. A big idea is split into small results that you can finish and review on their own. The note gets a Mermaid map only when one helps, and on request the skill also builds a Miro board.
+The result is one Markdown note per idea. Its top shows the shape of the idea: your goal and the idea's parts, under headings that fit it, such as a contents list, a working example or conventions. Its bottom holds the process: one Now result with its Done when, your guesses, checks, questions and the next action. A big idea is split into small results that you can finish and review on their own. The note gets a Mermaid map only when one helps, and on request the skill also builds a Miro board.
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI, opencode and Kimi Code.
 
@@ -94,22 +94,26 @@ Notes go to `${XDG_DATA_HOME:-~/.local/share}/sai/smallsteps/ideas/` by default.
 
 In Codex's default sandbox, the shared folder is outside the workspace, so Codex asks for approval before it writes the note there. To avoid that, keep the notes in the repository.
 
-The note starts with a status line, such as `Step 3 of 4 | Updated: 2026-10-28`, with the next question added while the interview runs. Then come these sections, each only when it has content:
+The note keeps the step and the date in front matter (`step: 3 of 4`, `updated: 2026-10-28`). The rest has two parts.
 
-| Section | What it holds |
+The top is the idea itself: `## Goal` in a sentence or two, `## Idea` with your raw idea and its current form, and one section for each part of the idea, with a heading that fits it, such as "Contract contents", "Working example" or "Format conventions". When an answer or a check changes the idea, the skill changes these sections in place. They never hold questions, statuses or tests.
+
+The bottom, `## Process`, holds the work:
+
+| Field | What it holds |
 | :-- | :-- |
-| Goal | What gets better and how you will see it, then the problem, appetite, size, limits and your raw idea |
-| Assumptions | The main uncertainty, then each guess, fact or unknown with its evidence |
-| Candidate to test | The idea you want to try, and the other options: the way you work now and doing nothing |
-| Now | Result, Need, Done when, First action and Start, and the test when the result checks a guess |
-| Next and Later | One line per result |
-| What we learned | One line per check or action: planned, done, not done or stuck, what it showed and what it did not prove |
-| Open questions | One line each, with the item it blocks |
-| Links | Linked notes with details, and the Miro board |
+| Now, Done when, Need | The current result, what you will see when it is done, and what you need |
+| Main uncertainty, Guesses, Test | What you are least sure about, the other guesses with their evidence, and the test of the riskiest guess |
+| Checks | One line per check: planned, done, not done or stuck, what it showed and what it did not prove |
+| Questions | Open questions, one line each, with the item each blocks |
+| Next results, Later | One line per result |
+| Next action | "When <time or place>, I will <step>", or the next question while the interview runs |
+| Background | Problem, appetite, size, limits and the other options |
+| Links | Linked notes and the Miro board |
 
-The goal and the Now result are written once each. Details that the plan does not need now, such as research or the design of a later result, go to linked notes. You can rename, move or delete sections: the skill keeps your layout and never puts back what you removed. A check that did not run stays in the note as not done.
+Each fact is written once. You can rename, move or delete sections: the skill keeps your layout and never puts back what you removed. A check that did not run stays in the note as not done.
 
-Only the Now result gets an action card. When you come back, the skill shows the Now result, the first action and any open question that blocks it, and asks "Done, not done, or stuck?". When the Now result is finished, it offers the Next results so you can pick the next one.
+When you come back, the skill shows the Now result, the next action and any question that blocks it, and asks "Done, not done, or stuck?". When the Now result is finished, it offers the Next results so you can pick the next one.
 
 ## Visuals
 

@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: '^(?![\s\S]*\*\*Result:\*\*[\s\S]*\*\*Result:\*\*)[\s\S]*\*\*Result:\*\*[ \t]*[^\s*]'
+pattern: '^(?![\s\S]*\*\*Now:\*\*[\s\S]*\*\*Now:\*\*)[\s\S]*\*\*Now:\*\*[ \t]*[^\s*]'
 target:
   source: file
   path: ideas/spending-tracker.md

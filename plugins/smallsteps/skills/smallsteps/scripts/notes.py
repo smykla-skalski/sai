@@ -43,8 +43,9 @@ SHARED: Final[str] = "shared"
 REPO: Final[str] = "ideas"
 EXIT_OK: Final[int] = 0
 EXIT_INVALID: Final[int] = 2
-# The interview's next question sits in the status line. Notes written before
-# 1.1.0 keep the next action there too; newer notes keep it under "## Now".
+# Notes from 1.2.0 keep the step and date in front matter and end the process
+# with a "Next question" or "Next action" line. Older notes keep them in a
+# status line, and 1.1.0 notes keep the first action in its own line.
 STATUS_LINE: Final[re.Pattern[str]] = re.compile(
     r"^Step (?P<step>\d) of 4(?: \| Next (?:question|action): (?P<next>.*?))?"
     r" \| Updated: (?P<updated>\S+)\s*$",
@@ -53,6 +54,17 @@ STATUS_LINE: Final[re.Pattern[str]] = re.compile(
 FIRST_ACTION_LINE: Final[re.Pattern[str]] = re.compile(
     r"^(?:\*\*)?First action:(?:\*\*)? *(?P<next>.*\S)\s*$", re.MULTILINE
 )
+NEXT_LINE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:\*\*)?Next (?:question|action):(?:\*\*)? *(?P<next>.*\S)\s*$",
+    re.MULTILINE,
+)
+FRONT_MATTER: Final[re.Pattern[str]] = re.compile(
+    r"\A---\n(?P<body>.*?)\n---[ \t]*$", re.DOTALL | re.MULTILINE
+)
+FRONT_FIELD: Final[re.Pattern[str]] = re.compile(
+    r"^(?P<key>step|updated):[ \t]*(?P<value>.*\S)[ \t]*$", re.MULTILINE
+)
+FRONT_STEP: Final[re.Pattern[str]] = re.compile(r"^(?P<step>\d) of 4$")
 
 
 class InvalidPlaceError(ValueError):
@@ -145,18 +157,33 @@ def command_set(raw_place: str, project: Path | None) -> dict[str, object]:
 def note_summary(note: Path) -> dict[str, object]:
     """Return a note's name, path, step, next question or action, and date."""
     text = note.read_text(encoding="utf-8", errors="replace")
-    match = STATUS_LINE.search(text)
-    next_action = match["next"] if match and match["next"] else None
-    if next_action is None:
-        first_action = FIRST_ACTION_LINE.search(text)
-        next_action = first_action["next"] if first_action else None
+    status = STATUS_LINE.search(text)
+    front = front_matter_fields(text)
+    step_match = FRONT_STEP.match(front.get("step", ""))
+    if status:
+        step: int | None = int(status["step"])
+    else:
+        step = int(step_match["step"]) if step_match else None
+    next_action = status["next"] if status and status["next"] else None
+    for pattern in (NEXT_LINE, FIRST_ACTION_LINE):
+        if next_action is None:
+            found = pattern.search(text)
+            next_action = found["next"] if found else None
     return {
         "name": note.stem,
         "path": str(note),
-        "step": int(match["step"]) if match else None,
+        "step": step,
         "next_action": next_action.strip() if next_action else None,
-        "updated": match["updated"] if match else None,
+        "updated": status["updated"] if status else front.get("updated"),
     }
+
+
+def front_matter_fields(text: str) -> dict[str, str]:
+    """Return the step and updated fields of a note's front matter."""
+    block = FRONT_MATTER.search(text)
+    if not block:
+        return {}
+    return {m["key"]: m["value"] for m in FRONT_FIELD.finditer(block["body"])}
 
 
 def command_list(project: Path | None) -> dict[str, object]:

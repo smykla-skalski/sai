@@ -3,7 +3,7 @@ name: finishes-large-plan
 expected_outcome: |
   The placed note for a large idea has every item confirmed except the first
   action. The user answers it and asks for a Miro board. The skill fills the
-  action card (First action and Start), keeps exactly one result in Now,
+  next action ("When ..., I will ..."), keeps exactly one result in Now,
   keeps "unknown" where the user said unknown, and adds Mermaid maps, because
   they help here (an assumption quadrant chart for three rated items and a
   Now/Next/Later flowchart for results that need other results first). No Miro tools are
