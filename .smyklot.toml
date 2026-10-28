@@ -1,0 +1,10 @@
+#:schema https://smyklot.com/schema/repository-panel-v1.json
+
+[panel]
+version = 1
+scope = 'repository'
+
+[panel.settings]
+[panel.sync]
+[panel.sync.files]
+document = '{"merges":[{"path":"CONTRIBUTING.md","strategy":"markdown","sections":[{"action":"after","heading":"### Prerequisites","content":"### SAI Monorepo Structure\n\nFor the SAI project specifically:\n\n- Claude plugins live under `claude/{plugin-name}/` and Codex skills live under `codex/{skill-name}/`\n- Test individual plugins: `claude --plugin-dir claude/{plugin-name}/`\n- Plugin-specific changes modify files in `claude/{plugin-name}/`\n- Monorepo-wide changes modify root files (README.md, CLAUDE.md, etc.)"}]}]}'
