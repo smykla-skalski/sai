@@ -1,9 +1,9 @@
 ---
 type: regex
-pattern: 'Start:(\*\*)?[^\n]*17:00'
+pattern: 'Next action:(\*\*)?[ \t]*When\b[^\n]*17:00'
 target:
   source: file
   path: ideas/stretch-reminder.md
 ---
 
-Start holds the time the user gave
+The next action is in the form "When ..., I will ..." with the time the user gave

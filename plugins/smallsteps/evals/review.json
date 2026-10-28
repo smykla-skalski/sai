@@ -94,9 +94,9 @@
     ],
     "small_first_action": [
       {
-        "ask": "Read the Now result's action card in `file_after`. Is the First action one physical step that takes under 10 minutes, with a Start line (When I start in an older note) that names a time or place?",
+        "ask": "Read the Now result's action card in `file_after`. Is the next action one physical step that takes under 10 minutes, in the form \"When <time or place>, I will <step>\" (or a First action with a start in an older note)?",
         "pass": "Yes.",
-        "fail": "No, the first action is vague, large or not physical, or the Start line is missing."
+        "fail": "No, the first action is vague, large or not physical, or it names no time or place to start."
       },
       {
         "ask": "Could the user start the First action in `file_after` right away without more planning?",

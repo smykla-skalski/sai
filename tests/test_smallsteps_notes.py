@@ -175,6 +175,33 @@ class NotesScriptTest(unittest.TestCase):
         self.assertEqual(notes["planned"]["step"], 3)
         self.assertEqual(notes["planned"]["updated"], "2026-10-28")
 
+    def test_list_reads_front_matter_and_the_process_next_line(self) -> None:
+        folder = self.xdg / "sai" / "smallsteps" / "ideas"
+        folder.mkdir(parents=True)
+        (folder / "asking.md").write_text(
+            "---\nstep: 1 of 4\nupdated: 2026-10-29\n---\n\n## Goal\n\n## Process\n\n"
+            "**Next question:** What happens today when you need a saved link?\n"
+        )
+        (folder / "planned.md").write_text(
+            "---\nstep: 3 of 4\nupdated: 2026-10-30\n---\n\n## Process\n\n"
+            "**Now:** Know if my notes app finds one link\n\n"
+            "**Next action:** When I sit down tonight, I will open the notes app.\n\n"
+            "### Background\n\n**Problem:** step: 9 of 4 is not front matter\n"
+        )
+        _, out = self.run_script("list")
+        notes = {note["name"]: note for note in out["notes"]}
+        self.assertEqual(notes["asking"]["step"], 1)
+        self.assertEqual(
+            notes["asking"]["next_action"],
+            "What happens today when you need a saved link?",
+        )
+        self.assertEqual(notes["planned"]["step"], 3)
+        self.assertEqual(notes["planned"]["updated"], "2026-10-30")
+        self.assertEqual(
+            notes["planned"]["next_action"],
+            "When I sit down tonight, I will open the notes app.",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

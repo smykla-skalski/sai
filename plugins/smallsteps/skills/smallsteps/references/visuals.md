@@ -6,10 +6,10 @@ Maps are optional. Draw a Mermaid map only when it helps or the user asks for on
 
 A map helps when it shows what the text cannot show at a glance:
 
-- the assumption map, when `## Assumptions` has two or more items with Matters and Evidence;
+- the assumption map, when the main uncertainty and `**Guesses:**` hold two or more items with Matters and Evidence;
 - the plan map, when a result needs another result first.
 
-Draw them when the plan is first finished, under `## Map` in the note. After that, redraw only the maps that are still in the note when their step changes, and add a map only when the user asks. A map that the user removed stays out. Use only names and values that are in the note.
+Draw them when the plan is first finished, under `### Map` at the end of `## Process`. After that, redraw only the maps that are still in the note when their step changes, and add a map only when the user asks. A map that the user removed stays out. Use only names and values that are in the note.
 
 Assumption map: the x axis is evidence and the y axis is how much the guess matters, from 0 to 1. Use none = 0.1, weak = 0.5, strong = 0.9, a little = 0.25 and a lot = 0.75. When several guesses share both labels, add 0.05 to x for the second, 0.10 for the third, and so on. The top-left area holds the guesses to test first.
 
@@ -58,7 +58,7 @@ Make one board per idea, only when the user asks ("put it on Miro", "make a boar
 5. Build two frames:
    - "What must be true": a 2x2 with one sticky note per guess, placed as in the assumption map;
    - "Plan": the plan map, with Now, Next and Later as columns and arrows for what each result needs first.
-6. Add the board URL to `## Links` in the note.
+6. Add the board URL to `### Links` in the note.
 7. For a later board request on the same idea, read the board first, then send the redrawn frames as an update. Changes made on the board come into the note only through the interview.
 
 Each board takes about 3 Miro calls. The Miro Free plan allows 100 calls a day.

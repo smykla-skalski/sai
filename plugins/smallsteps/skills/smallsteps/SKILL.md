@@ -19,7 +19,7 @@ Turn a rough idea into precise small actions by asking questions. The method is 
 3. What can I do now?
 4. What did I learn?
 
-The result is one Markdown note per idea: the goal, the guesses, one Now result with its Done when and first action, and short Next and Later lists. A big idea is split into small results. The note gets a Mermaid map only when one helps, and a Miro board on request.
+The result is one Markdown note per idea: the shape of the idea first, then the process: one Now result with its Done when, the guesses, checks, questions and the next action. A big idea is split into small results. The note gets a Mermaid map only when one helps, and a Miro board on request.
 
 Run in this conversation, never in a subagent: only this conversation can ask the user and holds their answers.
 
@@ -47,7 +47,7 @@ If that line is empty or still shows the literal placeholder, take the mode and 
 
 ## Rules for every turn
 
-- Always ask, also when the session looks non-interactive, such as a one-shot or headless run: save the note, ask the question and end the turn. The answer comes in the next message. Never fill an open item with your own guess to finish the plan sooner.
+- Always ask, also when the session looks non-interactive, such as a one-shot or headless run: save the note, ask the question and end the turn. Never fill an open item with your own guess to finish the plan sooner.
 - Ask one question per turn: one sentence about one item. Label it with the step, such as "Step 2 of 4", and name the note item it fills. When an answer has several vague parts, ask about the part that changes the plan most, and the next part in a later turn.
 - Ask the appetite right after the problem and pick the size: Small (one evening or less, about 6 to 8 questions), Medium (up to a weekend, about 9 to 12) or Large (bigger, no limit or unknown, about 12 to 16). Accept an answer without a number, such as "as much time as needed". Say the size and why, and write it in the note.
 - At every size, draft what follows from the user's words (the way they work now, doing nothing, limits, Need, Done when, the test's time box), mark it `(suggested)` and confirm it in a playback. Never draft a decision: ask what the user will do if the riskiest guess is wrong, and on Medium and Large ideas also if it is right. "Decide after the test" is a full answer: write `open`. Never ask for a drafted field one by one. Before the playback, remove from each draft every detail the user did not say; in it, show each draft with the user's words it came from.

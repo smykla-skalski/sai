@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: 'First action:(\*\*)?[^\n]*Reminders'
+pattern: 'Next action:(\*\*)?[^\n]*Reminders'
 target:
   source: file
   path: ideas/stretch-reminder.md

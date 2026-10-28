@@ -1,10 +1,10 @@
 ---
 type: regex
-pattern: 'Start:(\*\*)?[^\n]*20:00'
+pattern: 'Next action:(\*\*)?[ \t]*When\b[^\n]*20:00'
 flags: i
 target:
   source: file
   path: ideas/spending-tracker.md
 ---
 
-The Now result has a Start line with the time the user gave
+The next action is in the form "When ..., I will ..." with the time the user gave

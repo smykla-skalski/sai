@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "smallsteps",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Turn a rough idea into small, precise next steps by answering questions: a four-question interview (what to change, what must be true, what to do now, what you learned) with problem framing, assumption mapping, story slicing and next physical actions, one Markdown note per idea with results in Now, Next and Later and one action card for the first step, Mermaid maps when they help, and a Miro board on request.",
   "author": {
     "name": "Smykla Skalski Labs"
