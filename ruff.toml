@@ -1,3 +1,7 @@
+# ruff 0.17 reads each script's PEP 723 requires-python, and older versions
+# sort and upgrade those scripts differently, so one minimum keeps one result.
+required-version = ">=0.17.0"
+
 [lint]
 select = ["ALL"]
 ignore = [

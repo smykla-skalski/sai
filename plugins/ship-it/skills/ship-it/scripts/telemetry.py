@@ -19,7 +19,7 @@ import tempfile
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final
 
@@ -164,7 +164,7 @@ def validate_opaque_identifier(label: str, value: str) -> str:
 
 def timestamp() -> str:
     """Return the current UTC time as ISO 8601 with milliseconds and a Z suffix."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
@@ -544,7 +544,7 @@ def parse_timestamp(value: object) -> datetime:
         msg = "telemetry event timestamp is invalid"
         raise UsageError(msg)
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as error:
         msg = "telemetry event timestamp is invalid"
         raise UsageError(msg) from error

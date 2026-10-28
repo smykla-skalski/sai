@@ -457,7 +457,7 @@ def is_utc_timestamp(value: object) -> bool:
     if not isinstance(value, str) or UTC_TIMESTAMP.fullmatch(value) is None:
         return False
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return False
     return parsed.utcoffset() == timedelta(0)
