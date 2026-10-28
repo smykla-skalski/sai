@@ -3,7 +3,7 @@
   "baseline": "Help me turn this idea into a precise plan of small actions. Ask me questions, one at a time, until the plan is precise.",
   "judge_notes": "The file is the idea note. A question is also needless when its answer could not change the note's plan, results, action card or riskiest guess. The skill drafts some items and shows them in a playback with where each came from. A drafted item is supported only when the source it names, in the user's own words, says the same thing or leads to it with no new fact, number, time, rule or choice. These follow from the user's words and are not invented: a test time box equal to the appetite the user gave, the Size line picked from that appetite (the skill states it in the chat), \"none named\" for limits the user did not mention, and Mermaid quadrant coordinates that follow the fixed mapping from the matters and evidence labels.",
   "checks": {
-    "action_card_complete": "true if the note has Result I want, What I need, Done when, First action and When I start, all filled for one Now result.",
+    "action_card_complete": "true if the note has, for one Now result, Result, Need, Done when, First action and Start (or, in an older layout, Result I want, What I need, Done when, First action and When I start), all filled.",
     "first_action_small": "true if the first action is one physical step under about 10 minutes.",
     "done_when_checkable": "true if Done when is something the user can see or check.",
     "split_ok": "true if a large idea was split into a few thin results with one in Now, or the idea was small enough not to need a split."

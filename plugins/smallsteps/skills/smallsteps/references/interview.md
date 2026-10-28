@@ -4,25 +4,25 @@ The interview walks the user through four questions and fills one idea note. It 
 
 ## Size the interview
 
-Ask the appetite right after the problem, unless the user already said it: "How much time is this idea worth to you before you decide again?". Record the answer in the user's words. Then pick the size, say it in one line with its reason ("Size: large, because the time it is worth is unknown"), and write it under the appetite in the note. The user can change it.
+Ask the appetite right after the problem, unless the user already said it: "How much time is this idea worth to you before you decide again?". Record the answer in the user's words, also an answer without a number, such as "as much time as needed", and never ask for a number of hours. Then pick the size, say it in one line with its reason ("Size: large, because the time it is worth is unknown"), and write it under the appetite in the note. The user can change it.
 
 | Size | When | Questions before the first action | Playbacks |
 | :-- | :-- | :-- | :-- |
 | Small | one evening or less, and one result | about 6 to 8 | one, at the end |
 | Medium | more than one evening, up to about a weekend | about 9 to 12 | two: after step 2, and at the end |
-| Large | more than a weekend, several people, or an unknown appetite | about 12 to 16 | one at the end of each step |
+| Large | more than a weekend, no time limit, several people, or an unknown appetite | about 12 to 16 | one at the end of each step |
 
-An unknown appetite always means Large, also when the user wants to look at data first. When an answer shows that the idea is bigger than its size, say so in one line and move it up one size.
+An unknown appetite or no time limit always means Large, also when the user wants to look at data first. When an answer shows that the idea is bigger than its size, say so in one line and move it up one size.
 
 At every size, draft before you ask:
 
 1. Ask only what the user's words cannot give. Every size asks for the problem, the appetite, what gets better and how the user will see it (with one precision follow-up when it is vague), the riskiest guess ("What are you least sure about for this to work?"), what the user will do if that guess is wrong, and the first action with when it starts. Medium and Large also ask what the user will do if the guess is right, in its own question. Only the user makes a decision: never draft one, also when it looks obvious, such as "go on with the idea". On a Small idea, write the decision for a right guess only when the user's words give it, and leave it out otherwise; do not ask for it.
-2. Draft the rest from the user's own words and mark it `(suggested)`: who has it, the way they work now, doing nothing, limits, What I need, Done when, and the test block when the riskiest guess must be checked first. In the test block, draft the time box as the appetite in the user's words (a shorter part only when the user named it, never a longer or new duration) and the expectations from the riskiest guess. Write each decision as the user gave it: deciding before the test keeps the result honest. When the user does not know what they will do, write "unknown"; do not turn a "maybe" or "probably" into a firm decision. Write "unknown" for any other part their words do not cover, and write limits the user did not mention as "none named", not "none".
+2. Draft the rest from the user's own words and mark it `(suggested)`: who has it, the way they work now, doing nothing, limits, Need, Done when, and the test when the riskiest guess must be checked first. In the test, draft the time box as the appetite in the user's words (a shorter part only when the user named it, never a longer or new duration) and the expectations from the riskiest guess. Write each decision as the user gave it: deciding before the test keeps the result honest. When the user does not know what they will do, write `open`: an open decision is a full answer, so do not push for one, and ask for it when the result is in. Do not turn a "maybe" or "probably" into a firm decision. Write "unknown" for any other part their words do not cover, and write limits the user did not mention as "none named", not "none".
 3. Never ask for a drafted field one by one. Show every draft in a playback; the user confirms or corrects it there.
 4. Before each playback, check every draft against the user's words. Remove each number, duration, date, name or step that they did not say, or write "unknown" in its place.
 5. In the playback, list the user's own answers first. Then list the drafts under "Drafted from your words", each with its source: the user's words it came from in quotes, or "your appetite" or "your plan" for a draft built from those. A new detail then stands out before the user says "Yes". One playback is one question that covers all its items; never split it into parts. When the user corrects an item, apply the change and say so in one line, without a new playback, unless the change alters another draft.
 6. Medium and Large also ask the user to split the idea into results and to pick the Now result, unless the user's words already name the result that comes first. List the other results under Next in the order the user named them, without ranking them, and move a result to Later only when the user says so. Confirm the list in the playback. Large also uses the assumption map when there are several guesses.
-7. Small keeps the note small: step 2 holds only the riskiest guess, with no claims table and no ratings, and the plan holds only the Now result unless the user names more results.
+7. Small keeps the note small: `## Assumptions` holds only the main uncertainty, with no ratings, and the plan holds only the Now result unless the user names more results.
 8. Check precision only for the words that a Done when, a test or the wanted change depends on.
 9. A draft stays `(suggested)` until a playback confirms it. The question counts are targets, not limits: ask more when precision needs it, and never invent to stay under them.
 
@@ -31,18 +31,26 @@ At every size, draft before you ask:
 1. Read all the context first: the idea text, pasted text, files and linked notes. Put what it says into the note marked `(suggested)`.
 2. Keep a list of the open items of the current step. An item is open when it is missing, vague, `(suggested)` or in conflict with another item.
 3. Ask about the open item whose answer would most change the note: the Now result, its Done when, the first action, the riskiest guess or the split. Prefer the item the user is least sure about.
-4. Skip an item whose answer would change nothing in the note. Never ask about an item that is already confirmed or marked "unknown".
+4. Skip an item whose answer would change nothing in the note. Never ask about an item that is already confirmed, marked "unknown" or `open`, or answered in the user's words.
 5. Pick the technique that fits the situation (table below).
 6. Write the answer into the note at once.
 7. Play back at the points that the size sets (table above): list the items and every draft in short lines, and ask "Is this right?" with the answers "Yes" and "Change an item". This confirms the `(suggested)` items. Move on only after "Yes".
+
+## Scope and suggestions
+
+- Keep to the Now result. When the talk turns to a Next or Later result or its design, such as how to take payments while the Now result explores a contract format, write those details in one line under that result or in its linked note, say so in one line, and go back to the Now result.
+- Treat a system that the idea plans to build as not built. Write that something exists only when the user says so. No action, check or Done when of the Now result may need a planned system, such as running a checker that nobody has written yet: review by hand instead, or make building it a later result.
+- Keep each Next item, Later item and open question to one line. Put the rest in a linked note.
+- When the user asks for a suggestion, such as "what should I do next?", propose one small action under 10 minutes, say in one line what it is for, mark it `(suggested)`, and ask whether it is right.
+- When the user has authorized it, do a low-risk next action yourself: one that only reads, or writes a new file in the working folder or the notes folder, and that costs nothing, contacts nobody and changes nothing else. Record it in step 4, then ask for the next action. Ask before any other action.
 
 ## How to ask
 
 - One question per turn: one sentence about one item, with one question mark. Label it with the step ("Step 1 of 4"), and name the note item it fills ("Problem"). Do not join two questions with "and", and do not list sub-questions.
 - When an answer has several vague parts ("faster and better"), ask about the part that changes the plan most first, and about the next part in a later turn.
 - Ask it open when the user's words do not suggest an answer yet ("What happens today when you need a saved link?"). Do not make up answer options for an open question.
-- Otherwise offer up to 3 answers built from the user's own words. Quote the suggested one from their context, so that a "yes" confirms it fast. Always add "unknown". The user can also write their own answer.
-- In Claude Code, ask a question with answers through AskUserQuestion, with exactly one question in the call. Use the header "Step <n> of 4", 2 to 4 options with labels of 1 to 5 words, the suggested option first and "Unknown" last. Put a long quote in the option's description, not in its label. The user's own answer comes through "Other".
+- Otherwise offer up to 3 answers built from the user's own words. Quote the suggested one from their context, so that a "yes" confirms it fast. Always add "unknown", or "Decide after the test" for a decision. The user can also write their own answer.
+- In Claude Code, ask a question with answers through AskUserQuestion, with exactly one question in the call. Use the header "Step <n> of 4", 2 to 4 options with labels of 1 to 5 words, the suggested option first and "Unknown" (for a decision, "Decide after the test") last. Put a long quote in the option's description, not in its label. The user's own answer comes through "Other".
 - Ask an open question in plain text and end the turn: AskUserQuestion needs answer options. In other agents, write the options as a numbered list, add a line for a free answer, and end the turn.
 - End the turn with that one question. Do not preview the next question.
 - Keep the question short and concrete. Explain a method name the first time ("an assumption map sorts guesses by how much they matter and how much evidence they have").
@@ -122,9 +130,9 @@ Split the idea when one of these holds:
 - it does not fit the appetite, the time the user says it is worth;
 - no first physical action under 10 minutes can be named.
 
-To split, ask the user for 3 to 5 results they can make, test or decide. Suggest results from their words when they have none. Each result is a thin slice the user can see work.
+To split, ask the user for 3 to 5 results they can make, test or decide. Suggest results from their words when they have none. Each result is a thin slice that the user can finish and review on its own, such as "an example of one operation with its inputs and results", not a layer or a phase.
 
-Plan only the Now result in detail. For a Next or Later result, record its name, its place, and what it needs first only as the user says it. Ask "Does this need anything first?" only when the order is unclear. A Next result gets its Done when and its action card when it moves to Now.
+Plan only the Now result in detail. For a Next or Later result, record one line: its name, and what it needs first only as the user says it. Ask "Does this need anything first?" only when the order is unclear. A Next result gets its Done when and its action card when it moves to Now.
 
 Ask the user to pick the Now result. Suggest one, but let them choose. Place the results:
 
@@ -132,26 +140,26 @@ Ask the user to pick the Now result. Suggest one, but let them choose. Place the
 - Next: up to 5 results, in order.
 - Later: the rest.
 
-The Now result always gets an action card: Result I want, What I need, Done when, First action (one physical step under 10 minutes), and When I start, always in the form "When <time or place>, I will <first action>". Keep that if-then form: it is what makes the plan work.
+The Now result always gets an action card under `## Now`: Result, Need, Done when, First action (one physical step under 10 minutes) and Start (a time or place, never "now" or "soon"). In the reply, say it as "When <start>, I will <first action>": that if-then form is what makes the plan work.
 
-When a guess must be checked before more work, the Now result is that test, and it also gets a test block: the guess, how long the test may take within the appetite, what the user expects if it is right, what they expect if it is wrong, and what they will do after each result, all set before the test. Draft its time box and expectations from the user's words, as "Size the interview" says, ask for the decisions that the size asks, and confirm the block in the playback.
+When a guess must be checked before more work, the Now result is that test, and it also gets a test: the guess, how long the test may take within the appetite, what the user expects if it is right, what they expect if it is wrong, and what they will do after each result, all set before the test. Draft its time box and expectations from the user's words, as "Size the interview" says, ask for the decisions that the size asks, and confirm the test in the playback.
 
-Required items: the appetite, the results and their places, what each needs first when the user knows it, every field of the action card, and every field of the test block when there is one.
+Required items: the appetite, the results and their places, what each needs first when the user knows it, every field of the action card, and every field of the test when there is one.
 
 ### 4. What did I learn?
 
-This step runs when the user comes back. Show the next action from the note and ask "Done, not done, or stuck?". Record what the user did and what happened, or "not checked" if they did not run it. Record "done" apart from "as expected": an action can be done even when it did not bring the wanted change. Apply the decision the user set before the test: continue, change the idea, test again or stop. Then ask for the next action. When the Now result is finished, ask which Next result moves to Now, and ask for its action card.
+This step runs when the user comes back. Show the Now result, the next action and any open question that blocks it, and ask "Done, not done, or stuck?". In `## What we learned`, set the status, and record what the check showed and what it did not prove, or "not run" if the user did not run it. Record the status apart from whether it matched the expectation: an action can be done even when it did not bring the wanted change. Apply the decision the user set before the test: continue, change the idea, test again or stop. When the decision is `open`, ask for it now that the result is in. Then ask for the next action. When the Now result is finished, ask which result moves to Now, with the Next results as the answers in their order, and then ask for its action card.
 
-Required items: what the user did, what happened, done, as expected, the decision, the next action.
+Required items: the check or action, its status, what it showed, what it did not prove, the decision or `open`, the next action.
 
 ## When to stop asking
 
 Stop asking and finish the plan when both are true:
 
-- who has the problem, the problem, its evidence, what is in and out, the wanted change and how to see it are clear or marked "unknown" by the user, and so is every field of the Now result's action card and test block;
+- who has the problem, the problem, its evidence, what is in and out, the wanted change and how to see it are clear or marked "unknown" by the user, and so is every field of the Now result's action card and test, where a decision may also be `open`;
 - no open question's answer would change those items.
 
-Then write the plan into the note, draw the maps, and reply with the one next action, its Done when and the note path. Offer a Miro board in one line when Miro tools are connected.
+Then write the plan into the note, draw a map only where [references/visuals.md](visuals.md) says it helps, and reply with the one next action, its Done when and the note path. Offer a Miro board in one line when Miro tools are connected.
 
 ## After the plan
 

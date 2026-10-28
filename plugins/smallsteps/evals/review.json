@@ -94,9 +94,9 @@
     ],
     "small_first_action": [
       {
-        "ask": "Read the action card in `file_after`. Is the First action one physical step that takes under 10 minutes, with a When I start line that names a time or place?",
+        "ask": "Read the Now result's action card in `file_after`. Is the First action one physical step that takes under 10 minutes, with a Start line (When I start in an older note) that names a time or place?",
         "pass": "Yes.",
-        "fail": "No, the first action is vague, large or not physical, or When I start is missing."
+        "fail": "No, the first action is vague, large or not physical, or the Start line is missing."
       },
       {
         "ask": "Could the user start the First action in `file_after` right away without more planning?",
@@ -135,7 +135,7 @@
         "fail": "No, it records nothing, or picks another next step such as building the app."
       },
       {
-        "ask": "Does `file_after` record the test in '4. What I learned' with what happened and the decision?",
+        "ask": "Does `file_after` record the test in its learned section ('What we learned', or '4. What I learned' in an older note) with what happened and the decision?",
         "pass": "Yes.",
         "fail": "No."
       },
@@ -314,6 +314,116 @@
       "graders": {
         "one_question": [
           "04-asks-the-next-gap"
+        ]
+      }
+    },
+    "resume-shows-now-and-blocker": {
+      "medium": "a resumed idea note with no report yet",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "no_needless_question",
+        "plain"
+      ],
+      "graders": {
+        "one_question": [
+          "03-shows-now-and-blocker"
+        ]
+      }
+    },
+    "picks-next-result-after-done": {
+      "medium": "a resumed idea note after the Now result is finished",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "confirms_not_assumes",
+        "plain"
+      ],
+      "graders": {
+        "confirms_not_assumes": [
+          "04-did-not-prove-suggested",
+          "06-no-system-assumed"
+        ],
+        "one_question": [
+          "05-offers-next-results"
+        ]
+      }
+    },
+    "accepts-open-ended-appetite": {
+      "medium": "an interview turn after an appetite without a number",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "no_needless_question",
+        "plain"
+      ],
+      "graders": {
+        "no_needless_question": [
+          "05-no-hours-question"
+        ]
+      }
+    },
+    "records-open-decision": {
+      "medium": "an interview turn after the user leaves a decision open",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "no_needless_question",
+        "confirms_not_assumes",
+        "plain"
+      ],
+      "graders": {
+        "confirms_not_assumes": [
+          "04-no-invented-decision"
+        ],
+        "no_needless_question": [
+          "05-does-not-press"
+        ]
+      }
+    },
+    "check-not-run-and-suggestion": {
+      "medium": "a resumed idea note after a test that did not run",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "confirms_not_assumes",
+        "plain"
+      ],
+      "graders": {
+        "confirms_not_assumes": [
+          "03-keeps-not-run"
+        ],
+        "one_question": [
+          "05-one-suggestion"
+        ]
+      }
+    },
+    "parks-later-details": {
+      "medium": "an interview turn that drifts to a later result",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "no_needless_question",
+        "plain"
+      ],
+      "graders": {
+        "no_needless_question": [
+          "04-question-about-now"
+        ]
+      }
+    },
+    "no-check-needs-planned-system": {
+      "medium": "an interview turn whose Done when needs a system that is not built",
+      "file": "ideas/contract-format.md",
+      "criteria": [
+        "one_question",
+        "precise_answers",
+        "plain"
+      ],
+      "graders": {
+        "precise_answers": [
+          "03-flags-missing-system",
+          "04-done-when-not-confirmed"
         ]
       }
     }

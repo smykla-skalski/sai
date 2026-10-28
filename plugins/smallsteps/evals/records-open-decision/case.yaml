@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: records-open-decision
+expected_outcome: |
+  The placed note waits for what the user will do if the reader test shows
+  that teammates cannot explain the example. The user does not know yet and
+  will decide after the result. The skill records the wrong case as open,
+  keeps the decision for the right case, writes no decision of its own, and
+  does not press the user for one.
+context:
+  scaffold_script: place-files.sh

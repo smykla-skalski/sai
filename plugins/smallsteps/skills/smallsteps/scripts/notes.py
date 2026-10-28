@@ -43,10 +43,15 @@ SHARED: Final[str] = "shared"
 REPO: Final[str] = "ideas"
 EXIT_OK: Final[int] = 0
 EXIT_INVALID: Final[int] = 2
+# The interview's next question sits in the status line. Notes written before
+# 1.1.0 keep the next action there too; newer notes keep it under "## Now".
 STATUS_LINE: Final[re.Pattern[str]] = re.compile(
-    r"^Step (?P<step>\d) of 4 \| Next action: (?P<next>.*?)"
+    r"^Step (?P<step>\d) of 4(?: \| Next (?:question|action): (?P<next>.*?))?"
     r" \| Updated: (?P<updated>\S+)\s*$",
     re.MULTILINE,
+)
+FIRST_ACTION_LINE: Final[re.Pattern[str]] = re.compile(
+    r"^(?:\*\*)?First action:(?:\*\*)? *(?P<next>.*\S)\s*$", re.MULTILINE
 )
 
 
@@ -138,14 +143,18 @@ def command_set(raw_place: str, project: Path | None) -> dict[str, object]:
 
 
 def note_summary(note: Path) -> dict[str, object]:
-    """Return a note's name, path and the parts of its status line."""
+    """Return a note's name, path, step, next question or action, and date."""
     text = note.read_text(encoding="utf-8", errors="replace")
     match = STATUS_LINE.search(text)
+    next_action = match["next"] if match and match["next"] else None
+    if next_action is None:
+        first_action = FIRST_ACTION_LINE.search(text)
+        next_action = first_action["next"] if first_action else None
     return {
         "name": note.stem,
         "path": str(note),
         "step": int(match["step"]) if match else None,
-        "next_action": match["next"].strip() if match else None,
+        "next_action": next_action.strip() if next_action else None,
         "updated": match["updated"] if match else None,
     }
 

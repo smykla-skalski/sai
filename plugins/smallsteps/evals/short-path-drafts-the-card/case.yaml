@@ -7,8 +7,8 @@ expected_outcome: |
   answers the last open question with the first action and when it starts.
   The skill does not ask for the remaining fields one by one. It drafts them
   from the user's words and marks them (suggested): the way the user works
-  now, doing nothing, the Now result, What I need, Done when, and a test of
-  the riskiest guess. It writes the first action and When I start as given,
+  now, doing nothing, the Now result, Need, Done when, and a test of
+  the riskiest guess. It writes the first action and Start as given,
   and asks exactly one question: a playback of the drafted items with "Is
   this right?". It invents no numbers or facts, and it writes no decision for a
   right guess, because the user gave none and a small idea does not ask for it.

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "smallsteps",
-  "version": "1.0.0",
-  "description": "Turn a rough idea into small, precise next steps by answering questions: a four-question interview (what to change, what must be true, what to do now, what you learned) with problem framing, assumption mapping, story slicing and next physical actions, one Markdown note per idea with results in Now, Next and Later and one action card for the first step, Mermaid maps, and a Miro board on request.",
+  "version": "1.1.0",
+  "description": "Turn a rough idea into small, precise next steps by answering questions: a four-question interview (what to change, what must be true, what to do now, what you learned) with problem framing, assumption mapping, story slicing and next physical actions, one Markdown note per idea with results in Now, Next and Later and one action card for the first step, Mermaid maps when they help, and a Miro board on request.",
   "author": {
     "name": "Smykla Skalski Labs"
   },
@@ -15,7 +15,7 @@
       "interface": {
         "displayName": "Smallsteps",
         "shortDescription": "Turn a rough idea into small, precise next steps",
-        "longDescription": "Interviews you one question at a time through four questions: what do I want to change, what must be true, what can I do now and what did I learn. It picks the question whose answer changes the plan most, uses problem framing, assumption mapping, story slicing, test cards and next physical actions where they fit, and asks no question that would change nothing. It keeps one Markdown note per idea with the results in Now, Next and Later and one action card for the first step, splits big ideas into small results, draws Mermaid maps, builds a Miro board on request, and resumes later to record what you learned.",
+        "longDescription": "Interviews you one question at a time through four questions: what do I want to change, what must be true, what can I do now and what did I learn. It picks the question whose answer changes the plan most, uses problem framing, assumption mapping, story slicing, test cards and next physical actions where they fit, and asks no question that would change nothing. It keeps one Markdown note per idea with the results in Now, Next and Later and one action card for the first step, splits big ideas into small results, draws Mermaid maps when they help, builds a Miro board on request, and resumes later to record what you learned.",
         "developerName": "SAI",
         "category": "Productivity",
         "capabilities": ["Interactive", "Write"],

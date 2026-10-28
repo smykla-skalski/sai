@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: picks-next-result-after-done
+expected_outcome: |
+  The user finished the Now result of the placed note. The skill records it in
+  "What we learned" as done, with what it showed and the two gaps, drafts what
+  it did not prove marked (suggested), and claims no check by a system that
+  does not exist. It then asks which result moves to Now, with the Next
+  results as the answers in their order, the review of the example for gaps
+  first.
+context:
+  scaffold_script: place-files.sh

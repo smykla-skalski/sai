@@ -252,7 +252,7 @@
     {
       "name": "smallsteps",
       "source": "./plugins/smallsteps",
-      "description": "Turn a rough idea into small, precise next steps through a one-question-at-a-time interview, with one idea note holding Now, Next and Later results, an action card for the first step, Mermaid maps and a Miro board on request",
+      "description": "Turn a rough idea into small, precise next steps through a one-question-at-a-time interview, with one idea note holding Now, Next and Later results, an action card for the first step, Mermaid maps when they help and a Miro board on request",
       "author": {
         "name": "Smykla Skalski Labs"
       },

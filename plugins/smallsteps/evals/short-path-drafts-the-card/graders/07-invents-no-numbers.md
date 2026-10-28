@@ -8,29 +8,31 @@ weight: 1
 
 The note before this run was, word for word:
 
-            # Stretch reminder
+            Step 3 of 4 | Next question: First action and Start | Updated: 2026-10-27
 
-Step 3 of 4 | Next action: answer "First action and When I start" | Updated: 2026-10-27
+## Goal
 
-## 1. What I want to change
+I stand up and stretch at least once every hour of a work day, and my back does not hurt in the evening.
 
-Raw idea: I want a tool that reminds me to stretch every hour.
-Problem: after 2 to 3 hours at the desk my back hurts, because I forget to stand up.
-Better when: I stand up and stretch at least once every hour of a work day, and my back does not hurt in the evening.
+**Problem:** after 2 to 3 hours at the desk my back hurts, because I forget to stand up.
 
-## 2. What must be true
+**Appetite:** one evening
 
-Riskiest guess: I will actually stand up when the reminder shows, instead of clicking it away.
-If the guess is wrong: I will put my phone with a timer on the shelf across the room, so I must stand up to stop it.
+**Size:** small, because it is worth one evening and is one result
 
-## 3. What I can do now
+**Raw idea:** I want a tool that reminds me to stretch every hour.
 
-Appetite: one evening
-Size: small, because it is worth one evening and is one result
+## Assumptions
+
+- **Main uncertainty:** I will actually stand up when the reminder shows, instead of clicking it away.
+
+## Now
+
+**Then:** If wrong, I will put my phone with a timer on the shelf across the room, so I must stand up to stop it.
 
 ## Open questions
 
-- First action and When I start
+- First action and Start
 
             The user then answered, word for word: "the first action is to open the Reminders app on my Mac and add a reminder that repeats every hour. I will do it today at 17:00 at my desk."
 

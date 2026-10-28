@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: accepts-open-ended-appetite
+expected_outcome: |
+  The placed note waits for the appetite. The user answers "as much time as
+  needed". The skill records that answer in the user's words, picks Large
+  because there is no time limit, and asks its next question without asking
+  for a number of hours, days or a deadline.
+context:
+  scaffold_script: place-files.sh
