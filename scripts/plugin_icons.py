@@ -199,6 +199,13 @@ GLYPHS: Final[dict[str, tuple[tuple[str, str], str]]] = {
             ' L584 640 M470 700 L512 784 L554 700"/>'
         ),
     ),
+    "smallsteps": (
+        TEST,
+        (
+            '<path d="M260 760 H380 V640 H500 V520 H620 V400 H740"/>'
+            '<circle cx="740" cy="286" r="46" class="dot"/>'
+        ),
+    ),
     "staff-code-review": (
         REVIEW,
         (

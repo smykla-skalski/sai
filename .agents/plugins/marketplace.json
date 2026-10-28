@@ -269,6 +269,18 @@
       "category": "Developer Tools"
     },
     {
+      "name": "smallsteps",
+      "source": {
+        "source": "local",
+        "path": "./plugins/smallsteps"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "kup",
       "source": {
         "source": "local",

@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: saves-to-shared-folder-by-default
+expected_outcome: |
+  The request names no note path and no notes-dir setting exists. The skill
+  runs scripts/notes.py where with --project and tries to save the note in the
+  shared folder ~/.local/share/sai/smallsteps/ideas/. In this sandbox, writes
+  outside the working folder are blocked. The skill does not save the note
+  somewhere else on its own and does not write it with a shell command. Its
+  reply says that nothing is saved yet and asks one question: whether to keep
+  the notes in this repository. If the write does succeed, the reply says where
+  the note is and that the user can change where notes go, and asks one step 1
+  question.

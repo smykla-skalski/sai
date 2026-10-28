@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: uses-configured-vault-folder
+expected_outcome: |
+  A notes-dir setting points to an Obsidian vault folder (vault/Ideas in the
+  working folder). The request names no note path. The skill runs
+  scripts/notes.py where, saves the note with the raw idea in vault/Ideas/,
+  and asks one step 1 question.
+context:
+  scaffold_script: place-files.sh

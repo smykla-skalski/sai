@@ -7,7 +7,7 @@ A collection of Claude Code plugins and Codex skills for development workflows, 
 This monorepo contains independent plugins, each providing specialized capabilities:
 
 Repository layout:
-- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `agent-issues`, `ai-daily-digest`, `council`, `explainer-video`, `generate-agents-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-agents-md`, `rightsize`, `service-mesh-debug`, `ship-it`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
+- `plugins/{name}/` with a root `plugin.json` is a portable package: one directory that Claude Code, Codex, Copilot CLI and opencode all load (currently `adversarial-review`, `adversarial-test`, `agent-issues`, `ai-daily-digest`, `council`, `explainer-video`, `generate-agents-md`, `gh-review-comments`, `git-clean-gone`, `git-stage-hunk`, `go-code-review`, `humanize`, `kubecon-cfp`, `kup`, `plan-critic`, `refactor-council`, `review-agents-md`, `rightsize`, `service-mesh-debug`, `ship-it`, `smallsteps`, `staff-code-review`, `staff-resume`, `technical-debt-manager`, `test-writer` and `youtube-summary`). New and migrated plugins use this layout; see [CONTRIBUTING.md](./CONTRIBUTING.md#portable-plugin-layout).
 
 | Plugin                  | Description                                                                             | Installation Path      |
 |:------------------------|:----------------------------------------------------------------------------------------|:-----------------------|
@@ -34,6 +34,7 @@ Repository layout:
 | **staff-resume**        | Build and refine staff-level engineering resumes through interactive coaching           | `plugins/staff-resume/`       |
 | **ship-it**             | Ship a task description, GitHub issue, or Jira ticket through implementation, adversarial review/testing, PR, CI, Copilot review, and merge | `plugins/ship-it/` |
 | **rightsize**           | Audit work for overbuilt or oversimplified design, and write or rewrite design docs, decision records, pitches and plans that pass the simplicity rules; with no target, audits the work in the conversation | `plugins/rightsize/` |
+| **smallsteps**          | Turn a rough idea into small, precise next steps through a one-question-at-a-time interview; keeps one idea note with Now, Next and Later results, an action card for the first step, Mermaid maps and a Miro board on request | `plugins/smallsteps/` |
 | **technical-debt-manager** | Audit a repo for technical debt and file an umbrella GitHub tracker with one rated sub-issue per finding | `plugins/technical-debt-manager/` |
 | **test-writer**         | Write behavior-driven tests with table-driven patterns and minimal mocking             | `plugins/test-writer/`        |
 | **youtube-summary**     | Summarize a YouTube video from its transcript into a concise note saved to a configured folder | `plugins/youtube-summary/`    |
@@ -64,6 +65,7 @@ Codex skills:
 | **staff-resume**       | Coach and tailor staff-level engineering resumes (same portable package as Claude Code) | `plugins/staff-resume/skills/staff-resume/` |
 | **ship-it**            | Ship a task description, GitHub issue, or Jira ticket through implementation, review, testing, PR, CI, and merge; explicit invocation only (same portable package as Claude Code) | `plugins/ship-it/skills/ship-it/` |
 | **rightsize**          | Audit work against simplicity rules, and write or rewrite documents that pass them; runs inline (same portable package as Claude Code) | `plugins/rightsize/skills/rightsize/` |
+| **smallsteps**         | Interview a rough idea into small, precise next steps and one idea note; runs inline (same portable package as Claude Code) | `plugins/smallsteps/skills/smallsteps/` |
 | **staff-code-review**  | Staff-level code review across seven dimensions plus two adversaries; sequential on Codex (same portable package as Claude Code) | `plugins/staff-code-review/skills/staff-code-review/` |
 | **test-writer**        | Write or review behavior-first tests with table-driven patterns and minimal mocking (same portable package as Claude Code) | `plugins/test-writer/skills/test-writer/` |
 | **technical-debt-manager** | Audit tech debt into an umbrella GitHub issue with one sub-issue per finding (same portable package as Claude Code) | `plugins/technical-debt-manager/skills/technical-debt-manager/` |
@@ -108,6 +110,7 @@ The equivalent non-interactive forms are `copilot plugin ...` and
 /plugin install staff-resume@sai
 /plugin install ship-it@sai
 /plugin install rightsize@sai
+/plugin install smallsteps@sai
 /plugin install technical-debt-manager@sai
 /plugin install test-writer@sai
 /plugin install youtube-summary@sai
@@ -145,6 +148,7 @@ claude --plugin-dir /path/to/sai/plugins/staff-code-review
 claude --plugin-dir /path/to/sai/plugins/staff-resume
 claude --plugin-dir /path/to/sai/plugins/ship-it
 claude --plugin-dir /path/to/sai/plugins/rightsize
+claude --plugin-dir /path/to/sai/plugins/smallsteps
 claude --plugin-dir /path/to/sai/plugins/technical-debt-manager
 claude --plugin-dir /path/to/sai/plugins/test-writer
 claude --plugin-dir /path/to/sai/plugins/youtube-summary
@@ -178,6 +182,7 @@ ln -s /path/to/sai/plugins/review-agents-md/skills/review-agents-md ~/.config/op
 ln -s /path/to/sai/plugins/service-mesh-debug/skills/service-mesh-debug ~/.config/opencode/skills/service-mesh-debug
 ln -s /path/to/sai/plugins/ship-it/skills/ship-it ~/.config/opencode/skills/ship-it
 ln -s /path/to/sai/plugins/rightsize/skills/rightsize ~/.config/opencode/skills/rightsize
+ln -s /path/to/sai/plugins/smallsteps/skills/smallsteps ~/.config/opencode/skills/smallsteps
 ln -s /path/to/sai/plugins/staff-code-review/skills/staff-code-review ~/.config/opencode/skills/staff-code-review
 ln -s /path/to/sai/plugins/staff-resume/skills/staff-resume ~/.config/opencode/skills/staff-resume
 ln -s /path/to/sai/plugins/technical-debt-manager/skills/technical-debt-manager ~/.config/opencode/skills/technical-debt-manager
@@ -356,6 +361,14 @@ Audit work against about 70 simplicity rules from two research reports: the comp
 **Usage**: `/rightsize [audit | write | rewrite] [path | PR | branch | pasted text | brief] [--dry-run]` (Codex: `$rightsize`). One package for Claude Code, Codex, Copilot CLI and opencode.
 
 [Full documentation ->](./plugins/rightsize/README.md)
+
+### smallsteps
+
+Turn a rough idea into small, precise next steps by answering questions. It walks you through four questions (what do I want to change, what must be true, what can I do now, what did I learn), one question per turn, and asks about the item whose answer would change the plan most, with problem framing, assumption mapping, story slicing, test cards and next physical actions where they fit. It sizes the interview by how much time the idea is worth: about 6 to 8 questions up to an evening, 9 to 12 up to a weekend, 12 to 16 for bigger ideas, and it drafts what follows from your words for you to confirm. It keeps one Markdown note per idea with the results in Now, Next and Later and one action card for the first step, splits big ideas into small results, draws Mermaid maps, builds a Miro board on request, and resumes later to record what you learned.
+
+**Usage**: `/smallsteps [resume | board] [idea | note path]` (Codex: `$smallsteps`). One package for Claude Code, Codex, Copilot CLI and opencode.
+
+[Full documentation ->](./plugins/smallsteps/README.md)
 
 ### staff-code-review
 

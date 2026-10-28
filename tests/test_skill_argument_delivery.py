@@ -34,6 +34,7 @@ SKILL_ARGUMENTS = {
     "refactor-council": ("--no-scan", "--personas"),
     "review-agents-md": ("--score-only", "--fix"),
     "rightsize": ("audit", "write", "rewrite", "--dry-run"),
+    "smallsteps": ("resume", "board"),
     "staff-code-review": ("--no-adversary",),
     "staff-resume": ("--job-url", "--mode"),
     "technical-debt-manager": ("--focus", "--label"),

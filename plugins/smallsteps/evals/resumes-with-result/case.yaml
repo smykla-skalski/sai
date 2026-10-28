@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: resumes-with-result
+expected_outcome: |
+  The user ran the test from the placed note: the search found the link. The
+  skill adds a row to "4. What I learned" with what the user did, what happened,
+  done, whether it matched an expectation and the decision. It applies the
+  decision the user set before the test: test another link before deciding to
+  build. It updates the status line to that next step, keeps step 1 unchanged,
+  and does not ask again about the problem, who has it, the options or the limits.
+context:
+  scaffold_script: place-files.sh

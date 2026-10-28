@@ -1,0 +1,8 @@
+schema_version: "1.1"
+name: asks-one-question-first
+expected_outcome: |
+  The skill saves ideas/link-finder.md with the raw idea word for word and asks
+  exactly one question, labeled step 1 of 4. Because the idea is a solution (an
+  app), the question asks what problem the app would solve or for whom. It does
+  not ask about tests, results or a first action yet, writes no action card and
+  invents no facts.

@@ -2,8 +2,9 @@
 
 The tools read the suite that `claude plugin eval` runs: one directory per case
 under plugins/<name>/evals/ with prompt.md, case.yaml, graders/*.md and an
-optional scaffold script. Two optional data files sit next to the cases:
-triggers.json (eval_triggers.py) and review.json (eval_review.py).
+optional scaffold script. Optional data files sit next to the cases:
+triggers.json (eval_triggers.py), review.json (eval_review.py) and
+interviews.json (eval_interview.py).
 `claude plugin eval` only loads directories with prompt.md or case.yaml, so the
 data files never become cases.
 

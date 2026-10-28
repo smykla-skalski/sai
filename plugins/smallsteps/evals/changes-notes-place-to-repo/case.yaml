@@ -1,0 +1,7 @@
+schema_version: "1.1"
+name: changes-notes-place-to-repo
+expected_outcome: |
+  The user asks to keep notes in this repository. The skill runs
+  scripts/notes.py set ideas with --project, which saves the ideas place, and
+  replies with the new folder (ideas/ in the working folder). It does not ask
+  again which place the user wants, because the request already says it.
