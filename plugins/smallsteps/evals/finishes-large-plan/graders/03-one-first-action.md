@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: '^(?![\s\S]*First action:[\s\S]*First action:)[\s\S]*First action:[ \t]*\S'
+pattern: '^(?![\s\S]*First action:[\s\S]*First action:)[\s\S]*First action:(\*\*)?[ \t]*[^\s*]'
 target:
   source: file
   path: ideas/spending-tracker.md

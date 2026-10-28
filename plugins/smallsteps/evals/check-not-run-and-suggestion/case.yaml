@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: check-not-run-and-suggestion
+expected_outcome: |
+  The placed note plans a reader test, listed as planned in "What we learned",
+  and has no map. The user did not run the test and asks for a suggestion. The
+  skill keeps the test in the list as not done with "not run", leaves the
+  guess's evidence at none, adds no map, and proposes one small action with
+  what it is for, then asks whether it is right.
+context:
+  scaffold_script: place-files.sh

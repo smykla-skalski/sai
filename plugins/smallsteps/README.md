@@ -7,7 +7,7 @@ Turns a rough idea into small, precise next steps by asking questions. It walks 
 3. What can I do now?
 4. What did I learn?
 
-The result is one Markdown note per idea. It holds your answers, the results in Now, Next and Later, and one action card for the first step. A big idea is split into small results that you can see work. The note has Mermaid maps, and on request the skill also builds a Miro board.
+The result is one short Markdown note per idea: your goal, your guesses, one Now result with its Done when and first action, and short Next and Later lists. A big idea is split into small results that you can finish and review on their own. The note gets a Mermaid map only when one helps, and on request the skill also builds a Miro board.
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI, opencode and Kimi Code.
 
@@ -82,7 +82,9 @@ Right after the problem, the skill asks how much time the idea is worth to you, 
 | Medium | up to about a weekend | about 9 to 12 |
 | Large | bigger, several people, or you do not know yet | about 12 to 16 |
 
-At every size, the skill drafts what follows from your own words (the way you work now, doing nothing, limits, Done when, the test of your riskiest guess) instead of asking for each field. It never drafts a decision: it asks what you will do if your riskiest guess is wrong, and for a medium or large idea also if it is right. It marks drafts `(suggested)` and shows them in a playback, apart from your own answers and each with the words it came from, so you can spot a detail you never gave before you say "Is this right?". Small ideas get one playback at the end, medium ideas two, large ideas one per step. The skill stops asking when the problem, the wanted change and the first step are clear, or you marked them "unknown", and no other answer would change them. It never fills a gap with an invented number or fact.
+An answer without a number, such as "as much time as needed", is a full answer: the idea is then large, and the skill does not ask for hours.
+
+At every size, the skill drafts what follows from your own words (the way you work now, doing nothing, limits, Done when, the test of your riskiest guess) instead of asking for each field. It never drafts a decision: it asks what you will do if your riskiest guess is wrong, and for a medium or large idea also if it is right. "Decide after the test" is a full answer, recorded as `open`. When you ask for a suggestion, the skill proposes one small next action and says what it is for, and it does a low-risk action itself only when you allow it. It marks drafts `(suggested)` and shows them in a playback, apart from your own answers and each with the words it came from, so you can spot a detail you never gave before you say "Is this right?". Small ideas get one playback at the end, medium ideas two, large ideas one per step. The skill stops asking when the problem, the wanted change and the first step are clear, or you marked them "unknown", and no other answer would change them. It never fills a gap with an invented number or fact.
 
 The first version of this question system came from a comparison with Jev, the TypeSafe decision model on OpenRouter. Jev scored short descriptions of five question policies, four full systems and three question formats. Its scores were close (most between 0.5 and 0.73), so they are only a first signal. The evals in `evals/` check the real behavior: one-turn cases, and whole simulated interviews (`evals/interviews.json`, run with `scripts/eval_interview.py`) that count the questions for each size.
 
@@ -92,28 +94,31 @@ Notes go to `${XDG_DATA_HOME:-~/.local/share}/sai/smallsteps/ideas/` by default.
 
 In Codex's default sandbox, the shared folder is outside the workspace, so Codex asks for approval before it writes the note there. To avoid that, keep the notes in the repository.
 
-The note starts with a status line, such as `Step 3 of 4 | Next action: Open the notes app | Updated: 2026-10-27`, so you can see at once where to start again. Then come one section per question, open questions and the maps.
+The note starts with a status line, such as `Step 3 of 4 | Updated: 2026-10-28`, with the next question added while the interview runs. Then come these sections, each only when it has content:
 
-The action card for the first result has five lines:
+| Section | What it holds |
+| :-- | :-- |
+| Goal | What gets better and how you will see it, then the problem, appetite, size, limits and your raw idea |
+| Assumptions | The main uncertainty, then each guess, fact or unknown with its evidence |
+| Candidate to test | The idea you want to try, and the other options: the way you work now and doing nothing |
+| Now | Result, Need, Done when, First action and Start, and the test when the result checks a guess |
+| Next and Later | One line per result |
+| What we learned | One line per check or action: planned, done, not done or stuck, what it showed and what it did not prove |
+| Open questions | One line each, with the item it blocks |
+| Links | Linked notes with details, and the Miro board |
 
-```text
-Result I want:
-What I need:
-Done when:
-First action:
-When I start: When <time or place>, I will <first action>.
-```
+The goal and the Now result are written once each. Details that the plan does not need now, such as research or the design of a later result, go to linked notes. You can rename, move or delete sections: the skill keeps your layout and never puts back what you removed. A check that did not run stays in the note as not done.
 
-Only the Now result gets an action card. Next and Later stay in the note until you finish the Now result. When you come back, the skill shows the next action and asks "Done, not done, or stuck?".
+Only the Now result gets an action card. When you come back, the skill shows the Now result, the first action and any open question that blocks it, and asks "Done, not done, or stuck?". When the Now result is finished, it offers the Next results so you can pick the next one.
 
 ## Visuals
 
-The note always has two Mermaid maps, which render on GitHub and in Obsidian:
+Maps are optional. The skill draws a Mermaid map, which renders on GitHub and in Obsidian, only when it shows something the text cannot show at a glance:
 
-- an assumption map (a quadrant chart of how much each guess matters against how much evidence it has);
-- a plan map (Now, Next and Later, with what each result needs first).
+- an assumption map (a quadrant chart of how much each guess matters against how much evidence it has), when there are two or more rated assumptions;
+- a plan map (Now, Next and Later, with what each result needs first), when a result needs another result first.
 
-Ask for a Miro board ("put it on Miro") to get the same two maps as frames on one board per idea. That needs the Miro MCP server:
+Ask for a map to get one anyway. A map that you removed stays out. Ask for a Miro board ("put it on Miro") to get the same two maps as frames on one board per idea. That needs the Miro MCP server:
 
 | Agent | Setup |
 | :-- | :-- |

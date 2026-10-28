@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: resume-shows-now-and-blocker
+expected_outcome: |
+  The placed note is a finished plan for a large idea: a contract format. The
+  user asks where they were. The skill shows the Now result (an example of one
+  operation with its inputs and results), the first action with its start, and
+  the open question that blocks it (minor units or a decimal for an amount),
+  and asks one question, such as "Done, not done, or stuck?". It asks nothing
+  again about the goal, appetite or guesses, and writes no separate progress
+  file.
+context:
+  scaffold_script: place-files.sh

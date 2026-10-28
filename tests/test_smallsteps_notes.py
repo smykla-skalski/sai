@@ -151,6 +151,30 @@ class NotesScriptTest(unittest.TestCase):
         self.assertEqual(notes["link-finder"]["updated"], "2026-10-20")
         self.assertIsNone(notes["draft"]["next_action"])
 
+    def test_list_reads_the_next_question_or_the_first_action(self) -> None:
+        folder = self.xdg / "sai" / "smallsteps" / "ideas"
+        folder.mkdir(parents=True)
+        (folder / "asking.md").write_text(
+            "# Asking\n\n"
+            "Step 2 of 4 | Next question: What are you least sure about?"
+            " | Updated: 2026-10-28\n\n"
+            "## Now\n\n**First action:** Open the notes app\n"
+        )
+        (folder / "planned.md").write_text(
+            "# Planned\n\n"
+            "Step 3 of 4 | Updated: 2026-10-28\n\n"
+            "## Now\n\n**Result:** Know if my notes app finds one link\n\n"
+            "**First action:** Open the notes app\n"
+        )
+        _, out = self.run_script("list")
+        notes = {note["name"]: note for note in out["notes"]}
+        self.assertEqual(
+            notes["asking"]["next_action"], "What are you least sure about?"
+        )
+        self.assertEqual(notes["planned"]["next_action"], "Open the notes app")
+        self.assertEqual(notes["planned"]["step"], 3)
+        self.assertEqual(notes["planned"]["updated"], "2026-10-28")
+
 
 if __name__ == "__main__":
     unittest.main()

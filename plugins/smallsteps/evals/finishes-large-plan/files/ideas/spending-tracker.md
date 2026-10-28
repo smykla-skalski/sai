@@ -1,59 +1,51 @@
-# Spending tracker
+Step 3 of 4 | Next question: First action and Start for the Now result | Updated: 2026-10-27
 
-Step 3 of 4 | Next action: answer "First action and When I start" | Updated: 2026-10-27
+## Goal
 
-## 1. What I want to change
+I know each month how much I spent in each category, and I stay under the limit I set.
 
-Raw idea: an app that tracks my spending and warns me before I overspend
-Problem: at the end of most months I have less money left than I expected and I do not know where it went.
-Who has it: me.
-Better when: I know each month how much I spent in each category, and I stay under the limit I set.
-Limits: my bank login stays only with me. Cost: free tools only.
-Options:
-1. A spending app with warnings
-2. The way I work now: I check my bank balance now and then.
-3. Do nothing or wait: the end-of-month surprise goes on.
+**Problem:** at the end of most months I have less money left than I expected and I do not know where it went. Only I have it.
 
-## 2. What must be true
+**Appetite:** two evenings a week for a month
 
-| Claim | Fact, guess or unknown | Source or test | Matters | Evidence |
-| :-- | :-- | :-- | :-- | :-- |
-| My bank can export transactions as CSV | fact | bank help page | a lot | strong |
-| I will look at my spending every week | guess | try it for 4 weeks | a lot | none |
-| How much I overspend each month | unknown | last month's export | a lot | none |
+**Size:** large, because it is worth more than a weekend
 
-Riskiest guess: I will look at my spending every week
+**Limits:** my bank login stays only with me. Cost: free tools only.
 
-## 3. What I can do now
+**Raw idea:** an app that tracks my spending and warns me before I overspend
 
-Appetite: two evenings a week for a month
-Size: large, because it is worth more than a weekend
+## Assumptions
 
-| Result | Needs first | Place |
-| :-- | :-- | :-- |
-| Know where my money went last month | the CSV export | Now |
-| Set a monthly limit per category | last month's totals | Next |
-| A weekly check of my spending | the limits | Next |
-| Automatic import from the bank | a working sheet | Later |
-| A phone app with warnings | the automatic import | Later |
+- **Main uncertainty:** I will look at my spending every week
+- **Fact:** my bank can export transactions as CSV. Evidence: strong, the bank help page. Matters: a lot
+- **Guess:** I will look at my spending every week. Evidence: none, try it for 4 weeks. Matters: a lot
+- **Unknown:** How much I overspend each month. Evidence: none, last month's export. Matters: a lot
 
-### Action card
+## Candidate to test
 
-Result I want: Know where my money went last month
-What I need: my bank's CSV export and a spreadsheet
-Done when: I see the total per category for last month
-First action:
-When I start:
+A spending app with warnings.
 
-## 4. What I learned
+- Other option, the way I work now: I check my bank balance now and then.
+- Other option, do nothing or wait: the end-of-month surprise goes on.
 
-| Date | What I did | What happened | Done | As expected | Decision |
-| :-- | :-- | :-- | :-- | :-- | :-- |
+## Now
+
+**Result:** Know where my money went last month
+
+**Need:** my bank's CSV export and a spreadsheet
+
+**Done when:** I see the total per category for last month
+
+## Next
+
+- Set a monthly limit per category, needs last month's totals
+- A weekly check of my spending, needs the limits
+
+## Later
+
+- Automatic import from the bank, needs a working sheet
+- A phone app with warnings, needs the automatic import
 
 ## Open questions
 
-- First action and When I start for the Now result
-
-## Map
-
-Miro board: none
+- First action and Start for the Now result

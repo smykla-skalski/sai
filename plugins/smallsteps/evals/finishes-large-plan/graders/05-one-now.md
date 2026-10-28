@@ -1,9 +1,9 @@
 ---
 type: regex
-pattern: '^(?![\s\S]*\|[ \t]*Now[ \t]*\|[\s\S]*\|[ \t]*Now[ \t]*\|)[\s\S]*\|[ \t]*Now[ \t]*\|'
+pattern: '^(?![\s\S]*\*\*Result:\*\*[\s\S]*\*\*Result:\*\*)[\s\S]*\*\*Result:\*\*[ \t]*[^\s*]'
 target:
   source: file
   path: ideas/spending-tracker.md
 ---
 
-Exactly one result is placed in Now
+Exactly one result is the Now result

@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: no-check-needs-planned-system
+expected_outcome: |
+  The placed note plans a checking system only as a Later result. The user
+  wants the Now result to be done when the checker accepts the example. The
+  checker does not exist yet, so the skill does not confirm that Done when: it
+  says the checker is not built and asks one question for a Done when the user
+  can check now, such as a review by hand.
+context:
+  scaffold_script: place-files.sh

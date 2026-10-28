@@ -1,0 +1,52 @@
+Step 3 of 4 | Updated: 2026-10-28
+
+## Goal
+
+A contract format that people can understand and that a future system can use to check work.
+
+**Problem:** our contracts are free text, so people read them differently and nothing can check them. It affects my team.
+
+**Appetite:** as much time as needed
+
+**Size:** large, because there is no time limit
+
+**Limits:** an author needs only simple Markdown
+
+**Raw idea:** define a contract format that people understand and a system checks automatically
+
+## Assumptions
+
+- **Main uncertainty:** a system can check a contract written in this format. Evidence: none, the system does not exist yet. Matters: a lot
+- **Guess:** the team can understand an example contract. Evidence: none, no reader test yet. Matters: a lot
+
+## Candidate to test
+
+A Markdown document with YAML front matter: YAML holds the facts a tool can read, and Markdown explains the purpose.
+
+- Other option, the way I work now: free-text contracts in the wiki
+- Other option, do nothing or wait: contracts stay free text
+
+## Now
+
+**Result:** an example of one operation with its inputs and results
+
+**Need:** the candidate format and one real operation
+
+**Done when:** the example names one operation, its inputs with their types and its results, and lists the open gaps
+
+**First action:** open the payment notes and copy one operation name into a new file
+
+**Start:** tomorrow at 9:00 at my desk
+
+## Next
+
+- A review of the example for gaps, needs the example
+- Rules that a future system could check, needs the review
+
+## Later
+
+- A system that checks contracts automatically, needs the rules
+
+## Open questions
+
+- Should an amount be in minor units or a decimal? Blocks the input types in the Done when
