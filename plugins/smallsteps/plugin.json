@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "smallsteps",
-  "version": "1.2.0",
-  "description": "Turn a rough idea into small, precise next steps by answering questions: a four-question interview (what to change, what must be true, what to do now, what you learned) with problem framing, assumption mapping, story slicing and next physical actions, one Markdown note per idea with results in Now, Next and Later and one action card for the first step, Mermaid maps when they help, and a Miro board on request.",
+  "version": "1.3.0",
+  "description": "Explore an idea, assess its value and alternatives, and choose small next steps when you want a plan. Keep one Markdown note per idea, add a Mermaid map when useful, and create a Miro board on request.",
   "author": {
     "name": "Smykla Skalski Labs"
   },
@@ -14,8 +14,8 @@
     "com.openai": {
       "interface": {
         "displayName": "Smallsteps",
-        "shortDescription": "Turn a rough idea into small, precise next steps",
-        "longDescription": "Interviews you one question at a time through four questions: what do I want to change, what must be true, what can I do now and what did I learn. It picks the question whose answer changes the plan most, uses problem framing, assumption mapping, story slicing, test cards and next physical actions where they fit, and asks no question that would change nothing. It keeps one Markdown note per idea with the results in Now, Next and Later and one action card for the first step, splits big ideas into small results, draws Mermaid maps when they help, builds a Miro board on request, and resumes later to record what you learned.",
+        "shortDescription": "Explore an idea and find useful next steps",
+        "longDescription": "Explore an idea one question at a time, assess the problem, alternatives and evidence, and decide whether to proceed. When you want a plan, use the four questions to choose one useful result and a next action. Keep one Markdown note per idea, add a Mermaid map when useful, create a Miro board on request, and resume the idea later.",
         "developerName": "SAI",
         "category": "Productivity",
         "capabilities": ["Interactive", "Write"],

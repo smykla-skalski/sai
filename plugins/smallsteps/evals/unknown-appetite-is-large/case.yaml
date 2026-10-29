@@ -1,11 +1,6 @@
 schema_version: "1.1"
 name: unknown-appetite-is-large
 expected_outcome: |
-  The user answers the appetite question with "I don't know yet; I want to look
-  at the data first". An unknown appetite means a Large idea. The skill records
-  the answer, writes "Size: large" with the reason in the note, says the size in
-  one line, and asks one next step 1 question, such as what should get better.
-  It does not jump to a playback, a test or a first action, and it invents no
-  appetite.
+  The skill records the unknown appetite, does not demand hours, and follows the user's direction without inventing a time limit.
 context:
   scaffold_script: place-files.sh

@@ -120,6 +120,8 @@ CLAUDE_TOOLS: Final[tuple[str, ...]] = (
     "Grep",
     "Skill",
     "ToolSearch",
+    "WebSearch",
+    "WebFetch",
 )
 # Portable skills run their scripts as `python3 <skill folder>/scripts/x.py`.
 SCRIPT_BASH: Final[str] = "Bash(python3:*)"
@@ -159,6 +161,9 @@ USER_PROMPT: Final[str] = (
     "plain.\n"
     "- Use only the facts above. If they do not cover the question, say you do "
     "not know.\n"
+    "- Do not accept a proposed duration, target or commitment that conflicts "
+    "with your facts. If no option fits, give your own answer or say you do "
+    "not know.\n"
     "- If it offers numbered options, pick the one that fits your facts, or "
     "write your own answer.\n"
     "- If it plays back a summary that matches your facts, say yes. If something "
@@ -176,6 +181,8 @@ PICK_PROMPT: Final[str] = (
     "The assistant now shows you this clickable question:\n{question}\n\n"
     "Answer as this user. Rules:\n"
     "- If one option matches your facts, reply with its label exactly.\n"
+    "- Do not accept a duration, target or commitment that conflicts with "
+    "your facts.\n"
     "- Otherwise reply with your own short answer, using only your facts, or "
     '"I do not know".\n'
     "Output only the answer."
@@ -203,9 +210,9 @@ JUDGE_PROMPT: Final[str] = (
     '"better", "users") that the file still holds as if precise, with no '
     "follow-up.\n"
     '- "invented": a list of facts, numbers, targets, dates or decisions in the '
-    "file that the user's own words do not support. Judge each item the "
-    "assistant drafted as if the user had never confirmed it: a yes to a "
-    "summary or playback does not give its content.\n"
+    "file that the user's words do not support. A generic yes to a summary "
+    "does not prove a factual claim. An explicit choice of a clearly proposed "
+    "action or duration is a decision, unless it conflicts with the brief.\n"
     '- "finished": true if the chat reached the finished result the user asked '
     "for.\n"
     "{checks}\n"
@@ -679,7 +686,14 @@ class ClaudeSession(CliSession):
             argv += ["--plugin-dir", str(agent.plugin)]
         if agent.model:
             argv += ["--model", agent.model]
-        argv += ["--permission-mode", "acceptEdits", "--allowedTools", SCRIPT_BASH]
+        argv += [
+            "--permission-mode",
+            "acceptEdits",
+            "--allowedTools",
+            SCRIPT_BASH,
+            "WebSearch",
+            "WebFetch",
+        ]
         argv += ["--tools", *CLAUDE_TOOLS, "Bash"]
         return [*argv, "--resume", self.session] if self.session else argv
 
@@ -1083,8 +1097,6 @@ def interview(ctx: Context, scenario: Scenario, number: int) -> dict[str, Any]:
             chat.add("user", message)
             reply = with_retries(partial(session.send, message), label)
             chat.add("assistant", reply)
-            if "?" not in reply:
-                break
             message = ask_model(
                 USER_PROMPT.format(
                     setting=suite.setting,

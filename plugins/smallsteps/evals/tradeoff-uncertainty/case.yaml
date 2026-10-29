@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: tradeoff-uncertainty
+expected_outcome: |
+  The skill compares a proposed finder and a decision log without presenting
+  the unbuilt finder as working, or claiming a log cannot record past decisions.

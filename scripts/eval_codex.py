@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -188,14 +189,26 @@ def judge_vote(rubric: str, output: str, model: str, cwd: Path) -> bool:
         timeout=JUDGE_TIMEOUT_SECONDS,
         input_text=JUDGE_PROMPT.format(rubric=rubric, output=output),
     )
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()[:300]
+        msg = f"judge exited {result.returncode}: {detail}"
+        raise EvalError(msg)
     verdicts = VERDICT.findall(result.stdout.upper())
-    return bool(verdicts) and verdicts[-1] == "PASS"
+    if not verdicts:
+        msg = "judge returned no verdict"
+        raise EvalError(msg)
+    return verdicts[-1] == "PASS"
 
 
 def grade_llm(run: Run, grader: Grader, model: str, cwd: Path) -> tuple[bool, str]:
     """Check an llm grader by majority over JUDGE_VOTES judge runs."""
     subject = grader_subject(run, grader, "focus")
-    votes = [judge_vote(grader.rubric, subject, model, cwd) for _ in range(JUDGE_VOTES)]
+    try:
+        votes = [
+            judge_vote(grader.rubric, subject, model, cwd) for _ in range(JUDGE_VOTES)
+        ]
+    except (EvalError, OSError, subprocess.TimeoutExpired) as error:
+        return False, f"judge error: {error}"
     return sum(votes) * 2 > len(votes), f"{sum(votes)}/{len(votes)} judge votes pass"
 
 

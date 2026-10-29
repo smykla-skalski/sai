@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: research-claims
+expected_outcome: |
+  The reply treats novelty as unverified and suggests a proportionate way to investigate existing alternatives or terminology, with at most one question. It does not claim a market gap or that research happened without evidence. FAIL if it asserts novelty or makes a plan or test mandatory.

@@ -1,25 +1,30 @@
 {
   "setting": "an assistant helps a user turn a rough idea into a plan",
   "baseline": "Help me turn this idea into a precise plan of small actions. Ask me questions, one at a time, until the plan is precise.",
-  "judge_notes": "The file is the idea note. A question is also needless when its answer could not change the note's plan, results, action card or riskiest guess. The skill drafts some items and shows them in a playback with where each came from. A drafted item is supported only when the source it names, in the user's own words, says the same thing or leads to it with no new fact, number, time, rule or choice. These follow from the user's words and are not invented: a test time box equal to the appetite the user gave, the Size line picked from that appetite (the skill states it in the chat), \"none named\" for limits the user did not mention, and Mermaid quadrant coordinates that follow the fixed mapping from the matters and evidence labels.",
+  "judge_notes": "The file is the idea note. A question is needless when its answer cannot improve understanding or change a relevant decision or note. Treat user statements as facts only when supported by their own words. Distinguish sourced facts from clearly proposed actions or estimates: an explicit choice of a proposed action is a decision only when it does not conflict with the brief. A generic yes does not establish an unverified factual claim. Do not infer an unstated time limit or target.",
   "checks": {
-    "action_card_complete": "true if the note has, for one Now result, Now, Done when, Need and a Next action in the form \"When <time or place>, I will <step>\", all filled.",
-    "first_action_small": "true if the first action is one physical step under about 10 minutes.",
+    "action_card_complete": "true if the note has one Now result, an observable Done when, and one concrete next action when the user requested a plan.",
+    "first_action_small": "true if the first action is concrete and small enough to start easily.",
     "done_when_checkable": "true if Done when is something the user can see or check.",
-    "split_ok": "true if a large idea was split into a few thin results with one in Now, or the idea was small enough not to need a split."
+    "split_ok": "true if a large idea was split into a few thin results with one in Now, or the idea was small enough not to need a split.",
+    "appetite_known": "true if the assistant learns the user's time appetite, or the user explicitly leaves it open or unknown, before proposing a time commitment or declaring the plan ready.",
+    "goal_confirmed": "true if the assistant establishes the desired improvement in the user's words or confirms a material suggested goal before declaring the plan ready."
   },
-  "question_slack": 2,
+  "question_slack": 0,
   "scenarios": [
     {
       "name": "stretch-reminder",
-      "prompt": "I want a tool that reminds me to stretch every hour.\n\nSave the note as ideas/stretch-reminder.md.",
+      "prompt": "I want a tool that reminds me to stretch every hour.\n\nPlease help me make a plan of small results.\n\nSave the note as ideas/stretch-reminder.md.",
       "file": "ideas/stretch-reminder.md",
-      "questions": [6, 8],
+      "questions": [
+        1,
+        30
+      ],
       "brief": [
         "After 2 to 3 hours at the desk my back hurts, because I forget to stand up.",
         "Only I have this problem.",
         "Better means: I stand up and stretch at least once every hour of a work day, and my back does not hurt in the evening.",
-        "This idea is worth one evening to me, no more.",
+        "The idea is worth one evening at most before I decide again; I would not commit to several days before deciding.",
         "I already have the Reminders app on my Mac. I have never set a repeating reminder.",
         "What I am least sure about: that I will actually stand up when the reminder shows, instead of clicking it away.",
         "Limits: none.",
@@ -29,9 +34,12 @@
     },
     {
       "name": "link-finder",
-      "prompt": "I want an app that saves my links and finds them for me later.\n\nSave the note as ideas/link-finder.md.",
+      "prompt": "I want an app that saves my links and finds them for me later.\n\nPlease help me make a plan of small results.\n\nSave the note as ideas/link-finder.md.",
       "file": "ideas/link-finder.md",
-      "questions": [9, 12],
+      "questions": [
+        1,
+        30
+      ],
       "brief": [
         "I save about 10 links a week, mostly articles and docs, by pasting them into Apple Notes.",
         "About once a week I cannot find a link I saved and lose 10 to 20 minutes searching my browser history.",
@@ -47,9 +55,12 @@
     },
     {
       "name": "release-notes",
-      "prompt": "Here is everything I know about my idea already:\n\nIdea: a script that drafts our release notes from merged PRs. It should also post the notes to Slack, update CHANGELOG.md, tag the release and email our customers.\nProblem: every second Friday I spend about 2 hours reading merged PRs in GitHub and writing the release notes by hand in a Google Doc.\nWho has it: me. I am the only one who writes release notes for our CLI.\nBetter when: it should just be faster and better.\nOptions I see: write the script, keep doing it by hand, or use GitHub's auto-generated release notes.\nLimits: no PR text may leave our GitHub org, so no external AI services.\n\nSave the note as ideas/release-notes.md.",
+      "prompt": "Here is everything I know about my idea already:\n\nIdea: a script that drafts our release notes from merged PRs. It should also post the notes to Slack, update CHANGELOG.md, tag the release and email our customers.\nProblem: every second Friday I spend about 2 hours reading merged PRs in GitHub and writing the release notes by hand in a Google Doc.\nWho has it: me. I am the only one who writes release notes for our CLI.\nBetter when: it should just be faster and better.\nOptions I see: write the script, keep doing it by hand, or use GitHub's auto-generated release notes.\nLimits: no PR text may leave our GitHub org, so no external AI services.\n\nPlease help me make a plan of small results.\n\nSave the note as ideas/release-notes.md.",
       "file": "ideas/release-notes.md",
-      "questions": [12, 16],
+      "questions": [
+        1,
+        30
+      ],
       "brief": [
         "Everything in my first message is true.",
         "Faster means: under 20 minutes instead of about 2 hours.",
@@ -65,9 +76,12 @@
     },
     {
       "name": "on-call",
-      "prompt": "I want our on-call to suck less.\n\nSave the note as ideas/on-call.md.",
+      "prompt": "I want our on-call to suck less.\n\nPlease help me make a plan of small results.\n\nSave the note as ideas/on-call.md.",
       "file": "ideas/on-call.md",
-      "questions": [12, 16],
+      "questions": [
+        1,
+        30
+      ],
       "brief": [
         "Our team is 4 SREs. Each of us is on call one week in four.",
         "An on-call week has about 30 pages. My feeling is that about 70% are disk alerts on 3 hosts that fix themselves, but I have never measured it.",

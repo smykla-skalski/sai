@@ -1,17 +1,14 @@
 # smallsteps
 
-Turns a rough idea into small, precise next steps by asking questions. It walks you through four questions, one question at a time:
+Helps you explore and develop an idea, assess its value, and find small next steps when you want a plan. It asks one question at a time, offers critique and alternatives, and can research existing solutions and relevant terms. You can return to exploration at any point.
 
-1. What do I want to change?
-2. What must be true?
-3. What can I do now?
-4. What did I learn?
-
-The result is one Markdown note per idea. Its top shows the shape of the idea: your goal and the idea's parts, under headings that fit it, such as a contents list, a working example or conventions. Its bottom holds the process: one Now result with its Done when, your guesses, checks, questions and the next action. A big idea is split into small results that you can finish and review on their own. The note gets a Mermaid map only when one helps, and on request the skill also builds a Miro board.
+The skill keeps one concise Markdown note per idea. It records the current shape, decisions, checks, open questions and changes. When you want a plan, it uses four questions as a flexible loop: what to change, what must be true, what to do now and what was learned. It keeps one current result and one next action. Maps are optional, and a Miro board is available on request.
 
 The plugin is a portable [Agent Plugin](https://agent-plugins.org) with one [Agent Skill](https://agentskills.io), so the same package works in Claude Code, Codex, Copilot CLI, opencode and Kimi Code.
 
-The method comes from research on turning vague ideas into defined action, and on working with ADHD. Its sources include problem framing from the UK service manual, Theory of Change, assumption mapping, hypothesis-driven development, story slicing, the Getting Things Done next action, and implementation intentions (Gollwitzer and Sheeran, 2006).
+The skill selects methods for the problem and stage. It explains useful choices and can change or combine them as the work develops.
+
+For examples of that approach, see the GOV.UK guidance on [understanding user needs](https://www.gov.uk/service-manual/user-research/start-by-learning-user-needs) and [choosing research activities](https://www.gov.uk/service-manual/user-research/plan-user-research-for-your-service). These guides address public services, so their procedures may need adaptation for a small personal idea.
 
 ## Installation
 
@@ -56,37 +53,15 @@ In Claude Code and Copilot CLI use `/smallsteps`, in Codex `$smallsteps`, or ask
 /smallsteps board link-finder        # build or update the Miro board for the idea
 ```
 
-Paste as much context as you have, or none. Context becomes suggested answers in the note, and the skill still confirms them with you.
+Paste as much context as you have, or none. The skill records your answers and marks its own inferences as suggestions.
 
-## How it asks
+## How it helps
 
-Each turn has one question, labeled with the step and the note item it fills. The skill asks about the item whose answer would change the plan most, such as the first result, its Done when or the riskiest guess. It asks no question whose answer would change nothing. When your context suggests an answer, the question offers up to 3 answers built from your words, with the suggested one quoted, plus "unknown".
+The skill starts with the problem, the people affected and the desired change. It uses a broader vision when you have one. It offers relevant questions, critique, alternatives and proportionate research, with sources and limits for factual claims. It treats value, novelty and feasibility as questions until evidence supports them.
 
-It picks a technique for each situation:
+You decide when to plan or run a check. The skill respects an open time budget and helps compare the next step with other options, including a pause or stop. It asks one clear question at a time and does not repeat an answer you already gave. In voice, it waits for you to finish a thought.
 
-| Situation | Technique |
-| :-- | :-- |
-| The idea is a solution | Ask what problem it solves, and for whom |
-| An answer has vague words | Ask who exactly, how much, by when, and how you will see it |
-| No evidence for the problem | Ask for the last time it happened, or plan a small test |
-| Many guesses | Assumption map: how much each guess matters, and how much evidence it has |
-| The idea is large | Split it into thin results, and ask which one you need first |
-| A guess must be checked | Test card: what you expect if it is right or wrong, and what you will do after each |
-| No first step | The next physical action, under 10 minutes, with a when-and-where plan |
-
-Right after the problem, the skill asks how much time the idea is worth to you, and sizes the interview by your answer:
-
-| Size | When | Questions before the first action |
-| :-- | :-- | :-- |
-| Small | one evening or less, one result | about 6 to 8 |
-| Medium | up to about a weekend | about 9 to 12 |
-| Large | bigger, several people, or you do not know yet | about 12 to 16 |
-
-An answer without a number, such as "as much time as needed", is a full answer: the idea is then large, and the skill does not ask for hours.
-
-At every size, the skill drafts what follows from your own words (the way you work now, doing nothing, limits, Done when, the test of your riskiest guess) instead of asking for each field. It never drafts a decision: it asks what you will do if your riskiest guess is wrong, and for a medium or large idea also if it is right. "Decide after the test" is a full answer, recorded as `open`. When you ask for a suggestion, the skill proposes one small next action and says what it is for, and it does a low-risk action itself only when you allow it. It marks drafts `(suggested)` and shows them in a playback, apart from your own answers and each with the words it came from, so you can spot a detail you never gave before you say "Is this right?". Small ideas get one playback at the end, medium ideas two, large ideas one per step. The skill stops asking when the problem, the wanted change and the first step are clear, or you marked them "unknown", and no other answer would change them. It never fills a gap with an invented number or fact.
-
-The first version of this question system came from a comparison with Jev, the TypeSafe decision model on OpenRouter. Jev scored short descriptions of five question policies, four full systems and three question formats. Its scores were close (most between 0.5 and 0.73), so they are only a first signal. The evals in `evals/` check the real behavior: one-turn cases, and whole simulated interviews (`evals/interviews.json`, run with `scripts/eval_interview.py`) that count the questions for each size.
+When you want a plan, the skill can split a large idea into independently useful results. It keeps one current result, an observable success condition and one next action. It records planned checks separately from completed checks, and preserves material decisions and results as the idea changes.
 
 ## The note
 
@@ -94,7 +69,7 @@ Notes go to `${XDG_DATA_HOME:-~/.local/share}/sai/smallsteps/ideas/` by default.
 
 In Codex's default sandbox, the shared folder is outside the workspace, so Codex asks for approval before it writes the note there. To avoid that, keep the notes in the repository.
 
-The note keeps the step and the date in front matter (`step: 3 of 4`, `updated: 2026-10-28`). The rest has two parts.
+The note keeps the planning step and the date in front matter (`step: 3 of 4`, `updated: 2026-10-28`). The rest has two parts.
 
 The top is the idea itself: `## Goal` in a sentence or two, `## Idea` with your raw idea and its current form, and one section for each part of the idea, with a heading that fits it, such as "Contract contents", "Working example" or "Format conventions". When an answer or a check changes the idea, the skill changes these sections in place. They never hold questions, statuses or tests.
 
@@ -104,16 +79,16 @@ The bottom, `## Process`, holds the work:
 | :-- | :-- |
 | Now, Done when, Need | The current result, what you will see when it is done, and what you need |
 | Main uncertainty, Guesses, Test | What you are least sure about, the other guesses with their evidence, and the test of the riskiest guess |
-| Checks | One line per check: planned, done, not done or stuck, what it showed and what it did not prove |
+| Checks | One line per check: proposed, planned, done, not done or stuck, what it showed and what it did not prove |
 | Questions | Open questions, one line each, with the item each blocks |
 | Next results, Later | One line per result |
-| Next action | "When <time or place>, I will <step>", or the next question while the interview runs |
-| Background | Problem, appetite, size, limits and the other options |
+| Next action | One concrete action or the next question, when known |
+| Background | Problem, appetite, limits and the other options |
 | Links | Linked notes and the Miro board |
 
 Each fact is written once. You can rename, move or delete sections: the skill keeps your layout and never puts back what you removed. A check that did not run stays in the note as not done.
 
-When you come back, the skill shows the Now result, the next action and any question that blocks it, and asks "Done, not done, or stuck?". When the Now result is finished, it offers the Next results so you can pick the next one.
+When you come back, the skill shows the current stage and the next action or question. It follows your direction, including a return to exploration, and keeps decisions open until you make them.
 
 ## Visuals
 

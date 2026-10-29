@@ -1,10 +1,7 @@
 schema_version: "1.1"
 name: parks-later-details
 expected_outcome: |
-  The placed note waits for the Now result's Done when. The user answers it
-  and adds details about the checking system, which is a Later result. The
-  skill records the Done when in the user's words, puts the checker details
-  under the Later result or in a linked note, says so in one line, and asks
-  its next question about the Now result.
+  The skill returns to exploration and discusses a relevant trade-off without
+  assuming that the planned checker exists or forcing work on Now.
 context:
   scaffold_script: place-files.sh

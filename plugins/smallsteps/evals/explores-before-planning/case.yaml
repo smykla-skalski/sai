@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: explores-before-planning
+expected_outcome: |
+  The reply asks one useful question about the problem, people or desired change, and respects exploration. The note records the idea without an action card or test. FAIL if it forces a plan, a test, a time limit or a decision.

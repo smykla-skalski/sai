@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: vision-alignment
+expected_outcome: |
+  The reply identifies the possible conflict with the stated vision without deciding for the user, and asks at most one useful question. FAIL if it misses the conflict, asserts an unsupported fact, or pushes into a plan.

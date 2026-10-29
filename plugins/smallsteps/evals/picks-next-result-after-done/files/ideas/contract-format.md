@@ -27,6 +27,12 @@ A Markdown document with YAML front matter: YAML holds the facts a tool can read
 
 - the team can understand an example contract: guess. Evidence: none, no reader test yet. Matters: a lot
 
+**Decisions:** Use Markdown with YAML front matter for the candidate. Earlier, consider YAML alone; the user changed that choice to keep the explanation in Markdown.
+
+**Checks:**
+
+- Author reviewed a sample YAML file: done. Showed: the author could write the fields. Did not prove: another reader can understand it.
+
 **Next results:**
 
 - A review of the example for gaps, needs the example
