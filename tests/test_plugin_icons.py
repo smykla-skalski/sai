@@ -12,6 +12,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 from __future__ import annotations
 
 import importlib.util
+import json
 import struct
 import unittest
 from pathlib import Path
@@ -30,6 +31,15 @@ def plugin_dirs() -> list[Path]:
 
 
 class PluginIconTest(unittest.TestCase):
+    def test_manifests_reference_the_plugin_icon(self) -> None:
+        for plugin in plugin_dirs():
+            with self.subTest(plugin=plugin.name):
+                path = "./.claude-plugin/icon.png"
+                portable = json.loads((plugin / "plugin.json").read_text())
+                interface = portable["extensions"]["com.openai"]["interface"]
+                self.assertEqual(interface["logo"], path)
+                self.assertEqual(interface["composerIcon"], path)
+
     def test_every_plugin_has_a_valid_icon(self) -> None:
         for plugin in plugin_dirs():
             with self.subTest(plugin=plugin.name):

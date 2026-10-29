@@ -1,7 +1,7 @@
 {
   "name": "rightsize",
   "description": "Audit, write and rewrite work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, plan, design or process, write new design docs, decision records, pitches and plans that admit only justified complexity, and rewrite existing documents the same way in plain words. With no target it audits the work in the current conversation.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "Smykla Skalski Labs"
   },

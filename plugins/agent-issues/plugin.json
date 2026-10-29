@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "agent-issues",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Write, improve and split GitHub issues and agent task briefs that coding agents can implement without asking questions. Evidence-based rules: runnable done-checks, verified anchors, stop-and-flag triggers, self-contained vertical slices, and a threshold-gated cold-read review.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -27,6 +27,8 @@
           "Use $agent-issues to improve this issue so an agent can implement it.",
           "Use $agent-issues to split this issue into vertical slices."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2563EB"
       }
     }

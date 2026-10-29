@@ -1,7 +1,7 @@
 {
   "name": "agent-issues",
   "description": "Write, improve and split GitHub issues and agent task briefs that coding agents can implement without asking questions. Evidence-based rules: runnable done-checks, verified anchors, stop-and-flag triggers, self-contained vertical slices, and a threshold-gated cold-read review.",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": {
     "name": "Smykla Skalski Labs"
   },

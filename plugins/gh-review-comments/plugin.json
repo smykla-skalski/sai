@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "gh-review-comments",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "List, reply to, resolve, and create GitHub PR review comment threads",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -27,6 +27,8 @@
           "Use $gh-review-comments to reply to and resolve the review threads I fixed.",
           "Use $gh-review-comments to create a review with inline comments on this PR."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2563EB"
       }
     }

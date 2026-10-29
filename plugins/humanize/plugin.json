@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "humanize",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Write and rewrite text for people as short and plain as possible without losing meaning: removes AI writing patterns, fixes usage, and keeps every fact, condition and tone. For commit messages, PR descriptions, docs, changelogs, emails and review comments.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -28,6 +28,8 @@
           "Use $humanize to score this file for AI writing patterns without rewriting it.",
           "Use $humanize to preview a rewrite of CHANGELOG.md without editing it."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2563EB"
       }
     }

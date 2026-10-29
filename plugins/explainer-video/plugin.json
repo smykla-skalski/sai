@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "explainer-video",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Make 3Blue1Brown-style explainer videos: Manim animations on black with CMU Serif text, narrated with ElevenLabs text-to-speech, from a topic to a checked 1080p60 MP4 with the audio synced, transcribed and checked for clicks and gaps.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -27,6 +27,8 @@
           "Use $explainer-video to make a short narrated explainer about bloom filters.",
           "Use $explainer-video to fix the click at 1:31 in my explainer video."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#6B36C4"
       }
     }

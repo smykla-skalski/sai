@@ -1,7 +1,7 @@
 {
   "name": "smallsteps",
   "description": "Explore an idea, assess its value and alternatives, and choose small next steps when you want a plan. Keep one Markdown note per idea, add a Mermaid map when useful, and create a Miro board on request.",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "author": {
     "name": "Smykla Skalski Labs"
   },

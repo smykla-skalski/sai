@@ -1,6 +1,6 @@
 {
   "name": "plan-critic",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Critique an implementation plan before approving execution. Persona reviewers (Skeptic, Architect, Verifier) evaluate the plan against the codebase and return an Approve/Reject/Refine verdict.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -26,6 +26,8 @@
           "Use $plan-critic to challenge this implementation plan before coding starts.",
           "Run $plan-critic on the plan in this conversation."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2563EB"
       }
     }
