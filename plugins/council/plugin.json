@@ -1,6 +1,6 @@
 {
   "name": "council",
-  "version": "2.0.113",
+  "version": "2.0.114",
   "description": "Council of 27 sourced engineering and UX persona reviewers that review code, design docs, architecture, refactors, UI surfaces, dashboards, and strategy through opinionated lenses, then synthesize convergence, disagreement, and concrete next moves.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -50,6 +50,8 @@
           "$council spawn prompts must include `Your first line must be exactly: ## <display name> review` before the assignment block.",
           "$council never prefaces, truncates fixed rosters, accepts wrong reviewer headings, treats no-receiver capacity failures as final, skips mandatory headings, queues next-wave spawns before closes, sends malformed prompts, sends shorthand material, claims tool actions without the tool call, or leaks raw child payloads."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#7C3AED"
       }
     }

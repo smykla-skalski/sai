@@ -1,7 +1,7 @@
 {
   "name": "explainer-video",
   "description": "Make 3Blue1Brown-style explainer videos: Manim animations on black with CMU Serif text, narrated with ElevenLabs text-to-speech, from a topic to a checked 1080p60 MP4 with the audio synced, transcribed and checked for clicks and gaps.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": {
     "name": "Smykla Skalski Labs"
   },

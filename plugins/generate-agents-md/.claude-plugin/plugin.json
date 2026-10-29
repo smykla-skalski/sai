@@ -1,7 +1,7 @@
 {
   "name": "generate-agents-md",
   "description": "Generate a lean, high-signal CLAUDE.md from codebase analysis. Grounded in Anthropic best practices and empirical studies; built to pass review-agents-md's critical checks.",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "author": {
     "name": "Smykla Skalski Labs"
   },

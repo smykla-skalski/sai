@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "youtube-summary",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Summarize a YouTube video from its transcript into a concise Markdown note, saved to a folder you configure or printed in chat.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -27,6 +27,8 @@
           "Use $youtube-summary to summarize this video without saving a note.",
           "Use $youtube-summary to pull the key points and timestamps from this talk."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#DC2626"
       }
     }

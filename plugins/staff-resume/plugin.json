@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "staff-resume",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Build and refine staff-level engineering resumes through interactive coaching, research-backed best practices, and per-job tailoring.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -27,6 +27,8 @@
           "Use $staff-resume to tailor resume.md to a job posting URL I will share.",
           "Use $staff-resume in full mode on resume.tex for a job posting URL I will share."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2563EB"
       }
     }

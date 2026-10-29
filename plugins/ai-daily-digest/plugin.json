@@ -1,6 +1,6 @@
 {
   "name": "ai-daily-digest",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "description": "Daily AI news digest covering technical advances, business news, and engineering impact, built from dated, verified sources.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -26,6 +26,8 @@
           "Run $ai-daily-digest --focus technical --no-notion.",
           "Run $ai-daily-digest and save it to my Obsidian vault."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2563EB"
       }
     }

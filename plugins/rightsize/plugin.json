@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "rightsize",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Audit, write and rewrite work against simplicity rules: find what is overbuilt or oversimplified in a diff, PR, files, plan, design or process, write new design docs, decision records, pitches and plans that admit only justified complexity, and rewrite existing documents the same way in plain words. With no target it audits the work in the current conversation.",
   "author": {
     "name": "Smykla Skalski Labs"
@@ -28,6 +28,8 @@
           "Use $rightsize to write a design doc for this feature.",
           "Use $rightsize to rewrite docs/plan.md so that it is no bigger than it needs to be."
         ],
+        "logo": "./.claude-plugin/icon.png",
+        "composerIcon": "./.claude-plugin/icon.png",
         "brandColor": "#2747B8"
       }
     }
