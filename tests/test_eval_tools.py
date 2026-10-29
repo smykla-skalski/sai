@@ -85,6 +85,24 @@ class SuiteLoadingTest(unittest.TestCase):
 
 
 class CodexGradingTest(unittest.TestCase):
+    def test_judge_failure_is_not_reported_as_a_failed_vote(self) -> None:
+        result = subprocess.CompletedProcess([], 1, "", "Not logged in")
+        with mock.patch.object(codex, "run_command", return_value=result):
+            passed, detail = codex.grade_llm(
+                codex_run(), grader(type="llm"), "s", Path()
+            )
+        self.assertFalse(passed)
+        self.assertIn("judge error", detail)
+        self.assertIn("Not logged in", detail)
+
+    def test_judge_must_return_an_explicit_verdict(self) -> None:
+        result = subprocess.CompletedProcess([], 0, "No verdict", "")
+        with (
+            mock.patch.object(codex, "run_command", return_value=result),
+            self.assertRaisesRegex(common.EvalError, "no verdict"),
+        ):
+            codex.judge_vote("rubric", "output", "s", Path())
+
     def test_read_grader_sees_files_inside_brace_groups(self) -> None:
         run = codex_run(
             commands=["/bin/zsh -lc 'cat skills/x/references/{voice,patterns}.md'"],
@@ -451,6 +469,25 @@ def clean_judge(**fields: object) -> dict[str, object]:
 
 
 class InterviewTest(unittest.TestCase):
+    def test_choice_without_question_mark_does_not_end_interview(self) -> None:
+        session = mock.Mock()
+        session.send.side_effect = [
+            "Choose one: 1. One evening 2. A weekend",
+            "Plan ready.",
+        ]
+        session.problems.return_value = []
+        replies = ["One evening", interviews.DONE, json.dumps(clean_judge())]
+        with (
+            tempfile.TemporaryDirectory() as root,
+            mock.patch.object(interviews, "start_session", return_value=session),
+            mock.patch.object(interviews, "ask_model", side_effect=replies),
+        ):
+            result = interviews.interview(context(root=Path(root)), scenario(), 1)
+        self.assertTrue(result["pass"], result["problems"])
+        self.assertEqual(session.send.call_count, 2)
+        self.assertEqual(session.send.call_args_list[1].args, ("One evening",))
+        session.close.assert_called_once()
+
     def test_question_count_passes_within_range_and_slack(self) -> None:
         for count, passes in ((4, True), (3, False), (10, True), (11, False)):
             with self.subTest(questions=count):
@@ -558,6 +595,11 @@ class InterviewTest(unittest.TestCase):
                 session.send("again")
         self.assertNotIn("--resume", calls[0])
         self.assertEqual(calls[1][-2:], ["--resume", "s1"])
+        allowed = calls[0][calls[0].index("--allowedTools") : calls[0].index("--tools")]
+        available = calls[0][calls[0].index("--tools") :]
+        for tool in ("WebSearch", "WebFetch"):
+            self.assertIn(tool, allowed)
+            self.assertIn(tool, available)
 
     def test_first_message_invokes_the_skill_on_each_agent(self) -> None:
         expected = {

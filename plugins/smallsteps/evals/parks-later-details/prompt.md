@@ -8,4 +8,4 @@ disallowed_tools: [Bash, AskUserQuestion]
 
 /smallsteps resume ideas/contract-format.md
 
-Done when the example has one operation with its inputs and their types and its results. By the way, the checker should later run in CI on every PR, read the YAML with a JSON schema and post errors as PR comments.
+I want to return to exploration before we plan more. Could the checker later run in CI on every PR and post errors as PR comments? Help me think through the trade-offs.

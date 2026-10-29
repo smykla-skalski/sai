@@ -5,6 +5,14 @@
   },
   "queries": [
     {
+      "query": "Help me explore whether this rough idea is worth pursuing before we make a plan",
+      "should_trigger": true
+    },
+    {
+      "query": "I want to return to exploring the problem in my idea note before I run a test",
+      "should_trigger": true
+    },
+    {
       "query": "I have a rough idea for a tool that reminds me to drink water while I code, help me figure out where to start",
       "should_trigger": true
     },

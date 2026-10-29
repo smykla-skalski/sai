@@ -30,11 +30,16 @@ The file name is a short kebab-case name from the idea, such as `link-finder.md`
 
 ## Shape first, process last
 
-The note is about the idea, not about the interview. Its top shows the idea's current shape: `## Goal` in one or two sentences, `## Idea`, and a section for each part of the idea, with a heading that fits it, such as "Contract contents", "Working example", "Format conventions" or "Scope". These shape sections hold what the idea is made of: its parts, contents, rules, conventions, scope and a working example, in the user's words. Everything about getting there sits at the bottom, under `## Process`: the current result, the guesses, the test, the checks, the questions and the next action.
+The note is about the idea, not about the interview. Its top shows the idea's current shape: `## Goal` when known, `## Idea`, and sections that fit the idea. Keep one editable working example when one exists. Everything about getting there sits at the bottom, under `## Process`: the current stage, decisions, checks, questions and next action when known. Exploration can have no plan or action card.
 
 - Write what the user says about the idea itself into the shape sections at once. Keep them current: when an answer or a check changes the idea, change the shape in place, and record the check under `**Checks:**`.
 - Add a heading for a part of the idea when the user describes one. Never put a question, a status, a test or a next action in a shape section.
 - Write each fact once: a fact about the idea goes in the shape, a fact about the work goes in `## Process`.
+- Record the current question once. When it is the next question, do not repeat it in both `**Questions:**` and `**Next question:**`; keep its blocker with the one entry.
+- Preserve material earlier decisions, corrections, check results and what changed in brief dated or undated entries as appropriate. Record the iteration count only when known. Do not reconstruct missing history or add dates without a reason.
+- When the user changes direction or authorizes a check after postponing checks, mark the earlier decision as history and record the current choice. Do not leave the old direction as the current decision.
+- Separate sourced observations, assumptions, suggestions and confirmed decisions. Record the source and limits of research claims. Do not present a proposed check as completed evidence.
+- When the proposed Now condition needs a system that does not exist, mark it proposed and blocked until the user chooses a feasible condition or a new order. Do not write it as a confirmed current Done when.
 - The user may rename, reorder, add or remove headings and fields: keep their choice, find items by their meaning, never put back what they removed, and do not ask about headings. A note in an older layout keeps its layout.
 - Put a long piece, such as research or a full example, in a linked note, and link it in one line under `### Links`. Put a new linked note in a folder named after the note, such as `link-finder/search-options.md`, unless the user keeps such notes elsewhere. Use the link style that the folder already uses, such as `[[Research/Search options|search options]]` in an Obsidian vault, and Markdown links otherwise.
 
@@ -42,13 +47,13 @@ The note is about the idea, not about the interview. Its top shows the idea's cu
 
 | Mark | Meaning |
 | :-- | :-- |
-| `(suggested)` | Drafted from the user's context or by you, not confirmed yet. Put it after the field name, as in `**Need (suggested):**`, or after a list item |
+| `(suggested)` | Your inference or proposal, not confirmed yet. Put it after the field name, as in `**Need (suggested):**`, or after a list item |
 | no mark | Confirmed by the user |
-| `unknown` | The user does not know. Do not ask again |
-| `open` | A decision the user will make when the result is in. Do not ask for it before |
-| `unclear` | Still vague after one follow-up. Ask about it in the step playback |
+| `unknown` | The user does not know. Revisit only when relevant new evidence or the user makes it useful |
+| `open` | A decision the user has not made. Do not press for it |
+| `unclear` | Still vague after a follow-up. Clarify when it matters to a decision |
 
-A step is done only when it has no `(suggested)` or `unclear` mark left.
+Confirm material suggestions when they affect the next decision. An open or unclear item need not block exploration or a pause.
 
 ## Template
 
@@ -76,6 +81,10 @@ updated: <YYYY-MM-DD>
 
 ## Process
 
+**Stage:** <exploring, planning, acting, learning, paused or stopped>
+
+**Decisions:** <current decision and material earlier decisions or corrections>
+
 **Now:** <the current result>
 
 **Done when:** <what the user will see>
@@ -90,7 +99,7 @@ updated: <YYYY-MM-DD>
 
 **Checks:**
 
-- <YYYY-MM-DD>, <check>: <planned, done, not done or stuck>. Showed: <what happened>. Did not prove: <the part of the guess it does not cover>. Decision: <decision or "open">
+- <check>: <proposed, planned, done, not done or stuck>. Showed: <what happened, if run>. Did not prove: <limit, if known>. Decision: <decision or "open">
 
 **Questions:**
 
@@ -104,15 +113,13 @@ updated: <YYYY-MM-DD>
 
 - <result>
 
-**Next action:** When <time or place>, I will <one physical step under 10 minutes>.
+**Next action:** <one concrete action and a start cue when useful>
 
 ### Background
 
 **Problem:** <what happens today, and who has it>
 
 **Appetite:** <how much time the idea is worth before deciding again, in the user's words>
-
-**Size:** <small, medium or large>, because <reason>
 
 **Limits:** <what must hold, or "none named">
 
@@ -123,7 +130,7 @@ updated: <YYYY-MM-DD>
 - <a linked note, or "Miro board" with the URL from a tool result>
 ````
 
-While the interview runs, end the process block with `**Next question:** <the next question>`, after the next action when there is one. Leave out `needs ...` when the user named nothing that a result needs first. On a Small idea, leave out `**Guesses:**`. On a Large idea with several guesses, end each guess with `Matters: a lot` or `Matters: a little`.
+Use `step: 1 of 4` during exploration for compatibility with note listing; record the actual stage in `**Stage:**`. Update the step when planning advances or returns to an earlier question. While a conversation continues, record its next question or action when known. Leave out empty fields and `needs ...` when the user named no dependency. Add ratings only when useful and supported.
 
 When the Now result checks a guess first, add the test after `**Main uncertainty:**`:
 
@@ -137,20 +144,20 @@ When the Now result checks a guess first, add the test after `**Main uncertainty
 - Then: if right, <decision or "open">. If wrong, <decision or "open">.
 ```
 
-On a Small idea, leave out "if right" in `Then:` when the user did not give it. Add `### Map` before `### Links` only for the maps in [references/visuals.md](visuals.md).
+Leave out test fields that are unknown or not relevant. Add `### Map` before `### Links` only for the maps in [references/visuals.md](visuals.md).
 
-Update `updated:` on every save.
+Update `updated:` on every save. Use only the fields that fit the current stage and the user's layout.
 
 ## Checks and evidence
 
-`**Checks:**` lists every check and action, one item each. When the plan sets a test or another check, add its item with the status `planned`. Change the status only from what the user reports: `done`, `not done` or `stuck`. A check that did not run stays in the list as `not done`, with "Showed: not run" and no Did not prove. Never drop it, and never mark it done. In Showed, write what happened and whether it matched the expectation. Draft Did not prove from the guess and the result, such as "that the search finds links saved with other words", mark it `(suggested)`, and show it in the reply above the next question so the user can correct it. It needs no question of its own: when the user's next answer does not correct it, remove the mark. A guess's evidence changes only after a check is done, never after a planned one. When a check changes the idea, also update the shape.
+`**Checks:**` lists material checks and actions, one item each. A check is `proposed` until the user agrees to plan it; an agreed check is `planned`. A check the user says did not run is `not done`. Change status only on user or tool evidence. For a completed check, record what happened, whether it met any stated expectation, and what it did not prove when known. Label an inferred limit `(suggested)` and let the user correct it without a separate confirmation question. Do not turn silence into confirmation. Preserve previous results and decisions when a later check changes the idea. A proposed or planned check does not change the evidence for an assumption.
 
 ## Before each save
 
 Check the note and this turn's question:
 
-1. The question asks for no item that is confirmed, `unknown` or `open`, or that the user already answered in any words, also without a number, such as "as much time as needed".
-2. Every check that the user did not run is in `**Checks:**` as `not done`.
+1. The question does not repeat a confirmed answer or press for an `unknown` or `open` item. Revisit one only when a relevant change or the user makes it useful.
+2. Unaccepted checks are `proposed`, agreed checks are `planned`, and checks the user says did not run are `not done`.
 3. The shape sections hold only the idea, with no question, status, test or next action, and each fact is written once.
 4. Nothing that the user removed is back, such as a section, a field or a map.
 
@@ -160,7 +167,7 @@ Fix the note or the question before you save.
 
 1. Read the whole note, and a linked note only when the next action needs it.
 2. Run the checks in "Before each save" on the note as you found it.
-3. Show the Now result, the next action or next question, and each question that blocks it.
-4. If the note has `(suggested)` or `unclear` items, confirm them first. A Did not prove draft is the exception: show it with the next question, and remove the mark when the answer does not correct it.
-5. If the Now result has an action or a test, run step 4: ask "Done, not done, or stuck?". When a decision is `open` and the result is in, ask for the decision before the next action.
-6. Never ask about a confirmed item again. Change an earlier section only when the user corrects it, and say which line changed.
+3. Show the current stage and the next action or question, plus any relevant blocker. Follow the user's request, including a return to exploration.
+4. Confirm a suggested item only when it matters to the current decision. If the user reports a check, record its status and result before suggesting a next step.
+5. Keep an `open` decision open until the user decides. Offer a choice of next results when appropriate, without assuming the user wants to continue.
+6. Never ask about a confirmed item again without a relevant change. Preserve the earlier decision when a correction changes it.

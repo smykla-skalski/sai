@@ -1,22 +1,22 @@
 {
   "where": "The reply is in `assistant_reply`, which holds only the final message. The skill keeps an idea note: the note after the run is in `file_after`, the note before the run in `original_text` (empty for a new note), and the user's words in `user_request`. The interview asks one question per turn, so a reply that ends with one question is a complete turn, not an unfinished one. When no note file is named, read every question about `file_after` as a question about `assistant_reply`.",
-  "quality": "{where} Rate the result for {medium}. Weigh first that the reply asks only the one question whose answer changes the note most, or, when the plan is done, shows one next action, and that it says nothing more than it needs to. Then weigh that the note holds only what the user said or confirmed, marks unconfirmed and unknown items, invents no facts, and reads plainly.",
+  "quality": "{where} Rate the result for {medium}. Weigh whether the reply follows the user's direction, helps them understand or decide, and asks at most one clear question. Check that the note separates evidence, suggestions and decisions without inventing facts.",
   "criteria": {
     "one_question": [
       {
-        "ask": "Read `assistant_reply`. Does it ask the user exactly one question?",
-        "pass": "It asks exactly one question.",
-        "fail": "It asks no question, or two or more questions."
+        "ask": "Does the reply ask exactly one question about one item? Answer options or an instruction to choose an option do not count as separate questions.",
+        "pass": "Yes, one question about one item.",
+        "fail": "No, zero questions, multiple questions, or a question joining separate items."
       },
       {
-        "ask": "Would the user, reading `assistant_reply`, have exactly one thing to answer?",
-        "pass": "Yes, one question to answer.",
-        "fail": "No, several questions or none."
+        "ask": "Does the user have only one distinct item to answer? A choice of answers or free response to that same question is one item.",
+        "pass": "Yes.",
+        "fail": "No."
       },
       {
-        "ask": "Does `assistant_reply` ask the user more than one question at once, or none at all?",
-        "pass": "Yes, more than one question, or none.",
-        "fail": "No, exactly one question.",
+        "ask": "Does the reply ask no question, ask multiple independent questions, or join separate items in one question? An instruction to choose an answer is not another question.",
+        "pass": "Yes.",
+        "fail": "No.",
         "inverted": true
       }
     ],
@@ -40,19 +40,19 @@
     ],
     "confirms_not_assumes": [
       {
-        "ask": "Read `file_after`. Is every item taken from the user's text and not yet confirmed marked (suggested), unknown or left open, rather than written as a finished answer, with no filled action card?",
-        "pass": "Yes, nothing is presented as confirmed without a question.",
-        "fail": "No, the note presents unconfirmed items or an action card as final."
+        "ask": "Compare `file_after` with `original_text` and `user_request`. Does the note preserve supported user statements and distinguish material inferences from confirmed decisions?",
+        "pass": "Yes.",
+        "fail": "No, it invents or confirms an unsupported fact or decision."
       },
       {
-        "ask": "Does the note in `file_after` wait for the user's answers before it fills results or an action card?",
-        "pass": "Yes, no results or action card are filled yet.",
-        "fail": "No, it already fills results or an action card."
+        "ask": "Does the note keep proposals and unrun checks separate from confirmed decisions and completed evidence?",
+        "pass": "Yes.",
+        "fail": "No."
       },
       {
-        "ask": "Does `file_after` contain a finished plan (placed results or a filled action card) that the user never confirmed?",
-        "pass": "Yes, it contains an unconfirmed plan.",
-        "fail": "No, it contains no unconfirmed plan.",
+        "ask": "Does the note turn a suggestion or an unrun check into a confirmed decision or result without evidence?",
+        "pass": "Yes.",
+        "fail": "No.",
         "inverted": true
       }
     ],
@@ -177,6 +177,204 @@
       },
       {
         "ask": "Is `assistant_reply` long, wordy or full of unexplained method names?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "exploration_control": [
+      {
+        "ask": "Does the reply follow the user's requested exploration without requiring a plan or running a test? A proposed future check is allowed.",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply offer a relevant perspective or question while preserving the user's control of what happens next?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply insist that the user must plan or test now, run a check before the user is ready, or claim an unsupported conclusion? A suggested future check alone does not count.",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "single_item": [
+      {
+        "ask": "Does the reply ask at most one question about one item, without joining separate unanswered items?",
+        "pass": "Yes.",
+        "fail": "No, it joins separate questions or asks several items."
+      },
+      {
+        "ask": "Can the user answer the reply without choosing between two separate unanswered questions?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply combine two unanswered items into one question, even with only one question mark?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "voice_input": [
+      {
+        "ask": "Does the reply let the user finish the incomplete voice thought and avoid forcing a plan or time limit?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply respond briefly to the unclear term without treating the unfinished thought as a decision?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply interrupt the incomplete thought, demand a deadline, or treat it as a final decision?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "research_evidence": [
+      {
+        "ask": "Does the reply treat novelty as unverified and propose a proportionate way to look for existing alternatives?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply distinguish an unverified resemblance or claim from established evidence?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply assert novelty or a market gap without evidence?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "note_question_once": [
+      {
+        "ask": "Does `file_after` record the current question once without repeating it in another field?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Is the current question absent from duplicate question fields in the note, even when rephrased?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the note repeat the same current question in multiple fields?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "research_scope": [
+      {
+        "ask": "Does the reply give a concise, proportionate way to investigate without imposing a full research plan?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply match the detail to the request for possible checks and leave the user free to explore?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply prescribe an extensive research process or treat an unaccepted suggestion as the user's decision?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "research_note": [
+      {
+        "ask": "Does `file_after` distinguish proposed checks from checks the user agreed to plan or completed?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the note avoid claiming a small sample proves prevalence or a market gap?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the note record an unaccepted check as an agreed plan or a completed result?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "source_accuracy": [
+      {
+        "ask": "Does the reply cite relevant official sources and avoid unsupported or self-contradictory product limits, including claims about connected sources?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the note distinguish documented capabilities from unknowns and avoid turning a missing mention into proof that a capability is absent?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply or note assert an unsupported capability limit or claim outside data is always inaccessible while describing connected sources?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "conditional_tradeoff": [
+      {
+        "ask": "Does the reply present the unbuilt finder as conditional and avoid claiming that a decision log cannot cover past decisions?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the note preserve the uncertainty of the alternatives and permit a decision record to be made later?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply or note assert that the unbuilt finder works or that a log cannot be filled in after a decision?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "research_specificity": [
+      {
+        "ask": "Does the reply name a useful search term, type of existing solution, or source to check?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply give at least one concrete lead for the proposed research rather than only promising to search?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply offer only a vague promise to search without any concrete lead?",
+        "pass": "Yes.",
+        "fail": "No.",
+        "inverted": true
+      }
+    ],
+    "unverified_capabilities": [
+      {
+        "ask": "Does the reply describe unresearched tool categories as possible leads rather than asserted capabilities or limits?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply avoid unsupported generalizations about what whole categories of tools can or cannot do?",
+        "pass": "Yes.",
+        "fail": "No."
+      },
+      {
+        "ask": "Does the reply assert an unsupported capability or universal limitation of a tool category?",
         "pass": "Yes.",
         "fail": "No.",
         "inverted": true
@@ -341,7 +539,6 @@
       ],
       "graders": {
         "confirms_not_assumes": [
-          "04-did-not-prove-suggested",
           "06-no-system-assumed"
         ],
         "one_question": [
@@ -402,12 +599,12 @@
       "medium": "an interview turn that drifts to a later result",
       "file": "ideas/contract-format.md",
       "criteria": [
-        "one_question",
-        "no_needless_question",
+        "exploration_control",
+        "single_item",
         "plain"
       ],
       "graders": {
-        "no_needless_question": [
+        "exploration_control": [
           "04-question-about-now"
         ]
       }
@@ -418,12 +615,138 @@
       "criteria": [
         "one_question",
         "precise_answers",
-        "plain"
+        "plain",
+        "note_question_once"
       ],
       "graders": {
         "precise_answers": [
           "03-flags-missing-system",
           "04-done-when-not-confirmed"
+        ],
+        "note_question_once": [
+          "05-one-question-record"
+        ]
+      }
+    },
+    "explores-before-planning": {
+      "medium": "an exploration turn",
+      "criteria": [
+        "exploration_control",
+        "single_item",
+        "plain"
+      ],
+      "graders": {
+        "exploration_control": [
+          "01-behavior"
+        ]
+      }
+    },
+    "questions-existing-alternatives": {
+      "medium": "an exploration turn",
+      "criteria": [
+        "exploration_control",
+        "single_item",
+        "plain"
+      ],
+      "graders": {
+        "exploration_control": [
+          "01-behavior"
+        ]
+      }
+    },
+    "vision-alignment": {
+      "medium": "an exploration turn",
+      "criteria": [
+        "exploration_control",
+        "single_item",
+        "plain"
+      ],
+      "graders": {
+        "exploration_control": [
+          "01-behavior"
+        ]
+      }
+    },
+    "open-budget-stop": {
+      "medium": "an exploration turn",
+      "criteria": [
+        "exploration_control",
+        "single_item",
+        "plain"
+      ],
+      "graders": {
+        "exploration_control": [
+          "01-behavior"
+        ]
+      }
+    },
+    "research-claims": {
+      "medium": "an exploration turn",
+      "criteria": [
+        "exploration_control",
+        "research_evidence",
+        "single_item",
+        "plain",
+        "research_scope",
+        "research_note",
+        "research_specificity",
+        "unverified_capabilities"
+      ],
+      "graders": {
+        "exploration_control": [
+          "01-behavior"
+        ],
+        "research_note": [
+          "02-research-limits"
+        ],
+        "research_specificity": [
+          "01-behavior"
+        ],
+        "unverified_capabilities": [
+          "03-unverified-capabilities"
+        ]
+      },
+      "file": "ideas/decisions.md"
+    },
+    "voice-rephrase": {
+      "medium": "an incomplete voice input",
+      "criteria": [
+        "voice_input",
+        "plain"
+      ],
+      "graders": {
+        "voice_input": [
+          "01-behavior"
+        ]
+      }
+    },
+    "research-source-limits": {
+      "medium": "an exploration turn with requested source research",
+      "file": "ideas/slack-decisions.md",
+      "criteria": [
+        "single_item",
+        "source_accuracy",
+        "plain"
+      ],
+      "graders": {
+        "source_accuracy": [
+          "01-supported-claims",
+          "02-note-qualification"
+        ]
+      }
+    },
+    "tradeoff-uncertainty": {
+      "medium": "an exploration turn that compares untested options",
+      "file": "ideas/log-comparison.md",
+      "criteria": [
+        "single_item",
+        "conditional_tradeoff",
+        "plain"
+      ],
+      "graders": {
+        "conditional_tradeoff": [
+          "01-conditional-comparison",
+          "02-note-uncertainty"
         ]
       }
     }

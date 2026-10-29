@@ -4,5 +4,4 @@ focus: last_message
 weight: 1
 ---
 
-PASS if the reply says in about one line that the checker details went under the later result or a linked note, and its one question is about the Now result (such as its first action, its start or a playback), not about the checker, CI or the schema.
-FAIL if it asks about the checker, CI or the schema, does not mention where the details went, or asks two or more questions.
+PASS if the reply explores a relevant trade-off of the proposed checker and asks at most one question. FAIL if it forces a return to the prior Now result, assumes the checker exists, or ignores the user's request to explore.

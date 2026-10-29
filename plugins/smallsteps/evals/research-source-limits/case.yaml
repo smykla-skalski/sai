@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: research-source-limits
+expected_outcome: |
+  The skill checks relevant current primary sources, separates supported capabilities
+  from unknowns, and does not infer that Slack cannot retain or share a decision
+  merely because one page does not describe a decision-log feature.

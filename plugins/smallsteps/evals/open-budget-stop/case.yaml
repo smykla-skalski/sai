@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: open-budget-stop
+expected_outcome: |
+  The reply acknowledges that stopping or pausing is an option and asks at most one relevant question about present value or cost. FAIL if it argues that past effort requires continuation, demands a time limit, or forces a next action.
