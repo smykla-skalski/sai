@@ -18,7 +18,7 @@ Read [bootstrap.md](references/bootstrap.md) before any other reference/helper. 
 
 **Mode:** autonomous; ask on material ambiguity. Block on events until merged or stopped; never foreground-poll.
 
-Read [references/fallbacks.md](references/fallbacks.md) for missing agent features.
+Read [fallbacks.md](references/fallbacks.md) for missing features.
 
 Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira URL>` (`$ship-it` in Codex); absent arguments use the request.
 
@@ -35,7 +35,7 @@ Invocation: `/ship-it [--issue] [--risk low|medium|high] <task|GitHub issue|Jira
 - Read [references/risk.md](references/risk.md) or [references/release.md](references/release.md) for small-code selection, overrides or phase triggers; read [references/convergence.md](references/convergence.md) only after failure, recovery or exhaustive opt-in. Checkpoint gates, release policy and budget before validation.
 - Before validation or integration read [validation-reuse.md](references/validation-reuse.md). Reuse only verified results with current-head provenance.
 - Never bypass hooks, suppress checks, force-push after the first push, or force-merge.
-- If connected tools expose Sail, read [references/sail.md](references/sail.md) before resolution. Otherwise do not load it.
+- If connected tools expose Sail or T3 Code, read [sail.md](references/sail.md) or [t3-code.md](references/t3-code.md) before resolution. Otherwise do not load it.
 - For file-by-file helpers, read [file delivery](references/helper-loading.md).
 
 Resolve source, criteria, authority and checkpoint before changes. For approved plans/umbrellas, read [orchestration.md](references/orchestration.md); parents never implement children.

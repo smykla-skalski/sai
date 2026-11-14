@@ -79,6 +79,15 @@
       "fallback_roles": [],
       "selectors": {"provider": "worker-provider", "model": "worker-model", "variant": "worker-variant"},
       "unsupported_selector": "reject-before-dispatch"
+    },
+    "t3-code": {
+      "subagents": ["native-subagent"],
+      "fallback": "inline",
+      "fallback_roles": ["exploration", "implementation", "ci-triage"],
+      "selectors": {"provider": "delegate-provider-instance", "model": "delegate-model", "variant": "delegate-reasoning-option"},
+      "gate_provider": "different-from-implementation",
+      "gate_provider_fallback": "same-provider-degraded",
+      "unsupported_selector": "reject-before-dispatch"
     }
   }
 }

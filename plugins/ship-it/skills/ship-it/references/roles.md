@@ -34,6 +34,7 @@ Harness adapters map the portable selector, not role names, to their available p
 | OpenCode | `task.model` provider / model ID / variant | Fresh `task` session |
 | Copilot CLI | Active session provider / agent model / unsupported | Registered agent, then fresh generic worker |
 | Sail | ACP worker provider / model / variant | Assigned worker or fresh gate worker; no inline fallback |
+| T3 Code | `delegate_task` provider instance / model / reasoning option | Fresh `delegate_task` child on a different provider than implementation ([t3-code.md](t3-code.md)) |
 
 For each non-default request, pass the selector through its mapped control and compare returned worker metadata with the request before accepting the route. Never silently ignore, substitute or normalize an unsupported selector. Reject it before dispatch, append the request and reason to non-gating `routeDiagnostics`, try the next mechanism, and block with the exact unsupported selector when none can satisfy it. Rejected candidates never enter `roleRoutes`.
 

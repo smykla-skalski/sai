@@ -37,6 +37,7 @@ A fallback satisfies the same workflow gate. It does not remove, rename or weake
 | OpenCode | Apply the matching permission policy and expose only tools needed by the active profile. | Read, edit, bash and subagent (`task` on opencode 1) tools map to filesystem, process, Git and subagent capabilities; authenticated `gh` supplies remote capabilities. |
 | Copilot CLI | Select registered tools and agents for the active profile. | Filesystem and shell tools supply local capabilities; registered adversary agents or fresh generic subagents supply gates; authenticated `gh` supplies remote capabilities. |
 | Sail | Select the profile before dispatch and verify the assigned worker and fresh gate workers can launch. | ACP filesystem, terminal and permission primitives supply local capabilities; Sail workers supply subagent capabilities; authenticated `gh` supplies remote capabilities. Missing worker or gate capability pauses the run. |
+| T3 Code | Apply the active harness's enforcement; T3 Code adds gate routing only. | `delegate_task` children with `isolation: "worktree"` on a different provider supply review, test and CI-triage subagent capabilities; the active harness supplies everything else. |
 
 Provider-specific permission prompts may add restrictions. They never broaden the contract.
 

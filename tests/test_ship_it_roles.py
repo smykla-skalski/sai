@@ -48,7 +48,7 @@ class ShipItRolesTest(unittest.TestCase):
     def test_every_harness_has_a_portable_adapter(self) -> None:
         self.assertEqual(
             set(self.contract["adapters"]),
-            {"claude-code", "codex", "opencode", "copilot-cli", "sail"},
+            {"claude-code", "codex", "opencode", "copilot-cli", "sail", "t3-code"},
         )
         self.assertIsNone(self.contract["adapters"]["sail"]["fallback"])
         for adapter in self.contract["adapters"].values():
@@ -71,6 +71,9 @@ class ShipItRolesTest(unittest.TestCase):
             "spawn-agent-reasoning-effort",
         )
         self.assertEqual(adapters["sail"]["selectors"]["provider"], "worker-provider")
+        self.assertEqual(
+            adapters["t3-code"]["gate_provider"], "different-from-implementation"
+        )
         self.assertIn("Never silently ignore", self.guidance)
         self.assertIn("block with the exact unsupported selector", self.guidance)
         self.assertIn("Rejected candidates never enter `roleRoutes`", self.guidance)
