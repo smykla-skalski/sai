@@ -101,6 +101,18 @@ class FileDeliveryTest(unittest.TestCase):
         fallbacks = (SKILL / "references/fallbacks.md").read_text()
         self.assertNotIn("Sail worker and gate availability", fallbacks)
 
+    def test_entry_only_routes_t3_code_gates_when_connected(self) -> None:
+        entry = (SKILL / "SKILL.md").read_text()
+        lines = [line for line in entry.splitlines() if "t3-code.md" in line]
+        self.assertEqual(len(lines), 1)
+        self.assertIn("If connected tools", lines[0])
+        self.assertIn("Sail or T3 Code", lines[0])
+        self.assertIn("Otherwise do not load it", lines[0])
+        guidance = (SKILL / "references/t3-code.md").read_text()
+        self.assertIn("different model provider than implementation", guidance)
+        self.assertIn("Never reuse a finished child", guidance)
+        self.assertIn('isolation: "worktree"', guidance)
+
 
 if __name__ == "__main__":
     unittest.main()
