@@ -466,9 +466,17 @@ def bind_owner(
 ) -> dict[str, Any]:
     """Bind the actual native owner once; allow parent/child retries."""
     dispatch = record["dispatchId"]
-    require(set(data) == {"owner"}, "bind-owner requires owner")
+    require(
+        set(data) in ({"owner"}, {"owner", "worktree", "branch"}),
+        "bind-owner requires owner and optionally worktree and branch",
+    )
+    checkout = "worktree" in data
+    require(
+        not checkout or "issueUrl" in record["target"],
+        "checkout requires an issue worker",
+    )
     owner = non_empty(data["owner"], "owner")
-    if record["owner"] == owner:
+    if record["owner"] == owner and not checkout:
         return {"dispatchId": dispatch, "applied": False}
     require(record["ownerReleasedAt"] is None, "worker owner already released")
     expected = resolve_target(
@@ -492,6 +500,18 @@ def bind_owner(
             for item in checkpoint["orchestration"]["children"]
             if item["issueUrl"] == record["target"]["issueUrl"]
         )
+        bind_issue_checkout(child, data)
         child["worker"] = owner
     record["owner"] = owner
     return {"dispatchId": dispatch, "applied": applied}
+
+
+def bind_issue_checkout(child: dict[str, Any], data: dict[str, Any]) -> None:
+    """Bind the checkout at the same time as the worker owns the dispatch."""
+    for field in ("worktree", "branch"):
+        value = non_empty(data.get(field, child[field]), field)
+        require(
+            child[field] in (None, value),
+            f"worker already bound to a different {field}",
+        )
+        child[field] = value

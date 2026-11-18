@@ -10,6 +10,8 @@ Before native launch, record the orchestration dispatch with `worker: null` when
 
 ## Build or reuse the issue graph
 
+When a host assigns the checkout at launch, record `worker`, `worktree`, and `branch` as null in the dispatch and register recovery before calling the host. The worker verifies its actual checkout and base revision, records `bind-owner` with the native owner, actual worktree path, and branch before `started` or any edits. If the host only returns the owner ID, let the worker bind all three values before the parent repeats the owner binding. T3 Code creates the checkout through `delegate_task` with `isolation: "worktree"`.
+
 Every dispatch carries the pinned plugin `bundle`, `skillRoot`, store and sender lease from the entry bootstrap. Before resolving a helper or accepting work, the receiver acquires its own lease against that exact bundle using its host agent PID. Failed acquisition blocks dispatch acceptance. The coordinator retains its lease through all child acquisitions; children release only their own leases at terminal hand-back. New independent runs bootstrap from the current installed bundle; active children never switch versions during an update. On an entry-bootstrap unsupported-platform result, forward the installed root and retention limitation instead, preserving the existing workflow without claiming active bundle protection.
 
 1. Read the complete approved plan and its acceptance criteria, or the existing umbrella and native subissues. Resolve the target repository and search open issues for the same umbrella before creating one. Prefer an explicitly supplied umbrella; reuse a matching existing umbrella and its subissues. Do not adopt an unrelated issue based on a similar title.

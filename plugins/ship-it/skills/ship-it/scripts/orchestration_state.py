@@ -80,6 +80,7 @@ def validate_saved_state(checkpoint: dict[str, Any]) -> None:
         identity = issue_url(child["issueUrl"], "saved child issueUrl")
         require(identity not in identities, "saved child identities must be unique")
         identities.add(identity)
+        validate_checkout(child, allow_pending=True)
         require(
             isinstance(child["dependencies"], list)
             and all(isinstance(item, str) for item in child["dependencies"]),
@@ -355,8 +356,7 @@ def dispatch(
     )
     if data["worker"] is not None:
         non_empty(data["worker"], "worker")
-    for field in ("worktree", "branch"):
-        non_empty(data[field], field)
+    validate_checkout(data, allow_pending=data["worker"] is None)
     commit_id(data["revision"], "revision")
     child.update(
         data,
@@ -377,6 +377,14 @@ def dispatch(
         unresolvedThreadCount=None,
         investigation=None,
     )
+
+
+def validate_checkout(data: dict[str, Any], *, allow_pending: bool) -> None:
+    """Accept an assigned checkout or a pair pending assignment by the host."""
+    if allow_pending and data["worktree"] is None and data["branch"] is None:
+        return
+    for field in ("worktree", "branch"):
+        non_empty(data[field], field)
 
 
 def apply_child_event(

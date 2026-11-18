@@ -132,7 +132,11 @@ class OrchestrationTest(unittest.TestCase):
         return event
 
     def initialize(
-        self, *, dependencies: bool = False, worker: str | None = "worker-1"
+        self,
+        *,
+        dependencies: bool = False,
+        worker: str | None = "worker-1",
+        deferred_checkout: bool = False,
     ) -> None:
         self.command(
             "set-orchestration",
@@ -144,8 +148,8 @@ class OrchestrationTest(unittest.TestCase):
             "dispatch",
             {
                 "worker": worker,
-                "worktree": str(self.root / "worktree"),
-                "branch": "feat/child",
+                "worktree": None if deferred_checkout else str(self.root / "worktree"),
+                "branch": None if deferred_checkout else "feat/child",
                 "revision": REVISION,
             },
             revision=None,
@@ -533,6 +537,36 @@ class OrchestrationTest(unittest.TestCase):
             "2026-10-15T21:00:03Z",
             success=False,
         )
+
+    def test_host_assigned_checkout_binds_after_registered_launch(self) -> None:
+        self.initialize(worker=None, deferred_checkout=True)
+        self.worker_event(
+            "register",
+            {
+                "target": {"issueUrl": FIRST},
+                "owner": None,
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+        checkout = {
+            "worktree": str(self.root / "host-checkout"),
+            "branch": "host/child",
+        }
+        self.worker_event("bind-owner", {"owner": "host-worker"}, success=False)
+        self.worker_event(
+            "bind-owner",
+            {"owner": "host-worker", "branch": "host/child"},
+            success=False,
+        )
+        binding = {"owner": "host-worker", **checkout}
+        self.assertTrue(self.worker_event("bind-owner", binding)["applied"])
+        self.assertFalse(self.worker_event("bind-owner", binding)["applied"])
+        self.worker_event(
+            "bind-owner", {**binding, "branch": "host/replacement"}, success=False
+        )
+        self.worker_event("started", {}, "2026-10-15T21:00:01Z")
+        child = self.document()["orchestration"]["children"][0]
+        self.assertEqual({key: child[key] for key in checkout}, checkout)
 
     def test_worker_observations_reject_contradictory_chronology(self) -> None:
         self.register_worker()
