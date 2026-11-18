@@ -8,7 +8,7 @@
 | :-- | :-- |
 | `register` | `target: {issueUrl: URL}` for an existing running orchestration dispatch, or `target: {reservationId: ID}` for a pending gate reservation, or `target: {pullRequestUrl: URL, headSha: SHA}` for a hosted-state waiter matching the checkpoint’s open PR, delivery head and workflow revision while active; `owner` is null before launch (or the native worker ID for an already observed owner); `deadlineAt` is a later UTC instant |
 | `adopt` | Same target and owner fields for a legacy running/blocked/failed child or reserved/completed gate; `deadlineAt` must be null because no deadline observation is available. Use a stable dispatch ID; adoption does not release ownership |
-| `bind-owner` | `owner` with the native worker ID; atomically fills a null orchestration child worker, otherwise must match that existing owner |
+| `bind-owner` | Supply the native `owner` ID. Include `worktree` and `branch` when the host assigns the checkout at launch. The first binding records all supplied values together. Retries must match the existing binding. |
 | `started` | `{}` |
 | `result` | `eventId`, `status: completed\|blocked\|failed`, `checkpointPath` |
 | `acknowledge` | `eventId` matching the durable result |
@@ -157,7 +157,7 @@ Orchestration event data:
 
 | Kind | Exact data fields | Checks |
 | --- | --- | --- |
-| `dispatch` | `worker`, `worktree`, `branch`, `revision` | Unique dispatch ID; every dependency completed; full commit ID |
+| `dispatch` | `worker`, `worktree`, `branch`, `revision` | Unique dispatch ID; every dependency completed; full commit ID. Use null for all three worker and checkout fields when the host assigns them at launch. |
 | `child-update` | Any non-empty subset of `revision`, `evidenceRevision`, `evidenceRecordPath`, `evidenceStatus`, `gatedHead`, `pullRequestUrl`, `unresolvedThreadCount`, `mergeCommit`, `issueState`, `nextAction`, `requiredGates`, `checkpointPath`, `investigation` | Typed facts; a revision change invalidates child gates and gated head |
 | `capacity-request` | `leaseId`, `gate` | Unique lease ID; records a queued request, not permission to spawn |
 | `capacity-grant` | `leaseId`, `gate` | Matching requested lease; coordinator grants only after host capacity is available |
