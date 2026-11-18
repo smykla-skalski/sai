@@ -915,6 +915,50 @@ class OrchestrationTest(unittest.TestCase):
             success=False,
         )
 
+    def test_focused_worker_uses_recorded_recovery_without_gate_allowance(self) -> None:
+        result = self.run_cli(
+            "transition",
+            "--checkpoint",
+            str(self.checkpoint),
+            "--phase",
+            "test",
+            "--status",
+            "active",
+            "--revision",
+            REVISION,
+            "--next-action",
+            "Confirm browser regression",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.command(
+            "record-acceptance-recovery",
+            "--recovery-json",
+            {
+                "id": "R1",
+                "failure": "Browser drops filters",
+                "criterion": "Children are delivered",
+                "grantId": "user-grant",
+                "revision": REVISION,
+                "correction": "Preserve filters",
+                "verification": "Run focused browser reproduction",
+            },
+        )
+        before = self.document()["convergence"]
+        data = {
+            "target": {"recoveryId": "R1", "headSha": REVISION},
+            "owner": None,
+            "deadlineAt": "2026-10-15T22:00:00Z",
+        }
+        for target in (
+            {"recoveryId": "missing", "headSha": REVISION},
+            {"recoveryId": "R1", "headSha": "b" * 40},
+        ):
+            self.worker_event("register", {**data, "target": target}, success=False)
+        self.worker_event("register", data)
+        self.worker_event("bind-owner", {"owner": "fresh-tester"})
+        self.worker_event("started", {})
+        self.assertEqual(before, self.document()["convergence"])
+
     def test_scoped_recovery_is_idempotent_and_preserves_counters(self) -> None:
         result = self.run_cli(
             "transition",

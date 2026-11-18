@@ -76,14 +76,15 @@ def validate(checkpoint: dict[str, Any]) -> None:
             in (
                 {"issueUrl"},
                 {"reservationId"},
+                {"recoveryId", "headSha"},
                 {"pullRequestUrl", "headSha"},
             ),
-            "worker target requires issueUrl, reservationId or pullRequestUrl/headSha",
+            "worker target requires issueUrl, reservationId or a revision-bound target",
         )
         for value in item["target"].values():
             non_empty(value, "worker target")
         if "headSha" in item["target"]:
-            commit_id(item["target"]["headSha"], "hosted waiter headSha")
+            commit_id(item["target"]["headSha"], "worker target headSha")
         registered = timestamp(item["registeredAt"], "registeredAt")
         require(isinstance(item.get("adopted", False), bool), "invalid adopted flag")
         if item.get("adopted", False):
@@ -201,7 +202,10 @@ def resolve_target(
     *,
     allow_terminal: bool = False,
 ) -> str | None:
-    """Bind recovery to a child, gate reservation or current PR head."""
+    """Bind recovery to an active dispatch, reservation, recovery or PR head."""
+    if set(target) == {"recoveryId", "headSha"}:
+        resolve_acceptance_target(checkpoint, target)
+        return None
     if set(target) == {"pullRequestUrl", "headSha"}:
         commit_id(target["headSha"], "hosted waiter headSha")
         delivery = checkpoint["delivery"]
@@ -249,6 +253,32 @@ def resolve_target(
         "worker requires pending gate reservation",
     )
     return None
+
+
+def resolve_acceptance_target(
+    checkpoint: dict[str, Any], target: dict[str, Any]
+) -> None:
+    """Require a recorded and authorized recovery for the current revision."""
+    revision = commit_id(target["headSha"], "recovery headSha")
+    identity = non_empty(target["recoveryId"], "recoveryId")
+    require(
+        revision == checkpoint["workflow"]["revision"]
+        and checkpoint["workflow"]["status"] in {"active", "blocked"},
+        "focused worker requires the current recovery revision",
+    )
+    active_grants = {
+        grant["id"]
+        for grant in checkpoint["authorization"]["grants"]
+        if grant["status"] == "active"
+        and all(limit["used"] < limit["maximum"] for limit in grant["limits"])
+    }
+    require(
+        any(
+            recovery.get("id") == identity and recovery.get("grantId") in active_grants
+            for recovery in checkpoint["convergence"].get("acceptanceRecovery", [])
+        ),
+        "focused worker requires a recorded recovery with an active grant",
+    )
 
 
 def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
