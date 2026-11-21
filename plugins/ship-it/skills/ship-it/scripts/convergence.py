@@ -297,6 +297,17 @@ def check_rerun(state: dict[str, Any], request: dict[str, Any]) -> None:
     )
 
 
+def used_up(grant: dict[str, Any], limit: dict[str, Any]) -> bool:
+    """Tell a used-up earlier allowance apart from a standing user cap.
+
+    A later grant named by the reservation supersedes it. A zero maximum and
+    a revoked or ambiguous grant still bind every reservation.
+    """
+    return grant["status"] in ("active", "exhausted") and (
+        0 < limit["maximum"] <= limit["used"]
+    )
+
+
 def spend_allowance(
     checkpoint: dict[str, Any],
     request: dict[str, Any],
@@ -322,11 +333,18 @@ def spend_allowance(
         consume_grant(checkpoint, grant_id, counter)
         state["mode"] = "exhaustive"
         state["authorizedBy"] = grant_id
-    for grant in checkpoint["authorization"]["grants"]:
+    grants = checkpoint["authorization"]["grants"]
+    named = next(
+        (index for index, grant in enumerate(grants) if grant["id"] == grant_id),
+        -1,
+    )
+    for index, grant in enumerate(grants):
         if grant["id"] == grant_id:
             continue
         for limit in grant["limits"]:
             if limit["resource"] == counter:
+                if index < named and used_up(grant, limit):
+                    continue
                 require(
                     grant["status"] == "active" and limit["used"] < limit["maximum"],
                     f"explicit user {counter} limit prevents this action",
