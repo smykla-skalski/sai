@@ -621,5 +621,321 @@ class ReservationTest(ReservationFixture):
         )
 
 
+SEVERE_FINDING = {
+    "id": "F1",
+    "label": "blocking",
+    "location": "script.py:4",
+    "summary": "Confirmed destructive race",
+    "category": "destructive-concurrency",
+    "disposition": "open",
+}
+FOLLOW_UP = "https://github.com/owner/repo/issues/9"
+
+
+class ReassessmentResolutionTest(ReservationFixture):
+    def setUp(self) -> None:
+        super().setUp()
+        self.assert_ok(self.reserve("one"))
+        self.assert_ok(self.finish("one", {"verdict": "passed", "findings": []}))
+        self.assert_ok(
+            self.reserve(
+                "two",
+                "review",
+                "changed",
+                "--trigger",
+                "security",
+                "--reason",
+                "security correction",
+            )
+        )
+        self.assert_ok(
+            self.finish("two", {"verdict": "failed", "findings": [SEVERE_FINDING]})
+        )
+        self.add_grant("decision", ["reassessment"])
+
+    def add_grant(
+        self, identity: str, scope: list[str], status: str = "active"
+    ) -> None:
+        grant = {
+            "id": identity,
+            "source": {
+                "kind": "user-reply",
+                "message": "Ship it with a follow-up issue",
+                "reference": f"user:{identity}",
+                "request": "Reassess the severe findings",
+            },
+            "scope": scope,
+            "limits": [],
+            "status": status,
+        }
+        self.assert_ok(
+            self.cli(
+                "add-grant",
+                "--checkpoint",
+                str(self.path),
+                "--grant-json",
+                json.dumps(grant),
+            )
+        )
+
+    def resolve(self, resolution: dict) -> subprocess.CompletedProcess[str]:
+        return self.cli(
+            "resolve-reassessment",
+            "--checkpoint",
+            str(self.path),
+            "--resolution-json",
+            json.dumps(resolution),
+        )
+
+    def resolution(self, **changes: object) -> dict:
+        return {
+            "grantId": "decision",
+            "decision": "Ship with a follow-up issue",
+            "revision": "a" * 40,
+            "findings": [
+                {"id": "F1", "disposition": "follow-up", "followUpIssue": FOLLOW_UP}
+            ],
+            **changes,
+        }
+
+    def test_owner_decision_unblocks_without_new_budget(self) -> None:
+        before = self.read()
+        result = self.assert_ok(self.resolve(self.resolution()))
+        self.assertTrue(result["applied"])
+        after = self.read()
+        self.assertIsNone(after["convergence"]["reassessment"])
+        self.assertEqual(after["workflow"]["status"], "active")
+        self.assertIsNone(after["workflow"]["blocker"])
+        (entry,) = after["convergence"]["reassessmentResolutions"]
+        self.assertEqual(entry["reassessment"], before["convergence"]["reassessment"])
+        self.assertEqual(entry["grantId"], "decision")
+        self.assertEqual(
+            after["convergence"]["findings"][0]["disposition"], "follow-up"
+        )
+        self.assertEqual(after["convergence"]["followUpIssues"], [FOLLOW_UP])
+        for field in (
+            "reviewCycles",
+            "fixPasses",
+            "fullQualityGateRuns",
+            "broadTestRuns",
+            "reservations",
+        ):
+            self.assertEqual(after["convergence"][field], before["convergence"][field])
+        self.assertEqual(after["authorization"], before["authorization"])
+        self.assert_denied(
+            self.reserve("three", "review", "changed-again", "--trigger", "security")
+        )
+        self.assertTrue(self.assert_ok(self.reserve("quality", "quality"))["dispatch"])
+
+    def test_retry_is_idempotent_and_history_is_kept(self) -> None:
+        self.assert_ok(self.resolve(self.resolution()))
+        first = self.read()
+        retry = self.assert_ok(self.resolve(self.resolution()))
+        self.assertFalse(retry["applied"])
+        second = self.read()
+        first.pop("updatedAt")
+        second.pop("updatedAt")
+        self.assertEqual(first, second)
+        self.assert_denied(self.resolve(self.resolution(decision="Something else")))
+
+    def test_fixed_disposition_needs_a_new_revision(self) -> None:
+        fixed = {"findings": [{"id": "F1", "disposition": "fixed"}]}
+        self.assert_denied(self.resolve(self.resolution(**fixed)))
+        doc = self.read()
+        doc["workflow"]["revision"] = "b" * 40
+        self.write(doc)
+        self.assert_denied(self.resolve(self.resolution(**fixed)))
+        self.assert_ok(self.resolve(self.resolution(revision="b" * 40, **fixed)))
+        after = self.read()
+        self.assertEqual(after["convergence"]["findings"][0]["disposition"], "fixed")
+        self.assertEqual(after["convergence"]["followUpIssues"], [])
+
+    def test_refuses_without_scoped_authority_or_complete_dispositions(self) -> None:
+        self.add_grant("revoked", ["reassessment"], status="revoked")
+        before = self.path.read_bytes()
+        for resolution in (
+            self.resolution(grantId="ship"),
+            self.resolution(grantId="revoked"),
+            self.resolution(grantId="missing"),
+            self.resolution(revision="b" * 40),
+            self.resolution(decision=" "),
+            self.resolution(findings=[]),
+            self.resolution(findings=[{"id": "F1", "disposition": "open"}]),
+            self.resolution(findings=[{"id": "F1", "disposition": "follow-up"}]),
+            self.resolution(
+                findings=[
+                    {"id": "F1", "disposition": "follow-up", "followUpIssue": "x"}
+                ]
+            ),
+            self.resolution(
+                findings=[
+                    {
+                        "id": "F1",
+                        "disposition": "follow-up",
+                        "followUpIssue": FOLLOW_UP,
+                    },
+                    {
+                        "id": "F2",
+                        "disposition": "follow-up",
+                        "followUpIssue": FOLLOW_UP,
+                    },
+                ]
+            ),
+            self.resolution(findings=[{"id": 1, "disposition": "fixed"}]),
+            self.resolution(extra=True),
+            {"grantId": "decision"},
+        ):
+            with self.subTest(resolution=resolution):
+                self.assert_denied(self.resolve(resolution))
+                self.assertEqual(self.path.read_bytes(), before)
+
+    def test_refuses_when_no_reassessment_is_pending(self) -> None:
+        doc = self.read()
+        doc["convergence"]["reassessment"] = None
+        self.write(doc)
+        self.assert_denied(self.resolve(self.resolution()))
+
+
+class ClosedGateOwnerTest(ReservationFixture):
+    def event(self, dispatch: str, kind: str, at: str, data: dict) -> dict:
+        return self.assert_ok(self.send(dispatch, kind, at, data))
+
+    def send(
+        self, dispatch: str, kind: str, at: str, data: dict
+    ) -> subprocess.CompletedProcess[str]:
+        return self.cli(
+            "record-worker-event",
+            "--checkpoint",
+            str(self.path),
+            "--event-json",
+            json.dumps({"dispatchId": dispatch, "kind": kind, "at": at, "data": data}),
+        )
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.assert_ok(self.reserve("review-one"))
+        self.event(
+            "gate-one",
+            "register",
+            "2026-10-15T21:00:00Z",
+            {
+                "target": {"reservationId": "review-one"},
+                "owner": None,
+                "deadlineAt": "2026-10-15T22:00:00Z",
+            },
+        )
+        self.release = {
+            "owner": "native-reviewer-one",
+            "hostStatus": "exited",
+            "observation": "host task list: native-reviewer-one exited 0",
+        }
+        self.next_review = (
+            "review-two",
+            "review",
+            "changed",
+            "--reason",
+            "changed inputs",
+            "--trigger",
+            "security",
+        )
+
+    def test_finished_unbound_gate_records_owner_and_release(self) -> None:
+        self.assert_denied(
+            self.send(
+                "gate-one",
+                "release-closed-gate",
+                "2026-10-15T21:20:00Z",
+                self.release,
+            )
+        )
+        self.assert_ok(
+            self.cli(
+                "finish",
+                "--checkpoint",
+                str(self.path),
+                "--id",
+                "review-one",
+                "--result-json",
+                '{"verdict":"passed","findings":[]}',
+            )
+        )
+        self.assert_denied(
+            self.send(
+                "gate-one",
+                "bind-owner",
+                "2026-10-15T21:20:00Z",
+                {"owner": "native-reviewer-one"},
+            )
+        )
+        self.assert_denied(self.reserve(*self.next_review))
+        before = self.read()
+        applied = self.event(
+            "gate-one", "release-closed-gate", "2026-10-15T21:20:00Z", self.release
+        )
+        self.assertTrue(applied["applied"])
+        after = self.read()
+        (record,) = after["workerRecovery"]
+        self.assertEqual(record["owner"], "native-reviewer-one")
+        self.assertEqual(record["ownerReleasedAt"], "2026-10-15T21:20:00Z")
+        self.assertEqual(record["ownerObservation"], self.release["observation"])
+        self.assertIsNone(record["result"])
+        self.assertIsNone(record["startedAt"])
+        for field in ("convergence", "gateVerdicts", "authorization", "workflow"):
+            self.assertEqual(after[field], before[field])
+        retry = self.event(
+            "gate-one", "release-closed-gate", "2026-10-15T21:20:00Z", self.release
+        )
+        self.assertFalse(retry["applied"])
+        self.assertTrue(self.assert_ok(self.reserve(*self.next_review))["dispatch"])
+
+    def test_refuses_fabricated_or_conflicting_release(self) -> None:
+        self.assert_ok(
+            self.cli(
+                "finish",
+                "--checkpoint",
+                str(self.path),
+                "--id",
+                "review-one",
+                "--result-json",
+                '{"verdict":"passed","findings":[]}',
+            )
+        )
+        before = self.path.read_bytes()
+        for data in (
+            {**self.release, "hostStatus": "not-created"},
+            {**self.release, "hostStatus": "timeout"},
+            {**self.release, "observation": " "},
+            {**self.release, "owner": None},
+            {"owner": "native-reviewer-one", "hostStatus": "exited"},
+            {**self.release, "result": "passed"},
+        ):
+            with self.subTest(data=data):
+                self.assert_denied(
+                    self.send(
+                        "gate-one", "release-closed-gate", "2026-10-15T21:20:00Z", data
+                    )
+                )
+                self.assert_denied(
+                    self.send(
+                        "gate-one",
+                        "release-closed-gate",
+                        "2026-10-15T20:00:00Z",
+                        self.release,
+                    )
+                )
+                self.assertEqual(self.path.read_bytes(), before)
+        self.event(
+            "gate-one", "release-closed-gate", "2026-10-15T21:20:00Z", self.release
+        )
+        self.assert_denied(
+            self.send(
+                "gate-one",
+                "release-closed-gate",
+                "2026-10-15T21:30:00Z",
+                {**self.release, "owner": "someone-else"},
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

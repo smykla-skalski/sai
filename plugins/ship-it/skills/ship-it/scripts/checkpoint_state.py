@@ -10,6 +10,7 @@ Copyright 2026 Smykla Skalski, MIT License.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
@@ -87,6 +88,13 @@ HOSTED_DECISION_FIELDS: Final[frozenset[str]] = frozenset(
 )
 HOSTED_DECISION_CHANGES: Final[frozenset[str]] = frozenset({"fallback", "blocked"})
 SUMMARY_LIMIT: Final[int] = 500
+REASSESSMENT_SCOPE: Final[str] = "reassessment"
+RESOLUTION_FIELDS: Final[tuple[str, ...]] = (
+    "grantId",
+    "decision",
+    "revision",
+    "findings",
+)
 RECOVERY_FIELDS: Final[tuple[str, ...]] = (
     "failure",
     "criterion",
@@ -743,6 +751,158 @@ def set_dispositions(
         findings[identity]["disposition"] = disposition
     stale_review_attestations(checkpoint)
     return {"findings": {k: v["disposition"] for k, v in findings.items()}}
+
+
+def reassessment_grant(checkpoint: dict[str, Any], identity: object) -> str:
+    """Require an active user grant scoped to the reassessment decision."""
+    grant_id = non_empty(identity, "resolution grantId")
+    grant = next(
+        (
+            item
+            for item in checkpoint["authorization"]["grants"]
+            if item.get("id") == grant_id
+        ),
+        None,
+    )
+    require(
+        grant is not None
+        and grant.get("status") == "active"
+        and REASSESSMENT_SCOPE in grant.get("scope", []),
+        f"reassessment resolution requires an active grant scoped to "
+        f"{REASSESSMENT_SCOPE}: {grant_id}",
+    )
+    return grant_id
+
+
+def resolution_findings(
+    pending: list[str],
+    findings: object,
+    *,
+    fixed_allowed: bool,
+) -> list[dict[str, Any]]:
+    """Validate one fixed or follow-up disposition for every severe finding."""
+    if not (isinstance(findings, list) and all(isinstance(f, dict) for f in findings)):
+        message = "resolution findings must be an array of objects"
+        raise StateError(message)
+    entries: list[dict[str, Any]] = []
+    for finding in findings:
+        identity = non_empty(finding.get("id"), "resolution finding id")
+        disposition = finding.get("disposition")
+        url = finding.get("followUpIssue")
+        require(
+            set(finding) <= {"id", "disposition", "followUpIssue"}
+            and one_of(disposition, frozenset({"fixed", "follow-up"})),
+            f"finding {identity} needs a fixed or follow-up disposition",
+        )
+        require(
+            (disposition == "follow-up") == ("followUpIssue" in finding),
+            f"finding {identity}: only a follow-up disposition takes "
+            "followUpIssue, and it requires one",
+        )
+        require(
+            url is None
+            or (isinstance(url, str) and url.startswith(("https://", "http://"))),
+            f"finding {identity} followUpIssue must be a URL",
+        )
+        require(
+            disposition != "fixed" or fixed_allowed,
+            f"finding {identity} cannot be fixed at the reassessed revision",
+        )
+        entries.append(dict(finding))
+    require(
+        sorted(entry["id"] for entry in entries) == sorted(pending),
+        "resolution must dispose exactly the reassessment findings: "
+        + ", ".join(pending),
+    )
+    return entries
+
+
+def resolve_reassessment(
+    checkpoint: dict[str, Any],
+    resolution: dict[str, Any],
+) -> dict[str, Any]:
+    """Record the owner's reassessment decision and unblock the workflow.
+
+    Counters, reservations and grant limits stay untouched: the decision
+    clears the reassessment stop, it grants no review or fix allowance.
+    """
+    state = checkpoint["convergence"]
+    history = state.setdefault("reassessmentResolutions", [])
+    require(isinstance(history, list), "reassessmentResolutions must be an array")
+    require(
+        set(resolution) <= {*RESOLUTION_FIELDS, "nextAction"}
+        and set(RESOLUTION_FIELDS) <= set(resolution),
+        "resolution requires exactly: "
+        + ", ".join(RESOLUTION_FIELDS)
+        + " and an optional nextAction",
+    )
+    decision = {field: resolution[field] for field in RESOLUTION_FIELDS}
+    pending = state["reassessment"]
+    if pending is None:
+        require(
+            bool(history)
+            and {field: history[-1].get(field) for field in RESOLUTION_FIELDS}
+            == decision,
+            "no reassessment is pending",
+        )
+        return {"resolved": history[-1]["reassessment"], "applied": False}
+    require(
+        checkpoint["workflow"]["status"] == "blocked",
+        "a pending reassessment requires a blocked workflow",
+    )
+    grant_id = reassessment_grant(checkpoint, resolution["grantId"])
+    require(
+        all(entry.get("grantId") != grant_id for entry in history),
+        f"grant {grant_id} already resolved a reassessment",
+    )
+    text = non_empty(resolution["decision"], "resolution decision")
+    require(len(text) <= SUMMARY_LIMIT, f"decision exceeds {SUMMARY_LIMIT} characters")
+    revision = commit_id(resolution["revision"], "resolution revision")
+    require(
+        revision == checkpoint["workflow"]["revision"],
+        "resolution revision must match the current workflow revision",
+    )
+    entries = resolution_findings(
+        pending["findings"],
+        resolution["findings"],
+        fixed_allowed=revision != pending["revision"],
+    )
+    next_action = non_empty(
+        resolution.get(
+            "nextAction",
+            "Re-attest the review for the resolved revision and continue delivery",
+        ),
+        "nextAction",
+    )
+    findings = {finding["id"]: finding for finding in state["findings"]}
+    for entry in entries:
+        require(
+            entry["id"] in findings,
+            f"reassessment finding {entry['id']} is not recorded",
+        )
+        findings[entry["id"]]["disposition"] = entry["disposition"]
+        url = entry.get("followUpIssue")
+        if url is not None and url not in state["followUpIssues"]:
+            state["followUpIssues"].append(url)
+    require(
+        all(finding["disposition"] != "blocked" for finding in state["findings"]),
+        "another finding is still blocked; resolve it before unblocking",
+    )
+    history.append(
+        {
+            "reassessment": copy.deepcopy(pending),
+            **copy.deepcopy(decision),
+            "resolvedAt": now_utc(),
+        },
+    )
+    state["reassessment"] = None
+    checkpoint["workflow"].update(
+        status="active",
+        blocker=None,
+        nextAction=next_action,
+    )
+    stale_review_attestations(checkpoint)
+    return {"resolved": pending, "applied": True}
 
 
 def attest_review(

@@ -273,8 +273,8 @@ def record_event(checkpoint: dict[str, Any], event: dict[str, Any]) -> dict[str,
         at >= timestamp(record["registeredAt"], "registeredAt"),
         "worker event precedes registration",
     )
-    if kind == "bind-owner":
-        return bind_owner(checkpoint, record, data)
+    if kind in {"bind-owner", "release-closed-gate"}:
+        return owner_event(checkpoint, record, event)
     require(
         record["owner"] is not None or kind == "release-owner",
         "bind native owner before worker execution",
@@ -504,6 +504,73 @@ def bind_owner(
         child["worker"] = owner
     record["owner"] = owner
     return {"dispatchId": dispatch, "applied": applied}
+
+
+def owner_event(
+    checkpoint: dict[str, Any],
+    record: dict[str, Any],
+    event: dict[str, Any],
+) -> dict[str, Any]:
+    """Route owner binding events, which may arrive before execution facts."""
+    if event["kind"] == "bind-owner":
+        return bind_owner(checkpoint, record, event["data"])
+    return release_closed_gate(checkpoint, record, event)
+
+
+def release_closed_gate(
+    checkpoint: dict[str, Any],
+    record: dict[str, Any],
+    event: dict[str, Any],
+) -> dict[str, Any]:
+    """Bind and release the native owner of a gate whose reservation already closed.
+
+    Records no result or execution observation, so it never attests a gate.
+    """
+    data = event["data"]
+    require(
+        set(data) == {"owner", "hostStatus", "observation"},
+        "release-closed-gate requires owner, hostStatus and observation",
+    )
+    require(
+        set(record["target"]) == {"reservationId"},
+        "release-closed-gate requires a gate reservation target",
+    )
+    receipt = next(
+        (
+            item
+            for item in checkpoint["convergence"]["reservations"]
+            if item["id"] == record["target"]["reservationId"]
+        ),
+        None,
+    )
+    require(
+        receipt is not None and receipt["status"] == "completed",
+        "release-closed-gate requires a completed gate reservation; "
+        "use bind-owner and release-owner while it is reserved",
+    )
+    owner = non_empty(data["owner"], "owner")
+    require(
+        isinstance(data["hostStatus"], str)
+        and data["hostStatus"] in {"completed", "done", "closed", "exited"},
+        "owner release requires terminal native task status",
+    )
+    observation = non_empty(data["observation"], "host observation")
+    dispatch = record["dispatchId"]
+    if (
+        record["owner"] == owner
+        and record["ownerObservation"] == observation
+        and record["ownerReleasedAt"] == event["at"]
+    ):
+        return {"dispatchId": dispatch, "applied": False}
+    require(record["ownerReleasedAt"] is None, "worker owner already released")
+    require(
+        record["owner"] is None or record["owner"] == owner,
+        "worker already bound to another owner",
+    )
+    record["owner"] = owner
+    record["ownerObservation"] = observation
+    record["ownerReleasedAt"] = event["at"]
+    return {"dispatchId": dispatch, "applied": True}
 
 
 def bind_issue_checkout(child: dict[str, Any], data: dict[str, Any]) -> None:
