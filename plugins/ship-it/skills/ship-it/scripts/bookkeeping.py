@@ -32,6 +32,7 @@ Usage:
   bookkeeping.py record-acceptance-recovery --checkpoint FILE
       --recovery-json OBJECT
   bookkeeping.py set-findings --checkpoint FILE --dispositions-json OBJECT
+  bookkeeping.py resolve-reassessment --checkpoint FILE --resolution-json OBJECT
   bookkeeping.py set-orchestration --checkpoint FILE
       --orchestration-json OBJECT
   bookkeeping.py record-orchestration-event --checkpoint FILE --event-json OBJECT
@@ -108,6 +109,7 @@ SECTION_COMMANDS: Final[frozenset[str]] = frozenset(
         "add-grant",
         "record-acceptance-recovery",
         "set-findings",
+        "resolve-reassessment",
         "attest-review",
         "set-orchestration",
         "record-orchestration-event",
@@ -134,6 +136,10 @@ JSON_SECTION_COMMANDS: Final[
         record_acceptance_recovery,
     ),
     "set-findings": ("--dispositions-json", checkpoint_state.set_dispositions),
+    "resolve-reassessment": (
+        "--resolution-json",
+        checkpoint_state.resolve_reassessment,
+    ),
     "set-orchestration": (
         "--orchestration-json",
         orchestration_state.set_orchestration,
@@ -1581,6 +1587,11 @@ def add_state_commands(
             "record an acceptance recovery or append an attempt",
         ),
         ("set-findings", "--dispositions-json", "set finding dispositions"),
+        (
+            "resolve-reassessment",
+            "--resolution-json",
+            "record the owner's reassessment decision and unblock",
+        ),
         (
             "set-orchestration",
             "--orchestration-json",

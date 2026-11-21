@@ -203,6 +203,7 @@ def validate(checkpoint: dict[str, Any]) -> None:
         ),
         "recover revision-bound review evidence or reconcile a pending review receipt",
     )
+    validate_resolutions(state.get("reassessmentResolutions", []))
     identities: set[str] = set()
     counts = dict.fromkeys(COUNTERS, 0)
     for operation in state["reservations"]:
@@ -217,6 +218,34 @@ def validate(checkpoint: dict[str, Any]) -> None:
         ),
         "exhaustive state requires retained original-user authority",
     )
+
+
+def validate_resolutions(history: object) -> None:
+    """Reject malformed retained reassessment decisions."""
+    if not isinstance(history, list):
+        msg = "reassessmentResolutions must be an array"
+        raise ConvergenceError(msg)
+    for entry in history:
+        require(
+            isinstance(entry, dict)
+            and set(entry)
+            == {
+                "reassessment",
+                "grantId",
+                "decision",
+                "revision",
+                "findings",
+                "resolvedAt",
+            }
+            and isinstance(entry["reassessment"], dict)
+            and isinstance(entry["findings"], list)
+            and all(
+                isinstance(entry[field], str) and bool(entry[field].strip())
+                for field in ("grantId", "decision", "revision")
+            ),
+            "invalid reassessment resolution",
+        )
+        timestamp(entry["resolvedAt"])
 
 
 def active_grant(checkpoint: dict[str, Any], identity: object) -> dict[str, Any]:
