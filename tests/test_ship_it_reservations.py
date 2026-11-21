@@ -611,6 +611,120 @@ class ReservationTest(ReservationFixture):
         self.assert_denied(self.reserve("one", "review", "same", "--grant", "extra"))
         self.assertEqual(self.path.read_bytes(), before)
 
+    def append_test_grant(self, identity: str, maximum: int = 1) -> None:
+        doc = self.read()
+        doc["authorization"]["grants"].append(
+            {
+                "id": identity,
+                "source": {
+                    "kind": "user-reply",
+                    "message": "yes",
+                    "request": "One more adversarial test",
+                    "reference": f"user:{identity}",
+                },
+                "scope": ["broadTestRuns"],
+                "limits": [
+                    {"resource": "broadTestRuns", "maximum": maximum, "used": 0}
+                ],
+                "status": "active",
+            }
+        )
+        self.write(doc)
+
+    def spend_routine_and_first_extra_test(self) -> None:
+        doc = self.read()
+        doc["gateVerdicts"] = [
+            {"gate": "adversarial-review", "revision": "a" * 40, "status": "passed"}
+        ]
+        self.write(doc)
+        self.assert_ok(self.reserve("test-1", "test"))
+        self.assert_ok(self.finish("test-1", {"verdict": "failed"}))
+        self.append_test_grant("G3")
+        self.assert_ok(self.reserve("test-2", "test", "same", "--grant", "G3"))
+        self.assert_ok(self.finish("test-2", {"verdict": "failed"}))
+
+    def grant_limits(self) -> dict[str, list[dict]]:
+        return {
+            grant["id"]: grant["limits"]
+            for grant in self.read()["authorization"]["grants"]
+        }
+
+    def test_later_named_grant_supersedes_spent_earlier_limit(self) -> None:
+        self.spend_routine_and_first_extra_test()
+        self.append_test_grant("G4")
+        receipt = self.assert_ok(
+            self.reserve("test-3", "test", "same", "--grant", "G4")
+        )
+        self.assertTrue(receipt["dispatch"])
+        state = self.read()
+        g3 = state["authorization"]["grants"][1]
+        self.assertEqual(g3["id"], "G3")
+        self.assertEqual(g3["status"], "active")
+        self.assertEqual(
+            g3["limits"], [{"resource": "broadTestRuns", "maximum": 1, "used": 1}]
+        )
+        self.assertEqual(self.grant_limits()["G4"][0]["used"], 1)
+        self.assertEqual(state["convergence"]["broadTestRuns"], 3)
+        self.assertEqual(state["convergence"]["authorizedBy"], "G4")
+
+    def test_spent_later_grant_and_unnamed_reservation_stay_refused(self) -> None:
+        self.spend_routine_and_first_extra_test()
+        self.append_test_grant("G4")
+        self.assert_ok(self.reserve("test-3", "test", "same", "--grant", "G4"))
+        self.assert_ok(self.finish("test-3", {"verdict": "failed"}))
+        before = self.path.read_bytes()
+        for extra in (
+            ("--grant", "G4"),
+            ("--grant", "G3"),
+            ("--reason", "routine fix"),
+        ):
+            with self.subTest(extra=extra):
+                self.assert_denied(self.reserve("test-4", "test", "changed", *extra))
+                self.assertEqual(self.path.read_bytes(), before)
+
+    def test_unnamed_reservation_stays_bound_by_spent_grant_limit(self) -> None:
+        doc = self.read()
+        doc["authorization"]["grants"].append(
+            {
+                "id": "G3",
+                "source": {
+                    "kind": "user-reply",
+                    "message": "yes",
+                    "request": "One more quality run",
+                    "reference": "user:G3",
+                },
+                "scope": ["fullQualityGateRuns"],
+                "limits": [
+                    {"resource": "fullQualityGateRuns", "maximum": 1, "used": 1}
+                ],
+                "status": "active",
+            }
+        )
+        self.write(doc)
+        before = self.path.read_bytes()
+        result = self.reserve("quality", "quality")
+        self.assert_denied(result)
+        self.assertIn("explicit user fullQualityGateRuns limit", result.stderr)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_earlier_zero_cap_still_binds_a_later_named_grant(self) -> None:
+        self.spend_routine_and_first_extra_test()
+        self.append_test_grant("G4", maximum=0)
+        self.append_test_grant("G5")
+        before = self.path.read_bytes()
+        self.assert_denied(self.reserve("test-3", "test", "same", "--grant", "G5"))
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_named_grant_still_charges_earlier_limit_with_room(self) -> None:
+        self.spend_routine_and_first_extra_test()
+        self.append_test_grant("G4", maximum=2)
+        self.append_test_grant("G5")
+        self.assert_ok(self.reserve("test-3", "test", "same", "--grant", "G5"))
+        limits = self.grant_limits()
+        self.assertEqual(
+            [limits[name][0]["used"] for name in ("G3", "G4", "G5")], [1, 1, 1]
+        )
+
     def test_reserved_state_is_owner_only_and_original_backup_retained(self) -> None:
         original = self.path.read_bytes()
         self.assert_ok(self.reserve("one"))
